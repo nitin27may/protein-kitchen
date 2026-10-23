@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { like } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PrepClient } from "@/components/PrepClient";
 import type { EatView, NightTask, PrepEventView, PrepSessionView } from "@/components/PrepClient";
@@ -9,11 +8,10 @@ import { formatDay } from "@/lib/planner/dates";
 import type { CookEvent } from "@/lib/prep/session";
 import { storageAdvice } from "@/lib/recipes/storage";
 import { displayName } from "@/lib/schemas";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { loadNight } from "@/lib/server/prep";
-import { getPlanView } from "@/lib/server/queries";
+import { getBatchPrepTicks, getPlanView } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
-import * as s from "@/lib/db/schema";
 
 export const metadata: Metadata = { title: "Meal prep guide" };
 export const dynamic = "force-dynamic";
@@ -28,14 +26,14 @@ export default async function PrepPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) notFound();
-  const view = getPlanView(planId);
+  const view = await getPlanView(planId);
   if (!view) notFound();
   const data = getData();
   const today = todayISO();
 
-  const { guide, tasks } = loadNight(view, today);
+  const { guide, tasks } = await loadNight(view, today);
 
-  const rows = getDb().select().from(s.prepTaskState).where(like(s.prepTaskState.taskKey, `prep:${planId}:%`)).all();
+  const rows = await getBatchPrepTicks(planId);
   const done = new Set(rows.filter((r) => r.done).map((r) => r.taskKey));
 
   const night: NightTask[] = tasks.map((t) => ({ key: t.key, dueDate: t.dueDate, dueLabel: shortLabel(t.dueDate), text: t.text, forName: t.forName, done: t.done, today: t.dueDate === today }));

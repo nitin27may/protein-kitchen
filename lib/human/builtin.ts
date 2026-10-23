@@ -1,0 +1,15 @@
+import { feedbackClass } from "./feedback";
+import { registerExporter } from "./registry";
+import { savedViewsClass } from "./saved-views";
+
+/**
+ * Human-owned data classes known today. Later PRs add one line each: recipe links, photos and photo decisions,
+ * routine choices. Idempotent, so any module may import this for its side effect.
+ */
+let done = false;
+export function registerBuiltinClasses(): void {
+  if (done) return;
+  registerExporter(feedbackClass);
+  registerExporter(savedViewsClass);
+  done = true;
+}

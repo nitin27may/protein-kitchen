@@ -4,7 +4,9 @@ import { anchorIngredients, perServing, proteinByIngredient } from "../nutrition
 import type { RecipeTotals } from "../nutrition/macros";
 import { autoTags } from "../nutrition/tags";
 import type { Db } from "./client";
+import { applyRenames } from "./renames";
 import * as s from "./schema";
+import { withTx } from "./tx";
 
 export interface SeedReport {
   ingredients: number;
@@ -17,9 +19,16 @@ export interface SeedReport {
   staleRecipes: string[];
 }
 
-/** Rebuilds all content tables from /data. User state tables are never written. */
-export function seedDatabase(db: Db, data: DataSet): SeedReport {
-  return db.transaction((tx) => {
+/**
+ * Rebuilds all content tables from /data. User state tables are never written.
+ *
+ * Two transactions with the renames between them: renames are async (they move human-owned rows between recipe
+ * ids) and nothing async may run inside a transaction. Phase 1 upserts content, so a renamed recipe already has its
+ * new row; then renames re-point ratings, links and photos; phase 2 creates missing feedback rows and rebuilds the
+ * derived children. Every step is idempotent, so a failure between the two phases is fixed by running the seed again.
+ */
+export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
+  const phase1 = await withTx(db, (tx) => {
     // Ingredients
     for (const ing of data.ingredients.values()) {
       const row = {
@@ -101,6 +110,13 @@ export function seedDatabase(db: Db, data: DataSet): SeedReport {
     }
     const recId = new Map(tx.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes).all().map((r) => [r.slug, r.id]));
     const seededIds = [...data.recipes.keys()].map((slug) => recId.get(slug)).filter((v): v is number => v !== undefined);
+    return { ingId, techId, recId, seededIds };
+  });
+
+  await applyRenames(db, data.renames);
+
+  return withTx(db, (tx) => {
+    const { ingId, techId, recId, seededIds } = phase1;
 
     // Feedback rows exist for every recipe but are never overwritten.
     for (const id of seededIds) tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing().run();
@@ -190,6 +206,7 @@ export function seedDatabase(db: Db, data: DataSet): SeedReport {
   });
 }
 
-export function recipeIdBySlug(db: Db, slug: string): number | undefined {
-  return db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, slug)).get()?.id;
+export async function recipeIdBySlug(db: Db, slug: string): Promise<number | undefined> {
+  const [row] = await db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, slug)).limit(1);
+  return row?.id;
 }

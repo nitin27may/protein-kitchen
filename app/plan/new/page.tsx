@@ -34,11 +34,11 @@ const ANCHORS: { slug: string; label: string }[] = [
   { slug: "edamame-prepared", label: "Edamame" },
 ];
 
-export default function NewPlanPage() {
-  const people = listPeople();
+export default async function NewPlanPage() {
+  const people = await listPeople();
   if (people.length === 0) redirect("/profiles/new?next=/plan/new");
   const data = getData();
-  const last = lastSetup();
+  const last = await lastSetup();
   const start = nextMonday(todayISO());
   const length = last ? (last.days === 14 ? "14" : last.days === 7 ? "7" : "7") : "7";
 
@@ -56,7 +56,7 @@ export default function NewPlanPage() {
 
   const prefs: SetupProps["initial"]["prefs"] = {};
   for (const p of people) {
-    const pr = getPrefs(p.id);
+    const pr = await getPrefs(p.id);
     prefs[p.id] = { liked: pr.liked, avoided: pr.avoided };
   }
   const validIds = new Set(people.map((p) => p.id));
@@ -66,7 +66,7 @@ export default function NewPlanPage() {
     people: people.map((p) => ({ id: p.id, name: p.name, proteinTarget: proteinTargetOf(p), kcalTarget: p.kcalTarget })),
     ingredients,
     anchors: ANCHORS.filter((a) => data.ingredients.has(a.slug)),
-    recipes: getCandidates().map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name)),
+    recipes: (await getCandidates()).map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name)),
     initial: {
       personIds,
       length,

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { eq, sql } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
 import type { DataSet } from "../lib/data/load";
@@ -19,61 +19,61 @@ beforeAll(() => {
 });
 
 describe("seedDatabase", () => {
-  it("loads every ingredient, recipe and technique", () => {
-    const report = seedDatabase(handle.db, data);
+  it("loads every ingredient, recipe and technique", async () => {
+    const report = await seedDatabase(handle.db, data);
     expect(report.ingredients).toBe(data.ingredients.size);
     expect(report.recipes).toBe(data.recipes.size);
     expect(report.techniques).toBe(data.techniques.size);
     expect(report.staleIngredients).toEqual([]);
     expect(report.staleRecipes).toEqual([]);
-    const count = handle.db.select({ n: sql<number>`count(*)` }).from(s.ingredients).get()?.n;
-    expect(count).toBe(data.ingredients.size);
+    const [ingCount] = await handle.db.select({ n: count() }).from(s.ingredients);
+    expect(Number(ingCount?.n)).toBe(data.ingredients.size);
   });
 
-  it("stores the same macros the library computes", () => {
-    const id = recipeIdBySlug(handle.db, "palak-paneer")!;
-    const row = handle.db.select().from(s.recipeMacros).where(eq(s.recipeMacros.recipeId, id)).get()!;
+  it("stores the same macros the library computes", async () => {
+    const id = (await recipeIdBySlug(handle.db, "palak-paneer"))!;
+    const [row] = await handle.db.select().from(s.recipeMacros).where(eq(s.recipeMacros.recipeId, id));
     const expected = perServing("palak-paneer", data.recipes, data.ingredients);
-    expect(row.proteinG).toBeCloseTo(expected.protein_g, 6);
-    expect(row.kcal).toBeCloseTo(expected.kcal, 6);
-    expect(row.autoTags).toContain("high-protein");
+    expect(row!.proteinG).toBeCloseTo(expected.protein_g, 6);
+    expect(row!.kcal).toBeCloseTo(expected.kcal, 6);
+    expect(row!.autoTags).toContain("high-protein");
   });
 
-  it("records anchor ingredients", () => {
-    const id = recipeIdBySlug(handle.db, "palak-paneer")!;
-    const rows = handle.db
+  it("records anchor ingredients", async () => {
+    const id = (await recipeIdBySlug(handle.db, "palak-paneer"))!;
+    const rows = await handle.db
       .select({ slug: s.ingredients.slug })
       .from(s.recipeAnchors)
       .innerJoin(s.ingredients, eq(s.ingredients.id, s.recipeAnchors.ingredientId))
-      .where(eq(s.recipeAnchors.recipeId, id))
-      .all();
+      .where(eq(s.recipeAnchors.recipeId, id));
     expect(rows.map((r) => r.slug)).toContain("paneer");
   });
 
-  it("resolves component references to recipe ids", () => {
-    const id = recipeIdBySlug(handle.db, "mediterranean-chickpea-salad")!;
-    const items = handle.db.select().from(s.recipeItems).where(eq(s.recipeItems.recipeId, id)).all();
+  it("resolves component references to recipe ids", async () => {
+    const id = (await recipeIdBySlug(handle.db, "mediterranean-chickpea-salad"))!;
+    const items = await handle.db.select().from(s.recipeItems).where(eq(s.recipeItems.recipeId, id));
     expect(items.some((i) => i.componentId !== null)).toBe(true);
     expect(items.every((i) => (i.ingredientId === null) !== (i.componentId === null))).toBe(true);
   });
 
-  it("keeps human feedback and people when reseeding", () => {
-    const id = recipeIdBySlug(handle.db, "dal-tadka")!;
-    handle.db.update(s.recipeFeedback).set({ status: "tested", rating: 4, favourite: true }).where(eq(s.recipeFeedback.recipeId, id)).run();
-    handle.db
+  it("keeps human feedback and people when reseeding", async () => {
+    const id = (await recipeIdBySlug(handle.db, "dal-tadka"))!;
+    await handle.db.update(s.recipeFeedback).set({ status: "tested", rating: 4, favourite: true }).where(eq(s.recipeFeedback.recipeId, id));
+    await handle.db
       .insert(s.people)
-      .values({ name: "Test", sex: "male", birthDate: "1986-04-10", heightCm: 183, weightKg: 93, activityLevel: "moderate", proteinGPerKg: 1.3, dietFlags: [] })
-      .run();
+      .values({ name: "Test", sex: "male", birthDate: "1986-04-10", heightCm: 183, weightKg: 93, activityLevel: "moderate", proteinGPerKg: 1.3, dietFlags: [] });
 
-    seedDatabase(handle.db, data);
+    await seedDatabase(handle.db, data);
 
-    const fb = handle.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, id)).get()!;
+    const [fb] = await handle.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, id));
     expect(fb).toMatchObject({ status: "tested", rating: 4, favourite: true });
-    expect(handle.db.select({ n: sql<number>`count(*)` }).from(s.people).get()?.n).toBe(1);
-    expect(handle.db.select({ n: sql<number>`count(*)` }).from(s.recipes).get()?.n).toBe(data.recipes.size);
+    const [people] = await handle.db.select({ n: count() }).from(s.people);
+    const [recipes] = await handle.db.select({ n: count() }).from(s.recipes);
+    expect(Number(people?.n)).toBe(1);
+    expect(Number(recipes?.n)).toBe(data.recipes.size);
   });
 
-  it("enforces foreign keys", () => {
+  it("enforces foreign keys", async () => {
     expect(() =>
       handle.sqlite.prepare("INSERT INTO recipe_steps (recipe_id, step_no, text) VALUES (999999, 1, 'x')").run(),
     ).toThrow();

@@ -159,17 +159,17 @@ describe("saved default view", () => {
     expect(parseFilterParams(def, "v=0")).toEqual(defaultState(def));
   });
 
-  it("keeps exactly one default per list in the database", () => {
+  it("keeps exactly one default per list in the database", async () => {
     const h = openDb(":memory:", path.resolve(__dirname, "..", "db", "migrations"));
-    expect(defaultViewQuery(h.db, "recipes")).toBeNull();
-    setDefaultView(h.db, "recipes", "meal=dinner");
-    setDefaultView(h.db, "recipes", "time=20&sort=fastest");
-    setDefaultView(h.db, "ingredients", "only=high-fibre");
-    expect(defaultViewQuery(h.db, "recipes")).toBe("time=20&sort=fastest");
-    expect(defaultViewQuery(h.db, "ingredients")).toBe("only=high-fibre");
-    clearDefaultView(h.db, "recipes");
-    expect(defaultViewQuery(h.db, "recipes")).toBeNull();
-    expect(defaultViewQuery(h.db, "ingredients")).toBe("only=high-fibre");
+    expect(await defaultViewQuery(h.db, "recipes")).toBeNull();
+    await setDefaultView(h.db, "recipes", "meal=dinner");
+    await setDefaultView(h.db, "recipes", "time=20&sort=fastest");
+    await setDefaultView(h.db, "ingredients", "only=high-fibre");
+    expect(await defaultViewQuery(h.db, "recipes")).toBe("time=20&sort=fastest");
+    expect(await defaultViewQuery(h.db, "ingredients")).toBe("only=high-fibre");
+    await clearDefaultView(h.db, "recipes");
+    expect(await defaultViewQuery(h.db, "recipes")).toBeNull();
+    expect(await defaultViewQuery(h.db, "ingredients")).toBe("only=high-fibre");
   });
 });
 

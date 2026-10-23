@@ -3,8 +3,8 @@ import { getData } from "./context";
 import { getPlanView, proteinTargetOf } from "./queries";
 import { todayISO } from "./time";
 
-export function getPlanExport(planId: number): PlanExport | undefined {
-  const view = getPlanView(planId);
+export async function getPlanExport(planId: number): Promise<PlanExport | undefined> {
+  const view = await getPlanView(planId);
   if (!view) return undefined;
   const data = getData();
   return buildPlanExport({

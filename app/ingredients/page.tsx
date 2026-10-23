@@ -10,7 +10,7 @@ import { getDefaultViewQuery } from "@/lib/server/queries";
 export const metadata: Metadata = { title: "Ingredients" };
 export const dynamic = "force-dynamic";
 
-export default function IngredientsPage() {
+export default async function IngredientsPage() {
   const data = getData();
   const cards: IngredientCard[] = [...data.ingredients.values()].map((i) => {
     return {
@@ -29,11 +29,12 @@ export default function IngredientsPage() {
       onionGarlic: i.contains_onion_garlic,
     };
   });
+  const savedDefault = await getDefaultViewQuery("ingredients");
   return (
     <>
       <PageTitle title="Ingredients" sub="Per 100 g in the state shown. Open one for full nutrition and how to get the most from it." />
       <Suspense fallback={null}>
-        <IngredientsClient items={cards} savedDefault={getDefaultViewQuery("ingredients")} />
+        <IngredientsClient items={cards} savedDefault={savedDefault} />
       </Suspense>
     </>
   );

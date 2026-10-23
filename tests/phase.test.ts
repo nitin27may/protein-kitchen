@@ -150,14 +150,15 @@ describe("grocery progress against a real database", () => {
   let planId: number;
   let h: ReturnType<typeof openDb>;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     const root = path.resolve(__dirname, "..");
     data = loadData(root);
     h = openDb(":memory:", path.join(root, "db", "migrations"));
-    seedDatabase(h.db, data);
-    const person = h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] }).returning({ id: s.people.id }).get();
-    const setup = h.db.insert(s.planSetups).values({ personIds: [person.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["lunch", "dinner"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id }).get();
-    planId = h.db.insert(s.plans).values({ setupId: setup.id, seed: 1, createdAt: "2026-11-01" }).returning({ id: s.plans.id }).get().id;
+    await seedDatabase(h.db, data);
+    const [person] = await h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] }).returning({ id: s.people.id });
+    const [setup] = await h.db.insert(s.planSetups).values({ personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["lunch", "dinner"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id });
+    const [plan] = await h.db.insert(s.plans).values({ setupId: setup!.id, seed: 1, createdAt: "2026-11-01" }).returning({ id: s.plans.id });
+    planId = plan!.id;
     const rows = [
       ["palak-paneer", "2026-11-02", "lunch", 2],
       ["rajma-masala", "2026-11-02", "dinner", 3],
@@ -165,8 +166,8 @@ describe("grocery progress against a real database", () => {
     ] as const;
     for (const [slug, date, slot, servings] of rows) {
       const rid = h.sqlite.prepare("select id from recipes where slug = ?").get(slug) as { id: number };
-      const sl = h.db.insert(s.planSlots).values({ planId, date, slot, recipeId: rid.id }).returning({ id: s.planSlots.id }).get();
-      h.db.insert(s.planSlotPortions).values({ planSlotId: sl.id, personId: person.id, servings }).run();
+      const [sl] = await h.db.insert(s.planSlots).values({ planId, date, slot, recipeId: rid.id }).returning({ id: s.planSlots.id });
+      await h.db.insert(s.planSlotPortions).values({ planSlotId: sl!.id, personId: person!.id, servings });
     }
     // The meals as a page would read them from the database.
     meals = h.sqlite
@@ -184,21 +185,21 @@ describe("grocery progress against a real database", () => {
     expect(groceryProgressFrom(meals, data.recipes, data.ingredients, ticked())).toEqual({ total: toBuy.length, left: toBuy.length });
   });
 
-  it("subtracts ticked items, reading the ticks from the database", () => {
+  it("subtracts ticked items, reading the ticks from the database", async () => {
     const toBuy = buildGroceryList(meals, data.recipes, data.ingredients).lines.filter((l) => !l.isPantryStaple);
     for (const l of toBuy.slice(0, 3)) {
       const id = h.sqlite.prepare("select id from ingredients where slug = ?").get(l.ingredient) as { id: number };
-      h.db.insert(s.groceryState).values({ planId, ingredientId: id.id, checked: true }).run();
+      await h.db.insert(s.groceryState).values({ planId, ingredientId: id.id, checked: true });
     }
     expect(ticked().size).toBe(3);
     expect(groceryProgressFrom(meals, data.recipes, data.ingredients, ticked())).toEqual({ total: toBuy.length, left: toBuy.length - 3 });
   });
 
-  it("reaches zero left when everything is ticked, and ignores ticks on pantry items", () => {
+  it("reaches zero left when everything is ticked, and ignores ticks on pantry items", async () => {
     const lines = buildGroceryList(meals, data.recipes, data.ingredients).lines;
     for (const l of lines) {
       const id = h.sqlite.prepare("select id from ingredients where slug = ?").get(l.ingredient) as { id: number };
-      h.db.insert(s.groceryState).values({ planId, ingredientId: id.id, checked: true }).onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked: true } }).run();
+      await h.db.insert(s.groceryState).values({ planId, ingredientId: id.id, checked: true }).onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked: true } });
     }
     expect(groceryProgressFrom(meals, data.recipes, data.ingredients, ticked())).toMatchObject({ left: 0 });
   });

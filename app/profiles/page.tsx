@@ -7,8 +7,8 @@ import { listPeople, proteinTargetOf } from "@/lib/server/queries";
 export const metadata: Metadata = { title: "Profiles" };
 export const dynamic = "force-dynamic";
 
-export default function ProfilesPage() {
-  const people = listPeople();
+export default async function ProfilesPage() {
+  const people = await listPeople();
   return (
     <>
       <PageTitle title="Profiles" sub="Each person has their own targets, likes and portions." action={people.length ? <LinkButton href="/profiles/new">Add person</LinkButton> : undefined} />

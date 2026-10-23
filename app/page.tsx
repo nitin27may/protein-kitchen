@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
 import { DailyBasics } from "@/components/today/DailyBasics";
 import { GroceryStatusCard } from "@/components/today/GroceryStatusCard";
 import { MealsToday } from "@/components/today/MealsToday";
@@ -12,15 +11,14 @@ import { SnackNow } from "@/components/today/SnackNow";
 import { TonightCard } from "@/components/today/TonightCard";
 import type { HabitView, MealView, PrepView, SnackView } from "@/components/today/types";
 import { Card, EmptyState, LinkButton, PageTitle } from "@/components/ui";
-import * as s from "@/lib/db/schema";
 import { SLOT_LABEL } from "@/lib/format";
 import { dayPart, firstOpenTask, groupNightTasks, layoutFor, planPhase, shopByDate } from "@/lib/plan/phase";
 import type { PanelId } from "@/lib/plan/phase";
 import { addDays, formatDay } from "@/lib/planner/dates";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { loadNight } from "@/lib/server/prep";
-import { getCandidates, getPlanView, groceryProgress, lastSetup, latestPlanId, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
+import { getCandidates, getHabitsFor, getPlanView, groceryProgress, lastSetup, latestPlanId, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
 import { localMinutes, todayISO } from "@/lib/server/time";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +27,7 @@ const SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack", "shake"];
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
-  const people = listPeople();
+  const people = await listPeople();
   if (people.length === 0) {
     return (
       <>
@@ -44,30 +42,27 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   }
 
   const person = people.find((x) => String(x.id) === p) ?? people[0]!;
-  const db = getDb();
   const data = getData();
   const now = new Date();
   const today = todayISO(now);
   const part = dayPart(localMinutes(now));
   const tomorrow = addDays(today, 1);
-  const candidates = getCandidates();
-  const planId = latestPlanId();
-  const view = planId ? getPlanView(planId, candidates) : undefined;
+  const candidates = await getCandidates();
+  const planId = await latestPlanId();
+  const view = planId ? await getPlanView(planId, candidates) : undefined;
 
   // Night-before prep, grouped for Today. Overdue tasks are shown here as well as on the prep guide.
-  const night = view ? loadNight(view, today) : undefined;
+  const night = view ? await loadNight(view, today) : undefined;
   const grouped = groupNightTasks(night?.tasks ?? [], today);
   const toView = (t: NonNullable<typeof night>["tasks"][number]): PrepView => ({ key: t.key, text: t.text, forName: t.forName, dueDate: t.dueDate, done: t.done });
   const first = night ? firstOpenTask(night.tasks) : undefined;
 
-  const grocery = view ? groceryProgress(view) : undefined;
+  const grocery = view ? await groceryProgress(view) : undefined;
   const phase = planPhase(today, view, grocery, first ? { text: first.text, forName: first.forName, dueDate: first.dueDate } : undefined);
   const layout = layoutFor(phase.kind, part);
 
   // Daily basics for the chosen person.
-  const habitRows = db.select().from(s.habits).all();
-  const logRows = db.select().from(s.habitLog).where(and(eq(s.habitLog.date, today), eq(s.habitLog.personId, person.id))).all();
-  const done = new Set(logRows.filter((r) => r.done).map((r) => r.habitId));
+  const { habits: habitRows, doneIds: done } = await getHabitsFor(today, person.id);
   const habits: HabitView[] = habitRows
     .map((h) => ({
       slug: h.slug,
@@ -82,7 +77,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     .filter((h) => h.defaultOn || habitRows.find((r) => r.slug === h.slug)?.category !== "evening_prep_generic");
 
   // Snack ideas by time available, protein-dense first.
-  const target = toPersonTarget(person);
+  const target = await toPersonTarget(person);
   const pool = candidates.filter((c) => c.mealSlots.includes("snack") && c.family !== "shakes" && c.perServing.protein_g >= 10 && ![...target.avoided].some((a) => c.ingredients.has(a)));
   const rank = (max: number): SnackView[] =>
     pool
@@ -129,9 +124,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     targetG: proteinTargetOf(pp),
   }));
 
-  const lastSet = lastSetup();
+  const lastSet = await lastSetup();
   const setup: SetupSummary | undefined = lastSet ? { days: lastSet.days, mealTypes: lastSet.mealTypes.map((m) => SLOT_LABEL[m]?.toLowerCase() ?? m), people: lastSet.personIds.length } : undefined;
-  const plans = listPlans(5);
+  const plans = await listPlans(5);
   const shopBy = view && phase.kind !== "no-plan" ? shopByDate(today, view.startDate, first?.dueDate) : null;
 
   const planHasMeals = phase.kind === "mid-plan" || phase.kind === "last-two-days";

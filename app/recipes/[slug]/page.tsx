@@ -27,8 +27,8 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
   const r = data.recipes.get(slug);
   if (!r) notFound();
   const m = perServing(slug, data.recipes, data.ingredients);
-  const fb = feedbackMap().get(slug);
-  const sex = listPeople()[0]?.sex ?? "male";
+  const fb = (await feedbackMap()).get(slug);
+  const sex = (await listPeople())[0]?.sex ?? "male";
   const dn = (k: string) => {
     const ing = data.ingredients.get(k);
     return ing ? displayName(ing) : k;
@@ -62,7 +62,7 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
   ];
 
   const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
-  const candidate = getCandidates().find((c) => c.slug === slug);
+  const candidate = (await getCandidates()).find((c) => c.slug === slug);
   const techniqueRefs = r.steps.map((s) => s.technique).filter((t): t is string => !!t);
   const props: DetailProps = {
     slug,

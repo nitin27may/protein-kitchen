@@ -43,6 +43,13 @@
       "when": 1792795116151,
       "tag": "0005_glorious_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792796835985,
+      "tag": "0006_elite_inertia",
+      "breakpoints": true
     }
   ]
 }

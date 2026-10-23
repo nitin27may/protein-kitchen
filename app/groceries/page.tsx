@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 
 export default async function GroceriesPage({ searchParams }: { searchParams: Promise<{ plan?: string; w?: string }> }) {
   const sp = await searchParams;
-  const planId = sp.plan && Number.isInteger(Number(sp.plan)) ? Number(sp.plan) : latestPlanId();
-  const view = planId ? getPlanView(planId) : undefined;
+  const planId = sp.plan && Number.isInteger(Number(sp.plan)) ? Number(sp.plan) : await latestPlanId();
+  const view = planId ? await getPlanView(planId) : undefined;
   if (!view) {
     return (
       <>
@@ -33,7 +33,7 @@ export default async function GroceriesPage({ searchParams }: { searchParams: Pr
     .map((s) => ({ recipeSlug: s.recipeSlug, servings: Object.values(s.servings).reduce((a, b) => a + b, 0) }));
 
   const list = buildGroceryList(meals, data.recipes, data.ingredients);
-  const state = groceryChecks(view.id);
+  const state = await groceryChecks(view.id);
   const lines: GroceryLineView[] = list.lines.map((l) => ({
     slug: l.ingredient,
     name: l.name,

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EditProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const p = Number.isInteger(Number(id)) ? getPerson(Number(id)) : undefined;
+  const p = Number.isInteger(Number(id)) ? await getPerson(Number(id)) : undefined;
   if (!p) notFound();
   return (
     <>

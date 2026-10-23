@@ -17,8 +17,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) notFound();
-  const candidates = getCandidates();
-  const view = getPlanView(planId, candidates);
+  const candidates = await getCandidates();
+  const view = await getPlanView(planId, candidates);
   if (!view) notFound();
   const byslug = new Map(candidates.map((c) => [c.slug, c]));
   const data = getData();
@@ -46,7 +46,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       unit: data.recipes.get(s.recipeSlug)?.serving_unit ?? null,
     };
   });
-  const sheet = getPlanExport(planId);
+  const sheet = await getPlanExport(planId);
   if (!sheet) notFound();
   const today = todayISO();
   const startIndex = Math.max(0, view.dates.indexOf(today));

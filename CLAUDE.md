@@ -105,6 +105,16 @@ A meal made of several things (a falafel bowl is falafel, hummus and a dressing)
 - **Optional on a component item:** `display_qty` and `display_unit` ("8 patties"), `label` ("Dip"). Display only.
 - **Links** (recipe pages, videos) for a recipe or a part are human-owned and live in the database, not in these files.
 
+### Human-owned data
+Some data belongs to the people using the app, not to the library. Ratings, favourites, banned and tested flags, recipe notes, recipe links, uploaded photos and photo approvals, saved views and routine choices are **human-owned**.
+
+- They live in the database, never in `/data`.
+- They are written only through `lib/human/` (one module per data class, each marking the class changed in `sync_state` in the same transaction). Do not write these tables from actions, pages or scripts.
+- The agent never writes them, including when they are exported to a state repo. Export files are keyed by slug and uid, never by database id.
+- A new human-owned table gets a `uid`, `created_at`, `updated_at` and a nullable `created_by_person_id`, and one `registerExporter` line plus a round-trip test (export, import into a fresh database, export again, identical bytes).
+- Renaming a recipe or component slug needs an entry in `data/renames.json` (`{ "old-slug": "new-slug" }`, no chains), so ratings, links and photos follow it. The seed applies it.
+- Resetting data in Settings clears these tables; reseeding never does.
+
 ### Technique — `data/techniques/<slug>.md`
 Front-matter `title`, `tags`. Body: why it matters, steps, common mistakes, 150–400 words.
 

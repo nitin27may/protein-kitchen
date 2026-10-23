@@ -25,6 +25,8 @@ export interface DataSet {
   micros: MicrosFile;
   habits: Habit[];
   overrides: { kcal_check_skip: Record<string, string>; dry_without_cooked_yield: Record<string, string> };
+  /** Old slug to new slug (data/renames.json), so a rename keeps ratings, links and photos. Empty when the file is absent. */
+  renames: Record<string, string>;
   issues: LoadIssue[];
 }
 
@@ -182,5 +184,13 @@ export function loadData(root: string): DataSet {
     } else for (const err of parsed.error.issues) issues.push({ file: rel(notesPath), message: `${err.path.join(".")}: ${err.message}` });
   }
 
-  return { ingredients, ingredientFiles, recipes, recipeFiles, techniques, micros, habits, overrides, issues };
+  let renames: Record<string, string> = {};
+  const renamesPath = path.join(dataDir, "renames.json");
+  if (fs.existsSync(renamesPath)) {
+    const parsed = z.record(z.string(), z.string()).safeParse(readJson(renamesPath, issues));
+    if (parsed.success) renames = parsed.data;
+    else issues.push({ file: rel(renamesPath), message: "renames.json must map old slugs to new slugs" });
+  }
+
+  return { ingredients, ingredientFiles, recipes, recipeFiles, techniques, micros, habits, overrides, renames, issues };
 }

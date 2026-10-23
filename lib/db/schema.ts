@@ -1,7 +1,5 @@
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-
-const json = <T>(name: string) => text(name, { mode: "json" }).$type<T>();
-const bool = (name: string) => integer(name, { mode: "boolean" });
+import { bool, isoTimestamp, json } from "./columns";
 
 // ---- Content tables: rebuilt from /data on every seed. Never hold user state here. ----
 
@@ -163,7 +161,13 @@ export const recipeFeedback = sqliteTable("recipe_feedback", {
   banned: bool("banned").notNull().default(false),
   notes: text("notes"),
   testedAt: text("tested_at"),
-});
+  // Human-owned row bookkeeping (see CLAUDE.md "Human-owned data"). Nullable so existing rows migrate;
+  // lib/human fills them on first write or export. Exports are keyed by recipe slug, never by id.
+  uid: text("uid"),
+  createdAt: isoTimestamp("created_at"),
+  updatedAt: isoTimestamp("updated_at"),
+  createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+}, (t) => [uniqueIndex("recipe_feedback_uid_uq").on(t.uid)]);
 
 export const people = sqliteTable("people", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -364,6 +368,20 @@ export const savedViews = sqliteTable(
     name: text("name").notNull(),
     query: text("query").notNull(),
     isDefault: bool("is_default").notNull().default(false),
+    uid: text("uid"),
+    createdAt: isoTimestamp("created_at"),
+    updatedAt: isoTimestamp("updated_at"),
+    createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
   },
-  (t) => [index("saved_views_list_idx").on(t.list)],
+  (t) => [index("saved_views_list_idx").on(t.list), uniqueIndex("saved_views_uid_uq").on(t.uid)],
 );
+
+/**
+ * Which human-owned data classes changed since they were last exported. lib/human writes this in the same
+ * transaction as every human-owned write; the export job reads it and stamps `exported_at`.
+ */
+export const syncState = sqliteTable("sync_state", {
+  dataClass: text("data_class").primaryKey(),
+  changedAt: isoTimestamp("changed_at").notNull(),
+  exportedAt: isoTimestamp("exported_at"),
+});

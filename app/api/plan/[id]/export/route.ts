@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!Number.isInteger(planId) || (format !== "xlsx" && format !== "pdf")) {
     return NextResponse.json({ ok: false, error: "Use /api/plan/<id>/export?format=xlsx or pdf" }, { status: 400 });
   }
-  const plan = getPlanExport(planId);
+  const plan = await getPlanExport(planId);
   if (!plan) return NextResponse.json({ ok: false, error: "Plan not found" }, { status: 404 });
   try {
     const file = format === "xlsx" ? await buildWorkbook(plan) : await buildPdf(plan);

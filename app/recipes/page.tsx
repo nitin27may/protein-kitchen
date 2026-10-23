@@ -12,10 +12,10 @@ import { feedbackMap, getCandidates, getDefaultViewQuery } from "@/lib/server/qu
 export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
 
-export default function RecipesPage() {
+export default async function RecipesPage() {
   const data = getData();
-  const fb = feedbackMap();
-  const cards: RecipeCardData[] = getCandidates().map((c) => {
+  const fb = await feedbackMap();
+  const cards: RecipeCardData[] = (await getCandidates()).map((c) => {
     const r = data.recipes.get(c.slug)!;
     const f = fb.get(c.slug);
     return {
@@ -70,11 +70,12 @@ export default function RecipesPage() {
         banned: f?.banned ?? false,
       };
     });
+  const savedDefault = await getDefaultViewQuery("recipes");
   return (
     <>
       <PageTitle title="Recipes" sub="Protein and calories are computed from the ingredients, never typed in." />
       <Suspense fallback={null}>
-        <RecipesClient recipes={[...cards, ...parts]} savedDefault={getDefaultViewQuery("recipes")} />
+        <RecipesClient recipes={[...cards, ...parts]} savedDefault={savedDefault} />
       </Suspense>
     </>
   );

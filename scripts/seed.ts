@@ -14,7 +14,7 @@ if (data.issues.length) {
 }
 
 const { sqlite, db } = openDb(file, path.join(root, "db", "migrations"));
-const report = seedDatabase(db, data);
+const report = await seedDatabase(db, data);
 sqlite.close();
 
 console.log(`Seeded ${file}`);

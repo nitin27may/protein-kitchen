@@ -1,9 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { sql } from "drizzle-orm";
+import { count as countRows, eq, isNotNull, or } from "drizzle-orm";
 import type Database from "better-sqlite3";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
+import { withTx } from "../db/tx";
+import type { Tx } from "../db/tx";
+import { markChanged, nowIso } from "../human/util";
 
 export const RESET_SCOPES = ["plans", "groceries", "progress", "ratings", "profiles", "all"] as const;
 export type ResetScope = (typeof RESET_SCOPES)[number];
@@ -20,26 +23,26 @@ export interface ResetCounts {
   ratings: number;
 }
 
+// Drizzle's count() is a bigint on Postgres, so every result goes through Number().
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const count = (db: Db, table: any): number =>
-  db.select({ n: sql<number>`count(*)` }).from(table).get()?.n ?? 0;
-
-export function resetCounts(db: Db): ResetCounts {
-  return {
-    profiles: count(db, s.people),
-    plans: count(db, s.plans),
-    groceryItems: count(db, s.groceryState) + count(db, s.groceryManual) + count(db, s.pantry),
-    progressTicks: count(db, s.habitLog) + count(db, s.prepTaskState),
-    ratings:
-      db
-        .select({ n: sql<number>`count(*)` })
-        .from(s.recipeFeedback)
-        .where(sql`${s.recipeFeedback.rating} is not null or ${s.recipeFeedback.favourite} = 1 or ${s.recipeFeedback.banned} = 1 or ${s.recipeFeedback.status} = 'tested' or ${s.recipeFeedback.notes} is not null`)
-        .get()?.n ?? 0,
-  };
+async function count(db: Db, table: any): Promise<number> {
+  const [row] = await db.select({ n: countRows() }).from(table);
+  return Number(row?.n ?? 0);
 }
 
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export async function resetCounts(db: Db): Promise<ResetCounts> {
+  const [feedback] = await db
+    .select({ n: countRows() })
+    .from(s.recipeFeedback)
+    .where(or(isNotNull(s.recipeFeedback.rating), eq(s.recipeFeedback.favourite, true), eq(s.recipeFeedback.banned, true), eq(s.recipeFeedback.status, "tested"), isNotNull(s.recipeFeedback.notes)));
+  return {
+    profiles: await count(db, s.people),
+    plans: await count(db, s.plans),
+    groceryItems: (await count(db, s.groceryState)) + (await count(db, s.groceryManual)) + (await count(db, s.pantry)),
+    progressTicks: (await count(db, s.habitLog)) + (await count(db, s.prepTaskState)),
+    ratings: Number(feedback?.n ?? 0),
+  };
+}
 
 function clearPlans(tx: Tx) {
   tx.delete(s.planSlotPortions).run();
@@ -65,6 +68,7 @@ function clearProgress(tx: Tx) {
 
 function clearRatings(tx: Tx) {
   tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null }).run();
+  markChanged(tx, "recipe-feedback", nowIso());
 }
 
 function clearProfiles(tx: Tx) {
@@ -79,8 +83,8 @@ function clearProfiles(tx: Tx) {
  * Deletes user data only. Recipes, ingredients, techniques and habits come from /data and are never touched.
  * Runs in one transaction, so a failure leaves everything as it was.
  */
-export function resetData(db: Db, scope: ResetScope): void {
-  db.transaction((tx) => {
+export async function resetData(db: Db, scope: ResetScope): Promise<void> {
+  await withTx(db, (tx) => {
     switch (scope) {
       case "plans": return clearPlans(tx);
       case "groceries": return clearGroceries(tx);
@@ -92,13 +96,14 @@ export function resetData(db: Db, scope: ResetScope): void {
         clearGroceries(tx);
         clearRatings(tx);
         tx.delete(s.savedViews).run();
+        markChanged(tx, "saved-views", nowIso());
         return;
     }
   });
 }
 
 /** Copies the live database to backups/ before a reset. Returns the path, or null for an in-memory database. */
-export function backupBeforeReset(sqlite: Database.Database, root: string, scope: ResetScope): string | null {
+export async function backupBeforeReset(sqlite: Database.Database, root: string, scope: ResetScope): Promise<string | null> {
   if (sqlite.name === ":memory:" || sqlite.memory) return null;
   const dir = path.join(root, "backups");
   fs.mkdirSync(dir, { recursive: true });

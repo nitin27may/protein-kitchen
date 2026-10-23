@@ -15,6 +15,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
+| 1a | Async data layer behind one transaction helper; one write path and export/import for human-owned data (ratings, saved views); portable column helpers; renames file | Done |
 | 0b | CI (typecheck, validate, test, build, secret scan), pre-commit secret hook, Dependabot, branch protection (no force-push or deletion, `ci` and `secrets` required for PRs, owner can still push) | Done |
 
 ## The sequence from here
@@ -28,7 +29,7 @@ Scope: CI workflow (typecheck, test, validate, build, secret scan), a pre-commit
 Done when: a push triggers a green CI run, and a test commit containing a fake key is blocked.
 Decision: GitHub Pro for branch protection, yes or no.
 
-### Step 3. Prepare for the database move (1a), about 4 hours
+### Step 3. Prepare for the database move (1a), about 4 hours (done)
 Scope: make the data helpers async now, move direct database calls out of pages, add portable column helpers, a single `lib/human/` module for anything you create in the app (ratings, links, photos, saved views, routine choices), and the first version of the exporter with a round-trip test. Add `data/renames.json` so a renamed slug moves ratings, links and photos with it. Clean up the stale `baked-falafel-mix` row.
 You will see: nothing new on screen. Done when: tests prove export then import gives identical data.
 

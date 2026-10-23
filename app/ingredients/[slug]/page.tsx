@@ -33,7 +33,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ slu
   const ing = data.ingredients.get(slug);
   if (!ing) notFound();
 
-  const sex = listPeople()[0]?.sex ?? "male";
+  const sex = (await listPeople())[0]?.sex ?? "male";
   const micros = data.micros[slug]?.per100g ?? {};
   const p = ing.per100g;
   const e = energySplit(p.protein_g, p.carbs_g, p.fat_g);

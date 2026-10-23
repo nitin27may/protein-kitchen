@@ -5,6 +5,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import * as s from "@/lib/db/schema";
+import { withTx } from "@/lib/db/tx";
+import { writeRecipeFeedback } from "@/lib/human/feedback";
 import { datesBetween } from "@/lib/planner/dates";
 import { dueDateOfKey } from "@/lib/prep/night";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
@@ -77,22 +79,22 @@ export async function savePerson(input: PersonInputData): Promise<Result<{ id: n
     reminderTime: v.reminderTime,
     dietFlags: [] as string[],
   };
-  const db = getDb();
+  const db = await getDb();
   if (v.id) {
-    db.update(s.people).set(row).where(eq(s.people.id, v.id)).run();
+    await db.update(s.people).set(row).where(eq(s.people.id, v.id));
     refresh();
     return { ok: true, id: v.id };
   }
-  const created = db.insert(s.people).values(row).returning({ id: s.people.id }).get();
+  const [created] = await db.insert(s.people).values(row).returning({ id: s.people.id });
   refresh();
-  return { ok: true, id: created.id };
+  return { ok: true, id: created!.id };
 }
 
 export async function deletePerson(id: number): Promise<Result> {
-  const db = getDb();
-  const used = db.select({ id: s.planSlotPortions.planSlotId }).from(s.planSlotPortions).where(eq(s.planSlotPortions.personId, id)).limit(1).get();
+  const db = await getDb();
+  const [used] = await db.select({ id: s.planSlotPortions.planSlotId }).from(s.planSlotPortions).where(eq(s.planSlotPortions.personId, id)).limit(1);
   if (used) return fail("This profile is part of a saved plan. Delete those plans first.");
-  db.delete(s.people).where(eq(s.people.id, id)).run();
+  await db.delete(s.people).where(eq(s.people.id, id));
   refresh();
   return { ok: true };
 }
@@ -114,26 +116,26 @@ const CreatePlanInput = z.object({
 
 export type CreatePlanData = z.input<typeof CreatePlanInput>;
 
-function savePrefs(personId: number, liked: string[], avoided: string[]) {
-  const db = getDb();
-  const ids = ingredientIds();
-  db.delete(s.preferences).where(and(eq(s.preferences.personId, personId), inArray(s.preferences.kind, ["like", "avoid"]))).run();
+async function savePrefs(personId: number, liked: string[], avoided: string[]) {
+  const db = await getDb();
+  const ids = await ingredientIds();
+  await db.delete(s.preferences).where(and(eq(s.preferences.personId, personId), inArray(s.preferences.kind, ["like", "avoid"])));
   const rows = [
     ...liked.filter((l) => !avoided.includes(l)).map((slug) => ({ personId, ingredientId: ids.bySlug.get(slug), kind: "like" as const })),
     ...avoided.map((slug) => ({ personId, ingredientId: ids.bySlug.get(slug), kind: "avoid" as const })),
   ].filter((r) => r.ingredientId !== undefined);
-  for (const r of rows) db.insert(s.preferences).values({ personId, ingredientId: r.ingredientId!, kind: r.kind }).run();
+  for (const r of rows) await db.insert(s.preferences).values({ personId, ingredientId: r.ingredientId!, kind: r.kind });
 }
 
-function persistSlots(planId: number, slots: readonly PlannedSlot[]) {
-  const db = getDb();
-  const rid = recipeIds();
+async function persistSlots(planId: number, slots: readonly PlannedSlot[]) {
+  const db = await getDb();
+  const rid = await recipeIds();
   for (const sl of slots) {
     const recipeId = rid.bySlug.get(sl.recipeSlug);
     if (recipeId === undefined) continue;
-    const row = db.insert(s.planSlots).values({ planId, date: sl.date, slot: sl.slot, recipeId, locked: sl.locked, isLeftover: sl.isLeftover ?? false }).returning({ id: s.planSlots.id }).get();
+    const [row] = await db.insert(s.planSlots).values({ planId, date: sl.date, slot: sl.slot, recipeId, locked: sl.locked, isLeftover: sl.isLeftover ?? false }).returning({ id: s.planSlots.id });
     for (const [pid, servings] of Object.entries(sl.servings)) {
-      db.insert(s.planSlotPortions).values({ planSlotId: row.id, personId: Number(pid), servings }).run();
+      await db.insert(s.planSlotPortions).values({ planSlotId: row!.id, personId: Number(pid), servings });
     }
   }
 }
@@ -154,18 +156,18 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   });
   if (!setupCheck.success) return fail(setupCheck.error.issues[0]?.message ?? "Check the dates");
 
-  const db = getDb();
-  const people = db.select().from(s.people).where(inArray(s.people.id, v.personIds)).all();
+  const db = await getDb();
+  const people = await db.select().from(s.people).where(inArray(s.people.id, v.personIds));
   if (people.length !== v.personIds.length) return fail("One of the selected profiles no longer exists");
   for (const p of people) {
     const pref = v.prefs[String(p.id)];
-    if (pref) savePrefs(p.id, pref.liked, pref.avoided);
+    if (pref) await savePrefs(p.id, pref.liked, pref.avoided);
   }
 
   const dates = datesBetween(v.startDate, v.endDate);
-  const targets = people.map(toPersonTarget);
+  const targets = await Promise.all(people.map(toPersonTarget));
   const seed = Math.floor(Math.random() * 2 ** 31);
-  const candidates = getCandidates();
+  const candidates = await getCandidates();
   const plan = generatePlan(
     { dates, mealTypes: v.mealTypes as Slot[], people: targets, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, pinnedRecipes: v.pinned, locked: [], seed },
     candidates,
@@ -173,7 +175,7 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   if (plan.slots.length === 0) return fail("No recipes match these choices. Remove an avoided ingredient or relax the time limit.");
 
   const now = new Date().toISOString();
-  const planId = db.transaction((tx) => {
+  const planId = await withTx(db, (tx) => {
     const setup = tx
       .insert(s.planSetups)
       .values({ personIds: v.personIds, startDate: v.startDate, endDate: v.endDate, mealTypes: v.mealTypes, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, createdAt: now })
@@ -182,7 +184,7 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
     const created = tx.insert(s.plans).values({ setupId: setup.id, seed, createdAt: now }).returning({ id: s.plans.id }).get();
     return created.id;
   });
-  persistSlots(planId, plan.slots);
+  await persistSlots(planId, plan.slots);
   refresh(planId);
   return { ok: true, planId, gaps: plan.warnings.filter((w) => w.type === "protein_gap").length };
 }
@@ -190,20 +192,20 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
 // ---------- Plan editing ----------
 
 export async function regeneratePlan(planId: number): Promise<Result> {
-  const view = getPlanView(planId);
+  const view = await getPlanView(planId);
   if (!view) return fail("Plan not found");
   const seed = Math.floor(Math.random() * 2 ** 31);
-  const plan = generatePlan({ ...view.input, seed }, getCandidates());
-  const db = getDb();
-  db.delete(s.planSlots).where(and(eq(s.planSlots.planId, planId), eq(s.planSlots.locked, false))).run();
-  persistSlots(planId, plan.slots.filter((x) => !x.locked));
-  db.update(s.plans).set({ seed }).where(eq(s.plans.id, planId)).run();
+  const plan = generatePlan({ ...view.input, seed }, await getCandidates());
+  const db = await getDb();
+  await db.delete(s.planSlots).where(and(eq(s.planSlots.planId, planId), eq(s.planSlots.locked, false)));
+  await persistSlots(planId, plan.slots.filter((x) => !x.locked));
+  await db.update(s.plans).set({ seed }).where(eq(s.plans.id, planId));
   refresh(planId);
   return { ok: true };
 }
 
 export async function toggleLock(planId: number, slotId: number, locked: boolean): Promise<Result> {
-  getDb().update(s.planSlots).set({ locked }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId))).run();
+  await (await getDb()).update(s.planSlots).set({ locked }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
   refresh(planId);
   return { ok: true };
 }
@@ -218,10 +220,10 @@ export interface SwapOption {
 }
 
 export async function getSwapOptions(planId: number, slotId: number): Promise<Result<{ options: SwapOption[]; current: string }>> {
-  const view = getPlanView(planId);
+  const view = await getPlanView(planId);
   const slot = view?.slots.find((x) => x.id === slotId);
   if (!view || !slot) return fail("Meal not found");
-  const candidates = getCandidates();
+  const candidates = await getCandidates();
   const generated: GeneratedPlan = { slots: view.slots, days: view.days, warnings: [] };
   const options = suggestSwaps(generated, { date: slot.date, slot: slot.slot }, view.input, candidates, 3).map((c) => {
     const liked = view.input.people.some((p) => [...p.liked].some((l) => c.ingredients.has(l)));
@@ -238,17 +240,17 @@ export async function getSwapOptions(planId: number, slotId: number): Promise<Re
 }
 
 export async function swapSlot(planId: number, slotId: number, recipeSlug: string): Promise<Result> {
-  const view = getPlanView(planId);
+  const view = await getPlanView(planId);
   const slot = view?.slots.find((x) => x.id === slotId);
-  const candidate = getCandidates().find((c) => c.slug === recipeSlug);
+  const candidate = (await getCandidates()).find((c) => c.slug === recipeSlug);
   if (!view || !slot || !candidate) return fail("Could not swap that meal");
-  const rid = recipeIds();
+  const rid = await recipeIds();
   const recipeId = rid.bySlug.get(recipeSlug);
   if (recipeId === undefined) return fail("Recipe not found");
   const shares = slotShares(view.mealTypes);
   const portions = portionsFor(candidate, view.input.people, shares[slot.slot] ?? 0.25);
-  const db = getDb();
-  db.transaction((tx) => {
+  const db = await getDb();
+  await withTx(db, (tx) => {
     // A swapped meal is cooked fresh, so it is no longer a leftover.
     tx.update(s.planSlots).set({ recipeId, isLeftover: false }).where(eq(s.planSlots.id, slotId)).run();
     tx.delete(s.planSlotPortions).where(eq(s.planSlotPortions.planSlotId, slotId)).run();
@@ -261,20 +263,19 @@ export async function swapSlot(planId: number, slotId: number, recipeSlug: strin
 export async function setPortion(planId: number, slotId: number, personId: number, servings: number): Promise<Result> {
   if (!(servings >= 0.25 && servings <= 4)) return fail("Servings must be between 0.25 and 4");
   const q = Math.round(servings * 4) / 4;
-  getDb()
+  await (await getDb())
     .update(s.planSlotPortions)
     .set({ servings: q })
-    .where(and(eq(s.planSlotPortions.planSlotId, slotId), eq(s.planSlotPortions.personId, personId)))
-    .run();
+    .where(and(eq(s.planSlotPortions.planSlotId, slotId), eq(s.planSlotPortions.personId, personId)));
   refresh(planId);
   return { ok: true };
 }
 
 export async function deletePlan(planId: number): Promise<Result> {
-  const db = getDb();
-  const row = db.select({ setupId: s.plans.setupId }).from(s.plans).where(eq(s.plans.id, planId)).get();
-  db.delete(s.plans).where(eq(s.plans.id, planId)).run();
-  if (row) db.delete(s.planSetups).where(eq(s.planSetups.id, row.setupId)).run();
+  const db = await getDb();
+  const [row] = await db.select({ setupId: s.plans.setupId }).from(s.plans).where(eq(s.plans.id, planId)).limit(1);
+  await db.delete(s.plans).where(eq(s.plans.id, planId));
+  if (row) await db.delete(s.planSetups).where(eq(s.planSetups.id, row.setupId));
   refresh();
   return { ok: true };
 }
@@ -283,26 +284,14 @@ export async function deletePlan(planId: number): Promise<Result> {
 
 export async function setRecipeFeedback(
   slug: string,
-  patch: { favourite?: boolean; banned?: boolean; rating?: number | null; tested?: boolean },
+  patch: { favourite?: boolean; banned?: boolean; rating?: number | null; tested?: boolean; notes?: string | null },
 ): Promise<Result> {
-  const id = recipeIds().bySlug.get(slug);
+  const id = (await recipeIds()).bySlug.get(slug);
   if (id === undefined) return fail("Recipe not found");
-  const set: Partial<typeof s.recipeFeedback.$inferInsert> = {};
-  if (patch.favourite !== undefined) set.favourite = patch.favourite;
-  if (patch.banned !== undefined) set.banned = patch.banned;
-  if (patch.rating !== undefined) {
-    if (patch.rating !== null && (patch.rating < 1 || patch.rating > 5)) return fail("Rating is 1 to 5");
-    set.rating = patch.rating;
-    if (patch.rating !== null) {
-      set.status = "tested";
-      set.testedAt = new Date().toISOString();
-    }
-  }
-  if (patch.tested !== undefined) {
-    set.status = patch.tested ? "tested" : "draft";
-    set.testedAt = patch.tested ? new Date().toISOString() : null;
-  }
-  getDb().update(s.recipeFeedback).set(set).where(eq(s.recipeFeedback.recipeId, id)).run();
+  if (patch.rating !== undefined && patch.rating !== null && (patch.rating < 1 || patch.rating > 5)) return fail("Rating is 1 to 5");
+  if (patch.notes !== undefined && patch.notes !== null && patch.notes.length > 2000) return fail("Notes are too long");
+  // The write path for human-owned data lives in lib/human; this action only validates and refreshes.
+  await writeRecipeFeedback(await getDb(), id, patch);
   refresh();
   return { ok: true };
 }
@@ -310,13 +299,12 @@ export async function setRecipeFeedback(
 // ---------- Groceries ----------
 
 export async function setGroceryChecked(planId: number, ingredientSlug: string, checked: boolean): Promise<Result> {
-  const ingredientId = ingredientIds().bySlug.get(ingredientSlug);
+  const ingredientId = (await ingredientIds()).bySlug.get(ingredientSlug);
   if (ingredientId === undefined) return fail("Unknown ingredient");
-  getDb()
+  await (await getDb())
     .insert(s.groceryState)
     .values({ planId, ingredientId, checked })
-    .onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked } })
-    .run();
+    .onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked } });
   return { ok: true };
 }
 
@@ -324,18 +312,18 @@ export async function addManualItem(planId: number, text: string): Promise<Resul
   const t = text.trim();
   if (!t) return fail("Type an item first");
   if (t.length > 120) return fail("That is too long");
-  const row = getDb().insert(s.groceryManual).values({ planId, text: t, checked: false }).returning({ id: s.groceryManual.id }).get();
+  const [row] = await (await getDb()).insert(s.groceryManual).values({ planId, text: t, checked: false }).returning({ id: s.groceryManual.id });
   revalidatePath("/groceries");
-  return { ok: true, id: row.id };
+  return { ok: true, id: row!.id };
 }
 
 export async function setManualChecked(id: number, checked: boolean): Promise<Result> {
-  getDb().update(s.groceryManual).set({ checked }).where(eq(s.groceryManual.id, id)).run();
+  await (await getDb()).update(s.groceryManual).set({ checked }).where(eq(s.groceryManual.id, id));
   return { ok: true };
 }
 
 export async function removeManualItem(id: number): Promise<Result> {
-  getDb().delete(s.groceryManual).where(eq(s.groceryManual.id, id)).run();
+  await (await getDb()).delete(s.groceryManual).where(eq(s.groceryManual.id, id));
   revalidatePath("/groceries");
   return { ok: true };
 }
@@ -343,13 +331,13 @@ export async function removeManualItem(id: number): Promise<Result> {
 // ---------- Today card ----------
 
 export async function setHabitDone(date: string, personId: number, habitSlug: string, done: boolean): Promise<Result> {
-  const db = getDb();
-  const habit = db.select({ id: s.habits.id }).from(s.habits).where(eq(s.habits.slug, habitSlug)).get();
+  const db = await getDb();
+  const [habit] = await db.select({ id: s.habits.id }).from(s.habits).where(eq(s.habits.slug, habitSlug)).limit(1);
   if (!habit) return fail("Unknown habit");
-  db.insert(s.habitLog)
+  await db
+    .insert(s.habitLog)
     .values({ date, personId, habitId: habit.id, done })
-    .onConflictDoUpdate({ target: [s.habitLog.date, s.habitLog.personId, s.habitLog.habitId], set: { done } })
-    .run();
+    .onConflictDoUpdate({ target: [s.habitLog.date, s.habitLog.personId, s.habitLog.habitId], set: { done } });
   return { ok: true };
 }
 
@@ -357,23 +345,21 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
   // A night-before task is stored under its due evening whichever screen ticked it, so Today and the prep guide share the row.
   const due = dueDateOfKey(taskKey);
   if (due) date = due;
-  getDb()
+  await (await getDb())
     .insert(s.prepTaskState)
     .values({ date, taskKey, done })
-    .onConflictDoUpdate({ target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done } })
-    .run();
+    .onConflictDoUpdate({ target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done } });
   return { ok: true };
 }
 
 export async function enableShake(planId: number): Promise<Result> {
-  const view = getPlanView(planId);
+  const view = await getPlanView(planId);
   if (!view) return fail("Plan not found");
   if (view.mealTypes.includes("shake")) return { ok: true };
-  getDb()
+  await (await getDb())
     .update(s.planSetups)
     .set({ mealTypes: [...view.mealTypes, "shake"] })
-    .where(eq(s.planSetups.id, view.setupId))
-    .run();
+    .where(eq(s.planSetups.id, view.setupId));
   return regeneratePlan(planId);
 }
 
@@ -385,8 +371,8 @@ export async function resetScope(scope: string, typed: string): Promise<Result<{
   const sc = scope as ResetScope;
   if (NEEDS_TYPED_CONFIRM.includes(sc) && typed.trim() !== CONFIRM_WORD) return fail(`Type ${CONFIRM_WORD} to confirm`);
   try {
-    const backup = backupBeforeReset(getSqlite(), process.cwd(), sc);
-    resetData(getDb(), sc);
+    const backup = await backupBeforeReset(await getSqlite(), process.cwd(), sc);
+    await resetData(await getDb(), sc);
     refresh();
     return { ok: true, backup: backup ? path.relative(process.cwd(), backup) : null };
   } catch (e) {
@@ -406,7 +392,7 @@ const ViewInput = z.object({
 export async function saveDefaultView(list: string, query: string): Promise<Result> {
   const parsed = ViewInput.safeParse({ list, query });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "That view cannot be saved");
-  setDefaultView(getDb(), parsed.data.list, parsed.data.query);
+  await setDefaultView(await getDb(), parsed.data.list, parsed.data.query);
   revalidatePath(`/${parsed.data.list}`);
   return { ok: true };
 }
@@ -414,7 +400,7 @@ export async function saveDefaultView(list: string, query: string): Promise<Resu
 export async function clearDefaultView(list: string): Promise<Result> {
   const parsed = ViewInput.shape.list.safeParse(list);
   if (!parsed.success) return fail("Unknown list");
-  clearDefaultViewRow(getDb(), parsed.data);
+  await clearDefaultViewRow(await getDb(), parsed.data);
   revalidatePath(`/${parsed.data}`);
   return { ok: true };
 }

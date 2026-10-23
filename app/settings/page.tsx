@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SettingsClient } from "@/components/SettingsClient";
 import { PageTitle } from "@/components/ui";
-import { getDb } from "@/lib/server/context";
-import { resetCounts } from "@/lib/server/reset";
+import { getResetCounts } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  const counts = resetCounts(getDb());
+export default async function SettingsPage() {
+  const counts = await getResetCounts();
   return (
     <>
       <PageTitle title="Settings" sub="Manage people and start over when you want to." />
