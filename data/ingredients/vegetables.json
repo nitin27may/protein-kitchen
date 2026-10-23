@@ -1,0 +1,1664 @@
+[
+  {
+    "slug": "green-peas-fresh",
+    "name": "Green peas, raw",
+    "aliases": [
+      "matar",
+      "hara matar"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 81,
+      "protein_g": 5.4,
+      "carbs_g": 14.4,
+      "fat_g": 0.4,
+      "fibre_g": 5.1
+    },
+    "source": "CNF",
+    "source_id": "2409",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Green peas"
+  },
+  {
+    "slug": "onion",
+    "name": "Onion, raw",
+    "aliases": [
+      "pyaaz",
+      "pyaz"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 40,
+      "protein_g": 1.1,
+      "carbs_g": 9.3,
+      "fat_g": 0.1,
+      "fibre_g": 1.7
+    },
+    "source": "CNF",
+    "source_id": "2401",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": true,
+    "is_dairy": false,
+    "display_name": "Onion"
+  },
+  {
+    "slug": "tomato",
+    "name": "Tomato, red, ripe, raw",
+    "aliases": [
+      "tamatar"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 18,
+      "protein_g": 0.9,
+      "carbs_g": 3.9,
+      "fat_g": 0.2,
+      "fibre_g": 1.2
+    },
+    "source": "CNF",
+    "source_id": "2460",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Tomato"
+  },
+  {
+    "slug": "tomato-puree",
+    "name": "Tomato puree, no salt added",
+    "aliases": [
+      "tomato puree"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 38,
+      "protein_g": 1.6,
+      "carbs_g": 9.0,
+      "fat_g": 0.2,
+      "fibre_g": 1.9
+    },
+    "source": "CNF",
+    "source_id": "2259",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "tomato-paste",
+    "name": "Tomato paste, no salt added",
+    "aliases": [
+      "tomato paste"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 82,
+      "protein_g": 4.3,
+      "carbs_g": 18.9,
+      "fat_g": 0.5,
+      "fibre_g": 4.1
+    },
+    "source": "CNF",
+    "source_id": "2258",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "potato",
+    "name": "Potato, flesh, raw",
+    "aliases": [
+      "aloo"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 77,
+      "protein_g": 2.0,
+      "carbs_g": 17.5,
+      "fat_g": 0.1,
+      "fibre_g": 1.5
+    },
+    "source": "CNF",
+    "source_id": "2417",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Potato"
+  },
+  {
+    "slug": "sweet-potato",
+    "name": "Sweet potato, raw",
+    "aliases": [
+      "shakarkandi"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 86,
+      "protein_g": 1.6,
+      "carbs_g": 20.1,
+      "fat_g": 0.1,
+      "fibre_g": 3.0
+    },
+    "source": "CNF",
+    "source_id": "2240",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Sweet potato"
+  },
+  {
+    "slug": "spinach",
+    "name": "Spinach, raw",
+    "aliases": [
+      "palak"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 23,
+      "protein_g": 2.9,
+      "carbs_g": 3.6,
+      "fat_g": 0.4,
+      "fibre_g": 2.2
+    },
+    "source": "CNF",
+    "source_id": "2213",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Spinach"
+  },
+  {
+    "slug": "cauliflower",
+    "name": "Cauliflower (green), raw (closest to gobi)",
+    "aliases": [
+      "gobi",
+      "phool gobi"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 31,
+      "protein_g": 3.0,
+      "carbs_g": 6.1,
+      "fat_g": 0.3,
+      "fibre_g": 3.2
+    },
+    "source": "CNF",
+    "source_id": "2358",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Cauliflower (gobi)"
+  },
+  {
+    "slug": "cabbage-savoy",
+    "name": "Cabbage, savoy, raw",
+    "aliases": [
+      "patta gobi",
+      "band gobi"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 27,
+      "protein_g": 2.0,
+      "carbs_g": 6.1,
+      "fat_g": 0.1,
+      "fibre_g": 3.1
+    },
+    "source": "CNF",
+    "source_id": "2036",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Cabbage"
+  },
+  {
+    "slug": "carrot",
+    "name": "Carrot, raw",
+    "aliases": [
+      "gajar"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 41,
+      "protein_g": 0.9,
+      "carbs_g": 9.6,
+      "fat_g": 0.2,
+      "fibre_g": 2.4
+    },
+    "source": "CNF",
+    "source_id": "2380",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Carrot"
+  },
+  {
+    "slug": "eggplant",
+    "name": "Eggplant (brinjal), raw",
+    "aliases": [
+      "baingan",
+      "brinjal"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 25,
+      "protein_g": 1.0,
+      "carbs_g": 5.9,
+      "fat_g": 0.2,
+      "fibre_g": 3.0
+    },
+    "source": "CNF",
+    "source_id": "2088",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Eggplant (brinjal)"
+  },
+  {
+    "slug": "okra",
+    "name": "Okra, raw",
+    "aliases": [
+      "bhindi",
+      "lady finger"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 33,
+      "protein_g": 1.9,
+      "carbs_g": 7.5,
+      "fat_g": 0.2,
+      "fibre_g": 3.2
+    },
+    "source": "CNF",
+    "source_id": "2134",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Okra"
+  },
+  {
+    "slug": "bottle-gourd",
+    "name": "Gourd, white-flowered (calabash), raw",
+    "aliases": [
+      "lauki",
+      "ghiya",
+      "doodhi"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 14,
+      "protein_g": 0.6,
+      "carbs_g": 3.4,
+      "fat_g": 0.0,
+      "fibre_g": 0.5
+    },
+    "source": "CNF",
+    "source_id": "2092",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Bottle gourd (lauki)"
+  },
+  {
+    "slug": "bitter-gourd",
+    "name": "Bitter melon (karela), pods, raw",
+    "aliases": [
+      "karela"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 17,
+      "protein_g": 1.0,
+      "carbs_g": 3.7,
+      "fat_g": 0.2,
+      "fibre_g": 2.8
+    },
+    "source": "CNF",
+    "source_id": "1997",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Bitter gourd (karela)"
+  },
+  {
+    "slug": "capsicum-green",
+    "name": "Pepper, sweet, green, raw",
+    "aliases": [
+      "shimla mirch",
+      "capsicum"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 20,
+      "protein_g": 0.9,
+      "carbs_g": 4.6,
+      "fat_g": 0.2,
+      "fibre_g": 1.4
+    },
+    "source": "CNF",
+    "source_id": "2413",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Green capsicum"
+  },
+  {
+    "slug": "green-chilli",
+    "name": "Hot chili pepper, raw",
+    "aliases": [
+      "hari mirch"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 40,
+      "protein_g": 2.0,
+      "carbs_g": 9.5,
+      "fat_g": 0.2,
+      "fibre_g": 1.5
+    },
+    "source": "CNF",
+    "source_id": "2322",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Hot chili pepper"
+  },
+  {
+    "slug": "mushroom-white",
+    "name": "Mushroom, white, raw",
+    "aliases": [
+      "khumb",
+      "mushroom"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 22,
+      "protein_g": 3.1,
+      "carbs_g": 3.3,
+      "fat_g": 0.3,
+      "fibre_g": 1.0
+    },
+    "source": "CNF",
+    "source_id": "2399",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Mushrooms"
+  },
+  {
+    "slug": "cucumber",
+    "name": "Cucumber, raw",
+    "aliases": [
+      "kheera"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 16,
+      "protein_g": 0.7,
+      "carbs_g": 3.6,
+      "fat_g": 0.1,
+      "fibre_g": 0.7
+    },
+    "source": "CNF",
+    "source_id": "2363",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Cucumber"
+  },
+  {
+    "slug": "beetroot",
+    "name": "Beets, raw",
+    "aliases": [
+      "chukandar"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 43,
+      "protein_g": 1.6,
+      "carbs_g": 9.6,
+      "fat_g": 0.2,
+      "fibre_g": 1.9
+    },
+    "source": "CNF",
+    "source_id": "2500",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Beets"
+  },
+  {
+    "slug": "radish-daikon",
+    "name": "Radish, daikon, raw (closest to mooli)",
+    "aliases": [
+      "mooli"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 18,
+      "protein_g": 0.6,
+      "carbs_g": 4.1,
+      "fat_g": 0.1,
+      "fibre_g": 1.6
+    },
+    "source": "CNF",
+    "source_id": "2196",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Radish (mooli)"
+  },
+  {
+    "slug": "turnip",
+    "name": "Turnip, raw",
+    "aliases": [
+      "shalgam"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 28,
+      "protein_g": 0.9,
+      "carbs_g": 6.4,
+      "fat_g": 0.1,
+      "fibre_g": 1.8
+    },
+    "source": "CNF",
+    "source_id": "2470",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Turnip"
+  },
+  {
+    "slug": "pumpkin",
+    "name": "Pumpkin, raw",
+    "aliases": [
+      "kaddu",
+      "sitaphal"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 26,
+      "protein_g": 1.0,
+      "carbs_g": 6.5,
+      "fat_g": 0.1,
+      "fibre_g": 1.1
+    },
+    "source": "CNF",
+    "source_id": "2441",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pumpkin"
+  },
+  {
+    "slug": "green-beans",
+    "name": "Beans, snap, green, frozen",
+    "aliases": [
+      "french beans",
+      "fansi"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 39,
+      "protein_g": 1.8,
+      "carbs_g": 7.5,
+      "fat_g": 0.2,
+      "fibre_g": 2.6
+    },
+    "source": "CNF",
+    "source_id": "2018",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Green beans"
+  },
+  {
+    "slug": "broccoli",
+    "name": "Broccoli, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 34,
+      "protein_g": 2.8,
+      "carbs_g": 6.6,
+      "fat_g": 0.4,
+      "fibre_g": 2.4
+    },
+    "source": "CNF",
+    "source_id": "2374",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Broccoli"
+  },
+  {
+    "slug": "lettuce-romaine",
+    "name": "Lettuce, cos or romaine",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 17,
+      "protein_g": 1.2,
+      "carbs_g": 3.3,
+      "fat_g": 0.3,
+      "fibre_g": 2.1
+    },
+    "source": "CNF",
+    "source_id": "2116",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "kale",
+    "name": "Kale, scotch, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 42,
+      "protein_g": 2.8,
+      "carbs_g": 8.3,
+      "fat_g": 0.6,
+      "fibre_g": 1.7
+    },
+    "source": "CNF",
+    "source_id": "2295",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Kale"
+  },
+  {
+    "slug": "celery",
+    "name": "Celery, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 16,
+      "protein_g": 0.7,
+      "carbs_g": 3.0,
+      "fat_g": 0.2,
+      "fibre_g": 1.5
+    },
+    "source": "CNF",
+    "source_id": "2386",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Celery"
+  },
+  {
+    "slug": "corn-sweet",
+    "name": "Corn, sweet, yellow, raw",
+    "aliases": [
+      "makka",
+      "bhutta"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 86,
+      "protein_g": 3.3,
+      "carbs_g": 18.7,
+      "fat_g": 1.4,
+      "fibre_g": 2.0
+    },
+    "source": "CNF",
+    "source_id": "2388",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Sweet corn"
+  },
+  {
+    "slug": "garlic",
+    "name": "Garlic, raw",
+    "aliases": [
+      "lehsun"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 149,
+      "protein_g": 6.4,
+      "carbs_g": 33.1,
+      "fat_g": 0.5,
+      "fibre_g": 2.1
+    },
+    "source": "CNF",
+    "source_id": "2394",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": true,
+    "is_dairy": false,
+    "display_name": "Garlic"
+  },
+  {
+    "slug": "ginger",
+    "name": "Ginger root, raw",
+    "aliases": [
+      "adrak"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 80,
+      "protein_g": 1.8,
+      "carbs_g": 17.8,
+      "fat_g": 0.8,
+      "fibre_g": 2.0
+    },
+    "source": "CNF",
+    "source_id": "2091",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Ginger root"
+  },
+  {
+    "slug": "spring-onion",
+    "name": "Spring onion (scallion)",
+    "aliases": [
+      "hari pyaaz"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 32,
+      "protein_g": 1.8,
+      "carbs_g": 7.3,
+      "fat_g": 0.2,
+      "fibre_g": 2.6
+    },
+    "source": "CNF",
+    "source_id": "2144",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": true,
+    "is_dairy": false
+  },
+  {
+    "slug": "coriander-leaves",
+    "name": "Coriander (cilantro) leaves, raw",
+    "aliases": [
+      "dhania patta",
+      "hara dhania"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 23,
+      "protein_g": 2.1,
+      "carbs_g": 3.7,
+      "fat_g": 0.5,
+      "fibre_g": 2.8
+    },
+    "source": "CNF",
+    "source_id": "2067",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Coriander leaves"
+  },
+  {
+    "slug": "mint-fresh",
+    "name": "Spearmint, fresh",
+    "aliases": [
+      "pudina"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 44,
+      "protein_g": 3.3,
+      "carbs_g": 8.4,
+      "fat_g": 0.7,
+      "fibre_g": 6.8
+    },
+    "source": "CNF",
+    "source_id": "4725",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Spearmint"
+  },
+  {
+    "slug": "taro-arbi",
+    "name": "Taro, raw",
+    "aliases": [
+      "arbi",
+      "colocasia"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 112,
+      "protein_g": 1.5,
+      "carbs_g": 26.5,
+      "fat_g": 0.2,
+      "fibre_g": 4.1
+    },
+    "source": "CNF",
+    "source_id": "2247",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Taro"
+  },
+  {
+    "slug": "yam-suran",
+    "name": "Yam, raw",
+    "aliases": [
+      "suran",
+      "jimikand"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 118,
+      "protein_g": 1.5,
+      "carbs_g": 27.9,
+      "fat_g": 0.2,
+      "fibre_g": 4.1
+    },
+    "source": "CNF",
+    "source_id": "2283",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Yam"
+  },
+  {
+    "slug": "plantain-raw",
+    "name": "Plantain, raw",
+    "aliases": [
+      "kaccha kela",
+      "raw banana"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 122,
+      "protein_g": 1.3,
+      "carbs_g": 31.9,
+      "fat_g": 0.4,
+      "fibre_g": 2.3
+    },
+    "source": "CNF",
+    "source_id": "1661",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Plantain"
+  },
+  {
+    "slug": "amaranth-leaves",
+    "name": "Amaranth leaves, fresh",
+    "aliases": [
+      "chaulai",
+      "lal saag"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 23,
+      "protein_g": 2.5,
+      "carbs_g": 4.0,
+      "fat_g": 0.3,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "1984",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Amaranth leaves"
+  },
+  {
+    "slug": "mustard-greens",
+    "name": "Mustard greens, raw",
+    "aliases": [
+      "sarson ka saag"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 27,
+      "protein_g": 2.9,
+      "carbs_g": 4.7,
+      "fat_g": 0.4,
+      "fibre_g": 3.2
+    },
+    "source": "CNF",
+    "source_id": "2126",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Mustard greens"
+  },
+  {
+    "slug": "beet-greens",
+    "name": "Beet greens, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 22,
+      "protein_g": 2.2,
+      "carbs_g": 4.3,
+      "fat_g": 0.1,
+      "fibre_g": 3.7
+    },
+    "source": "CNF",
+    "source_id": "2021",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Beet greens"
+  },
+  {
+    "slug": "lotus-root",
+    "name": "Lotus root, raw",
+    "aliases": [
+      "kamal kakdi",
+      "bhein"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 74,
+      "protein_g": 2.6,
+      "carbs_g": 17.2,
+      "fat_g": 0.1,
+      "fibre_g": 4.9
+    },
+    "source": "CNF",
+    "source_id": "2118",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Lotus root"
+  },
+  {
+    "slug": "yardlong-beans",
+    "name": "Yardlong beans, raw",
+    "aliases": [
+      "lobia phali"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 47,
+      "protein_g": 2.8,
+      "carbs_g": 8.3,
+      "fat_g": 0.4,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "2080",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Yardlong beans"
+  },
+  {
+    "slug": "pumpkin-leaves",
+    "name": "Pumpkin leaves, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 19,
+      "protein_g": 3.1,
+      "carbs_g": 2.3,
+      "fat_g": 0.4,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "2190",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pumpkin leaves"
+  },
+  {
+    "slug": "lemon-juice",
+    "name": "Lemon juice, raw",
+    "aliases": [
+      "nimbu ka ras"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 22,
+      "protein_g": 0.3,
+      "carbs_g": 6.9,
+      "fat_g": 0.2,
+      "fibre_g": 0.3
+    },
+    "source": "CNF",
+    "source_id": "1589",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Lemon juice"
+  },
+  {
+    "slug": "lime-juice",
+    "name": "Lime juice, raw",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 25,
+      "protein_g": 0.4,
+      "carbs_g": 8.4,
+      "fat_g": 0.1,
+      "fibre_g": 0.4
+    },
+    "source": "CNF",
+    "source_id": "1594",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Lime juice"
+  },
+  {
+    "slug": "sun-dried-tomato",
+    "name": "Tomato, sun-dried",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 258,
+      "protein_g": 14.1,
+      "carbs_g": 55.8,
+      "fat_g": 3.0,
+      "fibre_g": 12.3
+    },
+    "source": "CNF",
+    "source_id": "2348",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "methi-leaves",
+    "name": "Fenugreek leaves (methi)",
+    "aliases": [
+      "methi",
+      "fresh fenugreek"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 34,
+      "protein_g": 3.7,
+      "carbs_g": 7.1,
+      "fat_g": 0.8,
+      "fibre_g": 4.9
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-C020",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "curry-leaves",
+    "name": "Curry leaves (kadi patta)",
+    "aliases": [
+      "kadi patta",
+      "kari patta"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 64,
+      "protein_g": 7.4,
+      "carbs_g": 21.3,
+      "fat_g": 1.1,
+      "fibre_g": 16.8
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-G010",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "ridge-gourd",
+    "name": "Ridge gourd (Luffa acutangula)",
+    "aliases": [
+      "turai",
+      "tori",
+      "jhinga"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 13,
+      "protein_g": 0.9,
+      "carbs_g": 3.5,
+      "fat_g": 0.1,
+      "fibre_g": 1.8
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-D068",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "drumstick",
+    "name": "Drumstick pods (Moringa)",
+    "aliases": [
+      "sahjan",
+      "saragvo",
+      "murungakkai"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 29,
+      "protein_g": 2.6,
+      "carbs_g": 10.6,
+      "fat_g": 0.1,
+      "fibre_g": 6.8
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-D046",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "drumstick-leaves",
+    "name": "Drumstick leaves (Moringa)",
+    "aliases": [
+      "moringa leaves"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 67,
+      "protein_g": 6.4,
+      "carbs_g": 13.8,
+      "fat_g": 1.6,
+      "fibre_g": 8.2
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-C019",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cluster-beans",
+    "name": "Cluster beans (gavar)",
+    "aliases": [
+      "gavar",
+      "guar phali"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 40,
+      "protein_g": 3.5,
+      "carbs_g": 9.7,
+      "fat_g": 0.4,
+      "fibre_g": 4.8
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-D039",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "ash-gourd",
+    "name": "Ash gourd (petha/kaddu)",
+    "aliases": [
+      "petha",
+      "safed kaddu"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 17,
+      "protein_g": 0.8,
+      "carbs_g": 6.2,
+      "fat_g": 0.1,
+      "fibre_g": 3.4
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-D001",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "snake-gourd",
+    "name": "Snake gourd (chichinda)",
+    "aliases": [
+      "chichinda",
+      "padwal"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 15,
+      "protein_g": 0.5,
+      "carbs_g": 4.4,
+      "fat_g": 0.3,
+      "fibre_g": 2.3
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-D072",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "colocasia-leaves",
+    "name": "Colocasia leaves, green (arbi leaves)",
+    "aliases": [
+      "arbi ke patte",
+      "patra leaves"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 43,
+      "protein_g": 3.4,
+      "carbs_g": 9.3,
+      "fat_g": 1.4,
+      "fibre_g": 5.6
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-C018",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Arbi leaves"
+  },
+  {
+    "slug": "radish-leaves",
+    "name": "Radish leaves (mooli ke patte)",
+    "aliases": [
+      "mooli saag"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 26,
+      "protein_g": 2.2,
+      "carbs_g": 4.6,
+      "fat_g": 0.5,
+      "fibre_g": 1.8
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-C031",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "water-chestnut",
+    "name": "Water chestnut (singhara)",
+    "aliases": [
+      "singhara"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 96,
+      "protein_g": 0.9,
+      "carbs_g": 24.5,
+      "fat_g": 0.4,
+      "fibre_g": 3.0
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-F016",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "parsley-fresh",
+    "name": "Parsley, fresh",
+    "aliases": [
+      "ajmoda patta (approx.)"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 36,
+      "protein_g": 3.0,
+      "carbs_g": 6.3,
+      "fat_g": 0.8,
+      "fibre_g": 3.3
+    },
+    "source": "CNF",
+    "source_id": "2405",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Parsley"
+  },
+  {
+    "slug": "basil-fresh",
+    "name": "Basil, fresh",
+    "aliases": [
+      "tulsi (different herb)"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 22,
+      "protein_g": 3.1,
+      "carbs_g": 2.6,
+      "fat_g": 0.6,
+      "fibre_g": 1.6
+    },
+    "source": "CNF",
+    "source_id": "212",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Basil"
+  },
+  {
+    "slug": "red-bell-pepper",
+    "name": "Pepper, sweet, red, raw",
+    "aliases": [
+      "lal shimla mirch"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 31,
+      "protein_g": 1.0,
+      "carbs_g": 6.0,
+      "fat_g": 0.3,
+      "fibre_g": 1.4
+    },
+    "source": "CNF",
+    "source_id": "2484",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Red bell pepper"
+  },
+  {
+    "slug": "zucchini",
+    "name": "Zucchini, raw",
+    "aliases": [
+      "tori (different)",
+      "courgette"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 17,
+      "protein_g": 1.2,
+      "carbs_g": 3.1,
+      "fat_g": 0.3,
+      "fibre_g": 1.0
+    },
+    "source": "CNF",
+    "source_id": "2225",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Zucchini"
+  },
+  {
+    "slug": "arugula",
+    "name": "Arugula, raw",
+    "aliases": [
+      "rocket"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 25,
+      "protein_g": 2.6,
+      "carbs_g": 3.6,
+      "fat_g": 0.7,
+      "fibre_g": 1.6
+    },
+    "source": "CNF",
+    "source_id": "2352",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Arugula"
+  },
+  {
+    "slug": "fennel-bulb",
+    "name": "Fennel bulb, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 31,
+      "protein_g": 1.2,
+      "carbs_g": 7.3,
+      "fat_g": 0.2,
+      "fibre_g": 3.1
+    },
+    "source": "CNF",
+    "source_id": "2350",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Fennel bulb"
+  },
+  {
+    "slug": "tomatoes-canned-whole",
+    "name": "Tomato, red, ripe, canned, whole",
+    "aliases": [
+      "canned tomatoes",
+      "tinned tomatoes"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 16,
+      "protein_g": 0.8,
+      "carbs_g": 3.5,
+      "fat_g": 0.2,
+      "fibre_g": 0.8
+    },
+    "source": "CNF",
+    "source_id": "2462",
+    "aisle": "vegetables",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Canned whole tomatoes"
+  }
+]

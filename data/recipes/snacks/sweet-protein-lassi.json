@@ -1,0 +1,48 @@
+{
+  "slug": "sweet-protein-lassi",
+  "name": "Sweet protein lassi",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [
+    "blender"
+  ],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 150
+    },
+    {
+      "ingredient": "milk-2pct",
+      "grams": 150
+    },
+    {
+      "ingredient": "dates-dry",
+      "grams": 15
+    },
+    {
+      "ingredient": "cardamom-ground",
+      "grams": 0.3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blend everything until smooth and frothy."
+    },
+    {
+      "text": "Serve cold."
+    }
+  ]
+}

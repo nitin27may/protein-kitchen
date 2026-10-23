@@ -1,0 +1,202 @@
+[
+  {
+    "slug": "ground-flax-daily",
+    "title": "1 tbsp ground flaxseed",
+    "category": "daily_basic",
+    "evidence_grade": "strong",
+    "evidence_note": "Flaxseed is a reliable plant source of ALA omega-3 and fibre. Health Canada sets an adequate intake for ALA and for fibre. Grind it: whole seeds pass through undigested.",
+    "source_url": "https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/reference-values-macronutrients-dietary-reference-intakes-tables-2005.html",
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "chia-in-liquid",
+    "title": "Chia, always soaked or in liquid",
+    "category": "daily_basic",
+    "evidence_grade": "practical",
+    "evidence_note": "Adds fibre and ALA to oats, dahi or a shake. No separate health claim is made. Never eat it dry by the spoonful: it swells.",
+    "source_url": null,
+    "caution": "Eat chia only mixed into liquid or soaked first.",
+    "default_on": false
+  },
+  {
+    "slug": "nuts-handful",
+    "title": "A handful of nuts",
+    "category": "daily_basic",
+    "evidence_grade": "strong",
+    "evidence_note": "Nuts and seeds are named plant protein foods in Health Canada's dietary guidelines. Walnuts add ALA; almonds add calcium and magnesium.",
+    "source_url": "https://www.canada.ca/en/health-canada/services/food-guide/explore/dietary-guidelines/section-1-foundation-healthy-eating.html",
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "pumpkin-hemp-seeds",
+    "title": "Pumpkin or hemp seeds as a topping",
+    "category": "daily_basic",
+    "evidence_grade": "practical",
+    "evidence_note": "Adds zinc, magnesium, iron and protein to a meal. Nutrient values come from the CNF entries in this app. No health outcome is claimed.",
+    "source_url": null,
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "dahi-or-kefir",
+    "title": "Dahi or kefir daily",
+    "category": "daily_basic",
+    "evidence_grade": "practical",
+    "evidence_note": "Gives protein, calcium and some B12 in a normal serving. It is also an easy way to close a protein gap. No claim is made about probiotics.",
+    "source_url": null,
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "fibre-target",
+    "title": "Fibre toward the daily target",
+    "category": "daily_basic",
+    "evidence_grade": "strong",
+    "evidence_note": "Health Canada's adequate intake for adults aged 31 to 50 is 38 g a day for men and 25 g a day for women. The app shows fibre from the plan next to protein.",
+    "source_url": "https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/reference-values-macronutrients-dietary-reference-intakes-tables-2005.html",
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "water-through-day",
+    "title": "Water through the day",
+    "category": "daily_basic",
+    "evidence_grade": "strong",
+    "evidence_note": "Health Canada's adequate intake for total water, including water from food, is 3.7 L a day for men and 2.7 L for women aged 31 to 50. Water is also the drink of choice in Canada's Food Guide.",
+    "source_url": "https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/reference-values-macronutrients-dietary-reference-intakes-tables-2005.html",
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "half-plate-vegetables",
+    "title": "Half the plate vegetables and fruit",
+    "category": "daily_basic",
+    "evidence_grade": "strong",
+    "evidence_note": "Health Canada's dietary guidelines recommend filling half the plate with vegetables and fruit, a quarter with protein foods and a quarter with whole grains.",
+    "source_url": "https://www.canada.ca/en/health-canada/services/food-guide/explore/dietary-guidelines/section-1-foundation-healthy-eating.html",
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "plain-water-on-waking",
+    "title": "Plain or warm water on waking",
+    "category": "morning_drink",
+    "evidence_grade": "strong",
+    "evidence_note": "Good for hydration. That is the only benefit; no detox effect. Strong here means the hydration advice, not any extra claim.",
+    "source_url": "https://www.canada.ca/en/health-canada/services/food-guide/explore/dietary-guidelines/section-1-foundation-healthy-eating.html",
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "lemon-water",
+    "title": "Lemon water",
+    "category": "morning_drink",
+    "evidence_grade": "weak",
+    "evidence_note": "Fine for hydration and a little vitamin C. No evidence for other benefits. The acid is hard on tooth enamel, so rinse with plain water afterward.",
+    "source_url": null,
+    "caution": "Rinse your mouth with plain water after drinking.",
+    "default_on": false
+  },
+  {
+    "slug": "jeera-ajwain-water",
+    "title": "Jeera or ajwain water",
+    "category": "morning_drink",
+    "evidence_grade": "weak",
+    "evidence_note": "A traditional digestive drink. There is little human evidence, so treat it as a preference.",
+    "source_url": null,
+    "caution": null,
+    "default_on": false
+  },
+  {
+    "slug": "soaked-methi-seeds",
+    "title": "Soaked fenugreek (methi) seeds or the soaking water",
+    "category": "morning_drink",
+    "evidence_grade": "moderate",
+    "evidence_note": "A meta-analysis of clinical trials found lower fasting glucose, 2-hour glucose and HbA1c, mostly in people with diabetes. The authors rated most of the trials as low quality, so the evidence is moderate at best.",
+    "source_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3901758/",
+    "caution": "Anyone taking diabetes medication should ask a doctor first.",
+    "default_on": false
+  },
+  {
+    "slug": "detox-drinks",
+    "title": "Detox drinks",
+    "category": "morning_drink",
+    "evidence_grade": "myth",
+    "evidence_note": "The liver and kidneys do this work. No drink speeds it up. The app lists this so the claim is labelled honestly and not offered as a habit.",
+    "source_url": null,
+    "caution": null,
+    "default_on": false
+  },
+  {
+    "slug": "soaked-almonds",
+    "title": "Soaking almonds overnight",
+    "category": "daily_basic",
+    "evidence_grade": "weak",
+    "evidence_note": "A study of whole almonds found that soaking did not meaningfully lower phytate, and chopped almonds lost minerals when soaked. Soak them if you prefer the texture, not for health.",
+    "source_url": "https://ourarchive.otago.ac.nz/handle/10523/7938",
+    "caution": null,
+    "default_on": false
+  },
+  {
+    "slug": "soak-legumes-night",
+    "title": "Soak rajma, chole, whole moong, urad or chana",
+    "category": "evening_prep_generic",
+    "evidence_grade": "practical",
+    "evidence_note": "Soaking for 8 to 12 hours cuts cooking time a lot. Discard the soaking water. Always boil rajma hard for 10 minutes when cooking.",
+    "source_url": null,
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "sprout-and-cook",
+    "title": "Sprout moong or chana, then cook lightly",
+    "category": "evening_prep_generic",
+    "evidence_grade": "practical",
+    "evidence_note": "Sprouting starts 1 to 2 days ahead and adds volume. Protein stays about the same. Raw sprouts carry a food-safety risk, so steam or sauté them before eating.",
+    "source_url": null,
+    "caution": "Cook sprouts before eating, especially for children, older adults and anyone pregnant.",
+    "default_on": false
+  },
+  {
+    "slug": "set-dahi",
+    "title": "Set dahi for tomorrow",
+    "category": "evening_prep_generic",
+    "evidence_grade": "practical",
+    "evidence_note": "Warm milk, a spoon of starter, 8 hours. Gives tomorrow's protein with no extra work.",
+    "source_url": null,
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "overnight-oats",
+    "title": "Overnight oats or chia pudding",
+    "category": "evening_prep_generic",
+    "evidence_grade": "practical",
+    "evidence_note": "Zero morning effort and an easy high-protein breakfast with yoghurt or milk.",
+    "source_url": null,
+    "caution": null,
+    "default_on": false
+  },
+  {
+    "slug": "marinate-tofu-paneer",
+    "title": "Marinate tofu or paneer",
+    "category": "evening_prep_generic",
+    "evidence_grade": "practical",
+    "evidence_note": "Gives the flavour that makes global and tikka-style recipes work. Two hours is enough, overnight is better.",
+    "source_url": null,
+    "caution": null,
+    "default_on": true
+  },
+  {
+    "slug": "thaw-in-fridge",
+    "title": "Move frozen items to the fridge",
+    "category": "evening_prep_generic",
+    "evidence_grade": "practical",
+    "evidence_note": "Thawing overnight in the fridge is safer than on the counter and means dinner is ready to cook.",
+    "source_url": null,
+    "caution": null,
+    "default_on": true
+  }
+]

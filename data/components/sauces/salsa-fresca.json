@@ -1,0 +1,57 @@
+{
+  "slug": "salsa-fresca",
+  "name": "Salsa fresca",
+  "kind": "component",
+  "family": "sauces",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mexican",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 8,
+  "active_min": 8,
+  "total_min": 8,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tomato",
+      "grams": 250
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 8
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 15
+    },
+    {
+      "ingredient": "lime-juice",
+      "grams": 20
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Dice tomato and onion finely and mix with chopped chilli and coriander.",
+      "cue": "The tomato and onion are in even small dice, about the size of a pea."
+    },
+    {
+      "text": "Season with lime juice and salt and rest for 10 minutes.",
+      "cue": "The salsa is juicy and tastes bright with lime, with enough salt to lift the tomato."
+    }
+  ]
+}

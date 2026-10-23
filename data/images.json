@@ -1,0 +1,1091 @@
+{
+  "recipes": {
+    "chole-masala": {
+      "file": "chole-masala.jpg",
+      "credit": "Simon Law (sfllaw) from Montréal, QC, Canada, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Chana masala"
+    },
+    "matar-paneer": {
+      "file": "matar-paneer.jpg",
+      "credit": "CNEcija12345, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Matar paneer"
+    },
+    "palak-paneer": {
+      "file": "palak-paneer.jpg",
+      "credit": "Lopanayak, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Palak paneer"
+    },
+    "rajma-masala": {
+      "file": "rajma-masala.jpg",
+      "credit": "Gaurav Nemade, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Rajma"
+    },
+    "dal-tadka": {
+      "file": "dal-tadka.jpg",
+      "credit": "User:Justinc, CC BY-SA 2.5, via Wikimedia Commons",
+      "title": "Dal"
+    },
+    "kheera-raita": {
+      "file": "kheera-raita.jpg",
+      "credit": "Sonia Goyal, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Raita"
+    },
+    "methi-besan-muthia": {
+      "file": "methi-besan-muthia.jpg",
+      "credit": "Mrudit161187, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Muthia"
+    },
+    "paneer-tikka-airfryer": {
+      "file": "paneer-tikka-airfryer.jpg",
+      "credit": "Meghana Mohanty, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Paneer tikka"
+    },
+    "pumpkin-lentil-soup": {
+      "file": "pumpkin-lentil-soup.jpg",
+      "credit": "Roland Unger, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Lentil soup"
+    },
+    "red-lentil-tomato-soup": {
+      "file": "red-lentil-tomato-soup.jpg",
+      "credit": "Roland Unger, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Lentil soup"
+    }
+  },
+  "ingredients": {
+    "greek-yogurt-0pct": {
+      "file": "greek-yogurt-0pct.jpg",
+      "credit": "No machine-readable author provided. Omernos~commonswiki assumed (based on copyright claims)., Public domain, via Wikimedia Commons",
+      "title": "Strained yogurt"
+    },
+    "cottage-cheese-1pct": {
+      "file": "cottage-cheese-1pct.jpg",
+      "credit": "FASTILY (TALK), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cottage cheese"
+    },
+    "milk-skim": {
+      "file": "milk-skim.jpg",
+      "credit": "NIAID, CC BY 2.0, via Wikimedia Commons",
+      "title": "Milk"
+    },
+    "buttermilk-chaas": {
+      "file": "buttermilk-chaas.jpg",
+      "credit": "Ukko-wc, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Buttermilk"
+    },
+    "cream-35": {
+      "file": "cream-35.jpg",
+      "credit": "jeffreyw, CC BY 2.0, via Wikimedia Commons",
+      "title": "Cream"
+    },
+    "milk-powder-skim": {
+      "file": "milk-powder-skim.jpg",
+      "credit": "ProjectManhattan, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Powdered milk"
+    },
+    "condensed-milk": {
+      "file": "condensed-milk.jpg",
+      "credit": "Superbass, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Condensed milk"
+    },
+    "ricotta-part-skim": {
+      "file": "ricotta-part-skim.jpg",
+      "credit": "8w9d, CC0, via Wikimedia Commons",
+      "title": "Ricotta"
+    },
+    "mozzarella-part-skim": {
+      "file": "mozzarella-part-skim.jpg",
+      "credit": "Popo le Chien, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Mozzarella"
+    },
+    "cheddar": {
+      "file": "cheddar.jpg",
+      "credit": "J.P.Lon, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cheddar cheese"
+    },
+    "paneer": {
+      "file": "paneer.jpg",
+      "credit": "Sonja Pauen - Stanhopea, CC BY 2.0 de, via Wikimedia Commons",
+      "title": "Paneer"
+    },
+    "khoa": {
+      "file": "khoa.jpg",
+      "credit": "Kushal Goyal, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Khoa"
+    },
+    "raisins": {
+      "file": "raisins.jpg",
+      "credit": "Paweł Kuźniar (Jojo_1, Jojo), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Raisin"
+    },
+    "apricots-dried": {
+      "file": "apricots-dried.jpg",
+      "credit": "Andrey Butko, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Dried apricot"
+    },
+    "prunes-dried": {
+      "file": "prunes-dried.jpg",
+      "credit": "Emőke Dénes, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Prune"
+    },
+    "coconut-milk": {
+      "file": "coconut-milk.jpg",
+      "credit": "S Sepp, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Coconut milk"
+    },
+    "besan": {
+      "file": "besan.jpg",
+      "credit": "AlexanderVanLoon, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Gram flour"
+    },
+    "rice-flour": {
+      "file": "rice-flour.jpg",
+      "credit": "FotoosVanRobin, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Rice flour"
+    },
+    "arrowroot-flour": {
+      "file": "arrowroot-flour.jpg",
+      "credit": "andy_king50, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Arrowroot"
+    },
+    "banana": {
+      "file": "banana.jpg",
+      "credit": "TimothyPilgrim, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Banana"
+    },
+    "mango": {
+      "file": "mango.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Mango"
+    },
+    "papaya": {
+      "file": "papaya.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Papaya"
+    },
+    "guava": {
+      "file": "guava.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Guava"
+    },
+    "pomegranate": {
+      "file": "pomegranate.jpg",
+      "credit": "Augustus Binu : flickr, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Pomegranate"
+    },
+    "pineapple": {
+      "file": "pineapple.jpg",
+      "credit": "Suniltg at Malayalam Wikipedia, CC BY 3.0, via Wikimedia Commons",
+      "title": "Pineapple"
+    },
+    "watermelon": {
+      "file": "watermelon.jpg",
+      "credit": "Fred Hsu (Wikipedia:User:Fred Hsu on en.wikipedia), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Watermelon"
+    },
+    "cantaloupe": {
+      "file": "cantaloupe.jpg",
+      "credit": "Rasbak at Dutch Wikipedia, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cantaloupe"
+    },
+    "pear": {
+      "file": "pear.jpg",
+      "credit": "Keith Weller, Public domain, via Wikimedia Commons",
+      "title": "Pear"
+    },
+    "strawberry": {
+      "file": "strawberry.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Strawberry"
+    },
+    "blueberry": {
+      "file": "blueberry.jpg",
+      "credit": "The original Uploader was Oven Fresh at English Wikipedia, Public domain, via Wikimedia Commons",
+      "title": "Blueberry"
+    },
+    "jackfruit": {
+      "file": "jackfruit.jpg",
+      "credit": "This work was made by Tushar Hossain and released under the license(s) stated below. Please feel free to use it for any purpose as long as you credit Tushar Hossain as author and follow the terms of the chosen license. If you use this work outside of the Wikimedia projects, I would very much like to get a note from you. Thanks!, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Jackfruit"
+    },
+    "tamarind": {
+      "file": "tamarind.jpg",
+      "credit": "B.navez, CC BY 2.5, via Wikimedia Commons",
+      "title": "Tamarind"
+    },
+    "rolled-oats": {
+      "file": "rolled-oats.jpg",
+      "credit": "en:user:Hankwang, Public domain, via Wikimedia Commons",
+      "title": "Rolled oats"
+    },
+    "quinoa-dry": {
+      "file": "quinoa-dry.jpg",
+      "credit": "User:MarkusHagenlocher, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Quinoa"
+    },
+    "semolina-suji": {
+      "file": "semolina-suji.jpg",
+      "credit": "Sanjay ach, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Semolina"
+    },
+    "white-rice-dry": {
+      "file": "white-rice-dry.jpg",
+      "credit": "Hannahdownes, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "White rice"
+    },
+    "brown-rice-dry": {
+      "file": "brown-rice-dry.jpg",
+      "credit": "unknown author, CC BY-SA 2.0 de, via Wikimedia Commons",
+      "title": "Brown rice"
+    },
+    "jowar-flour": {
+      "file": "jowar-flour.jpg",
+      "credit": "No machine-readable author provided. Pethan assumed (based on copyright claims)., CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Sorghum"
+    },
+    "cornmeal-yellow": {
+      "file": "cornmeal-yellow.jpg",
+      "credit": "Popo le Chien, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cornmeal"
+    },
+    "barley-pearled": {
+      "file": "barley-pearled.jpg",
+      "credit": "국립국어원, CC BY-SA 2.0 kr, via Wikimedia Commons",
+      "title": "Pearl barley"
+    },
+    "tapioca-pearls": {
+      "file": "tapioca-pearls.jpg",
+      "credit": "Sophie, CC BY 2.0, via Wikimedia Commons",
+      "title": "Tapioca pearl"
+    },
+    "buckwheat-groats": {
+      "file": "buckwheat-groats.jpg",
+      "credit": "STRONGlk7, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Buckwheat"
+    },
+    "amaranth-grain": {
+      "file": "amaranth-grain.jpg",
+      "credit": "unknown author, CC BY-SA 2.0 de, via Wikimedia Commons",
+      "title": "Amaranth grain"
+    },
+    "poha-rice-flakes": {
+      "file": "poha-rice-flakes.jpg",
+      "credit": "Sanjay Acharya, aka Sanjay ach at en.wikipedia, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Flattened rice"
+    },
+    "bulgur-dry": {
+      "file": "bulgur-dry.jpg",
+      "credit": "Myself, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Bulgur"
+    },
+    "bulgur-cooked": {
+      "file": "bulgur-cooked.jpg",
+      "credit": "Myself, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Bulgur"
+    },
+    "couscous-dry": {
+      "file": "couscous-dry.jpg",
+      "credit": "Lmmima, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Couscous"
+    },
+    "quinoa-cooked": {
+      "file": "quinoa-cooked.jpg",
+      "credit": "User:MarkusHagenlocher, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Quinoa"
+    },
+    "spaghetti-whole-wheat-dry": {
+      "file": "spaghetti-whole-wheat-dry.jpg",
+      "credit": "Nnaluci, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Spaghetti"
+    },
+    "pita-whole-wheat": {
+      "file": "pita-whole-wheat.jpg",
+      "credit": "Azure Dragon of the East, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Pita"
+    },
+    "tortilla-corn": {
+      "file": "tortilla-corn.jpg",
+      "credit": "Vigilantcosmicpenguin, CC BY 4.0, via Wikimedia Commons",
+      "title": "Tortilla"
+    },
+    "tortilla-whole-wheat": {
+      "file": "tortilla-whole-wheat.jpg",
+      "credit": "Vigilantcosmicpenguin, CC BY 4.0, via Wikimedia Commons",
+      "title": "Tortilla"
+    },
+    "pinto-beans-dry": {
+      "file": "pinto-beans-dry.jpg",
+      "credit": "Sanjay Acharya, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Pinto bean"
+    },
+    "lentils-green-brown-dry": {
+      "file": "lentils-green-brown-dry.jpg",
+      "credit": "User:Justinc, CC BY-SA 2.5, via Wikimedia Commons",
+      "title": "Lentil"
+    },
+    "moong-whole-dry": {
+      "file": "moong-whole-dry.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Mung bean"
+    },
+    "split-peas-dry": {
+      "file": "split-peas-dry.jpg",
+      "credit": "Sanjay Acharya, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Split pea"
+    },
+    "soybeans-dry": {
+      "file": "soybeans-dry.jpg",
+      "credit": "unknown author, Public domain, via Wikimedia Commons",
+      "title": "Soybean"
+    },
+    "blackeyed-peas-fresh": {
+      "file": "blackeyed-peas-fresh.jpg",
+      "credit": "Jud McCranie, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Black-eyed pea"
+    },
+    "moong-sprouts": {
+      "file": "moong-sprouts.jpg",
+      "credit": "국립국어원, CC BY-SA 2.0 kr, via Wikimedia Commons",
+      "title": "Mung bean sprout"
+    },
+    "navy-beans-dry": {
+      "file": "navy-beans-dry.jpg",
+      "credit": "Rasbak, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Navy bean"
+    },
+    "peanut-butter-natural": {
+      "file": "peanut-butter-natural.jpg",
+      "credit": "Famartin, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Peanut butter"
+    },
+    "pumpkin-seeds": {
+      "file": "pumpkin-seeds.jpg",
+      "credit": "Dmitry Makeev, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Pumpkin seed"
+    },
+    "chia-seeds": {
+      "file": "chia-seeds.jpg",
+      "credit": "Keegan Fields, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Chia seed"
+    },
+    "sesame-seeds": {
+      "file": "sesame-seeds.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Sesame"
+    },
+    "sunflower-seeds": {
+      "file": "sunflower-seeds.jpg",
+      "credit": "Kaldari, Public domain, via Wikimedia Commons",
+      "title": "Sunflower seed"
+    },
+    "tahini": {
+      "file": "tahini.jpg",
+      "credit": "Gilabrand, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Tahini"
+    },
+    "almonds": {
+      "file": "almonds.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Almond"
+    },
+    "walnuts": {
+      "file": "walnuts.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Walnut"
+    },
+    "cashews": {
+      "file": "cashews.jpg",
+      "credit": "Abhishek Jacob, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cashew"
+    },
+    "pistachios": {
+      "file": "pistachios.jpg",
+      "credit": "THOR, CC BY 2.0, via Wikimedia Commons",
+      "title": "Pistachio"
+    },
+    "oil-mustard": {
+      "file": "oil-mustard.jpg",
+      "credit": "Jyoti Chiring, CC BY 4.0, via Wikimedia Commons",
+      "title": "Mustard oil"
+    },
+    "oil-sesame": {
+      "file": "oil-sesame.jpg",
+      "credit": "Itineranttrader, Public domain, via Wikimedia Commons",
+      "title": "Sesame oil"
+    },
+    "oil-coconut": {
+      "file": "oil-coconut.jpg",
+      "credit": "Phu Thinh Co, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Coconut oil"
+    },
+    "oil-peanut": {
+      "file": "oil-peanut.jpg",
+      "credit": "emilee rader from Lansing, MI, USA, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Peanut oil"
+    },
+    "sugar-white": {
+      "file": "sugar-white.jpg",
+      "credit": "Romain Behar, Public domain, via Wikimedia Commons",
+      "title": "Sugar"
+    },
+    "honey": {
+      "file": "honey.jpg",
+      "credit": "Scott Bauer, USDA ARS, Public domain, via Wikimedia Commons",
+      "title": "Honey"
+    },
+    "molasses-blackstrap": {
+      "file": "molasses-blackstrap.jpg",
+      "credit": "Badagnani, CC BY 3.0, via Wikimedia Commons",
+      "title": "Molasses"
+    },
+    "vinegar-white": {
+      "file": "vinegar-white.jpg",
+      "credit": "Georges Seguin (Okki), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Vinegar"
+    },
+    "cocoa-powder": {
+      "file": "cocoa-powder.jpg",
+      "credit": "Chianti, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cocoa powder"
+    },
+    "jaggery": {
+      "file": "jaggery.jpg",
+      "credit": "Sanjay ach, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Jaggery"
+    },
+    "mustard-prepared": {
+      "file": "mustard-prepared.jpg",
+      "credit": "fuji01, CC0, via Wikimedia Commons",
+      "title": "Mustard (condiment)"
+    },
+    "soy-sauce-shoyu": {
+      "file": "soy-sauce-shoyu.jpg",
+      "credit": "국립국어원, CC BY-SA 2.0 kr, via Wikimedia Commons",
+      "title": "Soy sauce"
+    },
+    "maple-syrup": {
+      "file": "maple-syrup.jpg",
+      "credit": "User:Miguel Andrade, Public domain, via Wikimedia Commons",
+      "title": "Maple syrup"
+    },
+    "vinegar-red-wine": {
+      "file": "vinegar-red-wine.jpg",
+      "credit": "Georges Seguin (Okki), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Vinegar"
+    },
+    "vinegar-balsamic": {
+      "file": "vinegar-balsamic.jpg",
+      "credit": "Georges Seguin (Okki), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Vinegar"
+    },
+    "tempeh": {
+      "file": "tempeh.jpg",
+      "credit": "Veganbaking.net from USA, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Tempeh"
+    },
+    "edamame-frozen": {
+      "file": "edamame-frozen.jpg",
+      "credit": "Tammy Green (aka Zesmerelda) from Chicago Upscale Dining + Lounge Republic Pan-Asian Restaurant [1] in Ontario & Rush Street, Chicago, Illinois 60611, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Edamame"
+    },
+    "edamame-prepared": {
+      "file": "edamame-prepared.jpg",
+      "credit": "Tammy Green (aka Zesmerelda) from Chicago Upscale Dining + Lounge Republic Pan-Asian Restaurant [1] in Ontario & Rush Street, Chicago, Illinois 60611, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Edamame"
+    },
+    "turmeric-powder": {
+      "file": "turmeric-powder.jpg",
+      "credit": "SKsiddhartthan, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Turmeric"
+    },
+    "cumin-seed": {
+      "file": "cumin-seed.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Cumin"
+    },
+    "coriander-seed": {
+      "file": "coriander-seed.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Coriander"
+    },
+    "mustard-seed": {
+      "file": "mustard-seed.jpg",
+      "credit": "Novalis at en.wikipedia, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Mustard seed"
+    },
+    "fenugreek-seed": {
+      "file": "fenugreek-seed.jpg",
+      "credit": "Prof. Dr. Otto Wilhelm Thomé derivative work: Ninjatacoshell (talk), Public domain, via Wikimedia Commons",
+      "title": "Fenugreek"
+    },
+    "fennel-seed": {
+      "file": "fennel-seed.jpg",
+      "credit": "Alvesgaspar, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Fennel"
+    },
+    "black-pepper": {
+      "file": "black-pepper.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Black pepper"
+    },
+    "chili-powder": {
+      "file": "chili-powder.jpg",
+      "credit": "User JoeCarrasco on en.wikipedia, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Chili powder"
+    },
+    "cayenne": {
+      "file": "cayenne.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Cayenne pepper"
+    },
+    "paprika": {
+      "file": "paprika.jpg",
+      "credit": "Marcosgarrido88, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Paprika"
+    },
+    "cardamom-ground": {
+      "file": "cardamom-ground.jpg",
+      "credit": "Silar, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Cardamom"
+    },
+    "cinnamon-ground": {
+      "file": "cinnamon-ground.jpg",
+      "credit": "Simon A. Eugster, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cinnamon"
+    },
+    "nutmeg-ground": {
+      "file": "nutmeg-ground.jpg",
+      "credit": "Herusutimbul, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Nutmeg"
+    },
+    "bay-leaf": {
+      "file": "bay-leaf.jpg",
+      "credit": "Miansari66, Public domain, via Wikimedia Commons",
+      "title": "Bay leaf"
+    },
+    "curry-powder": {
+      "file": "curry-powder.jpg",
+      "credit": "Thomas Steiner, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Curry powder"
+    },
+    "ginger-ground": {
+      "file": "ginger-ground.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Ginger"
+    },
+    "saffron": {
+      "file": "saffron.jpg",
+      "credit": "Shaharbano, CC BY 4.0, via Wikimedia Commons",
+      "title": "Saffron"
+    },
+    "poppy-seed": {
+      "file": "poppy-seed.jpg",
+      "credit": "Odedr, Public domain, via Wikimedia Commons",
+      "title": "Poppy seed"
+    },
+    "ajwain-proxy-caraway": {
+      "file": "ajwain-proxy-caraway.jpg",
+      "credit": "Bames24, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Ajwain"
+    },
+    "garlic-powder": {
+      "file": "garlic-powder.jpg",
+      "credit": "Emilian Robert Vicol from Com. Balanesti, Romania, CC BY 2.0, via Wikimedia Commons",
+      "title": "Garlic powder"
+    },
+    "onion-powder": {
+      "file": "onion-powder.jpg",
+      "credit": "John Phelan, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Onion powder"
+    },
+    "anise-seed": {
+      "file": "anise-seed.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Anise"
+    },
+    "dill-weed-fresh": {
+      "file": "dill-weed-fresh.jpg",
+      "credit": "Illustration_Anethum_graveolens0.jpg: Prof. Dr. Otto Wilhelm Thomé derivative work: Aroche (talk), Public domain, via Wikimedia Commons",
+      "title": "Dill"
+    },
+    "coriander-leaf-dried": {
+      "file": "coriander-leaf-dried.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Coriander"
+    },
+    "salt-table": {
+      "file": "salt-table.jpg",
+      "credit": "James St. John, CC BY 2.0, via Wikimedia Commons",
+      "title": "Salt"
+    },
+    "baking-powder": {
+      "file": "baking-powder.jpg",
+      "credit": "Lou Sander, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Baking powder"
+    },
+    "cardamom-green": {
+      "file": "cardamom-green.jpg",
+      "credit": "Silar, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Cardamom"
+    },
+    "oregano-dried": {
+      "file": "oregano-dried.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Oregano"
+    },
+    "thyme-dried": {
+      "file": "thyme-dried.jpg",
+      "credit": "Evan-Amos, CC0, via Wikimedia Commons",
+      "title": "Thyme"
+    },
+    "whey-protein-powder": {
+      "file": "whey-protein-powder.jpg",
+      "credit": "Adrem68 at Dutch Wikipedia, Public domain, via Wikimedia Commons",
+      "title": "Whey protein"
+    },
+    "soy-protein-isolate": {
+      "file": "soy-protein-isolate.jpg",
+      "credit": "United Soybean Board, CC BY 2.0, via Wikimedia Commons",
+      "title": "Soy protein"
+    },
+    "onion": {
+      "file": "onion.jpg",
+      "credit": "Colin, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Onion"
+    },
+    "tomato": {
+      "file": "tomato.jpg",
+      "credit": "Softeis, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Tomato"
+    },
+    "tomato-puree": {
+      "file": "tomato-puree.jpg",
+      "credit": "Tabby, CC0, via Wikimedia Commons",
+      "title": "Tomato purée"
+    },
+    "tomato-paste": {
+      "file": "tomato-paste.jpg",
+      "credit": "SKopp, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Tomato paste"
+    },
+    "potato": {
+      "file": "potato.jpg",
+      "credit": "Scott Bauer, USDA ARS, Public domain, via Wikimedia Commons",
+      "title": "Potato"
+    },
+    "sweet-potato": {
+      "file": "sweet-potato.jpg",
+      "credit": "Llez, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Sweet potato"
+    },
+    "spinach": {
+      "file": "spinach.jpg",
+      "credit": "Rasbak, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Spinach"
+    },
+    "cauliflower": {
+      "file": "cauliflower.jpg",
+      "credit": "Coyau, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Cauliflower"
+    },
+    "eggplant": {
+      "file": "eggplant.jpg",
+      "credit": "Joydeep, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Eggplant"
+    },
+    "mushroom-white": {
+      "file": "mushroom-white.jpg",
+      "credit": "George Chernilevsky, Public domain, via Wikimedia Commons",
+      "title": "Edible mushroom"
+    },
+    "radish-daikon": {
+      "file": "radish-daikon.jpg",
+      "credit": "Self, en:User:Jengod, Public domain, via Wikimedia Commons",
+      "title": "Radish"
+    },
+    "turnip": {
+      "file": "turnip.jpg",
+      "credit": "thebittenword.com, CC BY 2.0, via Wikimedia Commons",
+      "title": "Turnip"
+    },
+    "pumpkin": {
+      "file": "pumpkin.jpg",
+      "credit": "Infrogmation of New Orleans, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Pumpkin"
+    },
+    "kale": {
+      "file": "kale.jpg",
+      "credit": "Rasbak, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Kale"
+    },
+    "celery": {
+      "file": "celery.jpg",
+      "credit": "Lombroso, Public domain, via Wikimedia Commons",
+      "title": "Celery"
+    },
+    "corn-sweet": {
+      "file": "corn-sweet.jpg",
+      "credit": "The original Uploader was wstoakLL at English Wikipedia, Public domain, via Wikimedia Commons",
+      "title": "Sweet corn"
+    },
+    "coriander-leaves": {
+      "file": "coriander-leaves.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Coriander"
+    },
+    "mint-fresh": {
+      "file": "mint-fresh.jpg",
+      "credit": "Simon Eugster --Simon 13:07, 2 July 2006 (UTC), CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Spearmint"
+    },
+    "taro-arbi": {
+      "file": "taro-arbi.jpg",
+      "credit": "No machine-readable author provided. Thierry Caro assumed (based on copyright claims)., CC BY-SA 2.5, via Wikimedia Commons",
+      "title": "Taro"
+    },
+    "methi-leaves": {
+      "file": "methi-leaves.jpg",
+      "credit": "Prof. Dr. Otto Wilhelm Thomé derivative work: Ninjatacoshell (talk), Public domain, via Wikimedia Commons",
+      "title": "Fenugreek"
+    },
+    "curry-leaves": {
+      "file": "curry-leaves.jpg",
+      "credit": "Rantingsteve at English Wikipedia, Public domain, via Wikimedia Commons",
+      "title": "Curry tree"
+    },
+    "radish-leaves": {
+      "file": "radish-leaves.jpg",
+      "credit": "Self, en:User:Jengod, Public domain, via Wikimedia Commons",
+      "title": "Radish"
+    },
+    "red-bell-pepper": {
+      "file": "red-bell-pepper.jpg",
+      "credit": "Kham Tran - www.khamtran.com, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Bell pepper"
+    },
+    "zucchini": {
+      "file": "zucchini.jpg",
+      "credit": "Evan-Amos, Public domain, via Wikimedia Commons",
+      "title": "Zucchini"
+    },
+    "fennel-bulb": {
+      "file": "fennel-bulb.jpg",
+      "credit": "Alvesgaspar, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Fennel"
+    },
+    "tomatoes-canned-whole": {
+      "file": "tomatoes-canned-whole.jpg",
+      "credit": "Moonsun1981, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Canned tomato"
+    },
+    "milk-whole": {
+      "file": "milk-whole.jpg",
+      "credit": "NIAID, CC BY 2.0, via Wikimedia Commons",
+      "title": "Milk"
+    },
+    "milk-2pct": {
+      "file": "milk-2pct.jpg",
+      "credit": "NIAID, CC BY 2.0, via Wikimedia Commons",
+      "title": "Milk"
+    },
+    "dahi-plain": {
+      "file": "dahi-plain.jpg",
+      "credit": "No machine-readable author provided. Rainer Zenz assumed (based on copyright claims)., CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Yogurt"
+    },
+    "butter-salted": {
+      "file": "butter-salted.jpg",
+      "credit": "Matěj Baťha, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Butter"
+    },
+    "cream-18": {
+      "file": "cream-18.jpg",
+      "credit": "jeffreyw, CC BY 2.0, via Wikimedia Commons",
+      "title": "Cream"
+    },
+    "dates-dry": {
+      "file": "dates-dry.jpg",
+      "credit": "Nepenthes, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Date palm"
+    },
+    "dates-medjool": {
+      "file": "dates-medjool.jpg",
+      "credit": "ORGANIChouse, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Medjool"
+    },
+    "figs-dried": {
+      "file": "figs-dried.jpg",
+      "credit": "Trew, C.J, Public domain, via Wikimedia Commons",
+      "title": "Fig"
+    },
+    "coconut-meat-raw": {
+      "file": "coconut-meat-raw.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Coconut"
+    },
+    "coconut-desiccated": {
+      "file": "coconut-desiccated.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Coconut"
+    },
+    "orange": {
+      "file": "orange.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Orange (fruit)"
+    },
+    "grapes": {
+      "file": "grapes.jpg",
+      "credit": "Elmer Hader, Public domain, via Wikimedia Commons",
+      "title": "The Grapes of Wrath"
+    },
+    "avocado": {
+      "file": "avocado.jpg",
+      "credit": "B.navez, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Avocado"
+    },
+    "lychee": {
+      "file": "lychee.jpg",
+      "credit": "B.navez, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Lychee"
+    },
+    "custard-apple": {
+      "file": "custard-apple.jpg",
+      "credit": "Berthe Hoola van Nooten (1817-1892), Pieter De Pannemaeker (lithographer), Public domain, via Wikimedia Commons",
+      "title": "Custard apple"
+    },
+    "amla": {
+      "file": "amla.jpg",
+      "credit": "L. Shyamal, CC BY 2.5, via Wikimedia Commons",
+      "title": "Phyllanthus emblica"
+    },
+    "raw-mango": {
+      "file": "raw-mango.jpg",
+      "credit": "Ivar Leidus, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Mango"
+    },
+    "atta-whole-wheat": {
+      "file": "atta-whole-wheat.jpg",
+      "credit": "Nga Ahorangi, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Atta (flour)"
+    },
+    "ragi-finger-millet": {
+      "file": "ragi-finger-millet.jpg",
+      "credit": "mage taken by J. Wilson, USDA-ARS while in Ethiopia in 2002., Public domain, via Wikimedia Commons",
+      "title": "Finger millet"
+    },
+    "black-beans-dry": {
+      "file": "black-beans-dry.jpg",
+      "credit": "Father.Jack from Coventry, UK, CC BY 2.0, via Wikimedia Commons",
+      "title": "Black turtle bean"
+    },
+    "black-beans-cooked": {
+      "file": "black-beans-cooked.jpg",
+      "credit": "Father.Jack from Coventry, UK, CC BY 2.0, via Wikimedia Commons",
+      "title": "Black turtle bean"
+    },
+    "masoor-dal-dry": {
+      "file": "masoor-dal-dry.jpg",
+      "credit": "User:Justinc, CC BY-SA 2.5, via Wikimedia Commons",
+      "title": "Lentil"
+    },
+    "toor-dal-pigeon-peas": {
+      "file": "toor-dal-pigeon-peas.jpg",
+      "credit": "Francisco Manuel Blanco (O.S.A.), Public domain, via Wikimedia Commons",
+      "title": "Pigeon pea"
+    },
+    "moth-bean": {
+      "file": "moth-bean.jpg",
+      "credit": "Lalitstar at English Wikipedia, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Vigna aconitifolia"
+    },
+    "lentils-green-brown-cooked": {
+      "file": "lentils-green-brown-cooked.jpg",
+      "credit": "User:Justinc, CC BY-SA 2.5, via Wikimedia Commons",
+      "title": "Lentil"
+    },
+    "peanuts-dry-roasted": {
+      "file": "peanuts-dry-roasted.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Peanut"
+    },
+    "hemp-seeds-hulled": {
+      "file": "hemp-seeds-hulled.jpg",
+      "credit": "Barbetorte, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Hemp"
+    },
+    "oil-olive": {
+      "file": "oil-olive.jpg",
+      "credit": "Poyraz 72, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Olive oil"
+    },
+    "oil-canola": {
+      "file": "oil-canola.jpg",
+      "credit": "Veganbaking.net, CC BY-SA 2.5, via Wikimedia Commons",
+      "title": "Rapeseed oil"
+    },
+    "sugar-brown": {
+      "file": "sugar-brown.jpg",
+      "credit": "Romain Behar, Public domain, via Wikimedia Commons",
+      "title": "Brown sugar"
+    },
+    "papad": {
+      "file": "papad.jpg",
+      "credit": "Biswarup Ganguly, CC BY 3.0, via Wikimedia Commons",
+      "title": "Papadam"
+    },
+    "olives-black": {
+      "file": "olives-black.jpg",
+      "credit": "en:User:Nickfraser, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Olive"
+    },
+    "tofu-extra-firm": {
+      "file": "tofu-extra-firm.jpg",
+      "credit": "DryPot, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Tofu"
+    },
+    "vital-wheat-gluten": {
+      "file": "vital-wheat-gluten.jpg",
+      "credit": "Amy Stephenson from New York, USA, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Seitan"
+    },
+    "cloves-ground": {
+      "file": "cloves-ground.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Clove"
+    },
+    "mace-ground": {
+      "file": "mace-ground.jpg",
+      "credit": "Herusutimbul, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Nutmeg"
+    },
+    "baking-soda": {
+      "file": "baking-soda.jpg",
+      "credit": "Nicolás Lichtmaier, Public domain, via Wikimedia Commons",
+      "title": "Sodium bicarbonate"
+    },
+    "flax-linseeds-ifct": {
+      "file": "flax-linseeds-ifct.jpg",
+      "credit": "Brandt, Wilhelm; Gürke, M.; Köhler, F. E.; Pabst, G.; Schellenberg, G.; Vogtherr, Max., Public domain, via Wikimedia Commons",
+      "title": "Flax"
+    },
+    "green-peas-fresh": {
+      "file": "green-peas-fresh.jpg",
+      "credit": "Rasbak, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Pea"
+    },
+    "carrot": {
+      "file": "carrot.jpg",
+      "credit": "Evan-Amos, Public domain, via Wikimedia Commons",
+      "title": "Carrot"
+    },
+    "okra": {
+      "file": "okra.jpg",
+      "credit": "Earth100, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Okra"
+    },
+    "bottle-gourd": {
+      "file": "bottle-gourd.jpg",
+      "credit": "撮影者はカールおじさんです。, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Calabash"
+    },
+    "bitter-gourd": {
+      "file": "bitter-gourd.jpg",
+      "credit": "Francisco Manuel Blanco (O.S.A.), Public domain, via Wikimedia Commons",
+      "title": "Momordica charantia"
+    },
+    "capsicum-green": {
+      "file": "capsicum-green.jpg",
+      "credit": "Kham Tran - www.khamtran.com, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Bell pepper"
+    },
+    "green-chilli": {
+      "file": "green-chilli.jpg",
+      "credit": "Takeaway, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Chili pepper"
+    },
+    "cucumber": {
+      "file": "cucumber.jpg",
+      "credit": "Stephen Ausmus, USDA ARS, Public domain, via Wikimedia Commons",
+      "title": "Cucumber"
+    },
+    "beetroot": {
+      "file": "beetroot.jpg",
+      "credit": "BriannaWalther, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Beetroot"
+    },
+    "lettuce-romaine": {
+      "file": "lettuce-romaine.jpg",
+      "credit": "Forest & Kim Starr, CC BY 3.0, via Wikimedia Commons",
+      "title": "Romaine lettuce"
+    },
+    "garlic": {
+      "file": "garlic.jpg",
+      "credit": "unknown author, Public domain, via Wikimedia Commons",
+      "title": "Garlic"
+    },
+    "ginger": {
+      "file": "ginger.jpg",
+      "credit": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen, Public domain, via Wikimedia Commons",
+      "title": "Ginger"
+    },
+    "spring-onion": {
+      "file": "spring-onion.jpg",
+      "credit": "Evan-Amos, Public domain, via Wikimedia Commons",
+      "title": "Scallion"
+    },
+    "yam-suran": {
+      "file": "yam-suran.jpg",
+      "credit": "J A Forbes, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Amorphophallus paeoniifolius"
+    },
+    "plantain-raw": {
+      "file": "plantain-raw.jpg",
+      "credit": "J & E, CC BY 2.0, via Wikimedia Commons",
+      "title": "Cooking banana"
+    },
+    "mustard-greens": {
+      "file": "mustard-greens.jpg",
+      "credit": "Walther Otto Müller, Public domain, via Wikimedia Commons",
+      "title": "Brassica juncea"
+    },
+    "lotus-root": {
+      "file": "lotus-root.jpg",
+      "credit": "T.Voekler, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Nelumbo nucifera"
+    },
+    "lemon-juice": {
+      "file": "lemon-juice.jpg",
+      "credit": "Elena Chochkova, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Lemon"
+    },
+    "lime-juice": {
+      "file": "lime-juice.jpg",
+      "credit": "Prosthetic Head, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Lime (fruit)"
+    },
+    "ash-gourd": {
+      "file": "ash-gourd.jpg",
+      "credit": "Akshay.paramatmuni1987 (left photo), মৌচুমী (bottom right photo), Zhangzhugang (upper right photo), montage by User:RoRo, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Wax gourd"
+    },
+    "snake-gourd": {
+      "file": "snake-gourd.jpg",
+      "credit": "Aruna (top left), Leslie Seaton (bottom left), Naseer Ommer from Kerala, India (top right), 杉山龍彦 (bottom right), montage by RoRo, CC BY-SA 3.0, via Wikimedia Commons",
+      "title": "Trichosanthes cucumerina"
+    },
+    "water-chestnut": {
+      "file": "water-chestnut.jpg",
+      "credit": "Francisco Manuel Blanco (O.S.A.), Public domain, via Wikimedia Commons",
+      "title": "Eleocharis dulcis"
+    },
+    "parsley-fresh": {
+      "file": "parsley-fresh.jpg",
+      "credit": "Jeremy Bolwell, CC BY-SA 2.0, via Wikimedia Commons",
+      "title": "Parsley sauce"
+    },
+    "basil-fresh": {
+      "file": "basil-fresh.jpg",
+      "credit": "Photo by David J. Stang, CC BY-SA 4.0, via Wikimedia Commons",
+      "title": "Basil"
+    }
+  }
+}

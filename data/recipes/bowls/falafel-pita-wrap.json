@@ -1,0 +1,80 @@
+{
+  "slug": "falafel-pita-wrap",
+  "name": "Baked falafel pita wrap",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "middle-eastern",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 10,
+  "total_min": 15,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "pita-whole-wheat",
+      "grams": 130
+    },
+    {
+      "component": "baked-falafel",
+      "grams": 250,
+      "display_qty": 7,
+      "display_unit": "patties"
+    },
+    {
+      "component": "hummus",
+      "grams": 60,
+      "alt_ingredient": "hummus-commercial"
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 80
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 80
+    },
+    {
+      "ingredient": "lettuce-romaine",
+      "grams": 40
+    },
+    {
+      "component": "yogurt-herb-dressing",
+      "grams": 60
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Make the baked falafel in advance, or reheat patties you already have in a 180°C oven for 8 minutes.",
+      "technique": "oven-basics",
+      "timer_sec": 480,
+      "cue": "The patties are hot through with crisp edges.",
+      "tip": "Space them out on the tray so they crisp instead of steaming."
+    },
+    {
+      "text": "Warm the pita in a dry pan for 30 seconds a side.",
+      "technique": "oven-basics",
+      "cue": "The pita is soft and slightly puffed, not crisp."
+    },
+    {
+      "text": "Spread hummus inside, add falafel, lettuce, cucumber and tomato, then finish with yoghurt dressing.",
+      "technique": "salad-formula"
+    }
+  ],
+  "storage": "Store the baked falafel separately for up to 3 days and reheat in a 180°C oven for 8 minutes. Assemble the wrap fresh so the pita stays soft.",
+  "serving_unit": {
+    "singular": "falafel patty",
+    "plural": "falafel patties",
+    "per_serving": 4
+  }
+}

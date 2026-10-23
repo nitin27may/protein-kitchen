@@ -1,0 +1,53 @@
+[
+  {
+    "slug": "whey-protein-powder",
+    "name": "Whey protein powder",
+    "aliases": [
+      "whey"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 352,
+      "protein_g": 78.1,
+      "carbs_g": 6.2,
+      "fat_g": 1.6,
+      "fibre_g": 3.1
+    },
+    "source": "CNF",
+    "source_id": "7231",
+    "aisle": "supplements",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Costco",
+      "Supplement store"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "soy-protein-isolate",
+    "name": "Soy protein isolate, powder",
+    "aliases": [
+      "soy isolate"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 338,
+      "protein_g": 80.7,
+      "carbs_g": 7.4,
+      "fat_g": 3.4,
+      "fibre_g": 5.6
+    },
+    "source": "CNF",
+    "source_id": "3328",
+    "aisle": "supplements",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Supplement store"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  }
+]

@@ -1,0 +1,444 @@
+[
+  {
+    "slug": "greek-yogurt-0pct",
+    "name": "Greek yogurt, plain, fat free",
+    "aliases": [
+      "greek dahi",
+      "hung curd (approx.)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 58,
+      "protein_g": 10.5,
+      "carbs_g": 3.2,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "6979",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Greek yogurt (fat free)"
+  },
+  {
+    "slug": "cottage-cheese-1pct",
+    "name": "Cottage cheese, 1% M.F.",
+    "aliases": [
+      "cottage cheese"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 72,
+      "protein_g": 12.4,
+      "carbs_g": 2.7,
+      "fat_g": 1.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "107",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Cottage cheese (1%)"
+  },
+  {
+    "slug": "milk-whole",
+    "name": "Milk, whole (3.25%)",
+    "aliases": [
+      "doodh",
+      "full cream milk"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 61,
+      "protein_g": 3.1,
+      "carbs_g": 4.8,
+      "fat_g": 3.2,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "113",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Whole milk"
+  },
+  {
+    "slug": "milk-2pct",
+    "name": "Milk, 2%",
+    "aliases": [
+      "toned milk"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 50,
+      "protein_g": 3.3,
+      "carbs_g": 4.8,
+      "fat_g": 2.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "61",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "2% milk"
+  },
+  {
+    "slug": "milk-skim",
+    "name": "Milk, skim",
+    "aliases": [
+      "double toned milk"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 34,
+      "protein_g": 3.4,
+      "carbs_g": 5.0,
+      "fat_g": 0.1,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "114",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "dahi-plain",
+    "name": "Yogurt, plain (2-3.9% M.F.) (dahi)",
+    "aliases": [
+      "dahi",
+      "curd",
+      "yoghurt"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 50,
+      "protein_g": 4.6,
+      "carbs_g": 3.4,
+      "fat_g": 2.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "6961",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Dahi (plain yogurt)"
+  },
+  {
+    "slug": "buttermilk-chaas",
+    "name": "Buttermilk, cultured, 1%",
+    "aliases": [
+      "chaas",
+      "chhach",
+      "lassi base"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 40,
+      "protein_g": 3.3,
+      "carbs_g": 4.8,
+      "fat_g": 0.9,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "124",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Buttermilk (chaas)"
+  },
+  {
+    "slug": "butter-salted",
+    "name": "Butter, regular",
+    "aliases": [
+      "makhan",
+      "butter"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 717,
+      "protein_g": 0.8,
+      "carbs_g": 0.1,
+      "fat_g": 81.1,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "118",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "cream-35",
+    "name": "Cream, whipping, 35%",
+    "aliases": [
+      "malai (approx.)",
+      "fresh cream"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 328,
+      "protein_g": 2.1,
+      "carbs_g": 2.9,
+      "fat_g": 35.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "138",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Whipping cream (35%)"
+  },
+  {
+    "slug": "cream-18",
+    "name": "Cream, table, 18%",
+    "aliases": [
+      "light cream"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 185,
+      "protein_g": 2.7,
+      "carbs_g": 3.8,
+      "fat_g": 18.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "136",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Table cream (18%)"
+  },
+  {
+    "slug": "milk-powder-skim",
+    "name": "Milk, dry, skim powder",
+    "aliases": [
+      "milk powder"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 363,
+      "protein_g": 36.2,
+      "carbs_g": 52.0,
+      "fat_g": 0.8,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "134",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Skim milk powder"
+  },
+  {
+    "slug": "condensed-milk",
+    "name": "Milk, condensed, sweetened",
+    "aliases": [
+      "milkmaid"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 321,
+      "protein_g": 7.9,
+      "carbs_g": 54.4,
+      "fat_g": 8.7,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "68",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true,
+    "display_name": "Sweetened condensed milk"
+  },
+  {
+    "slug": "ricotta-part-skim",
+    "name": "Ricotta, partly skimmed",
+    "aliases": [
+      "fresh cheese (paneer substitute, not equal)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 138,
+      "protein_g": 11.4,
+      "carbs_g": 5.1,
+      "fat_g": 7.9,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "44",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "mozzarella-part-skim",
+    "name": "Mozzarella, part skim",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 254,
+      "protein_g": 24.3,
+      "carbs_g": 2.8,
+      "fat_g": 15.9,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "111",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "cheddar",
+    "name": "Cheddar cheese",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 406,
+      "protein_g": 24.0,
+      "carbs_g": 1.3,
+      "fat_g": 33.8,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "119",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "paneer",
+    "name": "Paneer",
+    "aliases": [
+      "paneer",
+      "cottage cheese (Indian)",
+      "chhena (pressed)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 305,
+      "protein_g": 18.9,
+      "carbs_g": 2.4,
+      "fat_g": 24.8,
+      "fibre_g": 0
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-L003",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "khoa",
+    "name": "Khoa (mawa)",
+    "aliases": [
+      "mawa",
+      "khoya"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 316,
+      "protein_g": 16.3,
+      "carbs_g": 16.5,
+      "fat_g": 20.6,
+      "fibre_g": 0
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-L004",
+    "aisle": "dairy",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  }
+]

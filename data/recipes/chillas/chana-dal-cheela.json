@@ -1,0 +1,84 @@
+{
+  "slug": "chana-dal-cheela",
+  "name": "Chana dal cheela",
+  "kind": "recipe",
+  "family": "chillas",
+  "meal_slots": [
+    "breakfast",
+    "lunch"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 20,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chana-dal",
+      "grams": 110
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 50
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 5
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "chana-dal",
+      "grams": 110,
+      "lead_hours": 4,
+      "instruction": "Soak chana dal 4 hours, drain"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Blend soaked chana dal coarse with ginger, chilli, cumin and salt.",
+      "timer_sec": 180
+    },
+    {
+      "text": "Cook 4 thick cheelas (about 15 cm) on a medium pan, 3 minutes a side.",
+      "cue": "Bubbles appear across the surface, the edges lift and the underside is golden. Flip once, when the top is no longer shiny.",
+      "tip": "Pour the batter in the centre and spread it quickly in a spiral. A hot pan, lightly greased, stops sticking."
+    },
+    {
+      "text": "Top with paneer and onion."
+    }
+  ],
+  "serving_unit": {
+    "singular": "cheela",
+    "plural": "cheelas",
+    "per_serving": 2
+  }
+}

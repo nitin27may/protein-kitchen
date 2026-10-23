@@ -1,0 +1,58 @@
+{
+  "slug": "ragi-porridge",
+  "name": "Ragi porridge with milk",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 10,
+  "total_min": 10,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "ragi-finger-millet",
+      "grams": 50
+    },
+    {
+      "ingredient": "milk-whole",
+      "grams": 300
+    },
+    {
+      "ingredient": "jaggery",
+      "grams": 12
+    },
+    {
+      "ingredient": "almonds",
+      "grams": 15
+    },
+    {
+      "ingredient": "cardamom-green",
+      "grams": 0.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk ragi into 100 ml cold milk."
+    },
+    {
+      "text": "Heat remaining milk, add ragi slurry, stir 6 minutes until thick.",
+      "timer_sec": 360,
+      "cue": "The porridge coats a spoon, has no raw flour smell and is free of lumps.",
+      "tip": "Whisk the ragi into cold milk first and stir constantly once it is in the hot milk."
+    },
+    {
+      "text": "Sweeten with jaggery, top with almonds."
+    }
+  ]
+}

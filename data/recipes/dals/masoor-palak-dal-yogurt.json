@@ -1,0 +1,84 @@
+{
+  "slug": "masoor-palak-dal-yogurt",
+  "name": "Masoor palak dal with yogurt",
+  "kind": "recipe",
+  "family": "dals",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 12,
+  "total_min": 30,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "masoor-dal-dry",
+      "grams": 150
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 200
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 8
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 300
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Pressure cook the rinsed dal with turmeric and 700 ml water, 3 whistles.",
+      "timer_sec": 600,
+      "cue": "The dal has collapsed into a creamy mash.",
+      "technique": "pressure-cooker-basics"
+    },
+    {
+      "text": "Fry cumin, onion and garlic in the oil, add tomato and cook down, then stir in spinach until wilted.",
+      "timer_sec": 420,
+      "cue": "The onion is golden and the spinach is just wilted.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Combine with the dal and simmer 5 minutes. Serve each bowl with 75 g Greek yogurt.",
+      "timer_sec": 300,
+      "cue": "The dal is creamy and pours like thick soup."
+    }
+  ]
+}

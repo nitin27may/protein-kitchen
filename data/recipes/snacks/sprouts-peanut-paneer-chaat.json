@@ -1,0 +1,65 @@
+{
+  "slug": "sprouts-peanut-paneer-chaat",
+  "name": "Sprouts peanut paneer chaat",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 8,
+  "active_min": 8,
+  "total_min": 8,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "moong-sprouts",
+      "grams": 150
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 50
+    },
+    {
+      "ingredient": "peanuts-dry-roasted",
+      "grams": 20
+    },
+    {
+      "ingredient": "onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 50
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Steam the sprouts for 5 minutes for food safety, then cool.",
+      "timer_sec": 300,
+      "cue": "The sprouts are just tender, bright and still slightly crisp, and have been cooled.",
+      "tip": "Always cook sprouts lightly before eating. Raw sprouts carry a food-safety risk."
+    },
+    {
+      "text": "Toss with paneer cubes, peanuts, onion, tomato, lemon and chilli."
+    }
+  ]
+}

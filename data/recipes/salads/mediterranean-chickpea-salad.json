@@ -1,0 +1,80 @@
+{
+  "slug": "mediterranean-chickpea-salad",
+  "name": "Mediterranean chickpea salad",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 15,
+  "equipment": [],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 350
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 150
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 150
+    },
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "olives-black",
+      "grams": 30
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 15
+    },
+    {
+      "ingredient": "pumpkin-seeds",
+      "grams": 25
+    },
+    {
+      "component": "tofu-feta",
+      "grams": 220
+    },
+    {
+      "component": "lemon-olive-vinaigrette",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Drain and rinse the chickpeas, then dress them with half the vinaigrette and rest 10 minutes.",
+      "technique": "salad-formula",
+      "timer_sec": 600
+    },
+    {
+      "text": "Chop cucumber, tomato, pepper and onion into similar bite-size pieces.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Combine with olives, parsley and tofu feta, add the rest of the vinaigrette and taste for salt.",
+      "technique": "vinaigrette-ratio"
+    }
+  ]
+}

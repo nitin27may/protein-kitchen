@@ -1,0 +1,90 @@
+{
+  "slug": "dal-tadka",
+  "name": "Dal tadka",
+  "kind": "recipe",
+  "family": "dals",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 40,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "toor-dal-pigeon-peas",
+      "grams": 100
+    },
+    {
+      "ingredient": "masoor-dal-dry",
+      "grams": 60
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 120
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "ghee",
+      "grams": 15
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 10
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 4
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Pressure cook both dals with turmeric, tomato and salt, 4 whistles.",
+      "timer_sec": 900,
+      "cue": "The dal collapses into a creamy mash when stirred, with no hard bits.",
+      "technique": "pressure-cooker-basics"
+    },
+    {
+      "text": "Heat ghee, fry cumin, garlic, onion and chilli powder until golden.",
+      "timer_sec": 360,
+      "cue": "The cumin sizzles, the garlic is golden and the onion is soft. Pour at once.",
+      "technique": "tadka-tempering"
+    },
+    {
+      "text": "Pour tadka over dal, simmer 3 minutes, add coriander.",
+      "timer_sec": 180,
+      "cue": "The surface shimmers with spiced oil and the dal pours like thick soup.",
+      "tip": "Add hot water a splash at a time if it is too thick."
+    }
+  ],
+  "storage": "Refrigerate up to 4 days or freeze for 3 months. Dal thickens as it sits: loosen with hot water and refresh with a fresh tadka."
+}

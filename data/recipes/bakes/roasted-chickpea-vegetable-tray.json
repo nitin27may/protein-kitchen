@@ -1,0 +1,86 @@
+{
+  "slug": "roasted-chickpea-vegetable-tray",
+  "name": "Roasted chickpea and vegetable tray",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 45,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 300
+    },
+    {
+      "ingredient": "cauliflower",
+      "grams": 250
+    },
+    {
+      "ingredient": "sweet-potato",
+      "grams": 200
+    },
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "paprika",
+      "grams": 3
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    },
+    {
+      "component": "yogurt-herb-dressing",
+      "grams": 80
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Dry the chickpeas thoroughly with a towel.",
+      "technique": "roast-chickpeas"
+    },
+    {
+      "text": "Cut cauliflower and sweet potato to the same size so they cook together.",
+      "technique": "oven-basics",
+      "cue": "Pieces are about the same size, roughly 3 cm, so they finish together."
+    },
+    {
+      "text": "Toss everything with oil and spices and roast at 200°C for 35 minutes, shaking halfway.",
+      "technique": "roast-chickpeas",
+      "timer_sec": 2100,
+      "cue": "Edges are browned, the chickpeas are crisp on the outside and a fork slides into the sweet potato.",
+      "tip": "Use two trays rather than crowding one. Crowded vegetables steam."
+    },
+    {
+      "text": "Serve with the yoghurt dressing."
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "slug": "tofu-palak",
+  "name": "Tofu palak",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 300
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 300
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 100
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 80
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 8
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 2.5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blanch the spinach 2 minutes, drain and blend smooth.",
+      "timer_sec": 120,
+      "cue": "The spinach is bright green and fully wilted. Cool it in cold water so it keeps its colour."
+    },
+    {
+      "text": "Fry cumin, onion, ginger and garlic in the oil, add tomato and curry powder and cook to a paste.",
+      "timer_sec": 480,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add the spinach and whisked dahi, then the pressed tofu cubes, and simmer 6 minutes.",
+      "technique": "press-tofu",
+      "timer_sec": 360,
+      "cue": "The gravy is smooth and green and the tofu is hot through.",
+      "tip": "Whisk the dahi smooth and add it off a low heat so it does not split."
+    }
+  ]
+}

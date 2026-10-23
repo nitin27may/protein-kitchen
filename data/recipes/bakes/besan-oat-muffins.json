@@ -1,0 +1,95 @@
+{
+  "slug": "besan-oat-muffins",
+  "name": "Besan oat protein muffins",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "breakfast",
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 6,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 30,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "besan",
+      "grams": 100
+    },
+    {
+      "ingredient": "rolled-oats",
+      "grams": 80
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "milk-2pct",
+      "grams": 100
+    },
+    {
+      "ingredient": "flaxseed",
+      "grams": 20
+    },
+    {
+      "ingredient": "banana",
+      "grams": 100
+    },
+    {
+      "ingredient": "maple-syrup",
+      "grams": 30
+    },
+    {
+      "ingredient": "baking-powder",
+      "grams": 6
+    },
+    {
+      "ingredient": "walnuts",
+      "grams": 40
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Make a flax mix with 20 g ground flaxseed and 60 ml water and rest 5 minutes. Water is not counted.",
+      "technique": "bake-without-eggs",
+      "timer_sec": 300
+    },
+    {
+      "text": "Whisk yoghurt, milk, mashed banana, maple syrup and the flax mix.",
+      "technique": "bake-without-eggs"
+    },
+    {
+      "text": "Fold in besan, oats, baking powder and salt, then add walnuts. Do not overmix.",
+      "technique": "bake-without-eggs"
+    },
+    {
+      "text": "Divide into 6 muffin cups and bake at 180°C for 22 minutes. Cool on a rack.",
+      "technique": "oven-basics",
+      "timer_sec": 1320,
+      "cue": "A skewer in the centre comes out clean and the tops spring back when pressed.",
+      "tip": "Cool 10 minutes in the tin before lifting out, or the bases tear."
+    }
+  ],
+  "storage": "Keep 3 to 4 days in the fridge, or freeze individually wrapped for 2 months. Warm 30 seconds in the microwave or 8 minutes in a 160°C oven.",
+  "serving_unit": {
+    "singular": "muffin",
+    "plural": "muffins",
+    "per_serving": 1
+  }
+}

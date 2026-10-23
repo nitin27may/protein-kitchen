@@ -1,0 +1,62 @@
+{
+  "slug": "yogurt-herb-dressing",
+  "name": "Yoghurt herb dressing",
+  "kind": "component",
+  "family": "dressings",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "greek",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 8,
+  "active_min": 8,
+  "total_min": 8,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 80
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 4
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 15
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 10
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 8
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Grate the cucumber and squeeze out the water.",
+      "cue": "The grated cucumber is a damp clump with no liquid dripping when squeezed."
+    },
+    {
+      "text": "Stir into yoghurt with grated garlic, lemon juice, oil, chopped parsley and salt.",
+      "technique": "vinaigrette-ratio",
+      "cue": "The dressing is creamy and flecked with green, thick enough to coat a spoon."
+    }
+  ]
+}

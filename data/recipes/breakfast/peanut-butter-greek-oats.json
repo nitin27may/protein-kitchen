@@ -1,0 +1,55 @@
+{
+  "slug": "peanut-butter-greek-oats",
+  "name": "Peanut butter Greek yogurt oats",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 5,
+  "total_min": 8,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "rolled-oats",
+      "grams": 60
+    },
+    {
+      "ingredient": "milk-2pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "peanut-butter-natural",
+      "grams": 20
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 100
+    },
+    {
+      "ingredient": "banana",
+      "grams": 60
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Simmer oats in milk for 4 minutes, stirring.",
+      "timer_sec": 240,
+      "cue": "The oats are thick and creamy, and a spoon leaves a trail."
+    },
+    {
+      "text": "Stir in peanut butter, then top with yogurt and sliced banana.",
+      "technique": "high-protein-snacks"
+    }
+  ]
+}

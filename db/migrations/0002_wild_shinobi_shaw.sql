@@ -1,0 +1,1 @@
+ALTER TABLE `plan_setups` ADD `health_focus` text;

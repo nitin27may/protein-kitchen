@@ -1,0 +1,102 @@
+{
+  "slug": "moong-spinach-soup",
+  "name": "Moong and spinach soup",
+  "kind": "recipe",
+  "family": "soups",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian-fusion",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 45,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "moong-whole-dry",
+      "grams": 160
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 200
+    },
+    {
+      "ingredient": "onion",
+      "grams": 100
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "ghee",
+      "grams": 12
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 20
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 4
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 320
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "moong-whole-dry",
+      "grams": 160,
+      "lead_hours": 6,
+      "instruction": "Soak whole moong, drain"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Pressure cook soaked moong with turmeric and 1.2 litres of water, 4 whistles.",
+      "technique": "cook-legumes",
+      "timer_sec": 900,
+      "cue": "A moong bean crushes easily between two fingers."
+    },
+    {
+      "text": "Fry cumin, onion, garlic and ginger in ghee and add to the moong with spinach.",
+      "technique": "soup-basics",
+      "timer_sec": 420,
+      "cue": "The cumin sizzles and the onion is soft."
+    },
+    {
+      "text": "Simmer 5 minutes, blend partly, and finish with lemon juice.",
+      "technique": "soup-basics",
+      "cue": "The soup is creamy where it was blended and the spinach is tender."
+    },
+    {
+      "text": "Top each bowl with 80 g Greek yoghurt just before serving. It adds protein and cools the heat.",
+      "cue": "The yogurt is cold and the soup is hot. Serve at once."
+    }
+  ]
+}

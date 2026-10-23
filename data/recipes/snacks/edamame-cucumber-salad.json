@@ -1,0 +1,57 @@
+{
+  "slug": "edamame-cucumber-salad",
+  "name": "Edamame cucumber salad",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 5,
+  "active_min": 5,
+  "total_min": 5,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 120
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "sesame-seeds",
+      "grams": 4
+    },
+    {
+      "ingredient": "lime-juice",
+      "grams": 8
+    },
+    {
+      "ingredient": "soy-sauce-shoyu",
+      "grams": 5
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Thaw or warm the edamame and cool.",
+      "technique": "salad-formula",
+      "cue": "The edamame is cooled and bright green."
+    },
+    {
+      "text": "Toss with sliced cucumber, grated ginger, lime, soy sauce and sesame.",
+      "technique": "salad-formula"
+    }
+  ]
+}

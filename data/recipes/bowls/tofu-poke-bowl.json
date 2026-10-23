@@ -1,0 +1,79 @@
+{
+  "slug": "tofu-poke-bowl",
+  "name": "Tofu poke-style bowl",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 40,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 300
+    },
+    {
+      "ingredient": "soy-sauce-shoyu",
+      "grams": 15
+    },
+    {
+      "ingredient": "white-rice-dry",
+      "grams": 80
+    },
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 150
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "avocado",
+      "grams": 80
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 60
+    },
+    {
+      "ingredient": "sesame-seeds",
+      "grams": 10
+    },
+    {
+      "component": "peanut-lime-dressing",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press tofu, cube it and marinate in soy sauce for 15 minutes.",
+      "technique": "press-tofu",
+      "timer_sec": 900
+    },
+    {
+      "text": "Bake at 200°C for 20 minutes until the edges firm up.",
+      "technique": "oven-basics",
+      "timer_sec": 1200,
+      "cue": "The edges are firm and lightly golden and the surface is dry to the touch."
+    },
+    {
+      "text": "Cook rice and cool slightly. Assemble with edamame, cucumber, avocado and carrot, then drizzle with dressing and sesame seeds.",
+      "technique": "salad-formula",
+      "cue": "The rice is warm, not hot, so the avocado does not go soft."
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "slug": "paneer-tikka-airfryer",
+  "name": "Paneer tikka (air fryer)",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 30,
+  "equipment": [
+    "air fryer"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "paneer",
+      "grams": 250
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 80
+    },
+    {
+      "ingredient": "capsicum-green",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "marinate",
+      "ingredient": "paneer",
+      "grams": 250,
+      "lead_hours": 1,
+      "instruction": "Marinate paneer in dahi and spices"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Marinate paneer and vegetables in dahi and spices, at least 30 minutes."
+    },
+    {
+      "text": "Air fry at 190°C for 12 minutes, turning once.",
+      "timer_sec": 720,
+      "cue": "The paneer has browned edges and a few charred spots, and the vegetables are tender.",
+      "tip": "Air fry in a single layer. Reduce the temperature by 15 degrees and the time by about a fifth if your fryer runs hot.",
+      "technique": "oven-basics"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "slug": "falafel-bowl",
+  "name": "Baked falafel bowl",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 20,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "component": "baked-falafel",
+      "grams": 300,
+      "display_qty": 8,
+      "display_unit": "patties"
+    },
+    {
+      "ingredient": "bulgur-dry",
+      "grams": 50
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 100
+    },
+    {
+      "ingredient": "lettuce-romaine",
+      "grams": 60
+    },
+    {
+      "component": "hummus",
+      "grams": 60,
+      "alt_ingredient": "hummus-commercial"
+    },
+    {
+      "component": "lemon-tahini-dressing",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Make the baked falafel in advance, or reheat patties you already have in a 180°C oven for 8 minutes.",
+      "technique": "oven-basics",
+      "timer_sec": 480,
+      "cue": "The patties are hot through with crisp edges.",
+      "tip": "Space them out on the tray so they crisp instead of steaming."
+    },
+    {
+      "text": "Soak bulgur in boiling water for 15 minutes.",
+      "technique": "cook-grains-for-salads",
+      "timer_sec": 900,
+      "cue": "The grains are tender and the water is absorbed. Drain any extra and fluff.",
+      "tip": "Use boiling water and cover the bowl tightly so the steam does the cooking."
+    },
+    {
+      "text": "Assemble bulgur, falafel, vegetables, hummus and dressing.",
+      "technique": "salad-formula"
+    }
+  ],
+  "storage": "Store the baked falafel, bulgur and vegetables separately for up to 3 days. Reheat the falafel in a 180°C oven for 8 minutes to re-crisp. Add the sauces just before eating."
+}

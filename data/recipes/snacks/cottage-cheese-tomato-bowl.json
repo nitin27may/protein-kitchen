@@ -1,0 +1,56 @@
+{
+  "slug": "cottage-cheese-tomato-bowl",
+  "name": "Cottage cheese tomato bowl",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 80
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 60
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 5
+    },
+    {
+      "ingredient": "black-pepper",
+      "grams": 0.5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.8
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Dice tomato and cucumber.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Spoon the cottage cheese over the top, then add oil, pepper and salt at the last moment.",
+      "technique": "high-protein-snacks"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "slug": "savoury-yogurt-bowl",
+  "name": "Savoury Greek yogurt bowl",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 250
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 80
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "mint-fresh",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.8
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Grate the cucumber and squeeze out the water."
+    },
+    {
+      "text": "Fold into the yogurt with toasted cumin, chopped mint and salt.",
+      "cue": "The cumin is nutty and the cucumber is squeezed so the bowl is not watery."
+    }
+  ]
+}

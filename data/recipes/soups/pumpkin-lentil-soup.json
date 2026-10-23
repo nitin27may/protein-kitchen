@@ -1,0 +1,88 @@
+{
+  "slug": "pumpkin-lentil-soup",
+  "name": "Pumpkin and red lentil soup",
+  "kind": "recipe",
+  "family": "soups",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian-fusion",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 40,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "pumpkin",
+      "grams": 500
+    },
+    {
+      "ingredient": "masoor-dal-dry",
+      "grams": 120
+    },
+    {
+      "ingredient": "onion",
+      "grams": 120
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 10
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 4
+    },
+    {
+      "ingredient": "coconut-milk",
+      "grams": 100
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 15
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 20
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 5
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 320
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soften onion and ginger in oil, add curry powder for 1 minute.",
+      "technique": "soup-basics",
+      "timer_sec": 480
+    },
+    {
+      "text": "Add cubed pumpkin, lentils and 1 litre of water and simmer 20 minutes.",
+      "technique": "soup-basics",
+      "timer_sec": 1200,
+      "cue": "A fork slides into the pumpkin and the lentils have fallen apart."
+    },
+    {
+      "text": "Blend smooth, stir in coconut milk and lemon juice and adjust salt.",
+      "technique": "soup-basics"
+    },
+    {
+      "text": "Top each bowl with 80 g Greek yoghurt just before serving. It adds protein and cools the heat.",
+      "cue": "The yogurt is cold and the soup is hot. Serve at once."
+    }
+  ]
+}

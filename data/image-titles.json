@@ -1,0 +1,27 @@
+{
+  "milk-whole": "Milk", "milk-2pct": "Milk", "dahi-plain": "Yogurt", "butter-salted": "Butter", "cream-18": "Cream",
+  "dates-medjool": "Medjool date", "dates-dry": "Date palm", "figs-dried": "Fig", "coconut-meat-raw": "Coconut", "coconut-desiccated": "Coconut",
+  "avocado": "Avocado", "orange": "Orange (fruit)", "custard-apple": "Custard apple", "amla": "Phyllanthus emblica", "raw-mango": "Mango",
+  "atta-whole-wheat": "Atta flour", "maida-white-flour": "Wheat flour", "ragi-finger-millet": "Finger millet", "sugar-brown": "Brown sugar",
+  "black-beans-dry": "Black turtle bean", "black-beans-cooked": "Black turtle bean", "masoor-dal-dry": "Lentil", "toor-dal-pigeon-peas": "Pigeon pea",
+  "lentils-green-brown-cooked": "Lentil", "horse-gram": "Macrotyloma uniflorum", "moth-bean": "Vigna aconitifolia",
+  "peanuts-dry-roasted": "Peanut", "hemp-seeds-hulled": "Hemp", "oil-sunflower": "Sunflower oil", "oil-canola": "Rapeseed oil",
+  "papad": "Papadum", "olives-black": "Olive", "tofu-extra-firm": "Tofu", "vital-wheat-gluten": "Wheat gluten (food)",
+  "cloves-ground": "Clove", "mace-ground": "Mace (spice)", "baking-soda": "Sodium bicarbonate", "flax-linseeds-ifct": "Flax",
+  "green-peas-fresh": "Pea", "okra": "Okra", "bottle-gourd": "Calabash", "bitter-gourd": "Momordica charantia",
+  "capsicum-green": "Bell pepper", "green-chilli": "Chili pepper", "cucumber": "Cucumber", "beetroot": "Beetroot", "garlic": "Garlic",
+  "ginger": "Ginger", "spring-onion": "Scallion", "mustard-greens": "Mustard greens", "lotus-root": "Lotus root",
+  "lemon-juice": "Lemon", "lime-juice": "Lime (fruit)", "snake-gourd": "Trichosanthes cucumerina", "water-chestnut": "Eleocharis dulcis",
+  "basil-fresh": "Basil", "lettuce-romaine": "Romaine lettuce", "yam-suran": "Amorphophallus paeoniifolius", "plantain-raw": "Cooking banana",
+  "ash-gourd": "Wax gourd", "lychee": "Lychee", "oil-olive": "Olive oil", "carrot": "Carrot",
+
+  "chickpea-sprouts-proxy-lentil-sprouts": null, "chana-dal": null, "kala-chana": null, "great-northern-beans-cooked": null,
+  "watermelon-seeds": null, "amaranth-leaves": null, "beet-greens": null, "pumpkin-leaves": null, "sun-dried-tomato": null,
+
+  "sheet-pan-tofu-vegetables": null, "spinach-cottage-cheese-bake": null, "falafel-pita-wrap": null, "mediterranean-hummus-bowl": null,
+  "quinoa-black-bean-bowl": null, "tofu-burrito-bowl": null, "tofu-edamame-stir-fry": null, "tofu-poke-bowl": null, "paneer-paratha": null,
+  "ragi-porridge": null, "bhindi-chana-masala": null, "chickpea-tabbouleh": null, "greek-lentil-salad": null, "mediterranean-chickpea-salad": null,
+  "three-bean-salad": null, "chaat-paneer-cubes": null, "cottage-cheese-tomato-bowl": null, "greek-yogurt-seed-bowl": null,
+  "peanut-butter-banana-pita": null, "roasted-chana-snack": null, "sprouts-paneer-chaat": null, "warm-masala-chickpeas": null,
+  "chickpea-spinach-soup": null, "white-bean-kale-soup": null
+}

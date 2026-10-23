@@ -1,0 +1,47 @@
+{
+  "slug": "cottage-date-walnut-bowl",
+  "name": "Cottage cheese date walnut bowl",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "dates-dry",
+      "grams": 30
+    },
+    {
+      "ingredient": "walnuts",
+      "grams": 15
+    },
+    {
+      "ingredient": "cinnamon-ground",
+      "grams": 0.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Chop the dates and walnuts.",
+      "technique": "high-protein-snacks"
+    },
+    {
+      "text": "Spoon over the cottage cheese and dust with cinnamon."
+    }
+  ]
+}

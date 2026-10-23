@@ -1,0 +1,69 @@
+{
+  "slug": "paneer-tikka-bites-pan",
+  "name": "Pan paneer tikka bites",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 10,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "paneer",
+      "grams": 200
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 60
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 8
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "marinate",
+      "ingredient": "paneer",
+      "grams": 200,
+      "lead_hours": 0.25,
+      "instruction": "Marinate paneer in dahi and spices"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Marinate paneer cubes in dahi and spices for 15 minutes.",
+      "timer_sec": 900
+    },
+    {
+      "text": "Sear in a hot pan with oil, 2 minutes a side, until browned at the edges.",
+      "timer_sec": 480,
+      "cue": "The edges are browned and the marinade has dried onto the paneer.",
+      "tip": "Use a hot pan and do not stir for the first minute. The paneer needs contact to brown."
+    }
+  ]
+}

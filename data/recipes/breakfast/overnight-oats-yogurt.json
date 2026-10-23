@@ -1,0 +1,65 @@
+{
+  "slug": "overnight-oats-yogurt",
+  "name": "Protein overnight oats",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast",
+    "snack"
+  ],
+  "cuisine": "indian-fusion",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 5,
+  "active_min": 5,
+  "total_min": 5,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "rolled-oats",
+      "grams": 50
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "milk-2pct",
+      "grams": 100
+    },
+    {
+      "ingredient": "chia-seeds",
+      "grams": 12
+    },
+    {
+      "ingredient": "flaxseed",
+      "grams": 10
+    },
+    {
+      "ingredient": "almonds",
+      "grams": 15
+    },
+    {
+      "ingredient": "honey",
+      "grams": 10
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "overnight",
+      "lead_hours": 8,
+      "instruction": "Set oats overnight in the fridge"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Mix everything except almonds in a jar."
+    },
+    {
+      "text": "Refrigerate overnight, top with chopped almonds."
+    }
+  ]
+}

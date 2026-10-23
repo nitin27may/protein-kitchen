@@ -1,0 +1,76 @@
+{
+  "slug": "eggplant-lentil-cottage-bake",
+  "name": "Eggplant lentil bake with cottage cheese",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 50,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "eggplant",
+      "grams": 300
+    },
+    {
+      "ingredient": "lentils-green-brown-cooked",
+      "grams": 300
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 150
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 8
+    },
+    {
+      "ingredient": "oregano-dried",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Slice the eggplant into rounds, brush with oil and roast at 210°C for 15 minutes.",
+      "technique": "oven-basics",
+      "timer_sec": 900,
+      "cue": "Slices are golden at the edges and a fork slides in easily.",
+      "tip": "Use two trays if the slices overlap, or they steam instead of browning."
+    },
+    {
+      "text": "Mix lentils with chopped tomato, onion, oregano and salt and layer with the eggplant in a dish.",
+      "technique": "oven-basics"
+    },
+    {
+      "text": "Top with cottage cheese and bake at 190°C for 20 minutes.",
+      "technique": "oven-basics",
+      "timer_sec": 1200,
+      "cue": "The cottage cheese is hot with light golden spots and the edges bubble."
+    }
+  ]
+}

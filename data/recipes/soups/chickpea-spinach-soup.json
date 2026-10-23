@@ -1,0 +1,92 @@
+{
+  "slug": "chickpea-spinach-soup",
+  "name": "Chickpea and spinach soup",
+  "kind": "recipe",
+  "family": "soups",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 400
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 200
+    },
+    {
+      "ingredient": "onion",
+      "grams": 120
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 150
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "paprika",
+      "grams": 2
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 25
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 4
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 320
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soften onion and garlic in oil, add cumin, paprika and chopped tomato.",
+      "technique": "soup-basics",
+      "timer_sec": 480
+    },
+    {
+      "text": "Add chickpeas and 1 litre of water and simmer 15 minutes, lightly mashing some chickpeas.",
+      "technique": "soup-basics",
+      "timer_sec": 900,
+      "cue": "The soup is thick and the chickpeas are soft. Mashing a few makes it creamy."
+    },
+    {
+      "text": "Stir in spinach until wilted and finish with lemon juice.",
+      "technique": "soup-basics"
+    },
+    {
+      "text": "Top each bowl with 80 g Greek yoghurt just before serving. It adds protein and cools the heat.",
+      "cue": "The yogurt is cold and the soup is hot. Serve at once."
+    }
+  ]
+}

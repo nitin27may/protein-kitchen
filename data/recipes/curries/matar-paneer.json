@@ -1,0 +1,85 @@
+{
+  "slug": "matar-paneer",
+  "name": "Matar paneer",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 20,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "paneer",
+      "grams": 250
+    },
+    {
+      "ingredient": "green-peas-fresh",
+      "grams": 200
+    },
+    {
+      "ingredient": "onion",
+      "grams": 100
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 200
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "ghee",
+      "grams": 10
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Fry onion, ginger and garlic in ghee until golden.",
+      "timer_sec": 420,
+      "cue": "The onion is golden at the edges and smells sweet.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add tomato and spices, cook down to a thick masala.",
+      "timer_sec": 420,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add peas and 150 ml water, simmer 8 minutes, add paneer, cook 3 minutes.",
+      "timer_sec": 660,
+      "cue": "The peas are tender and bright, the paneer is heated through and soft, not rubbery.",
+      "tip": "Do not boil hard after adding the paneer. It toughens."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "slug": "red-lentil-tomato-soup",
+  "name": "Red lentil tomato soup",
+  "kind": "recipe",
+  "family": "soups",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 35,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "masoor-dal-dry",
+      "grams": 200
+    },
+    {
+      "ingredient": "onion",
+      "grams": 150
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 100
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "tomato-paste",
+      "grams": 30
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "paprika",
+      "grams": 2
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 30
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 5
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 320
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soften onion and carrot in oil for 8 minutes, then add garlic, cumin, paprika and tomato paste for 1 minute.",
+      "technique": "soup-basics",
+      "timer_sec": 480
+    },
+    {
+      "text": "Add rinsed lentils and 1.2 litres of water. Simmer 20 minutes until the lentils collapse.",
+      "technique": "soup-basics",
+      "timer_sec": 1200,
+      "cue": "The lentils have collapsed and thickened the soup, and there is no gritty bite."
+    },
+    {
+      "text": "Blend half the soup for body, finish with lemon juice and salt.",
+      "technique": "soup-basics"
+    },
+    {
+      "text": "Top each bowl with 80 g Greek yoghurt just before serving. It adds protein and cools the heat.",
+      "cue": "The yogurt is cold and the soup is hot. Serve at once."
+    }
+  ]
+}

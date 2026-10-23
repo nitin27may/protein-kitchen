@@ -1,0 +1,105 @@
+{
+  "slug": "white-bean-kale-soup",
+  "name": "White bean and kale soup",
+  "kind": "recipe",
+  "family": "soups",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 90,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "navy-beans-dry",
+      "grams": 200
+    },
+    {
+      "ingredient": "kale",
+      "grams": 150
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 100
+    },
+    {
+      "ingredient": "celery",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 120
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "tomatoes-canned-whole",
+      "grams": 200
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "thyme-dried",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 5
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 320
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "navy-beans-dry",
+      "grams": 200,
+      "lead_hours": 10,
+      "instruction": "Soak navy beans overnight, discard the water"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Soak the beans overnight, discard the water and boil hard for 10 minutes, then simmer until tender, about 45 minutes.",
+      "technique": "cook-legumes",
+      "timer_sec": 2700,
+      "cue": "A bean crushes easily between two fingers. Boil hard for the first 10 minutes."
+    },
+    {
+      "text": "Soften onion, carrot, celery and garlic in oil, then add tomatoes and thyme.",
+      "technique": "soup-basics"
+    },
+    {
+      "text": "Add the beans with 1 litre of water and simmer 15 minutes.",
+      "technique": "soup-basics",
+      "timer_sec": 900,
+      "cue": "The vegetables are soft and the broth has a little body."
+    },
+    {
+      "text": "Stir in sliced kale for the last 5 minutes and add salt.",
+      "technique": "soup-basics"
+    },
+    {
+      "text": "Top each bowl with 80 g Greek yoghurt just before serving. It adds protein and cools the heat.",
+      "cue": "The yogurt is cold and the soup is hot. Serve at once."
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "slug": "chili-lemon-edamame",
+  "name": "Chilli lemon edamame",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 180
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Warm the edamame in a microwave or a pan for 1 minute.",
+      "technique": "high-protein-snacks",
+      "cue": "The edamame is warm through and bright green."
+    },
+    {
+      "text": "Toss with chilli powder, lemon juice and salt.",
+      "technique": "salad-formula"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "slug": "roti-whole-wheat",
+  "name": "Roti (whole wheat), 2 per serving",
+  "kind": "recipe",
+  "family": "breads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 20,
+  "total_min": 35,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "atta-whole-wheat",
+      "grams": 200
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Knead 200 g atta with the oil, salt and about 120 to 130 ml warm water into a soft dough, pressing and folding for 5 minutes.",
+      "cue": "The dough is smooth and soft and springs back slowly when pressed, without sticking to your hand.",
+      "tip": "Add water a tablespoon at a time. A dough that is too wet takes too much dry atta when rolling and the rotis turn tough."
+    },
+    {
+      "text": "Cover the dough with a damp cloth and rest it for 15 minutes.",
+      "timer_sec": 900,
+      "tip": "Resting relaxes the gluten, so the rotis roll out thin without shrinking back."
+    },
+    {
+      "text": "Divide into 8 equal balls. Dust each ball lightly in atta and roll it into a thin circle about 15 cm across, turning it a quarter turn after each roll.",
+      "cue": "The circle is an even thickness with no thick centre or torn edges."
+    },
+    {
+      "text": "Heat a tava over medium-high heat. Cook a roti for about 30 seconds until bubbles form, flip and cook 30 to 40 seconds until brown spots show, then flip again and press the edges lightly with a folded cloth, or hold it over a flame for a few seconds, until it puffs.",
+      "cue": "The roti puffs into a ball and has light brown spots on both sides.",
+      "tip": "The tava is hot enough when a drop of water dances and disappears within 2 seconds."
+    },
+    {
+      "text": "Stack the cooked rotis in a clean cloth or a lidded container so the steam keeps them soft.",
+      "cue": "After 5 minutes in the cloth the rotis feel soft and bend without cracking."
+    }
+  ],
+  "storage": "Wrap in a clean cloth for up to 2 days at room temperature, or refrigerate for 4 days. Reheat on a hot tava for 20 seconds a side. Raw dough keeps 2 days in the fridge.",
+  "serving_unit": {
+    "singular": "roti",
+    "plural": "rotis",
+    "per_serving": 2
+  }
+}

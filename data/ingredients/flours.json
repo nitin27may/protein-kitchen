@@ -1,0 +1,80 @@
+[
+  {
+    "slug": "besan",
+    "name": "Chickpea flour (besan)",
+    "aliases": [
+      "besan",
+      "gram flour",
+      "chana atta"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 387,
+      "protein_g": 22.4,
+      "carbs_g": 57.8,
+      "fat_g": 6.7,
+      "fibre_g": 10.8
+    },
+    "source": "CNF",
+    "source_id": "4886",
+    "aisle": "flours",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "No Frills",
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "rice-flour",
+    "name": "Rice flour, white",
+    "aliases": [
+      "chawal ka atta"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 366,
+      "protein_g": 6.0,
+      "carbs_g": 80.1,
+      "fat_g": 1.4,
+      "fibre_g": 2.4
+    },
+    "source": "CNF",
+    "source_id": "4429",
+    "aisle": "flours",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "arrowroot-flour",
+    "name": "Arrowroot flour",
+    "aliases": [
+      "arrowroot"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 357,
+      "protein_g": 0.3,
+      "carbs_g": 88.2,
+      "fat_g": 0.1,
+      "fibre_g": 3.4
+    },
+    "source": "CNF",
+    "source_id": "4410",
+    "aisle": "flours",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  }
+]

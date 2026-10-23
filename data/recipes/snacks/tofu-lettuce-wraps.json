@@ -1,0 +1,74 @@
+{
+  "slug": "tofu-lettuce-wraps",
+  "name": "Tofu lettuce wraps",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack",
+    "lunch"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 10,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 150
+    },
+    {
+      "ingredient": "lettuce-romaine",
+      "grams": 60
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 30
+    },
+    {
+      "ingredient": "soy-sauce-shoyu",
+      "grams": 8
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 4
+    },
+    {
+      "ingredient": "lime-juice",
+      "grams": 8
+    },
+    {
+      "ingredient": "sesame-seeds",
+      "grams": 3
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press the tofu, crumble it and fry with ginger in the oil for 4 minutes.",
+      "technique": "press-tofu",
+      "timer_sec": 240,
+      "cue": "The tofu is golden in places and crumbly, and the pan is dry.",
+      "tip": "Press the tofu first. Wet tofu steams and will not brown."
+    },
+    {
+      "text": "Season with soy sauce and lime.",
+      "technique": "press-tofu"
+    },
+    {
+      "text": "Spoon into lettuce leaves, top with grated carrot and sesame.",
+      "technique": "salad-formula"
+    }
+  ]
+}

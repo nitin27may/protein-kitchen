@@ -1,0 +1,594 @@
+[
+  {
+    "slug": "banana",
+    "name": "Banana, raw",
+    "aliases": [
+      "kela"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 89,
+      "protein_g": 1.1,
+      "carbs_g": 22.8,
+      "fat_g": 0.3,
+      "fibre_g": 1.7
+    },
+    "source": "CNF",
+    "source_id": "1704",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Banana"
+  },
+  {
+    "slug": "apple",
+    "name": "Apple, raw, with skin",
+    "aliases": [
+      "seb"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 52,
+      "protein_g": 0.3,
+      "carbs_g": 13.8,
+      "fat_g": 0.2,
+      "fibre_g": 1.9
+    },
+    "source": "CNF",
+    "source_id": "1696",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Apple"
+  },
+  {
+    "slug": "mango",
+    "name": "Mango, raw",
+    "aliases": [
+      "aam"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 60,
+      "protein_g": 0.8,
+      "carbs_g": 15.0,
+      "fat_g": 0.4,
+      "fibre_g": 1.6
+    },
+    "source": "CNF",
+    "source_id": "1603",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Mango"
+  },
+  {
+    "slug": "papaya",
+    "name": "Papaya, raw",
+    "aliases": [
+      "papita"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 43,
+      "protein_g": 0.5,
+      "carbs_g": 10.8,
+      "fat_g": 0.3,
+      "fibre_g": 1.7
+    },
+    "source": "CNF",
+    "source_id": "1628",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Papaya"
+  },
+  {
+    "slug": "guava",
+    "name": "Guava, common, raw",
+    "aliases": [
+      "amrood"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 68,
+      "protein_g": 2.5,
+      "carbs_g": 14.3,
+      "fat_g": 0.9,
+      "fibre_g": 5.4
+    },
+    "source": "CNF",
+    "source_id": "1578",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Guava"
+  },
+  {
+    "slug": "pomegranate",
+    "name": "Pomegranate, raw",
+    "aliases": [
+      "anaar"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 83,
+      "protein_g": 1.7,
+      "carbs_g": 18.7,
+      "fat_g": 1.2,
+      "fibre_g": 4.0
+    },
+    "source": "CNF",
+    "source_id": "1667",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pomegranate"
+  },
+  {
+    "slug": "orange",
+    "name": "Orange, Florida, raw",
+    "aliases": [
+      "santra"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 46,
+      "protein_g": 0.7,
+      "carbs_g": 11.5,
+      "fat_g": 0.2,
+      "fibre_g": 2.4
+    },
+    "source": "CNF",
+    "source_id": "1617",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Orange"
+  },
+  {
+    "slug": "pineapple",
+    "name": "Pineapple, raw",
+    "aliases": [
+      "ananas"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 50,
+      "protein_g": 0.5,
+      "carbs_g": 13.1,
+      "fat_g": 0.1,
+      "fibre_g": 1.4
+    },
+    "source": "CNF",
+    "source_id": "1734",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pineapple"
+  },
+  {
+    "slug": "watermelon",
+    "name": "Watermelon, raw",
+    "aliases": [
+      "tarbooz"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 30,
+      "protein_g": 0.6,
+      "carbs_g": 7.5,
+      "fat_g": 0.1,
+      "fibre_g": 0.4
+    },
+    "source": "CNF",
+    "source_id": "1691",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Watermelon"
+  },
+  {
+    "slug": "cantaloupe",
+    "name": "Melon, cantaloupe, raw",
+    "aliases": [
+      "kharbooza"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 34,
+      "protein_g": 0.8,
+      "carbs_g": 8.2,
+      "fat_g": 0.2,
+      "fibre_g": 0.7
+    },
+    "source": "CNF",
+    "source_id": "1721",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Cantaloupe"
+  },
+  {
+    "slug": "grapes",
+    "name": "Grape, North American type, raw",
+    "aliases": [
+      "angoor"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 67,
+      "protein_g": 0.6,
+      "carbs_g": 17.1,
+      "fat_g": 0.3,
+      "fibre_g": 0.9
+    },
+    "source": "CNF",
+    "source_id": "1573",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Grapes"
+  },
+  {
+    "slug": "pear",
+    "name": "Pear, raw",
+    "aliases": [
+      "nashpati"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 57,
+      "protein_g": 0.4,
+      "carbs_g": 15.2,
+      "fat_g": 0.1,
+      "fibre_g": 3.0
+    },
+    "source": "CNF",
+    "source_id": "1731",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pear"
+  },
+  {
+    "slug": "strawberry",
+    "name": "Strawberry, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 33,
+      "protein_g": 0.7,
+      "carbs_g": 7.7,
+      "fat_g": 0.3,
+      "fibre_g": 2.2
+    },
+    "source": "CNF",
+    "source_id": "1749",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Strawberry"
+  },
+  {
+    "slug": "blueberry",
+    "name": "Blueberry, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 57,
+      "protein_g": 0.7,
+      "carbs_g": 14.5,
+      "fat_g": 0.3,
+      "fibre_g": 2.6
+    },
+    "source": "CNF",
+    "source_id": "1705",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Blueberry"
+  },
+  {
+    "slug": "avocado",
+    "name": "Avocado, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 160,
+      "protein_g": 2.0,
+      "carbs_g": 8.5,
+      "fat_g": 14.7,
+      "fibre_g": 6.7
+    },
+    "source": "CNF",
+    "source_id": "1511",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Avocado"
+  },
+  {
+    "slug": "jackfruit",
+    "name": "Jackfruit, raw",
+    "aliases": [
+      "kathal"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 95,
+      "protein_g": 1.7,
+      "carbs_g": 23.2,
+      "fat_g": 0.6,
+      "fibre_g": 1.5
+    },
+    "source": "CNF",
+    "source_id": "1581",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Jackfruit"
+  },
+  {
+    "slug": "lychee",
+    "name": "Lychee, raw",
+    "aliases": [
+      "litchi"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 66,
+      "protein_g": 0.8,
+      "carbs_g": 16.5,
+      "fat_g": 0.4,
+      "fibre_g": 1.3
+    },
+    "source": "CNF",
+    "source_id": "1596",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Lychee"
+  },
+  {
+    "slug": "custard-apple",
+    "name": "Custard-apple, raw",
+    "aliases": [
+      "sitaphal (approx.)",
+      "sharifa"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 101,
+      "protein_g": 1.7,
+      "carbs_g": 25.2,
+      "fat_g": 0.6,
+      "fibre_g": 2.4
+    },
+    "source": "CNF",
+    "source_id": "1543",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Custard-apple"
+  },
+  {
+    "slug": "sapodilla",
+    "name": "Sapodilla, raw",
+    "aliases": [
+      "chikoo"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 83,
+      "protein_g": 0.4,
+      "carbs_g": 20.0,
+      "fat_g": 1.1,
+      "fibre_g": 5.3
+    },
+    "source": "CNF",
+    "source_id": "1682",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Sapodilla"
+  },
+  {
+    "slug": "tamarind",
+    "name": "Tamarind, raw (pulp)",
+    "aliases": [
+      "imli"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 239,
+      "protein_g": 2.8,
+      "carbs_g": 62.5,
+      "fat_g": 0.6,
+      "fibre_g": 5.1
+    },
+    "source": "CNF",
+    "source_id": "1689",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "kiwi",
+    "name": "Kiwi fruit, raw",
+    "aliases": [],
+    "state": "raw",
+    "per100g": {
+      "kcal": 61,
+      "protein_g": 1.1,
+      "carbs_g": 14.7,
+      "fat_g": 0.5,
+      "fibre_g": 3.0
+    },
+    "source": "CNF",
+    "source_id": "1585",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Kiwi fruit"
+  },
+  {
+    "slug": "amla",
+    "name": "Indian gooseberry (amla, Emblica officinalis)",
+    "aliases": [
+      "amla",
+      "awla"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 24,
+      "protein_g": 0.3,
+      "carbs_g": 12.1,
+      "fat_g": 0.2,
+      "fibre_g": 7.8
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-E021",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Amla (Indian gooseberry)"
+  },
+  {
+    "slug": "raw-mango",
+    "name": "Mango, green, raw (kachha aam)",
+    "aliases": [
+      "kachha aam",
+      "amchur base"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 49,
+      "protein_g": 0.7,
+      "carbs_g": 13.6,
+      "fat_g": 0.1,
+      "fibre_g": 3.0
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-D057",
+    "aisle": "fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Raw mango (kachha aam)"
+  }
+]

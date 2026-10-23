@@ -1,0 +1,698 @@
+[
+  {
+    "kind": "recipes",
+    "slug": "besan-oat-muffins",
+    "name": "Besan oat protein muffins",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "besan-veg-bake",
+    "name": "Besan vegetable bake",
+    "reason": "no lead image on \"The Great Australian Bake Off season 2\""
+  },
+  {
+    "kind": "recipes",
+    "slug": "eggplant-lentil-cottage-bake",
+    "name": "Eggplant lentil bake with cottage cheese",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "roasted-chickpea-vegetable-tray",
+    "name": "Roasted chickpea and vegetable tray",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "sheet-pan-tofu-vegetables",
+    "name": "Sheet-pan tofu and vegetables",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "spinach-cottage-cheese-bake",
+    "name": "Spinach and cottage cheese bake",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "stuffed-peppers-quinoa-beans",
+    "name": "Baked peppers stuffed with quinoa and beans",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "yogurt-flatbread",
+    "name": "High-protein yoghurt flatbread",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "falafel-bowl",
+    "name": "Baked falafel bowl",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "falafel-pita-wrap",
+    "name": "Baked falafel pita wrap",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "lentil-yogurt-bowl",
+    "name": "Spiced lentil and yoghurt bowl",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "mediterranean-hummus-bowl",
+    "name": "Mediterranean hummus bowl",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "quinoa-black-bean-bowl",
+    "name": "Quinoa black bean bowl",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-burrito-bowl",
+    "name": "Tofu burrito bowl",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-edamame-stir-fry",
+    "name": "Tofu edamame stir-fry",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-poke-bowl",
+    "name": "Tofu poke-style bowl",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "white-bean-zucchini-skillet",
+    "name": "White bean zucchini skillet",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "roti-whole-wheat",
+    "name": "Roti (whole wheat), 2 per serving",
+    "reason": "image on \"Roti canai\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "recipes",
+    "slug": "besan-spinach-paneer-pudla",
+    "name": "Besan spinach paneer pudla",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "cottage-oat-pancakes",
+    "name": "Cottage cheese oat pancakes",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "overnight-oats-yogurt",
+    "name": "Protein overnight oats",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "paneer-oats-upma",
+    "name": "Paneer oats upma",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "paneer-paratha",
+    "name": "Paneer paratha",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "peanut-butter-greek-oats",
+    "name": "Peanut butter Greek yogurt oats",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "poha-paneer-peanut",
+    "name": "Poha with paneer and peanuts",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "ragi-porridge",
+    "name": "Ragi porridge with milk",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-scramble-pita",
+    "name": "Tofu scramble pita",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "besan-chilla",
+    "name": "Besan chilla with dahi",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "chana-dal-cheela",
+    "name": "Chana dal cheela",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "moong-chilla-paneer",
+    "name": "Moong chilla with paneer",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "bhindi-chana-masala",
+    "name": "Bhindi chana masala",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "paneer-bhurji",
+    "name": "Paneer bhurji",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "soya-chunk-curry",
+    "name": "Soya chunk curry",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "soya-keema-matar",
+    "name": "Soya keema matar",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-bhurji",
+    "name": "Tofu bhurji",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-palak",
+    "name": "Tofu palak",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "lauki-chana-dal-yogurt",
+    "name": "Lauki chana dal with yogurt",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "masoor-palak-dal-yogurt",
+    "name": "Masoor palak dal with yogurt",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "moong-khichdi",
+    "name": "Moong dal khichdi",
+    "reason": "no lead image on \"Panchratna dal\""
+  },
+  {
+    "kind": "recipes",
+    "slug": "chickpea-tabbouleh",
+    "name": "Chickpea tabbouleh",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "edamame-quinoa-salad",
+    "name": "Edamame quinoa salad",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "greek-lentil-salad",
+    "name": "Greek lentil salad with tofu feta",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "lentil-walnut-arugula-salad",
+    "name": "Lentil walnut salad with cottage cheese",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "mediterranean-chickpea-salad",
+    "name": "Mediterranean chickpea salad",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "three-bean-salad",
+    "name": "Three-bean salad with edamame",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "white-bean-kale-salad",
+    "name": "White bean and kale salad",
+    "reason": "image on \"Salad\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "recipes",
+    "slug": "whey-banana-shake",
+    "name": "Whey banana peanut shake",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "broccoli-paneer-bites",
+    "name": "Baked broccoli paneer bites",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "chaat-paneer-cubes",
+    "name": "Chaat paneer cubes",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "chana-kachumber-cup",
+    "name": "Chana kachumber cup",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "chili-lemon-edamame",
+    "name": "Chilli lemon edamame",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "clear-moong-soup-shot",
+    "name": "Clear moong soup",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "cottage-cheese-tomato-bowl",
+    "name": "Cottage cheese tomato bowl",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "cottage-cucumber-boats",
+    "name": "Cottage cheese cucumber boats",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "cottage-date-walnut-bowl",
+    "name": "Cottage cheese date walnut bowl",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "edamame-cucumber-salad",
+    "name": "Edamame cucumber salad",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "greek-yogurt-seed-bowl",
+    "name": "Greek yogurt seed bowl",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "hummus-veg-cup",
+    "name": "Hummus and vegetable cup",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "oat-peanut-energy-balls",
+    "name": "Oat and peanut energy balls",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "pan-seared-soy-tofu",
+    "name": "Pan-seared soy tofu",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "paneer-tikka-bites-pan",
+    "name": "Pan paneer tikka bites",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "peanut-butter-banana-pita",
+    "name": "Peanut butter banana pita",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "peanut-chickpea-chaat",
+    "name": "Peanut chickpea chaat",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "quick-besan-pudla",
+    "name": "Quick besan pudla",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "roasted-chana-snack",
+    "name": "Masala roasted chickpeas",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "savoury-yogurt-bowl",
+    "name": "Savoury Greek yogurt bowl",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "spiced-protein-chaas",
+    "name": "Spiced protein chaas",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "spinach-yogurt-dip-sticks",
+    "name": "Spinach yogurt dip with vegetable sticks",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "sprouts-bhel-paneer",
+    "name": "Sprouts bhel with paneer",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "sprouts-paneer-chaat",
+    "name": "Sprouts and paneer chaat",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "sprouts-peanut-paneer-chaat",
+    "name": "Sprouts peanut paneer chaat",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "sweet-protein-lassi",
+    "name": "Sweet protein lassi",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-lettuce-wraps",
+    "name": "Tofu lettuce wraps",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "tofu-tikka-skewers",
+    "name": "Tofu tikka skewers (air fryer)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "warm-masala-chickpeas",
+    "name": "Warm masala chickpeas",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "chickpea-spinach-soup",
+    "name": "Chickpea and spinach soup",
+    "reason": "blocked"
+  },
+  {
+    "kind": "recipes",
+    "slug": "chickpea-tomato-stew-tofu-feta",
+    "name": "Chickpea tomato stew with tofu feta",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "moong-spinach-soup",
+    "name": "Moong and spinach soup",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "recipes",
+    "slug": "white-bean-kale-soup",
+    "name": "White bean and kale soup",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "ghee",
+    "name": "Ghee (butter oil, anhydrous)",
+    "reason": "no lead image on \"Ghee\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "apple",
+    "name": "Apple",
+    "reason": "image on \"Apple\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "sapodilla",
+    "name": "Sapodilla",
+    "reason": "no lead image on \"Sapodilla Cayes\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "kiwi",
+    "name": "Kiwi fruit",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "maida-white-flour",
+    "name": "White flour (maida)",
+    "reason": "no lead image on \"Wheat flour\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "bajra",
+    "name": "Bajra (pearl millet)",
+    "reason": "no lead image on \"Bajra\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "seviyan-wheat-vermicelli",
+    "name": "Seviyan (wheat vermicelli)",
+    "reason": "no lead image on \"Seviyan\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "kidney-beans-dry",
+    "name": "Kidney beans (rajma)",
+    "reason": "image on \"Kidney bean\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "chickpeas-dry",
+    "name": "Chickpeas (chole)",
+    "reason": "image on \"Chickpea\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "chickpeas-canned",
+    "name": "Canned chickpeas",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "urad-dal-dry",
+    "name": "Black gram (urad)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "chickpea-sprouts-proxy-lentil-sprouts",
+    "name": "Lentil sprouts",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "chana-dal",
+    "name": "Bengal gram, dal (chana dal)",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "kala-chana",
+    "name": "Kala chana (black chickpeas)",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "horse-gram",
+    "name": "Horse gram, whole (kulthi)",
+    "reason": "image on \"Macrotyloma uniflorum\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "lobia-brown-dry",
+    "name": "Lobia (black-eyed peas)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "urad-dal-whole-ifct",
+    "name": "Black gram, whole (sabut urad)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "great-northern-beans-cooked",
+    "name": "Great northern beans (boiled)",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "flaxseed",
+    "name": "Flaxseed (alsi)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "watermelon-seeds",
+    "name": "Dried watermelon seed kernels",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "oil-sunflower",
+    "name": "Sunflower oil (mid-oleic)",
+    "reason": "no lead image on \"Sunflower oil\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "soya-chunks-proxy-defatted-soy-flour",
+    "name": "Soya chunks",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "asafoetida",
+    "name": "Asafoetida (hing)",
+    "reason": "no lead image on \"Asafoetida\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "cabbage-savoy",
+    "name": "Cabbage",
+    "reason": "image on \"Cabbage\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "green-beans",
+    "name": "Green beans",
+    "reason": "image on \"Green bean\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "broccoli",
+    "name": "Broccoli",
+    "reason": "image on \"Broccoli\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "amaranth-leaves",
+    "name": "Amaranth leaves",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "beet-greens",
+    "name": "Beet greens",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "yardlong-beans",
+    "name": "Yardlong beans",
+    "reason": "image on \"Green bean\" is not freely licensed or has no metadata"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "pumpkin-leaves",
+    "name": "Pumpkin leaves",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "sun-dried-tomato",
+    "name": "Tomato, sun-dried",
+    "reason": "blocked"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "ridge-gourd",
+    "name": "Ridge gourd (Luffa acutangula)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "drumstick",
+    "name": "Drumstick pods (Moringa)",
+    "reason": "no lead image on \"Drumstick\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "drumstick-leaves",
+    "name": "Drumstick leaves (Moringa)",
+    "reason": "no lead image on \"Drumstick\""
+  },
+  {
+    "kind": "ingredients",
+    "slug": "cluster-beans",
+    "name": "Cluster beans (gavar)",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "colocasia-leaves",
+    "name": "Arbi leaves",
+    "reason": "no matching article"
+  },
+  {
+    "kind": "ingredients",
+    "slug": "arugula",
+    "name": "Arugula",
+    "reason": "no lead image on \"List of plants known as arugula\""
+  }
+]

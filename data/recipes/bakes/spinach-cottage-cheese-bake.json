@@ -1,0 +1,86 @@
+{
+  "slug": "spinach-cottage-cheese-bake",
+  "name": "Spinach and cottage cheese bake",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 55,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 400
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 300
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 100
+    },
+    {
+      "ingredient": "besan",
+      "grams": 50
+    },
+    {
+      "ingredient": "flaxseed",
+      "grams": 20
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "baking-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 10
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Make a flax mix: 20 g ground flaxseed with 60 ml water, rest 5 minutes. Water is not counted.",
+      "technique": "bake-without-eggs",
+      "timer_sec": 300
+    },
+    {
+      "text": "Wilt the spinach, squeeze dry and chop. Fry onion and garlic in oil.",
+      "technique": "soup-basics",
+      "cue": "The spinach is squeezed until no water drips, and the onion is soft and translucent.",
+      "tip": "Squeeze the spinach in a clean towel. Extra water makes the bake soggy."
+    },
+    {
+      "text": "Mix everything, press into an oiled dish and bake at 180°C for 35 minutes until firm and lightly golden.",
+      "technique": "oven-basics",
+      "timer_sec": 2100,
+      "cue": "Firm in the centre when pressed, lightly golden on top and pulling slightly from the sides."
+    }
+  ]
+}

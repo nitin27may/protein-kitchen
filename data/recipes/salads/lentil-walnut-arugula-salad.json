@@ -1,0 +1,63 @@
+{
+  "slug": "lentil-walnut-arugula-salad",
+  "name": "Lentil walnut salad with cottage cheese",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 12,
+  "active_min": 12,
+  "total_min": 12,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "lentils-green-brown-cooked",
+      "grams": 300
+    },
+    {
+      "ingredient": "walnuts",
+      "grams": 30
+    },
+    {
+      "ingredient": "arugula",
+      "grams": 60
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 150
+    },
+    {
+      "component": "balsamic-mustard-vinaigrette",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Dress warm-cooled lentils with half the vinaigrette.",
+      "technique": "salad-formula",
+      "cue": "The lentils are barely warm. Warm lentils absorb the dressing best."
+    },
+    {
+      "text": "Toss in arugula and cucumber just before serving.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Top with spoonfuls of cottage cheese and toasted walnuts.",
+      "cue": "The walnuts are fragrant and a shade darker.",
+      "tip": "Toast them in a dry pan for 2 minutes and watch them. They burn fast."
+    }
+  ]
+}

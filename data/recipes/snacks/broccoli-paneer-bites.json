@@ -1,0 +1,72 @@
+{
+  "slug": "broccoli-paneer-bites",
+  "name": "Baked broccoli paneer bites",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 12,
+  "total_min": 35,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "broccoli",
+      "grams": 200
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 100
+    },
+    {
+      "ingredient": "besan",
+      "grams": 25
+    },
+    {
+      "ingredient": "onion",
+      "grams": 25
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Chop the broccoli very finely and mix with grated paneer, onion, besan and spices."
+    },
+    {
+      "text": "Shape into 8 small patties and place on an oiled tray.",
+      "technique": "oven-basics"
+    },
+    {
+      "text": "Bake at 200°C for 20 minutes, turning once.",
+      "technique": "oven-basics",
+      "timer_sec": 1200,
+      "cue": "The patties are golden underneath and firm when pressed. Turn once.",
+      "tip": "Chop the broccoli very fine. Big pieces make the patties fall apart."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "soya-keema-matar",
+  "name": "Soya keema matar",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 18,
+  "total_min": 28,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "soya-chunks-proxy-defatted-soy-flour",
+      "grams": 100
+    },
+    {
+      "ingredient": "green-peas-fresh",
+      "grams": 150
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 6
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 5
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soak the soya chunks in hot water for 10 minutes, squeeze out the water and pulse coarsely.",
+      "timer_sec": 600
+    },
+    {
+      "text": "Fry onion, ginger and garlic in the oil, add tomato and spices and cook to a paste.",
+      "timer_sec": 480,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add the soya and peas with 150 ml water and cook 8 minutes until dry.",
+      "timer_sec": 480,
+      "cue": "The mixture is dry and crumbly with no pooled liquid, and the peas are bright and tender."
+    }
+  ]
+}

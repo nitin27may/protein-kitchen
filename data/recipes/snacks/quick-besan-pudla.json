@@ -1,0 +1,66 @@
+{
+  "slug": "quick-besan-pudla",
+  "name": "Quick besan pudla",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 10,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "besan",
+      "grams": 60
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 40
+    },
+    {
+      "ingredient": "onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 3
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 5
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 0.5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk besan, dahi, turmeric, salt and water into a smooth batter."
+    },
+    {
+      "text": "Stir in onion and chilli."
+    },
+    {
+      "text": "Cook one thin pudla on an oiled pan, 2 minutes a side.",
+      "timer_sec": 240,
+      "cue": "Bubbles appear, the edges lift and the underside is golden. Flip once.",
+      "tip": "Spread the batter thin in a spiral and keep the pan lightly oiled."
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "slug": "chole-masala",
+  "name": "Chole masala",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 90,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-dry",
+      "grams": 250
+    },
+    {
+      "ingredient": "onion",
+      "grams": 150
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 250
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 12
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 20
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "coriander-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 4
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 5
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "chickpeas-dry",
+      "grams": 250,
+      "lead_hours": 10,
+      "instruction": "Soak chickpeas overnight, discard soaking water"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Pressure cook soaked chickpeas with salt, 10 whistles or 30 minutes.",
+      "timer_sec": 1800,
+      "cue": "A chickpea crushes easily between two fingers with no chalky centre.",
+      "technique": "pressure-cooker-basics"
+    },
+    {
+      "text": "Fry cumin, onion, ginger and garlic in oil until brown.",
+      "timer_sec": 480,
+      "cue": "The onion is a deep golden brown.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add tomato and ground spices, cook to a paste.",
+      "timer_sec": 420,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add chickpeas with some liquid, simmer 15 minutes.",
+      "timer_sec": 900,
+      "cue": "The sauce is thick enough to coat a spoon, and some chickpeas have broken down to thicken it."
+    }
+  ],
+  "storage": "Refrigerate up to 4 days or freeze in portions for 3 months. Reheat until it bubbles, adding water if it has thickened."
+}

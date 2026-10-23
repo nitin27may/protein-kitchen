@@ -1,0 +1,655 @@
+[
+  {
+    "slug": "rolled-oats",
+    "name": "Oats, rolled (grains, oats), dry",
+    "aliases": [
+      "oatmeal",
+      "jau ke flakes"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 389,
+      "protein_g": 16.9,
+      "carbs_g": 66.3,
+      "fat_g": 6.9,
+      "fibre_g": 10.6
+    },
+    "source": "CNF",
+    "source_id": "4421",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Rolled oats"
+  },
+  {
+    "slug": "quinoa-dry",
+    "name": "Quinoa, dry",
+    "aliases": [],
+    "state": "dry",
+    "cooked_yield": 3.2,
+    "per100g": {
+      "kcal": 368,
+      "protein_g": 14.1,
+      "carbs_g": 64.2,
+      "fat_g": 6.1,
+      "fibre_g": 6.9
+    },
+    "source": "CNF",
+    "source_id": "4495",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Quinoa"
+  },
+  {
+    "slug": "atta-whole-wheat",
+    "name": "Whole wheat flour (atta)",
+    "aliases": [
+      "atta",
+      "gehun ka atta",
+      "chapati flour"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 369,
+      "protein_g": 14.6,
+      "carbs_g": 68.5,
+      "fat_g": 3.2,
+      "fibre_g": 8.9
+    },
+    "source": "CNF",
+    "source_id": "4500",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "maida-white-flour",
+    "name": "White flour, all purpose (maida)",
+    "aliases": [
+      "maida",
+      "all-purpose flour"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 364,
+      "protein_g": 10.3,
+      "carbs_g": 76.3,
+      "fat_g": 1.0,
+      "fibre_g": 3.1
+    },
+    "source": "CNF",
+    "source_id": "4484",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "White flour (maida)"
+  },
+  {
+    "slug": "semolina-suji",
+    "name": "Semolina (suji/rava)",
+    "aliases": [
+      "suji",
+      "rava",
+      "sooji"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 360,
+      "protein_g": 12.7,
+      "carbs_g": 72.8,
+      "fat_g": 1.1,
+      "fibre_g": 3.9
+    },
+    "source": "CNF",
+    "source_id": "4478",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "white-rice-dry",
+    "name": "White rice, long grain, dry (incl. basmati)",
+    "aliases": [
+      "chawal",
+      "basmati",
+      "rice"
+    ],
+    "state": "dry",
+    "cooked_yield": 3.0,
+    "per100g": {
+      "kcal": 365,
+      "protein_g": 7.1,
+      "carbs_g": 80.0,
+      "fat_g": 0.7,
+      "fibre_g": 1.0
+    },
+    "source": "CNF",
+    "source_id": "4471",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "White rice (basmati or long grain)"
+  },
+  {
+    "slug": "brown-rice-dry",
+    "name": "Brown rice, long grain, dry",
+    "aliases": [
+      "brown chawal"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.8,
+    "per100g": {
+      "kcal": 370,
+      "protein_g": 7.9,
+      "carbs_g": 77.2,
+      "fat_g": 2.9,
+      "fibre_g": 3.6
+    },
+    "source": "CNF",
+    "source_id": "4496",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Brown rice"
+  },
+  {
+    "slug": "jowar-flour",
+    "name": "Sorghum flour (jowar)",
+    "aliases": [
+      "jowar atta",
+      "juwar"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 359,
+      "protein_g": 8.4,
+      "carbs_g": 76.6,
+      "fat_g": 3.3,
+      "fibre_g": 6.6
+    },
+    "source": "CNF",
+    "source_id": "6190",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cornmeal-yellow",
+    "name": "Cornmeal, yellow, whole grain (makki)",
+    "aliases": [
+      "makki atta",
+      "makki ka atta"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 362,
+      "protein_g": 8.1,
+      "carbs_g": 76.9,
+      "fat_g": 3.6,
+      "fibre_g": 7.3
+    },
+    "source": "CNF",
+    "source_id": "4418",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Cornmeal (makki)"
+  },
+  {
+    "slug": "barley-pearled",
+    "name": "Barley, pearled, dry (jau)",
+    "aliases": [
+      "jau"
+    ],
+    "state": "dry",
+    "cooked_yield": 3.3,
+    "per100g": {
+      "kcal": 352,
+      "protein_g": 9.9,
+      "carbs_g": 77.7,
+      "fat_g": 1.2,
+      "fibre_g": 15.6
+    },
+    "source": "CNF",
+    "source_id": "4411",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pearl barley (jau)"
+  },
+  {
+    "slug": "tapioca-pearls",
+    "name": "Tapioca pearls, dry (sabudana)",
+    "aliases": [
+      "sabudana",
+      "sago"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 358,
+      "protein_g": 0.2,
+      "carbs_g": 88.7,
+      "fat_g": 0.0,
+      "fibre_g": 0.9
+    },
+    "source": "CNF",
+    "source_id": "4433",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "buckwheat-groats",
+    "name": "Buckwheat groats, roasted, dry (kuttu)",
+    "aliases": [
+      "kuttu",
+      "kuttu atta (groats)"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 346,
+      "protein_g": 11.7,
+      "carbs_g": 75.0,
+      "fat_g": 2.7,
+      "fibre_g": 10.3
+    },
+    "source": "CNF",
+    "source_id": "4412",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Buckwheat (kuttu)"
+  },
+  {
+    "slug": "amaranth-grain",
+    "name": "Amaranth grain, raw (rajgira)",
+    "aliases": [
+      "rajgira",
+      "ramdana"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 372,
+      "protein_g": 13.6,
+      "carbs_g": 65.2,
+      "fat_g": 7.0,
+      "fibre_g": 6.7
+    },
+    "source": "CNF",
+    "source_id": "4409",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "ragi-finger-millet",
+    "name": "Ragi (finger millet), dry",
+    "aliases": [
+      "nachni",
+      "mandua",
+      "ragi atta"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 321,
+      "protein_g": 7.2,
+      "carbs_g": 78.0,
+      "fat_g": 1.9,
+      "fibre_g": 11.2
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-A010",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Ragi (finger millet)"
+  },
+  {
+    "slug": "poha-rice-flakes",
+    "name": "Rice flakes (poha), dry",
+    "aliases": [
+      "poha",
+      "chivda flakes",
+      "aval"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 354,
+      "protein_g": 7.4,
+      "carbs_g": 80.2,
+      "fat_g": 1.1,
+      "fibre_g": 3.5
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-A011",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Rice flakes (poha)"
+  },
+  {
+    "slug": "bajra",
+    "name": "Bajra (pearl millet), dry",
+    "aliases": [
+      "bajra atta",
+      "sajje",
+      "kambu"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 348,
+      "protein_g": 11.0,
+      "carbs_g": 73.3,
+      "fat_g": 5.4,
+      "fibre_g": 11.5
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-A003",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Bajra (pearl millet)"
+  },
+  {
+    "slug": "seviyan-wheat-vermicelli",
+    "name": "Wheat vermicelli, roasted (seviyan)",
+    "aliases": [
+      "seviyan",
+      "vermicelli"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 340,
+      "protein_g": 10.4,
+      "carbs_g": 81.0,
+      "fat_g": 0.5,
+      "fibre_g": 9.6
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-A024",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Seviyan (wheat vermicelli)"
+  },
+  {
+    "slug": "bulgur-dry",
+    "name": "Bulgur, dry",
+    "aliases": [
+      "dalia (cracked wheat, approx.)"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.8,
+    "per100g": {
+      "kcal": 342,
+      "protein_g": 12.3,
+      "carbs_g": 75.9,
+      "fat_g": 1.3,
+      "fibre_g": 12.5
+    },
+    "source": "CNF",
+    "source_id": "4414",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Bulgur"
+  },
+  {
+    "slug": "bulgur-cooked",
+    "name": "Bulgur, cooked",
+    "aliases": [],
+    "state": "cooked",
+    "per100g": {
+      "kcal": 83,
+      "protein_g": 3.1,
+      "carbs_g": 18.6,
+      "fat_g": 0.2,
+      "fibre_g": 2.9
+    },
+    "source": "CNF",
+    "source_id": "4489",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Bulgur (cooked)"
+  },
+  {
+    "slug": "couscous-dry",
+    "name": "Couscous, dry",
+    "aliases": [],
+    "state": "dry",
+    "cooked_yield": 2.3,
+    "per100g": {
+      "kcal": 376,
+      "protein_g": 12.8,
+      "carbs_g": 77.4,
+      "fat_g": 0.6,
+      "fibre_g": 5.0
+    },
+    "source": "CNF",
+    "source_id": "4420",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Couscous"
+  },
+  {
+    "slug": "quinoa-cooked",
+    "name": "Quinoa, cooked",
+    "aliases": [],
+    "state": "cooked",
+    "per100g": {
+      "kcal": 120,
+      "protein_g": 4.4,
+      "carbs_g": 21.3,
+      "fat_g": 1.9,
+      "fibre_g": 2.8
+    },
+    "source": "CNF",
+    "source_id": "5917",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Quinoa (cooked)"
+  },
+  {
+    "slug": "spaghetti-whole-wheat-dry",
+    "name": "Spaghetti, whole wheat, dry",
+    "aliases": [],
+    "state": "dry",
+    "cooked_yield": 2.2,
+    "per100g": {
+      "kcal": 348,
+      "protein_g": 14.6,
+      "carbs_g": 75.0,
+      "fat_g": 1.4,
+      "fibre_g": 7.9
+    },
+    "source": "CNF",
+    "source_id": "4516",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Whole wheat spaghetti"
+  },
+  {
+    "slug": "pita-whole-wheat",
+    "name": "Pita bread, whole wheat",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 266,
+      "protein_g": 9.8,
+      "carbs_g": 55.0,
+      "fat_g": 2.6,
+      "fibre_g": 7.4
+    },
+    "source": "CNF",
+    "source_id": "3709",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "tortilla-corn",
+    "name": "Tortilla, corn",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 218,
+      "protein_g": 5.7,
+      "carbs_g": 44.6,
+      "fat_g": 2.9,
+      "fibre_g": 6.3
+    },
+    "source": "CNF",
+    "source_id": "3997",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "tortilla-whole-wheat",
+    "name": "Tortilla, whole wheat",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 310,
+      "protein_g": 9.8,
+      "carbs_g": 45.9,
+      "fat_g": 9.8,
+      "fibre_g": 9.8
+    },
+    "source": "CNF",
+    "source_id": "7258",
+    "aisle": "grains",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  }
+]

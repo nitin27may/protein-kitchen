@@ -1,0 +1,47 @@
+{
+  "slug": "greek-yogurt-seed-bowl",
+  "name": "Greek yogurt seed bowl",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 2,
+  "active_min": 2,
+  "total_min": 2,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 220
+    },
+    {
+      "ingredient": "pumpkin-seeds",
+      "grams": 15
+    },
+    {
+      "ingredient": "honey",
+      "grams": 8
+    },
+    {
+      "ingredient": "cinnamon-ground",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Spoon the yogurt into a bowl.",
+      "technique": "high-protein-snacks"
+    },
+    {
+      "text": "Top with pumpkin seeds, honey and cinnamon."
+    }
+  ]
+}

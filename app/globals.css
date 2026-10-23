@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f8f9;
+  --surface: #ffffff;
+  --surface-2: #eef2f4;
+  --fg: #14232b;
+  --muted: #55666f;
+  --line: #d5dee3;
+  --line-strong: #6f7f88;
+  --primary: #0f6b7a;
+  --primary-fg: #ffffff;
+  --primary-soft: #dcf0f3;
+  --ok: #1f7a4d;
+  --ok-soft: #dff3e8;
+  --warn: #9a5b00;
+  --warn-soft: #fdf0d6;
+  --bad: #b3261e;
+  --bad-soft: #fbe3e1;
+  --accent: #b4690e;
+  --accent-soft: #fbeccf;
+  color-scheme: light;
+}
+
+/* Dark: follows the system unless the user picked Light. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e171c;
+    --surface: #16232a;
+    --surface-2: #1d2e37;
+    --fg: #e8f0f3;
+    --muted: #9db0b9;
+    --line: #2b3f49;
+    --line-strong: #6b8795;
+    --primary: #4fb8c8;
+    --primary-fg: #062a31;
+    --primary-soft: #14363e;
+    --ok: #5fd39a;
+    --ok-soft: #153325;
+    --warn: #f0b252;
+    --warn-soft: #3a2a0d;
+    --bad: #ff8a80;
+    --bad-soft: #3d1a17;
+    --accent: #f0b252;
+    --accent-soft: #3a2a0d;
+    color-scheme: dark;
+  }
+}
+
+/* Dark: chosen explicitly. */
+:root[data-theme="dark"] {
+    --bg: #0e171c;
+    --surface: #16232a;
+    --surface-2: #1d2e37;
+    --fg: #e8f0f3;
+    --muted: #9db0b9;
+    --line: #2b3f49;
+    --line-strong: #6b8795;
+    --primary: #4fb8c8;
+    --primary-fg: #062a31;
+    --primary-soft: #14363e;
+    --ok: #5fd39a;
+    --ok-soft: #153325;
+    --warn: #f0b252;
+    --warn-soft: #3a2a0d;
+    --bad: #ff8a80;
+    --bad-soft: #3d1a17;
+    --accent: #f0b252;
+    --accent-soft: #3a2a0d;
+    color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primaryfg: var(--primary-fg);
+  --color-primarysoft: var(--primary-soft);
+  --color-ok: var(--ok);
+  --color-oksoft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warnsoft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-badsoft: var(--bad-soft);
+  --font-sans: var(--nf-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--nf-display), var(--nf-body), ui-sans-serif, system-ui, sans-serif;
+  --color-accent: var(--accent);
+  --color-accentsoft: var(--accent-soft);
+  /* One radius per role, so hierarchy reads: small controls, cards, then sheets and dialogs. */
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-sheet: 1.5rem;
+  --shadow-pop: 0 1px 2px rgb(15 35 43 / 0.06), 0 8px 24px rgb(15 35 43 / 0.12);
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--fg);
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+/* One focus style everywhere, visible in light and dark. */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Bottom sheet built on <dialog>: native focus trap and Escape handling. */
+dialog.sheet {
+  margin: auto 0 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 88dvh;
+  border: 0;
+  padding: 0;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--surface);
+  color: var(--fg);
+  overflow: hidden;
+}
+dialog.sheet::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+dialog.sheet.full {
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+/* On a desktop a "full" sheet is a large centred dialog rather than a takeover. */
+@media (min-width: 1024px) {
+  dialog.sheet.full {
+    margin: auto;
+    width: min(1120px, 94vw);
+    max-width: none;
+    height: min(780px, 90dvh);
+    max-height: 90dvh;
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--shadow-pop);
+  }
+}
+@media (min-width: 640px) {
+  dialog.sheet:not(.full) {
+    margin: auto;
+    max-width: 520px;
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* A "right" sheet is a drawer on wide screens and the usual bottom sheet on phones. */
+@media (min-width: 1024px) {
+  dialog.sheet.right {
+    margin: 0 0 0 auto;
+    width: min(28rem, 100vw);
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: var(--radius-sheet) 0 0 var(--radius-sheet);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* Fields the server rejected get a red border as well as the message under them. */
+[aria-invalid="true"] {
+  border-color: var(--bad) !important;
+}
+
+/* Spreadsheet view (Univer). It fills the content area and brings its own toolbar, formula bar and sheet tabs. */
+.sheet-host {
+  block-size: max(26rem, calc(100dvh - 12rem));
+  inline-size: 100%;
+}
+[data-full] .sheet-host {
+  block-size: calc(100dvh - 4.5rem);
+}

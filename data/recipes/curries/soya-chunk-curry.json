@@ -1,0 +1,85 @@
+{
+  "slug": "soya-chunk-curry",
+  "name": "Soya chunk curry",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 20,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "soya-chunks-proxy-defatted-soy-flour",
+      "grams": 90
+    },
+    {
+      "ingredient": "onion",
+      "grams": 100
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 200
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 80
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 8
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 15
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Boil soya chunks 8 minutes, squeeze out water.",
+      "timer_sec": 480,
+      "cue": "The chunks are soft and spongy and no water drips when you squeeze them.",
+      "tip": "Squeeze hard. Water left in the chunks dilutes the gravy."
+    },
+    {
+      "text": "Fry onion, ginger, garlic until brown, add tomato and spices.",
+      "timer_sec": 600,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add soya chunks and whisked dahi, simmer 8 minutes.",
+      "timer_sec": 480,
+      "cue": "The gravy is thick and clings to the chunks, with no raw dahi smell.",
+      "tip": "Whisk the dahi smooth and add it off a low heat, stirring, so it does not split."
+    }
+  ]
+}

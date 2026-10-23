@@ -1,0 +1,85 @@
+{
+  "slug": "sheet-pan-tofu-vegetables",
+  "name": "Sheet-pan tofu and vegetables",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 40,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 400
+    },
+    {
+      "ingredient": "broccoli",
+      "grams": 250
+    },
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 150
+    },
+    {
+      "ingredient": "zucchini",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "paprika",
+      "grams": 3
+    },
+    {
+      "ingredient": "oregano-dried",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    },
+    {
+      "component": "yogurt-herb-dressing",
+      "grams": 80
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press the tofu and cut into slabs.",
+      "technique": "press-tofu",
+      "timer_sec": 900
+    },
+    {
+      "text": "Toss vegetables and tofu with oil, paprika, oregano and salt on one tray, without crowding.",
+      "technique": "oven-basics"
+    },
+    {
+      "text": "Roast at 210°C for 30 minutes, turning halfway, until the edges brown.",
+      "technique": "oven-basics",
+      "timer_sec": 1800,
+      "cue": "Tofu edges are golden and firm, broccoli tips are lightly charred and a fork slides into the zucchini.",
+      "tip": "Preheat the oven fully before the tray goes in."
+    },
+    {
+      "text": "Serve with the yoghurt dressing."
+    }
+  ]
+}

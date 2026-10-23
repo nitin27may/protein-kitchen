@@ -1,0 +1,160 @@
+[
+  {
+    "slug": "tofu-extra-firm",
+    "name": "Tofu, firm or extra firm",
+    "aliases": [
+      "tofu",
+      "soya paneer"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 70,
+      "protein_g": 8.2,
+      "carbs_g": 1.7,
+      "fat_g": 4.2,
+      "fibre_g": 0.9
+    },
+    "source": "CNF",
+    "source_id": "3404",
+    "aisle": "soy-protein",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "tempeh",
+    "name": "Tempeh",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 193,
+      "protein_g": 18.5,
+      "carbs_g": 9.4,
+      "fat_g": 10.8,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "3321",
+    "aisle": "soy-protein",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Loblaws",
+      "Whole Foods"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "edamame-frozen",
+    "name": "Edamame, shelled, frozen (unprepared)",
+    "aliases": [
+      "green soybeans"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 110,
+      "protein_g": 10.2,
+      "carbs_g": 8.6,
+      "fat_g": 4.7,
+      "fibre_g": 4.8
+    },
+    "source": "CNF",
+    "source_id": "6217",
+    "aisle": "soy-protein",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Frozen aisle"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Frozen edamame"
+  },
+  {
+    "slug": "vital-wheat-gluten",
+    "name": "Vital wheat gluten",
+    "aliases": [
+      "seitan flour"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 370,
+      "protein_g": 75.2,
+      "carbs_g": 13.8,
+      "fat_g": 1.9,
+      "fibre_g": 0.6
+    },
+    "source": "CNF",
+    "source_id": "6591",
+    "aisle": "soy-protein",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Bulk Barn",
+      "Asian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "soya-chunks-proxy-defatted-soy-flour",
+    "name": "Soy flour, defatted (closest source for soya chunks/TVP; verify against pack)",
+    "aliases": [
+      "soya chunks",
+      "soya nuggets",
+      "meal maker",
+      "TVP"
+    ],
+    "state": "dry",
+    "cooked_yield": 3.0,
+    "per100g": {
+      "kcal": 330,
+      "protein_g": 47.0,
+      "carbs_g": 38.4,
+      "fat_g": 1.2,
+      "fibre_g": 17.5
+    },
+    "source": "CNF",
+    "source_id": "3324",
+    "aisle": "soy-protein",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Soya chunks"
+  },
+  {
+    "slug": "edamame-prepared",
+    "name": "Edamame, shelled, frozen, prepared",
+    "aliases": [
+      "cooked edamame"
+    ],
+    "state": "cooked",
+    "per100g": {
+      "kcal": 122,
+      "protein_g": 10.9,
+      "carbs_g": 9.9,
+      "fat_g": 5.2,
+      "fibre_g": 5.2
+    },
+    "source": "CNF",
+    "source_id": "6218",
+    "aisle": "soy-protein",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Edamame (cooked)"
+  }
+]

@@ -1,0 +1,89 @@
+{
+  "slug": "clear-moong-soup-shot",
+  "name": "Clear moong soup",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 35,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "moong-whole-dry",
+      "grams": 60
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 80
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 5
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 4
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 0.5
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 3
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "moong-whole-dry",
+      "grams": 60,
+      "lead_hours": 4,
+      "instruction": "Soak whole moong, drain"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Pressure cook soaked moong with turmeric, tomato and 600 ml water, 4 whistles.",
+      "technique": "cook-legumes",
+      "timer_sec": 900,
+      "cue": "A moong bean crushes easily between two fingers."
+    },
+    {
+      "text": "Fry cumin, ginger and garlic in the oil and add to the soup.",
+      "technique": "soup-basics",
+      "cue": "The cumin sizzles and the garlic is golden."
+    },
+    {
+      "text": "Blend half for body and finish with lemon and coriander.",
+      "technique": "soup-basics"
+    }
+  ]
+}

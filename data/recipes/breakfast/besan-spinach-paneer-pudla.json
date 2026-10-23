@@ -1,0 +1,75 @@
+{
+  "slug": "besan-spinach-paneer-pudla",
+  "name": "Besan spinach paneer pudla",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 8,
+  "active_min": 15,
+  "total_min": 20,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "besan",
+      "grams": 110
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 100
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 4
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk besan, turmeric, salt and water into a smooth batter, then stir in chopped spinach, onion and chilli."
+    },
+    {
+      "text": "Cook 4 thin pudlas on an oiled pan, 2 minutes a side.",
+      "timer_sec": 480,
+      "cue": "The bottom is golden with small brown spots, the edges lift easily and the top is no longer shiny. Flip once only.",
+      "tip": "Spread the batter thin with the back of a spoon, in a spiral from the centre. Grease the pan lightly between pudlas."
+    },
+    {
+      "text": "Fill with crumbled paneer and fold."
+    }
+  ],
+  "serving_unit": {
+    "singular": "pudla",
+    "plural": "pudlas",
+    "per_serving": 2
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "slug": "paneer-oats-upma",
+  "name": "Paneer oats upma",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 15,
+  "total_min": 20,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "rolled-oats",
+      "grams": 90
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 120
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 50
+    },
+    {
+      "ingredient": "green-peas-fresh",
+      "grams": 50
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "mustard-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "curry-leaves",
+      "grams": 3
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 4
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Dry-roast the oats for 3 minutes and set aside.",
+      "cue": "The oats smell toasty and are a shade darker."
+    },
+    {
+      "text": "Crackle mustard seed and curry leaves in oil, then fry onion, carrot, peas and chilli.",
+      "timer_sec": 300,
+      "cue": "The mustard seeds pop, the curry leaves crisp and the onion is soft.",
+      "technique": "tadka-tempering"
+    },
+    {
+      "text": "Add the oats, 250 ml water and salt, cook 3 minutes, then fold in crumbled paneer.",
+      "timer_sec": 180,
+      "cue": "The oats are soft and the mixture is moist, not soupy. The paneer stays soft because it goes in last."
+    }
+  ]
+}

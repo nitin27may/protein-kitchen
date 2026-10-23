@@ -1,0 +1,41 @@
+{
+  "kcal_check_skip": {
+    "lemon-juice": "CNF energy includes acid and organic acids not in the macro columns",
+    "lime-juice": "CNF energy includes acid and organic acids not in the macro columns",
+    "coriander-seed": "Spice: CNF carbohydrate includes non-digestible fraction",
+    "cayenne": "Spice: CNF carbohydrate includes non-digestible fraction",
+    "cloves-ground": "Spice: CNF carbohydrate includes non-digestible fraction",
+    "baking-powder": "Mineral salts carry mass but not energy",
+    "cocoa-powder": "Theobromine and non-digestible carbohydrate not in macro columns",
+    "vinegar-white": "Energy comes from acetic acid, not the macro columns",
+    "vinegar-red-wine": "Energy comes from acetic acid, not the macro columns",
+    "vinegar-balsamic": "Energy comes from acetic acid and sugars, not fully in the macro columns",
+    "chickpea-sprouts-proxy-lentil-sprouts": "Sprouting changes carbohydrate and fibre split in the CNF entry",
+    "curry-leaves": "IFCT energy uses its own factors for leafy vegetables",
+    "amla": "IFCT energy uses its own factors; organic acids",
+    "drumstick": "IFCT energy uses its own factors for vegetables",
+    "drumstick-leaves": "IFCT energy uses its own factors for leafy vegetables",
+    "colocasia-leaves": "IFCT energy uses its own factors for leafy vegetables"
+  },
+  "dry_without_cooked_yield": {
+    "atta-whole-wheat": "flour",
+    "maida-white-flour": "flour",
+    "semolina-suji": "cooked as porridge or upma, no useful weight ratio",
+    "jowar-flour": "flour",
+    "cornmeal-yellow": "flour",
+    "rice-flour": "flour",
+    "arrowroot-flour": "flour",
+    "rolled-oats": "weighed dry in recipes",
+    "poha-rice-flakes": "soaked, not boiled",
+    "ragi-finger-millet": "ground to flour or porridge",
+    "bajra": "ground to flour",
+    "seviyan-wheat-vermicelli": "cooked in the dish",
+    "tapioca-pearls": "soaked, not boiled",
+    "amaranth-grain": "no source-backed yield",
+    "buckwheat-groats": "no source-backed yield",
+    "couscous-dry": "hydrated, not boiled",
+    "horse-gram": "IFCT has no cooked pair; weigh dry",
+    "moth-bean": "IFCT has no cooked pair; weigh dry",
+    "vital-wheat-gluten": "flour, mixed into dough"
+  }
+}

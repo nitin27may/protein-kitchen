@@ -1,0 +1,27 @@
+# dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# local databases and backups (user data never goes to git)
+db/*.db
+db/*.db-wal
+db/*.db-shm
+db/*.db-journal
+*.db-journal
+backups/
+uploads/
+
+# secrets and local config
+.env*
+!.env.example
+.neon
+*.age
+.claude/settings.local.json
+
+# OS
+.DS_Store

@@ -1,0 +1,79 @@
+{
+  "slug": "besan-veg-bake",
+  "name": "Besan vegetable bake",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian-fusion",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 12,
+  "total_min": 40,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "besan",
+      "grams": 100
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 100
+    },
+    {
+      "ingredient": "zucchini",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 80
+    },
+    {
+      "ingredient": "baking-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 8
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk besan, dahi, baking powder, cumin, salt and 100 ml water into a thick batter and rest 5 minutes.",
+      "technique": "bake-without-eggs",
+      "timer_sec": 300
+    },
+    {
+      "text": "Fold in chopped spinach, grated zucchini and onion.",
+      "technique": "bake-without-eggs"
+    },
+    {
+      "text": "Pour into an oiled dish and bake at 190°C for 25 minutes until set and golden.",
+      "technique": "oven-basics",
+      "timer_sec": 1500,
+      "cue": "The centre does not wobble, the edges are golden and pull slightly from the dish, and a knife comes out clean.",
+      "tip": "Oil the dish generously. Besan batters stick."
+    }
+  ]
+}

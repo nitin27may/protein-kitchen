@@ -1,0 +1,78 @@
+{
+  "slug": "lentil-yogurt-bowl",
+  "name": "Spiced lentil and yoghurt bowl",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian-fusion",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "lentils-green-brown-cooked",
+      "grams": 300
+    },
+    {
+      "ingredient": "bulgur-dry",
+      "grams": 50
+    },
+    {
+      "component": "mint-yogurt-chutney",
+      "grams": 120
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 10
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Warm the lentils with cumin, oil and salt.",
+      "technique": "cook-legumes",
+      "cue": "The lentils are hot through and smell of toasted cumin."
+    },
+    {
+      "text": "Soak bulgur in boiling water for 15 minutes.",
+      "technique": "cook-grains-for-salads",
+      "timer_sec": 900,
+      "cue": "The grains are tender and the water is absorbed. Drain any extra and fluff."
+    },
+    {
+      "text": "Assemble bulgur, lentils, vegetables and chutney.",
+      "technique": "salad-formula"
+    }
+  ]
+}

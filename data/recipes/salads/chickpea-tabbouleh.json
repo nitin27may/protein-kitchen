@@ -1,0 +1,78 @@
+{
+  "slug": "chickpea-tabbouleh",
+  "name": "Chickpea tabbouleh",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 20,
+  "active_min": 20,
+  "total_min": 35,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "bulgur-dry",
+      "grams": 50
+    },
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 300
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 60
+    },
+    {
+      "ingredient": "mint-fresh",
+      "grams": 15
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 200
+    },
+    {
+      "ingredient": "spring-onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "sunflower-seeds",
+      "grams": 20
+    },
+    {
+      "component": "tofu-feta",
+      "grams": 200
+    },
+    {
+      "component": "lemon-olive-vinaigrette",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soak bulgur in an equal volume of boiling water for 15 minutes, drain any extra and fluff.",
+      "technique": "cook-grains-for-salads",
+      "timer_sec": 900,
+      "cue": "The bulgur is tender and the water is absorbed. Drain any extra and fluff.",
+      "tip": "Cover the bowl tightly while it soaks."
+    },
+    {
+      "text": "Chop parsley and mint finely and dice the tomato.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Mix everything with the vinaigrette. Tabbouleh should be mostly herbs.",
+      "technique": "vinaigrette-ratio"
+    }
+  ]
+}

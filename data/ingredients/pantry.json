@@ -1,0 +1,403 @@
+[
+  {
+    "slug": "sugar-white",
+    "name": "Sugar, granulated",
+    "aliases": [
+      "cheeni",
+      "shakkar"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 387,
+      "protein_g": 0.0,
+      "carbs_g": 100.0,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "4318",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "sugar-brown",
+    "name": "Sugar, brown",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 380,
+      "protein_g": 0.1,
+      "carbs_g": 98.1,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "4317",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "honey",
+    "name": "Honey",
+    "aliases": [
+      "shahad"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 304,
+      "protein_g": 0.3,
+      "carbs_g": 82.4,
+      "fat_g": 0.0,
+      "fibre_g": 0.2
+    },
+    "source": "CNF",
+    "source_id": "4294",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "molasses-blackstrap",
+    "name": "Molasses, blackstrap",
+    "aliases": [
+      "gur (nearest CNF; jaggery itself unresolved)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 235,
+      "protein_g": 0.0,
+      "carbs_g": 60.8,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "4300",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "vinegar-white",
+    "name": "Vinegar, distilled",
+    "aliases": [
+      "sirka"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 18,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "14",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cocoa-powder",
+    "name": "Cocoa powder, unsweetened",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 228,
+      "protein_g": 19.6,
+      "carbs_g": 57.9,
+      "fat_g": 13.7,
+      "fibre_g": 37.0
+    },
+    "source": "CNF",
+    "source_id": "4223",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "papad",
+    "name": "Papad (papadum)",
+    "aliases": [
+      "papadum",
+      "appalam"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 371,
+      "protein_g": 25.6,
+      "carbs_g": 59.9,
+      "fat_g": 3.2,
+      "fibre_g": 18.6
+    },
+    "source": "CNF",
+    "source_id": "5492",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "jaggery",
+    "name": "Jaggery, cane (gur)",
+    "aliases": [
+      "gur",
+      "gud"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 354,
+      "protein_g": 1.9,
+      "carbs_g": 84.9,
+      "fat_g": 0.2,
+      "fibre_g": 0
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-I001",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "olives-black",
+    "name": "Olives, ripe, canned",
+    "aliases": [
+      "black olives"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 115,
+      "protein_g": 0.8,
+      "carbs_g": 6.3,
+      "fat_g": 10.7,
+      "fibre_g": 3.2
+    },
+    "source": "CNF",
+    "source_id": "1613",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Black olives"
+  },
+  {
+    "slug": "mustard-prepared",
+    "name": "Mustard sauce, yellow, ready-to-serve",
+    "aliases": [
+      "prepared mustard"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 60,
+      "protein_g": 3.7,
+      "carbs_g": 5.8,
+      "fat_g": 3.3,
+      "fibre_g": 4.0
+    },
+    "source": "CNF",
+    "source_id": "4970",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Prepared mustard"
+  },
+  {
+    "slug": "soy-sauce-shoyu",
+    "name": "Soy sauce (soy and wheat), shoyu",
+    "aliases": [
+      "soy sauce"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 53,
+      "protein_g": 8.1,
+      "carbs_g": 4.9,
+      "fat_g": 0.6,
+      "fibre_g": 0.6
+    },
+    "source": "CNF",
+    "source_id": "3403",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Soy sauce"
+  },
+  {
+    "slug": "maple-syrup",
+    "name": "Maple syrup",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 260,
+      "protein_g": 0.0,
+      "carbs_g": 66.9,
+      "fat_g": 0.2,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "4326",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "vinegar-red-wine",
+    "name": "Vinegar, red wine",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 19,
+      "protein_g": 0.0,
+      "carbs_g": 0.3,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "6195",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "vinegar-balsamic",
+    "name": "Vinegar, balsamic",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 88,
+      "protein_g": 0.5,
+      "carbs_g": 17.0,
+      "fat_g": 0.0,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "6196",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "water-tap",
+    "name": "Water, tap",
+    "aliases": [
+      "pani",
+      "paani",
+      "cold water"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 0,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "USDA",
+    "source_id": "173647",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Tap"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Water"
+  },
+  {
+    "slug": "hummus-commercial",
+    "name": "Hummus, commercial",
+    "aliases": [
+      "store-bought hummus",
+      "ready-made hummus"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 237,
+      "protein_g": 7.78,
+      "carbs_g": 15.0,
+      "fat_g": 17.82,
+      "fibre_g": 5.5
+    },
+    "source": "USDA",
+    "source_id": "174289",
+    "aisle": "pantry",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": true,
+    "is_dairy": false,
+    "display_name": "Hummus (store-bought)"
+  }
+]

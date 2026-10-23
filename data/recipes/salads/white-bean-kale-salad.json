@@ -1,0 +1,67 @@
+{
+  "slug": "white-bean-kale-salad",
+  "name": "White bean and kale salad",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "great-northern-beans-cooked",
+      "grams": 350
+    },
+    {
+      "ingredient": "kale",
+      "grams": 100
+    },
+    {
+      "ingredient": "sun-dried-tomato",
+      "grams": 20
+    },
+    {
+      "ingredient": "almonds",
+      "grams": 20
+    },
+    {
+      "ingredient": "pumpkin-seeds",
+      "grams": 25
+    },
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 120
+    },
+    {
+      "component": "balsamic-mustard-vinaigrette",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Strip kale from the stems, slice finely and massage with a spoon of the vinaigrette for 2 minutes until it darkens and softens.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Fold in beans and chopped sun-dried tomato and rest 10 minutes.",
+      "technique": "salad-formula",
+      "timer_sec": 600
+    },
+    {
+      "text": "Top with toasted almonds and pumpkin seeds.",
+      "cue": "The almonds are fragrant and lightly golden.",
+      "tip": "Toast them in a dry pan for 2 minutes and watch them. They burn fast."
+    }
+  ]
+}

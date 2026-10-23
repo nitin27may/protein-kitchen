@@ -1,0 +1,69 @@
+{
+  "slug": "roasted-chana-snack",
+  "name": "Masala roasted chickpeas",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 5,
+  "active_min": 10,
+  "total_min": 45,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 5,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-dry",
+      "grams": 150
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "chickpeas-dry",
+      "grams": 150,
+      "lead_hours": 8,
+      "instruction": "Soak chickpeas overnight"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Boil soaked chickpeas 20 minutes, drain, dry thoroughly.",
+      "timer_sec": 1200,
+      "cue": "A chickpea is just tender with a slight bite. Drain and dry it thoroughly.",
+      "tip": "Pat dry and leave on a towel for 10 minutes. Moisture is the enemy of crunch.",
+      "technique": "roast-chickpeas"
+    },
+    {
+      "text": "Toss with oil and spices, roast at 200°C for 30 minutes, shaking halfway.",
+      "timer_sec": 1800,
+      "cue": "The chickpeas are golden and rattle on the tray. They crisp more as they cool.",
+      "tip": "Add the spices after roasting. Fine powder scorches in the oven.",
+      "technique": "roast-chickpeas"
+    }
+  ],
+  "storage": "Crispest on the day. A loosely covered jar keeps them crunchy for 2 to 3 days; sealed tightly they soften. Re-crisp in a 180°C oven for 5 minutes."
+}

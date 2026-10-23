@@ -1,0 +1,70 @@
+{
+  "slug": "tofu-feta",
+  "name": "Marinated tofu feta",
+  "kind": "component",
+  "family": "sauces",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "greek",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 250,
+  "equipment": [],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 5,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 300
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 30
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "oregano-dried",
+      "grams": 2
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 3
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 6
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "marinate",
+      "ingredient": "tofu-extra-firm",
+      "grams": 300,
+      "lead_hours": 4,
+      "instruction": "Marinate tofu feta in lemon, oil and oregano"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Press the tofu, then crumble or cube it.",
+      "technique": "press-tofu",
+      "timer_sec": 900,
+      "cue": "Pressed tofu feels firm and no longer drips, and crumbles into small ragged pieces."
+    },
+    {
+      "text": "Toss with lemon juice, oil, oregano, grated garlic and salt. Marinate in the fridge at least 4 hours.",
+      "technique": "press-tofu",
+      "cue": "The pieces are glossy with marinade and smell of lemon and oregano after resting in the fridge."
+    }
+  ]
+}

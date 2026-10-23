@@ -1,0 +1,375 @@
+[
+  {
+    "slug": "peanut-butter-natural",
+    "name": "Peanut butter, natural",
+    "aliases": [
+      "PB"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 585,
+      "protein_g": 23.7,
+      "carbs_g": 21.5,
+      "fat_g": 49.7,
+      "fibre_g": 8.0
+    },
+    "source": "CNF",
+    "source_id": "6289",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "peanuts-dry-roasted",
+    "name": "Peanuts, dry-roasted, salted",
+    "aliases": [
+      "moongphali",
+      "mungfali"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 587,
+      "protein_g": 24.4,
+      "carbs_g": 21.3,
+      "fat_g": 49.7,
+      "fibre_g": 8.4
+    },
+    "source": "CNF",
+    "source_id": "3302",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Roasted peanuts"
+  },
+  {
+    "slug": "pumpkin-seeds",
+    "name": "Pumpkin seed kernels, dried",
+    "aliases": [
+      "pepitas",
+      "kaddu ke beej"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 559,
+      "protein_g": 30.2,
+      "carbs_g": 10.7,
+      "fat_g": 49.0,
+      "fibre_g": 6.0
+    },
+    "source": "CNF",
+    "source_id": "2516",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried pumpkin seed kernels"
+  },
+  {
+    "slug": "hemp-seeds-hulled",
+    "name": "Hemp seeds, hulled",
+    "aliases": [
+      "hemp hearts"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 584,
+      "protein_g": 32.7,
+      "carbs_g": 8.1,
+      "fat_g": 47.0,
+      "fibre_g": 5.1
+    },
+    "source": "CNF",
+    "source_id": "7568",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Costco",
+      "Loblaws"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "flaxseed",
+    "name": "Flaxseed (linseed), whole or ground",
+    "aliases": [
+      "alsi",
+      "ground flax",
+      "linseed"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 534,
+      "protein_g": 18.3,
+      "carbs_g": 28.9,
+      "fat_g": 42.2,
+      "fibre_g": 27.3
+    },
+    "source": "CNF",
+    "source_id": "4528",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer",
+      "No Frills"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Flaxseed (alsi)"
+  },
+  {
+    "slug": "chia-seeds",
+    "name": "Chia seeds, dried",
+    "aliases": [
+      "chia",
+      "sabja (not the same seed)"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 486,
+      "protein_g": 16.5,
+      "carbs_g": 42.1,
+      "fat_g": 30.7,
+      "fibre_g": 34.4
+    },
+    "source": "CNF",
+    "source_id": "2511",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried chia seeds"
+  },
+  {
+    "slug": "sesame-seeds",
+    "name": "Sesame seeds, kernels, dried",
+    "aliases": [
+      "til",
+      "white til"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 631,
+      "protein_g": 20.4,
+      "carbs_g": 11.7,
+      "fat_g": 61.2,
+      "fibre_g": 11.6
+    },
+    "source": "CNF",
+    "source_id": "2611",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer",
+      "No Frills"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Sesame seeds (til)"
+  },
+  {
+    "slug": "sunflower-seeds",
+    "name": "Sunflower seed kernels, dried",
+    "aliases": [
+      "surajmukhi beej"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 585,
+      "protein_g": 20.8,
+      "carbs_g": 20.0,
+      "fat_g": 51.5,
+      "fibre_g": 8.6
+    },
+    "source": "CNF",
+    "source_id": "2526",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried sunflower seed kernels"
+  },
+  {
+    "slug": "watermelon-seeds",
+    "name": "Watermelon seed kernels, dried",
+    "aliases": [
+      "magaz",
+      "char magaz"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 557,
+      "protein_g": 28.3,
+      "carbs_g": 15.3,
+      "fat_g": 47.4,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "2599",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer",
+      "No Frills"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried watermelon seed kernels"
+  },
+  {
+    "slug": "tahini",
+    "name": "Tahini (sesame butter), from raw and stone-ground kernels",
+    "aliases": [
+      "sesame paste"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 570,
+      "protein_g": 17.8,
+      "carbs_g": 26.2,
+      "fat_g": 48.0,
+      "fibre_g": 9.3
+    },
+    "source": "CNF",
+    "source_id": "2608",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Tahini"
+  },
+  {
+    "slug": "almonds",
+    "name": "Almonds, dried, unblanched",
+    "aliases": [
+      "badam"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 579,
+      "protein_g": 21.1,
+      "carbs_g": 21.6,
+      "fat_g": 49.9,
+      "fibre_g": 12.5
+    },
+    "source": "CNF",
+    "source_id": "2534",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Almonds"
+  },
+  {
+    "slug": "walnuts",
+    "name": "Walnuts, English, dried",
+    "aliases": [
+      "akhrot"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 655,
+      "protein_g": 15.2,
+      "carbs_g": 13.7,
+      "fat_g": 65.2,
+      "fibre_g": 6.7
+    },
+    "source": "CNF",
+    "source_id": "2590",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Walnuts"
+  },
+  {
+    "slug": "cashews",
+    "name": "Cashew nuts, raw",
+    "aliases": [
+      "kaju"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 553,
+      "protein_g": 18.2,
+      "carbs_g": 30.2,
+      "fat_g": 43.9,
+      "fibre_g": 3.3
+    },
+    "source": "CNF",
+    "source_id": "5709",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Cashew nuts"
+  },
+  {
+    "slug": "pistachios",
+    "name": "Pistachio nuts, raw",
+    "aliases": [
+      "pista"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 562,
+      "protein_g": 20.3,
+      "carbs_g": 27.5,
+      "fat_g": 45.4,
+      "fibre_g": 8.8
+    },
+    "source": "CNF",
+    "source_id": "2644",
+    "aisle": "nuts-seeds",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pistachio nuts"
+  }
+]

@@ -1,0 +1,70 @@
+{
+  "slug": "edamame-quinoa-salad",
+  "name": "Edamame quinoa salad",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "quinoa-cooked",
+      "grams": 300
+    },
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 200
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 80
+    },
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 80
+    },
+    {
+      "ingredient": "spring-onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "pumpkin-seeds",
+      "grams": 20
+    },
+    {
+      "component": "peanut-lime-dressing",
+      "grams": 50
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Cook and fully cool the quinoa before dressing.",
+      "technique": "cook-grains-for-salads",
+      "cue": "The quinoa grains show tiny spirals, are tender but not mushy, and are fully cool."
+    },
+    {
+      "text": "Grate carrot, slice pepper and spring onion.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Toss everything with the dressing and top with pumpkin seeds.",
+      "technique": "salad-formula"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "slug": "stuffed-peppers-quinoa-beans",
+  "name": "Baked peppers stuffed with quinoa and beans",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mexican",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 50,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 400
+    },
+    {
+      "ingredient": "quinoa-cooked",
+      "grams": 150
+    },
+    {
+      "ingredient": "black-beans-cooked",
+      "grams": 200
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 100
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Halve the peppers and remove the seeds. Preheat the oven to 200°C.",
+      "technique": "oven-basics"
+    },
+    {
+      "text": "Mix quinoa, beans, diced tomato and onion, cumin, chilli, oil and salt and fill the pepper halves.",
+      "technique": "cook-grains-for-salads"
+    },
+    {
+      "text": "Bake for 30 minutes until the peppers are tender and the filling is hot.",
+      "technique": "oven-basics",
+      "timer_sec": 1800,
+      "cue": "The pepper walls are tender when a knife goes in, the skins have wrinkled slightly, and the filling is steaming.",
+      "tip": "Cover loosely with foil for the first 20 minutes if the tops brown too fast."
+    },
+    {
+      "text": "Serve each plate with 50 g Greek yogurt."
+    }
+  ]
+}

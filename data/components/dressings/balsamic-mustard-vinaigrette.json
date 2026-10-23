@@ -1,0 +1,50 @@
+{
+  "slug": "balsamic-mustard-vinaigrette",
+  "name": "Balsamic mustard vinaigrette",
+  "kind": "component",
+  "family": "dressings",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 7,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "oil-olive",
+      "grams": 60
+    },
+    {
+      "ingredient": "vinegar-balsamic",
+      "grams": 20
+    },
+    {
+      "ingredient": "mustard-prepared",
+      "grams": 8
+    },
+    {
+      "ingredient": "maple-syrup",
+      "grams": 8
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk balsamic, mustard, maple syrup and salt, then add the oil slowly while whisking.",
+      "technique": "vinaigrette-ratio",
+      "cue": "The dressing is thick and glossy and does not separate when you stop whisking."
+    }
+  ]
+}

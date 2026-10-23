@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1792709995363,
+      "tag": "0000_supreme_starhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792711818708,
+      "tag": "0001_bouncy_night_nurse",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792712153369,
+      "tag": "0002_wild_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792712758273,
+      "tag": "0003_lowly_grey_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792791146141,
+      "tag": "0004_yielding_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792795116151,
+      "tag": "0005_glorious_wendell_vaughn",
+      "breakpoints": true
+    }
+  ]
+}

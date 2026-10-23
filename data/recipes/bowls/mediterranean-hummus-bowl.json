@@ -1,0 +1,80 @@
+{
+  "slug": "mediterranean-hummus-bowl",
+  "name": "Mediterranean hummus bowl",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 35,
+  "equipment": [
+    "oven"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "quinoa-cooked",
+      "grams": 300
+    },
+    {
+      "component": "hummus",
+      "grams": 120,
+      "alt_ingredient": "hummus-commercial"
+    },
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 150
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 100
+    },
+    {
+      "ingredient": "olives-black",
+      "grams": 20
+    },
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 100
+    },
+    {
+      "component": "tofu-feta",
+      "grams": 150
+    },
+    {
+      "component": "lemon-tahini-dressing",
+      "grams": 30
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Roast the extra chickpeas at 200°C for 25 minutes until crisp.",
+      "technique": "roast-chickpeas",
+      "timer_sec": 1500,
+      "cue": "The chickpeas are golden and rattle on the tray when shaken. They crisp further as they cool.",
+      "tip": "Dry the chickpeas well first. Wet chickpeas steam and stay soft."
+    },
+    {
+      "text": "Warm the quinoa and fill two bowls.",
+      "technique": "cook-grains-for-salads",
+      "cue": "The quinoa is warm through and fluffy, after 1 to 2 minutes in a pan or the microwave."
+    },
+    {
+      "text": "Add hummus, cucumber, tomato, olives and tofu feta, then top with roasted chickpeas and dressing.",
+      "technique": "salad-formula"
+    }
+  ]
+}

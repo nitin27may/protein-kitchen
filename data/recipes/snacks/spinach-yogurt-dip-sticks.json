@@ -1,0 +1,68 @@
+{
+  "slug": "spinach-yogurt-dip-sticks",
+  "name": "Spinach yogurt dip with vegetable sticks",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 10,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 100
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 3
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 120
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 120
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blanch the spinach for 1 minute, squeeze very dry and chop finely.",
+      "timer_sec": 60,
+      "cue": "The spinach is bright green and squeezed completely dry.",
+      "tip": "Squeeze in a clean towel. Extra water makes the dip thin."
+    },
+    {
+      "text": "Stir into the yogurt with grated garlic, lemon and salt.",
+      "technique": "high-protein-snacks"
+    },
+    {
+      "text": "Cut the carrot and cucumber into sticks and serve with the dip.",
+      "technique": "salad-formula"
+    }
+  ]
+}

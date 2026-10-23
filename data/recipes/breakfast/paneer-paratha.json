@@ -1,0 +1,76 @@
+{
+  "slug": "paneer-paratha",
+  "name": "Paneer paratha",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "atta-whole-wheat",
+      "grams": 120
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 4
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 8
+    },
+    {
+      "ingredient": "ghee",
+      "grams": 10
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Knead atta with water and a pinch of salt into a soft dough, rest 15 minutes.",
+      "timer_sec": 900
+    },
+    {
+      "text": "Mix crumbled paneer with onion, chilli, coriander, cumin and salt."
+    },
+    {
+      "text": "Roll two discs per paratha, fill, seal and roll thin, then cook on a hot tava with ghee until browned.",
+      "cue": "Golden brown spots on both sides, crisp edges and no raw dough visible at the seam.",
+      "tip": "Keep the filling dry and press it lightly. A wet filling tears the dough."
+    }
+  ],
+  "storage": "Cook just before eating. Uncooked stuffed parathas freeze between sheets of baking paper for 1 month and cook from frozen, 1 extra minute a side.",
+  "serving_unit": {
+    "singular": "paratha",
+    "plural": "parathas",
+    "per_serving": 1
+  }
+}

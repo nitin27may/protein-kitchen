@@ -1,0 +1,95 @@
+{
+  "slug": "palak-paneer",
+  "name": "Palak paneer",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 20,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "paneer",
+      "grams": 250
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 400
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 120
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 10
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 8
+    },
+    {
+      "ingredient": "ghee",
+      "grams": 10
+    },
+    {
+      "ingredient": "cream-18",
+      "grams": 30
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blanch spinach 2 minutes, drain and blend smooth.",
+      "timer_sec": 120,
+      "cue": "The spinach is bright green and fully wilted. Cool it in cold water so it keeps its colour."
+    },
+    {
+      "text": "Heat ghee, fry cumin, onion, ginger and garlic until golden.",
+      "timer_sec": 420,
+      "cue": "The onion is golden at the edges and the cumin is fragrant.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add tomato and curry powder, cook until soft.",
+      "timer_sec": 300,
+      "cue": "The tomato has cooked down with no watery liquid left.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Stir in spinach puree and cream, add paneer cubes, simmer 5 minutes.",
+      "timer_sec": 300,
+      "cue": "The gravy is smooth and bright green and the paneer is soft.",
+      "tip": "Keep it at a gentle simmer once the cream goes in. A hard boil dulls the colour and can split the cream."
+    }
+  ],
+  "storage": "Cool quickly and refrigerate for up to 3 days. Reheat gently in a pan with a splash of water. A hard boil dulls the colour and toughens the paneer."
+}

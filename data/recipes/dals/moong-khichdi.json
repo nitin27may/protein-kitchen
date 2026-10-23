@@ -1,0 +1,83 @@
+{
+  "slug": "moong-khichdi",
+  "name": "Moong dal khichdi",
+  "kind": "recipe",
+  "family": "dals",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 35,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "moong-whole-dry",
+      "grams": 120
+    },
+    {
+      "ingredient": "white-rice-dry",
+      "grams": 100
+    },
+    {
+      "ingredient": "ghee",
+      "grams": 15
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 100
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 4
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "moong-whole-dry",
+      "grams": 120,
+      "lead_hours": 4,
+      "instruction": "Soak whole moong 4 hours, drain"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Rinse moong and rice, fry cumin and ginger in ghee, add everything with 900 ml water.",
+      "timer_sec": 300,
+      "cue": "The cumin is fragrant and the ginger smells sweet, with no raw edge.",
+      "technique": "tadka-tempering"
+    },
+    {
+      "text": "Pressure cook 4 whistles.",
+      "timer_sec": 900,
+      "cue": "The moong and rice are fully soft and the khichdi is porridge-like. It thickens as it stands.",
+      "tip": "Add hot water to loosen it. Serve it slightly looser than you want, because it sets.",
+      "technique": "pressure-cooker-basics"
+    },
+    {
+      "text": "Mash lightly and serve with dahi."
+    }
+  ]
+}

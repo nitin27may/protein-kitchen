@@ -1,0 +1,856 @@
+[
+  {
+    "slug": "turmeric-powder",
+    "name": "Turmeric, ground",
+    "aliases": [
+      "haldi"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 312,
+      "protein_g": 9.7,
+      "carbs_g": 67.1,
+      "fat_g": 3.2,
+      "fibre_g": 22.7
+    },
+    "source": "CNF",
+    "source_id": "211",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cumin-seed",
+    "name": "Cumin seed",
+    "aliases": [
+      "jeera"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 375,
+      "protein_g": 17.8,
+      "carbs_g": 44.2,
+      "fat_g": 22.3,
+      "fibre_g": 10.5
+    },
+    "source": "CNF",
+    "source_id": "182",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "coriander-seed",
+    "name": "Coriander seed",
+    "aliases": [
+      "dhania",
+      "sabut dhania"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 298,
+      "protein_g": 12.4,
+      "carbs_g": 55.0,
+      "fat_g": 17.8,
+      "fibre_g": 41.9
+    },
+    "source": "CNF",
+    "source_id": "181",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "mustard-seed",
+    "name": "Mustard seed, yellow",
+    "aliases": [
+      "sarson",
+      "rai"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 508,
+      "protein_g": 26.1,
+      "carbs_g": 28.1,
+      "fat_g": 36.2,
+      "fibre_g": 12.2
+    },
+    "source": "CNF",
+    "source_id": "192",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "fenugreek-seed",
+    "name": "Fenugreek seed",
+    "aliases": [
+      "methi dana",
+      "methi seeds"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 323,
+      "protein_g": 23.0,
+      "carbs_g": 58.4,
+      "fat_g": 6.4,
+      "fibre_g": 24.6
+    },
+    "source": "CNF",
+    "source_id": "187",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "fennel-seed",
+    "name": "Fennel seed",
+    "aliases": [
+      "saunf"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 345,
+      "protein_g": 15.8,
+      "carbs_g": 52.3,
+      "fat_g": 14.9,
+      "fibre_g": 39.8
+    },
+    "source": "CNF",
+    "source_id": "186",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "black-pepper",
+    "name": "Black pepper",
+    "aliases": [
+      "kali mirch"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 251,
+      "protein_g": 10.4,
+      "carbs_g": 64.0,
+      "fat_g": 3.3,
+      "fibre_g": 25.3
+    },
+    "source": "CNF",
+    "source_id": "198",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "chili-powder",
+    "name": "Chili powder",
+    "aliases": [
+      "lal mirch powder",
+      "red chilli powder"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 282,
+      "protein_g": 13.5,
+      "carbs_g": 49.7,
+      "fat_g": 14.3,
+      "fibre_g": 34.8
+    },
+    "source": "CNF",
+    "source_id": "177",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cayenne",
+    "name": "Red or cayenne pepper",
+    "aliases": [
+      "lal mirch",
+      "cayenne"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 318,
+      "protein_g": 12.0,
+      "carbs_g": 56.6,
+      "fat_g": 17.3,
+      "fibre_g": 27.2
+    },
+    "source": "CNF",
+    "source_id": "199",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "paprika",
+    "name": "Paprika",
+    "aliases": [
+      "kashmiri mirch (approx.)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 282,
+      "protein_g": 14.1,
+      "carbs_g": 54.0,
+      "fat_g": 12.9,
+      "fibre_g": 34.9
+    },
+    "source": "CNF",
+    "source_id": "196",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cardamom-ground",
+    "name": "Cardamom, ground",
+    "aliases": [
+      "elaichi"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 312,
+      "protein_g": 10.8,
+      "carbs_g": 68.5,
+      "fat_g": 6.7,
+      "fibre_g": 28.0
+    },
+    "source": "CNF",
+    "source_id": "174",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cinnamon-ground",
+    "name": "Cinnamon, ground",
+    "aliases": [
+      "dalchini"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 247,
+      "protein_g": 4.0,
+      "carbs_g": 80.6,
+      "fat_g": 1.2,
+      "fibre_g": 53.1
+    },
+    "source": "CNF",
+    "source_id": "178",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cloves-ground",
+    "name": "Cloves, ground",
+    "aliases": [
+      "laung"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 274,
+      "protein_g": 6.0,
+      "carbs_g": 65.5,
+      "fat_g": 13.0,
+      "fibre_g": 33.9
+    },
+    "source": "CNF",
+    "source_id": "179",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "nutmeg-ground",
+    "name": "Nutmeg, ground",
+    "aliases": [
+      "jaiphal"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 525,
+      "protein_g": 5.8,
+      "carbs_g": 49.3,
+      "fat_g": 36.3,
+      "fibre_g": 20.8
+    },
+    "source": "CNF",
+    "source_id": "193",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "mace-ground",
+    "name": "Mace, ground",
+    "aliases": [
+      "javitri"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 475,
+      "protein_g": 6.7,
+      "carbs_g": 50.5,
+      "fat_g": 32.4,
+      "fibre_g": 20.2
+    },
+    "source": "CNF",
+    "source_id": "190",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "bay-leaf",
+    "name": "Bay leaf",
+    "aliases": [
+      "tej patta"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 314,
+      "protein_g": 7.6,
+      "carbs_g": 75.0,
+      "fat_g": 8.4,
+      "fibre_g": 26.3
+    },
+    "source": "CNF",
+    "source_id": "172",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "curry-powder",
+    "name": "Curry powder",
+    "aliases": [
+      "garam masala (approx.)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 325,
+      "protein_g": 14.3,
+      "carbs_g": 55.8,
+      "fat_g": 14.0,
+      "fibre_g": 53.2
+    },
+    "source": "CNF",
+    "source_id": "183",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "ginger-ground",
+    "name": "Ginger, ground",
+    "aliases": [
+      "sonth",
+      "saunth"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 335,
+      "protein_g": 9.0,
+      "carbs_g": 71.6,
+      "fat_g": 4.2,
+      "fibre_g": 14.1
+    },
+    "source": "CNF",
+    "source_id": "189",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "saffron",
+    "name": "Saffron",
+    "aliases": [
+      "kesar"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 310,
+      "protein_g": 11.4,
+      "carbs_g": 65.4,
+      "fat_g": 5.8,
+      "fibre_g": 3.9
+    },
+    "source": "CNF",
+    "source_id": "205",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "poppy-seed",
+    "name": "Poppy seed",
+    "aliases": [
+      "khus khus",
+      "posto"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 525,
+      "protein_g": 18.0,
+      "carbs_g": 28.1,
+      "fat_g": 41.6,
+      "fibre_g": 19.5
+    },
+    "source": "CNF",
+    "source_id": "201",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "ajwain-proxy-caraway",
+    "name": "Caraway seed (ajwain proxy, not same)",
+    "aliases": [
+      "ajwain (nearest CNF)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 333,
+      "protein_g": 19.8,
+      "carbs_g": 49.9,
+      "fat_g": 14.6,
+      "fibre_g": 38.0
+    },
+    "source": "CNF",
+    "source_id": "173",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Ajwain (data is caraway)"
+  },
+  {
+    "slug": "garlic-powder",
+    "name": "Garlic powder",
+    "aliases": [
+      "lehsun powder"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 331,
+      "protein_g": 16.6,
+      "carbs_g": 72.7,
+      "fat_g": 0.7,
+      "fibre_g": 9.0
+    },
+    "source": "CNF",
+    "source_id": "188",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": true,
+    "is_dairy": false
+  },
+  {
+    "slug": "onion-powder",
+    "name": "Onion powder",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 342,
+      "protein_g": 10.4,
+      "carbs_g": 79.1,
+      "fat_g": 1.0,
+      "fibre_g": 15.2
+    },
+    "source": "CNF",
+    "source_id": "194",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": true,
+    "is_dairy": false
+  },
+  {
+    "slug": "anise-seed",
+    "name": "Anise seeds",
+    "aliases": [
+      "saunf (anise)"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 337,
+      "protein_g": 17.6,
+      "carbs_g": 50.0,
+      "fat_g": 15.9,
+      "fibre_g": 14.6
+    },
+    "source": "CNF",
+    "source_id": "170",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "dill-weed-fresh",
+    "name": "Dill weed, fresh",
+    "aliases": [
+      "suva",
+      "sowa"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 43,
+      "protein_g": 3.5,
+      "carbs_g": 7.0,
+      "fat_g": 1.1,
+      "fibre_g": 2.1
+    },
+    "source": "CNF",
+    "source_id": "213",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dill weed"
+  },
+  {
+    "slug": "coriander-leaf-dried",
+    "name": "Coriander leaf, dried",
+    "aliases": [
+      "kasuri-style dried coriander"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 279,
+      "protein_g": 21.9,
+      "carbs_g": 52.1,
+      "fat_g": 4.8,
+      "fibre_g": 10.4
+    },
+    "source": "CNF",
+    "source_id": "180",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried coriander leaf"
+  },
+  {
+    "slug": "salt-table",
+    "name": "Salt, table",
+    "aliases": [
+      "namak"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 0,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "214",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "baking-soda",
+    "name": "Baking soda",
+    "aliases": [
+      "meetha soda"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 0,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 0.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "4005",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "baking-powder",
+    "name": "Baking powder, double acting",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 53,
+      "protein_g": 0.0,
+      "carbs_g": 27.7,
+      "fat_g": 0.0,
+      "fibre_g": 0.2
+    },
+    "source": "CNF",
+    "source_id": "4002",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "asafoetida",
+    "name": "Asafoetida (hing)",
+    "aliases": [
+      "hing"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 332,
+      "protein_g": 6.3,
+      "carbs_g": 77.1,
+      "fat_g": 1.3,
+      "fibre_g": 5.1
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-G019",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "cardamom-green",
+    "name": "Cardamom, green (elaichi)",
+    "aliases": [
+      "choti elaichi"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 255,
+      "protein_g": 8.1,
+      "carbs_g": 70.9,
+      "fat_g": 2.6,
+      "fibre_g": 23.1
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-G020",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "flax-linseeds-ifct",
+    "name": "Linseeds (alsi)",
+    "aliases": [
+      "alsi"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 444,
+      "protein_g": 18.6,
+      "carbs_g": 37.2,
+      "fat_g": 35.7,
+      "fibre_g": 26.2
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-H014",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oregano-dried",
+    "name": "Oregano, ground",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 265,
+      "protein_g": 9.0,
+      "carbs_g": 68.9,
+      "fat_g": 4.3,
+      "fibre_g": 42.5
+    },
+    "source": "CNF",
+    "source_id": "195",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "thyme-dried",
+    "name": "Thyme, dried",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 276,
+      "protein_g": 9.1,
+      "carbs_g": 63.9,
+      "fat_g": 7.4,
+      "fibre_g": 37.0
+    },
+    "source": "CNF",
+    "source_id": "210",
+    "aisle": "spices",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried thyme"
+  }
+]

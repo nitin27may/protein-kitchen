@@ -1,0 +1,56 @@
+{
+  "slug": "chaat-paneer-cubes",
+  "name": "Chaat paneer cubes",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "paneer",
+      "grams": 100
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Cut the paneer into cubes and pat dry."
+    },
+    {
+      "text": "Toss with lemon juice, chilli, toasted ground cumin and salt, then add coriander.",
+      "cue": "The cumin is toasted and fragrant and the paneer is coated, not swimming in juice.",
+      "tip": "Dry the cubes first so the spice sticks."
+    }
+  ]
+}

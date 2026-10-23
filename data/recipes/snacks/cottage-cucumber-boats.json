@@ -1,0 +1,61 @@
+{
+  "slug": "cottage-cucumber-boats",
+  "name": "Cottage cheese cucumber boats",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 6,
+  "active_min": 6,
+  "total_min": 6,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 150
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 200
+    },
+    {
+      "ingredient": "mint-fresh",
+      "grams": 4
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 8
+    },
+    {
+      "ingredient": "black-pepper",
+      "grams": 0.5
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 0.7
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.7
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Halve the cucumber lengthways and scoop out the seeds.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Mix the cottage cheese with chopped mint, lemon, pepper, toasted cumin and salt, and spoon it into the boats.",
+      "technique": "high-protein-snacks",
+      "cue": "The filling is creamy and holds on a spoon without leaking."
+    }
+  ]
+}

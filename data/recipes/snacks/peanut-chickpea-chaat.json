@@ -1,0 +1,58 @@
+{
+  "slug": "peanut-chickpea-chaat",
+  "name": "Peanut chickpea chaat",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 5,
+  "active_min": 5,
+  "total_min": 5,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 150
+    },
+    {
+      "ingredient": "peanuts-dry-roasted",
+      "grams": 20
+    },
+    {
+      "ingredient": "onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 50
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Drain and rinse the chickpeas."
+    },
+    {
+      "text": "Toss everything together and taste for salt and lemon."
+    }
+  ]
+}

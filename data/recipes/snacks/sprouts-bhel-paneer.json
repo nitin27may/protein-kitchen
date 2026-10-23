@@ -1,0 +1,70 @@
+{
+  "slug": "sprouts-bhel-paneer",
+  "name": "Sprouts bhel with paneer",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 7,
+  "active_min": 7,
+  "total_min": 7,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "moong-sprouts",
+      "grams": 150
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 40
+    },
+    {
+      "ingredient": "onion",
+      "grams": 30
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 60
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 40
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 12
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.8
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Steam the sprouts for 5 minutes for food safety and cool.",
+      "timer_sec": 300,
+      "cue": "The sprouts are just tender, bright and still slightly crisp, and have been cooled.",
+      "tip": "Always cook sprouts lightly before eating. Raw sprouts carry a food-safety risk."
+    },
+    {
+      "text": "Toss with paneer cubes, chopped vegetables, lemon, chilli and salt. No sweet chutney is needed."
+    }
+  ],
+  "storage": "Best eaten fresh. Keep cooked sprouts and the dressed vegetables separate and combine just before eating."
+}

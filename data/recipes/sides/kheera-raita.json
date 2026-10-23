@@ -1,0 +1,49 @@
+{
+  "slug": "kheera-raita",
+  "name": "Cucumber raita",
+  "kind": "recipe",
+  "family": "sides",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 5,
+  "total_min": 5,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "dahi-plain",
+      "grams": 250
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 100
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk dahi, fold in grated cucumber and toasted cumin.",
+      "cue": "The cumin smells nutty after about 30 seconds in a dry pan."
+    }
+  ]
+}

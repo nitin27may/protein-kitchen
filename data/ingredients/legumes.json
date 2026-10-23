@@ -1,0 +1,698 @@
+[
+  {
+    "slug": "kidney-beans-dry",
+    "name": "Kidney beans (rajma), dry",
+    "aliases": [
+      "rajma",
+      "red kidney beans",
+      "rajmah"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.6,
+    "per100g": {
+      "kcal": 333,
+      "protein_g": 23.6,
+      "carbs_g": 60.0,
+      "fat_g": 0.8,
+      "fibre_g": 24.9
+    },
+    "source": "CNF",
+    "source_id": "6367",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "No Frills",
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Kidney beans (rajma)"
+  },
+  {
+    "slug": "chickpeas-dry",
+    "name": "Chickpeas (chole), dry",
+    "aliases": [
+      "chole",
+      "kabuli chana",
+      "garbanzo",
+      "chhole"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.3,
+    "per100g": {
+      "kcal": 378,
+      "protein_g": 20.5,
+      "carbs_g": 63.0,
+      "fat_g": 6.0,
+      "fibre_g": 10.0
+    },
+    "source": "CNF",
+    "source_id": "3389",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "No Frills",
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Chickpeas (chole)"
+  },
+  {
+    "slug": "chickpeas-canned",
+    "name": "Chickpeas, canned, drained",
+    "aliases": [
+      "canned chole",
+      "canned garbanzo"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 139,
+      "protein_g": 7.0,
+      "carbs_g": 22.5,
+      "fat_g": 2.8,
+      "fibre_g": 6.4
+    },
+    "source": "CNF",
+    "source_id": "7060",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Canned chickpeas"
+  },
+  {
+    "slug": "black-beans-dry",
+    "name": "Black beans, dry",
+    "aliases": [
+      "kaali rajma"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.4,
+    "per100g": {
+      "kcal": 341,
+      "protein_g": 21.6,
+      "carbs_g": 62.4,
+      "fat_g": 1.4,
+      "fibre_g": 13.8
+    },
+    "source": "CNF",
+    "source_id": "3376",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Black beans"
+  },
+  {
+    "slug": "black-beans-cooked",
+    "name": "Black beans, cooked",
+    "aliases": [],
+    "state": "cooked",
+    "per100g": {
+      "kcal": 132,
+      "protein_g": 8.9,
+      "carbs_g": 23.7,
+      "fat_g": 0.5,
+      "fibre_g": 7.0
+    },
+    "source": "CNF",
+    "source_id": "3377",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Black beans (cooked)"
+  },
+  {
+    "slug": "pinto-beans-dry",
+    "name": "Pinto beans, dry",
+    "aliases": [],
+    "state": "dry",
+    "cooked_yield": 2.4,
+    "per100g": {
+      "kcal": 347,
+      "protein_g": 21.4,
+      "carbs_g": 62.5,
+      "fat_g": 1.2,
+      "fibre_g": 15.5
+    },
+    "source": "CNF",
+    "source_id": "3269",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Pinto beans"
+  },
+  {
+    "slug": "lentils-green-brown-dry",
+    "name": "Lentils, green/brown, dry",
+    "aliases": [
+      "sabut masoor",
+      "whole masoor",
+      "daal"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.7,
+    "per100g": {
+      "kcal": 352,
+      "protein_g": 24.6,
+      "carbs_g": 63.4,
+      "fat_g": 1.1,
+      "fibre_g": 10.7
+    },
+    "source": "CNF",
+    "source_id": "3392",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "No Frills",
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Whole green lentils"
+  },
+  {
+    "slug": "masoor-dal-dry",
+    "name": "Red lentils (masoor dal), dry",
+    "aliases": [
+      "masoor dal",
+      "split red lentils",
+      "pink lentils"
+    ],
+    "state": "dry",
+    "cooked_yield": 3.1,
+    "per100g": {
+      "kcal": 358,
+      "protein_g": 23.9,
+      "carbs_g": 63.1,
+      "fat_g": 2.2,
+      "fibre_g": 10.8
+    },
+    "source": "CNF",
+    "source_id": "4869",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "No Frills",
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Red lentils (masoor dal)"
+  },
+  {
+    "slug": "moong-whole-dry",
+    "name": "Mung beans (whole moong), dry",
+    "aliases": [
+      "sabut moong",
+      "green gram",
+      "hara moong"
+    ],
+    "state": "dry",
+    "cooked_yield": 3.4,
+    "per100g": {
+      "kcal": 347,
+      "protein_g": 23.9,
+      "carbs_g": 62.6,
+      "fat_g": 1.1,
+      "fibre_g": 16.3
+    },
+    "source": "CNF",
+    "source_id": "3297",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "No Frills",
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Mung beans (whole moong)"
+  },
+  {
+    "slug": "toor-dal-pigeon-peas",
+    "name": "Pigeon peas (red gram), mature, raw (toor/arhar)",
+    "aliases": [
+      "toor dal",
+      "arhar dal",
+      "tur dal"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 343,
+      "protein_g": 21.7,
+      "carbs_g": 62.8,
+      "fat_g": 1.5,
+      "fibre_g": 15.0
+    },
+    "source": "CNF",
+    "source_id": "3312",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "cooked_yield": 3.2,
+    "display_name": "Toor dal (arhar)"
+  },
+  {
+    "slug": "urad-dal-dry",
+    "name": "Black gram (urad), raw",
+    "aliases": [
+      "urad dal",
+      "mash dal",
+      "maah"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.5,
+    "per100g": {
+      "kcal": 341,
+      "protein_g": 25.2,
+      "carbs_g": 59.0,
+      "fat_g": 1.6,
+      "fibre_g": 18.3
+    },
+    "source": "CNF",
+    "source_id": "3300",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Black gram (urad)"
+  },
+  {
+    "slug": "split-peas-dry",
+    "name": "Split peas, raw (matar dal)",
+    "aliases": [
+      "matar dal",
+      "yellow split peas"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.4,
+    "per100g": {
+      "kcal": 352,
+      "protein_g": 23.8,
+      "carbs_g": 63.7,
+      "fat_g": 1.2,
+      "fibre_g": 6.9
+    },
+    "source": "CNF",
+    "source_id": "3394",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "soybeans-dry",
+    "name": "Soybeans, dry, raw",
+    "aliases": [
+      "soya bean",
+      "bhatmas"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.2,
+    "per100g": {
+      "kcal": 446,
+      "protein_g": 36.5,
+      "carbs_g": 30.2,
+      "fat_g": 19.9,
+      "fibre_g": 15.1
+    },
+    "source": "CNF",
+    "source_id": "3400",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Soybeans"
+  },
+  {
+    "slug": "blackeyed-peas-fresh",
+    "name": "Cowpeas (black-eyed peas), immature, raw",
+    "aliases": [
+      "lobia",
+      "chawli"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 90,
+      "protein_g": 3.0,
+      "carbs_g": 18.8,
+      "fat_g": 0.3,
+      "fibre_g": 5.0
+    },
+    "source": "CNF",
+    "source_id": "2074",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Fresh black-eyed peas (lobia)"
+  },
+  {
+    "slug": "moong-sprouts",
+    "name": "Mung bean sprouts, raw",
+    "aliases": [
+      "moong sprouts",
+      "sprouted moong"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 30,
+      "protein_g": 3.0,
+      "carbs_g": 5.9,
+      "fat_g": 0.2,
+      "fibre_g": 1.8
+    },
+    "source": "CNF",
+    "source_id": "2008",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Mung bean sprouts"
+  },
+  {
+    "slug": "chickpea-sprouts-proxy-lentil-sprouts",
+    "name": "Lentils, sprouted, raw",
+    "aliases": [
+      "sprouted masoor"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 106,
+      "protein_g": 9.0,
+      "carbs_g": 22.1,
+      "fat_g": 0.6,
+      "fibre_g": 1.4
+    },
+    "source": "CNF",
+    "source_id": "2113",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Lentil sprouts"
+  },
+  {
+    "slug": "chana-dal",
+    "name": "Bengal gram, dal (chana dal)",
+    "aliases": [
+      "chana dal",
+      "split bengal gram"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.3,
+    "per100g": {
+      "kcal": 329,
+      "protein_g": 21.6,
+      "carbs_g": 61.9,
+      "fat_g": 5.3,
+      "fibre_g": 15.2
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-B001",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "kala-chana",
+    "name": "Bengal gram, whole (kala chana)",
+    "aliases": [
+      "kala chana",
+      "desi chana",
+      "black chickpea"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.3,
+    "per100g": {
+      "kcal": 287,
+      "protein_g": 18.8,
+      "carbs_g": 64.8,
+      "fat_g": 5.1,
+      "fibre_g": 25.2
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-B002",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Kala chana (black chickpeas)"
+  },
+  {
+    "slug": "horse-gram",
+    "name": "Horse gram, whole (kulthi)",
+    "aliases": [
+      "kulthi",
+      "kulith",
+      "hurali"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 330,
+      "protein_g": 21.7,
+      "carbs_g": 65.1,
+      "fat_g": 0.6,
+      "fibre_g": 7.9
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-B012",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "moth-bean",
+    "name": "Moth bean (matki)",
+    "aliases": [
+      "matki",
+      "moth",
+      "dew bean"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 309,
+      "protein_g": 19.8,
+      "carbs_g": 67.2,
+      "fat_g": 1.8,
+      "fibre_g": 15.1
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-B016",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "lobia-brown-dry",
+    "name": "Black-eyed peas (cowpea, catjang), mature, raw (lobia)",
+    "aliases": [
+      "lobia",
+      "chawli (dry)",
+      "black-eyed pea (Indian)"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 343,
+      "protein_g": 23.9,
+      "carbs_g": 59.6,
+      "fat_g": 2.1,
+      "fibre_g": 10.7
+    },
+    "source": "CNF",
+    "source_id": "3280",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "cooked_yield": 2.9,
+    "display_name": "Lobia (black-eyed peas)"
+  },
+  {
+    "slug": "urad-dal-whole-ifct",
+    "name": "Black gram, whole (sabut urad)",
+    "aliases": [
+      "sabut urad",
+      "kali dal",
+      "maa ki dal"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 291,
+      "protein_g": 22.0,
+      "carbs_g": 64.4,
+      "fat_g": 1.6,
+      "fibre_g": 20.4
+    },
+    "source": "IFCT",
+    "source_id": "IFCT2017-B004",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Indian grocer"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "cooked_yield": 2.5
+  },
+  {
+    "slug": "navy-beans-dry",
+    "name": "Navy beans, dry",
+    "aliases": [
+      "white beans",
+      "haricot beans",
+      "safed rajma (approx.)"
+    ],
+    "state": "dry",
+    "cooked_yield": 2.3,
+    "per100g": {
+      "kcal": 337,
+      "protein_g": 22.3,
+      "carbs_g": 60.8,
+      "fat_g": 1.5,
+      "fibre_g": 16.5
+    },
+    "source": "CNF",
+    "source_id": "3383",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Navy beans"
+  },
+  {
+    "slug": "great-northern-beans-cooked",
+    "name": "Great northern beans, boiled",
+    "aliases": [
+      "cannellini (approx.)",
+      "white beans cooked"
+    ],
+    "state": "cooked",
+    "per100g": {
+      "kcal": 118,
+      "protein_g": 8.3,
+      "carbs_g": 21.1,
+      "fat_g": 0.5,
+      "fibre_g": 7.0
+    },
+    "source": "CNF",
+    "source_id": "3260",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Great northern beans (boiled)"
+  },
+  {
+    "slug": "lentils-green-brown-cooked",
+    "name": "Lentils, boiled",
+    "aliases": [
+      "cooked lentils"
+    ],
+    "state": "cooked",
+    "per100g": {
+      "kcal": 116,
+      "protein_g": 9.0,
+      "carbs_g": 20.1,
+      "fat_g": 0.4,
+      "fibre_g": 4.2
+    },
+    "source": "CNF",
+    "source_id": "3393",
+    "aisle": "legumes",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Lentils (boiled)"
+  }
+]

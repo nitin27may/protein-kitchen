@@ -1,0 +1,158 @@
+[
+  {
+    "slug": "dates-dry",
+    "name": "Date, domestic, natural and dry",
+    "aliases": [
+      "khajoor",
+      "khajur"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 282,
+      "protein_g": 2.5,
+      "carbs_g": 75.0,
+      "fat_g": 0.4,
+      "fibre_g": 8.0
+    },
+    "source": "CNF",
+    "source_id": "1710",
+    "aisle": "dried-fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dates (khajoor)"
+  },
+  {
+    "slug": "dates-medjool",
+    "name": "Date, medjool",
+    "aliases": [
+      "medjool khajoor"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 277,
+      "protein_g": 1.8,
+      "carbs_g": 75.0,
+      "fat_g": 0.1,
+      "fibre_g": 6.7
+    },
+    "source": "CNF",
+    "source_id": "5401",
+    "aisle": "dried-fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "raisins",
+    "name": "Raisin, seedless",
+    "aliases": [
+      "kishmish",
+      "sultana"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 299,
+      "protein_g": 3.1,
+      "carbs_g": 79.2,
+      "fat_g": 0.5,
+      "fibre_g": 3.6
+    },
+    "source": "CNF",
+    "source_id": "1745",
+    "aisle": "dried-fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "figs-dried",
+    "name": "Fig, dried",
+    "aliases": [
+      "anjeer"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 249,
+      "protein_g": 3.3,
+      "carbs_g": 63.9,
+      "fat_g": 0.9,
+      "fibre_g": 9.8
+    },
+    "source": "CNF",
+    "source_id": "1549",
+    "aisle": "dried-fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried fig"
+  },
+  {
+    "slug": "apricots-dried",
+    "name": "Apricot, dried",
+    "aliases": [
+      "khurmani"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 241,
+      "protein_g": 3.4,
+      "carbs_g": 62.6,
+      "fat_g": 0.5,
+      "fibre_g": 7.3
+    },
+    "source": "CNF",
+    "source_id": "1507",
+    "aisle": "dried-fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried apricot"
+  },
+  {
+    "slug": "prunes-dried",
+    "name": "Prune, dried",
+    "aliases": [
+      "aloo bukhara"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 241,
+      "protein_g": 2.2,
+      "carbs_g": 63.9,
+      "fat_g": 0.4,
+      "fibre_g": 7.2
+    },
+    "source": "CNF",
+    "source_id": "1742",
+    "aisle": "dried-fruit",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dried prune"
+  }
+]

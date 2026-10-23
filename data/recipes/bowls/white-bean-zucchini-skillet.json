@@ -1,0 +1,79 @@
+{
+  "slug": "white-bean-zucchini-skillet",
+  "name": "White bean zucchini skillet",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "great-northern-beans-cooked",
+      "grams": 300
+    },
+    {
+      "ingredient": "zucchini",
+      "grams": 250
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 10
+    },
+    {
+      "ingredient": "basil-fresh",
+      "grams": 6
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    },
+    {
+      "component": "tofu-feta",
+      "grams": 100
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soften onion and garlic in the oil, then add diced zucchini and cook 4 minutes.",
+      "technique": "soup-basics",
+      "timer_sec": 240,
+      "cue": "The onion is translucent and the zucchini is starting to brown at the edges but still firm."
+    },
+    {
+      "text": "Add tomato and beans and simmer 8 minutes.",
+      "technique": "cook-legumes",
+      "timer_sec": 480,
+      "cue": "The tomato has broken down into a loose sauce and the beans are hot through."
+    },
+    {
+      "text": "Finish with basil and crumble tofu feta over the top.",
+      "technique": "salad-formula"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "slug": "paneer-bhurji",
+  "name": "Paneer bhurji",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "breakfast",
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 12,
+  "total_min": 15,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "paneer",
+      "grams": 250
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 120
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 8
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 10
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Heat oil, fry cumin, onion and chilli until soft.",
+      "timer_sec": 240,
+      "cue": "The onion is soft and translucent and the cumin is fragrant.",
+      "technique": "tadka-tempering"
+    },
+    {
+      "text": "Add tomato and turmeric, cook until mushy.",
+      "timer_sec": 240,
+      "cue": "The tomato has broken down to a thick paste with no watery liquid.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Crumble in paneer, cook 3 minutes, finish with coriander.",
+      "timer_sec": 180,
+      "cue": "The mixture is moist and crumbly, with no pooled liquid.",
+      "tip": "Take it off the heat while it still looks slightly moist. It dries as it sits."
+    }
+  ],
+  "storage": "Best fresh. Keeps 3 days in the fridge. Reheat in a pan with a splash of water; microwaving makes paneer rubbery."
+}

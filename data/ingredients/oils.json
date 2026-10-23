@@ -1,0 +1,177 @@
+[
+  {
+    "slug": "oil-mustard",
+    "name": "Mustard oil",
+    "aliases": [
+      "sarson ka tel"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 885,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "452",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oil-sesame",
+    "name": "Sesame oil",
+    "aliases": [
+      "til ka tel",
+      "gingelly oil"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 885,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "424",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oil-coconut",
+    "name": "Coconut oil",
+    "aliases": [
+      "nariyal tel"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 863,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "420",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oil-olive",
+    "name": "Olive oil",
+    "aliases": [],
+    "state": "ready",
+    "per100g": {
+      "kcal": 885,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "422",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oil-canola",
+    "name": "Canola oil",
+    "aliases": [
+      "rapeseed oil"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 885,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "451",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oil-sunflower",
+    "name": "Sunflower oil (mid-oleic)",
+    "aliases": [
+      "surajmukhi tel"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 884,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "7191",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  },
+  {
+    "slug": "oil-peanut",
+    "name": "Peanut oil",
+    "aliases": [
+      "moongfali tel",
+      "groundnut oil"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 885,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fat_g": 100.0,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "418",
+    "aisle": "oils",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": false
+  }
+]

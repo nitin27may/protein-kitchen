@@ -1,0 +1,84 @@
+{
+  "slug": "methi-besan-muthia",
+  "name": "Steamed methi besan muthia",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 30,
+  "equipment": [
+    "steamer"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "besan",
+      "grams": 110
+    },
+    {
+      "ingredient": "methi-leaves",
+      "grams": 100
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 50
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 4
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "sesame-seeds",
+      "grams": 6
+    },
+    {
+      "ingredient": "mustard-seed",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 6
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Mix besan, chopped methi, dahi, ginger, chilli, turmeric and salt into a firm dough, adding a little water only if needed."
+    },
+    {
+      "text": "Shape into two logs and steam for 15 minutes until a knife comes out clean.",
+      "timer_sec": 900,
+      "cue": "A knife pushed into the centre comes out clean and the surface springs back when pressed.",
+      "tip": "Keep the water boiling. Let it stand 2 minutes before lifting the lid.",
+      "technique": "steaming-basics"
+    },
+    {
+      "text": "Slice, then crackle mustard seed and sesame in the oil and toss the slices for 2 minutes."
+    }
+  ],
+  "serving_unit": {
+    "singular": "muthia log",
+    "plural": "muthia logs",
+    "per_serving": 1
+  }
+}

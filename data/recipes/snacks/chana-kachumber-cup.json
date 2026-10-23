@@ -1,0 +1,63 @@
+{
+  "slug": "chana-kachumber-cup",
+  "name": "Chana kachumber cup",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 6,
+  "active_min": 6,
+  "total_min": 6,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 120
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 80
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 60
+    },
+    {
+      "ingredient": "onion",
+      "grams": 20
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 5
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.8
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Drain and rinse the chickpeas."
+    },
+    {
+      "text": "Toss with diced cucumber, tomato, onion, lemon, coriander, toasted cumin and salt.",
+      "cue": "The vegetables are coated in lemon and the cumin is fragrant."
+    }
+  ]
+}

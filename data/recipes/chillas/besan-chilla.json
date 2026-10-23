@@ -1,0 +1,79 @@
+{
+  "slug": "besan-chilla",
+  "name": "Besan chilla with dahi",
+  "kind": "recipe",
+  "family": "chillas",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 15,
+  "total_min": 20,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "besan",
+      "grams": 120
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 60
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 5
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 10
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk besan, dahi, spices and water into a smooth batter, rest 5 minutes.",
+      "timer_sec": 300
+    },
+    {
+      "text": "Stir in onion, tomato and chilli."
+    },
+    {
+      "text": "Cook 4 thin chillas (about 18 cm) on a greased pan, 2 minutes a side.",
+      "cue": "Bubbles appear across the surface, the edges lift and the underside is golden. Flip once, when the top is no longer shiny.",
+      "tip": "Pour the batter in the centre and spread it quickly in a spiral. A hot pan, lightly greased, stops sticking."
+    }
+  ],
+  "serving_unit": {
+    "singular": "chilla",
+    "plural": "chillas",
+    "per_serving": 2
+  }
+}

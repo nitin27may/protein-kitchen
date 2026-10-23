@@ -1,0 +1,65 @@
+{
+  "slug": "yogurt-flatbread",
+  "name": "High-protein yoghurt flatbread",
+  "kind": "recipe",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "atta-whole-wheat",
+      "grams": 200
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 250
+    },
+    {
+      "ingredient": "baking-powder",
+      "grams": 6
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 10
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Mix atta, baking powder and salt, then add yoghurt and knead briefly into a soft dough.",
+      "technique": "bake-without-eggs"
+    },
+    {
+      "text": "Rest 10 minutes, divide into 4 and roll about 5 mm thick.",
+      "timer_sec": 600
+    },
+    {
+      "text": "Cook in a dry hot pan 2 to 3 minutes a side, then brush with oil.",
+      "cue": "Bubbles form on the top within a minute. Flip when brown spots show underneath, then cook 1 to 2 minutes more.",
+      "tip": "If the dough sticks, dust with a spoonful of atta. Keep it soft; a stiff dough makes dry bread."
+    }
+  ],
+  "serving_unit": {
+    "singular": "flatbread",
+    "plural": "flatbreads",
+    "per_serving": 1
+  }
+}

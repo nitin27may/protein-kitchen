@@ -1,0 +1,63 @@
+{
+  "slug": "oat-peanut-energy-balls",
+  "name": "Oat and peanut energy balls",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 15,
+  "equipment": [
+    "blender"
+  ],
+  "tags": [],
+  "fridge_days": 7,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "rolled-oats",
+      "grams": 80
+    },
+    {
+      "ingredient": "peanut-butter-natural",
+      "grams": 100
+    },
+    {
+      "ingredient": "dates-dry",
+      "grams": 90
+    },
+    {
+      "ingredient": "flaxseed",
+      "grams": 20
+    },
+    {
+      "ingredient": "pumpkin-seeds",
+      "grams": 30
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Pulse the dates in a food processor until sticky.",
+      "technique": "high-protein-snacks"
+    },
+    {
+      "text": "Add the remaining ingredients and pulse until it holds when pressed."
+    },
+    {
+      "text": "Roll into 12 balls and chill. A serving is 3 balls. They keep a week in a sealed container.",
+      "technique": "batch-prep-fridge-life"
+    }
+  ],
+  "storage": "Keep in a sealed container in the fridge for up to 7 days, or freeze for 2 months. Roll in a little oats if they get sticky.",
+  "serving_unit": {
+    "singular": "ball",
+    "plural": "balls",
+    "per_serving": 3
+  }
+}

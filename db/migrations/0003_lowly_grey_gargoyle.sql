@@ -1,0 +1,1 @@
+ALTER TABLE `plan_setups` ADD `prep_style` text;

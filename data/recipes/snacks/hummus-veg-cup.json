@@ -1,0 +1,45 @@
+{
+  "slug": "hummus-veg-cup",
+  "name": "Hummus and vegetable cup",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "middle-eastern",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 4,
+  "active_min": 4,
+  "total_min": 4,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "component": "hummus",
+      "grams": 150,
+      "alt_ingredient": "hummus-commercial"
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 80
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 80
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Cut the carrot and cucumber into sticks.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Spoon the hummus into a cup and stand the sticks in it.",
+      "technique": "high-protein-snacks"
+    }
+  ]
+}

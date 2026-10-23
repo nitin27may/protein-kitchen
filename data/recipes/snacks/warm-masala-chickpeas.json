@@ -1,0 +1,63 @@
+{
+  "slug": "warm-masala-chickpeas",
+  "name": "Warm masala chickpeas",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 5,
+  "active_min": 5,
+  "total_min": 5,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 150
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 3
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 8
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.7
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Drain, rinse and pat the chickpeas dry.",
+      "technique": "roast-chickpeas"
+    },
+    {
+      "text": "Warm in a pan with the oil, cumin and chilli for 4 minutes, then finish with lemon, parsley and salt.",
+      "timer_sec": 240,
+      "cue": "The chickpeas are warm and the spices smell toasted."
+    }
+  ]
+}

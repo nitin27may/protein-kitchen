@@ -1,0 +1,53 @@
+{
+  "slug": "spiced-protein-chaas",
+  "name": "Spiced protein chaas",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [
+    "blender"
+  ],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 120
+    },
+    {
+      "ingredient": "mint-fresh",
+      "grams": 4
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.7
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blend the yogurt with 200 ml cold water, mint, toasted cumin, ginger and salt until frothy. Water is not counted.",
+      "cue": "The chaas is smooth and frothy with no ginger pieces."
+    },
+    {
+      "text": "Serve cold."
+    }
+  ]
+}

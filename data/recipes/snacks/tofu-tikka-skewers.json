@@ -1,0 +1,88 @@
+{
+  "slug": "tofu-tikka-skewers",
+  "name": "Tofu tikka skewers (air fryer)",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 12,
+  "total_min": 35,
+  "equipment": [
+    "air fryer"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 300
+    },
+    {
+      "ingredient": "dahi-plain",
+      "grams": 60
+    },
+    {
+      "ingredient": "capsicum-green",
+      "grams": 70
+    },
+    {
+      "ingredient": "onion",
+      "grams": 50
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "marinate",
+      "ingredient": "tofu-extra-firm",
+      "grams": 300,
+      "lead_hours": 0.33,
+      "instruction": "Marinate tofu in dahi and spices"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Press the tofu and cut into cubes.",
+      "technique": "press-tofu",
+      "timer_sec": 600
+    },
+    {
+      "text": "Marinate with dahi, spices, lemon and salt for 20 minutes.",
+      "technique": "press-tofu",
+      "timer_sec": 1200
+    },
+    {
+      "text": "Thread with capsicum and onion and air fry at 190°C for 12 minutes, turning once.",
+      "technique": "oven-basics",
+      "timer_sec": 720,
+      "cue": "The tofu is golden at the edges and the vegetables are tender with light charring.",
+      "tip": "Air fry in a single layer and turn once."
+    }
+  ]
+}

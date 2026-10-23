@@ -1,0 +1,71 @@
+{
+  "slug": "three-bean-salad",
+  "name": "Three-bean salad with edamame",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 3,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 30,
+  "equipment": [],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "black-beans-cooked",
+      "grams": 200
+    },
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 200
+    },
+    {
+      "ingredient": "great-northern-beans-cooked",
+      "grams": 200
+    },
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 200
+    },
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 15
+    },
+    {
+      "component": "balsamic-mustard-vinaigrette",
+      "grams": 50
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Combine beans, diced pepper and finely chopped onion.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Pour over the vinaigrette and marinate in the fridge at least 30 minutes.",
+      "technique": "vinaigrette-ratio",
+      "timer_sec": 1800
+    },
+    {
+      "text": "Fold in parsley and serve cold."
+    }
+  ]
+}

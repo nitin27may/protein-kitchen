@@ -1,0 +1,108 @@
+[
+  {
+    "slug": "ghee",
+    "name": "Ghee (butter oil, anhydrous)",
+    "aliases": [
+      "ghee",
+      "clarified butter"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 876,
+      "protein_g": 0.3,
+      "carbs_g": 0.0,
+      "fat_g": 99.5,
+      "fibre_g": 0.0
+    },
+    "source": "CNF",
+    "source_id": "17",
+    "aisle": "fats",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": true,
+    "contains_onion_garlic": false,
+    "is_dairy": true
+  },
+  {
+    "slug": "coconut-meat-raw",
+    "name": "Coconut meat, raw",
+    "aliases": [
+      "nariyal",
+      "fresh coconut"
+    ],
+    "state": "raw",
+    "per100g": {
+      "kcal": 354,
+      "protein_g": 3.3,
+      "carbs_g": 15.2,
+      "fat_g": 33.5,
+      "fibre_g": 9.0
+    },
+    "source": "CNF",
+    "source_id": "2558",
+    "aisle": "fats",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Coconut meat"
+  },
+  {
+    "slug": "coconut-desiccated",
+    "name": "Coconut, desiccated, unsweetened",
+    "aliases": [
+      "khopra",
+      "dry coconut"
+    ],
+    "state": "dry",
+    "per100g": {
+      "kcal": 660,
+      "protein_g": 6.9,
+      "carbs_g": 23.6,
+      "fat_g": 64.5,
+      "fibre_g": 16.3
+    },
+    "source": "CNF",
+    "source_id": "2559",
+    "aisle": "fats",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Dry coconut (unsweetened)"
+  },
+  {
+    "slug": "coconut-milk",
+    "name": "Coconut milk, raw",
+    "aliases": [
+      "nariyal doodh"
+    ],
+    "state": "ready",
+    "per100g": {
+      "kcal": 197,
+      "protein_g": 2.0,
+      "carbs_g": 2.8,
+      "fat_g": 21.3,
+      "fibre_g": 0
+    },
+    "source": "CNF",
+    "source_id": "2565",
+    "aisle": "fats",
+    "pack_size_g": null,
+    "where_to_buy": [
+      "Any supermarket"
+    ],
+    "is_pantry_staple": false,
+    "contains_onion_garlic": false,
+    "is_dairy": false,
+    "display_name": "Coconut milk"
+  }
+]

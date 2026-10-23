@@ -1,0 +1,74 @@
+{
+  "slug": "cottage-oat-pancakes",
+  "name": "Cottage cheese oat pancakes",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 15,
+  "total_min": 20,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 200
+    },
+    {
+      "ingredient": "rolled-oats",
+      "grams": 80
+    },
+    {
+      "ingredient": "banana",
+      "grams": 100
+    },
+    {
+      "ingredient": "flaxseed",
+      "grams": 20
+    },
+    {
+      "ingredient": "baking-powder",
+      "grams": 3
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 5
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 0.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Make a flax mix: 20 g ground flaxseed with 60 ml water, rest 5 minutes. Water is not counted.",
+      "technique": "bake-without-eggs",
+      "timer_sec": 300
+    },
+    {
+      "text": "Blend oats, cottage cheese, banana, baking powder, salt and the flax mix into a thick batter.",
+      "technique": "bake-without-eggs"
+    },
+    {
+      "text": "Cook 4 small pancakes on a lightly oiled pan, 2 to 3 minutes a side.",
+      "timer_sec": 600,
+      "cue": "Bubbles show on the surface and the edges look set before you flip. Both sides are golden.",
+      "tip": "Keep the heat medium-low. A thick batter burns outside and stays raw inside."
+    }
+  ],
+  "serving_unit": {
+    "singular": "pancake",
+    "plural": "pancakes",
+    "per_serving": 2
+  }
+}

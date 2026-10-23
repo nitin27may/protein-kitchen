@@ -1,0 +1,74 @@
+{
+  "slug": "quinoa-black-bean-bowl",
+  "name": "Quinoa black bean bowl",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mexican",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "quinoa-cooked",
+      "grams": 300
+    },
+    {
+      "ingredient": "black-beans-cooked",
+      "grams": 240
+    },
+    {
+      "ingredient": "corn-sweet",
+      "grams": 100
+    },
+    {
+      "ingredient": "red-bell-pepper",
+      "grams": 80
+    },
+    {
+      "component": "salsa-fresca",
+      "grams": 100
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 80
+    },
+    {
+      "ingredient": "pumpkin-seeds",
+      "grams": 20
+    },
+    {
+      "ingredient": "avocado",
+      "grams": 80
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Warm the quinoa and beans separately.",
+      "technique": "cook-grains-for-salads",
+      "cue": "Both are steaming hot. A splash of water loosens them if they stick."
+    },
+    {
+      "text": "Fill bowls with quinoa, beans, corn and diced pepper.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Top with salsa, yoghurt, avocado and pumpkin seeds.",
+      "technique": "salad-formula"
+    }
+  ]
+}

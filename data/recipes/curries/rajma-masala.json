@@ -1,0 +1,100 @@
+{
+  "slug": "rajma-masala",
+  "name": "Rajma masala",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 90,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "kidney-beans-dry",
+      "grams": 200
+    },
+    {
+      "ingredient": "onion",
+      "grams": 150
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 250
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 12
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 10
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 20
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "curry-powder",
+      "grams": 4
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 5
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "kidney-beans-dry",
+      "grams": 200,
+      "lead_hours": 10,
+      "instruction": "Soak rajma overnight in plenty of water, discard soaking water"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Pressure cook soaked rajma with salt, 8 whistles or 25 minutes.",
+      "timer_sec": 1500,
+      "cue": "A bean crushes easily between two fingers with no chalky centre.",
+      "technique": "pressure-cooker-basics"
+    },
+    {
+      "text": "Fry cumin, onion, ginger and garlic in oil until brown.",
+      "timer_sec": 480,
+      "cue": "The onion is a deep golden brown.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add tomato and spices, cook to a paste.",
+      "timer_sec": 420,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add rajma with some cooking liquid, simmer 15 minutes, mash a few beans to thicken.",
+      "timer_sec": 900,
+      "cue": "The gravy is thick and coats a spoon, and a few beans have been crushed to thicken it.",
+      "tip": "Mash a few beans against the side of the pot rather than adding flour."
+    }
+  ],
+  "storage": "Refrigerate up to 4 days or freeze in portions for 3 months. It tastes better the next day. Reheat until it bubbles, adding water if it has thickened."
+}

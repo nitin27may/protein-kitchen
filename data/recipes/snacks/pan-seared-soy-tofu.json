@@ -1,0 +1,53 @@
+{
+  "slug": "pan-seared-soy-tofu",
+  "name": "Pan-seared soy tofu",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 10,
+  "active_min": 8,
+  "total_min": 10,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 200
+    },
+    {
+      "ingredient": "soy-sauce-shoyu",
+      "grams": 10
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press the tofu, then cut into cubes.",
+      "technique": "press-tofu",
+      "timer_sec": 600
+    },
+    {
+      "text": "Sear in a hot oiled pan for 2 minutes a side until golden.",
+      "technique": "high-protein-snacks",
+      "timer_sec": 240,
+      "cue": "Both sides are golden and the tofu releases from the pan without sticking.",
+      "tip": "Do not move the cubes for the full 2 minutes. They need contact to crust."
+    },
+    {
+      "text": "Splash with soy sauce and toss for 30 seconds."
+    }
+  ]
+}

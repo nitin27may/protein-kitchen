@@ -1,0 +1,97 @@
+{
+  "slug": "tofu-burrito-bowl",
+  "name": "Tofu burrito bowl",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mexican",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 20,
+  "total_min": 35,
+  "equipment": [
+    "oven",
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 300
+    },
+    {
+      "ingredient": "white-rice-dry",
+      "grams": 80
+    },
+    {
+      "ingredient": "black-beans-cooked",
+      "grams": 240
+    },
+    {
+      "component": "salsa-fresca",
+      "grams": 100
+    },
+    {
+      "ingredient": "avocado",
+      "grams": 80
+    },
+    {
+      "ingredient": "corn-sweet",
+      "grams": 80
+    },
+    {
+      "ingredient": "lettuce-romaine",
+      "grams": 60
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 60
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press tofu, cube it and toss with oil, chili powder, cumin and salt.",
+      "technique": "press-tofu",
+      "timer_sec": 900
+    },
+    {
+      "text": "Roast at 210°C for 25 minutes, flipping halfway.",
+      "technique": "oven-basics",
+      "timer_sec": 1500,
+      "cue": "The cubes are golden at the edges and firm. They shrink by about a third.",
+      "tip": "Do not crowd the tray. Use two if the cubes touch."
+    },
+    {
+      "text": "Cook rice and warm the beans.",
+      "technique": "cook-legumes",
+      "cue": "The rice grains are separate and tender and the beans are heated through."
+    },
+    {
+      "text": "Assemble rice, beans, tofu, corn, lettuce, salsa, avocado and a spoon of yoghurt.",
+      "technique": "salad-formula"
+    }
+  ]
+}

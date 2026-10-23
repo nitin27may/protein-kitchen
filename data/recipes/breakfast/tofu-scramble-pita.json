@@ -1,0 +1,74 @@
+{
+  "slug": "tofu-scramble-pita",
+  "name": "Tofu scramble pita",
+  "kind": "recipe",
+  "family": "breakfast",
+  "meal_slots": [
+    "breakfast"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 5,
+  "active_min": 12,
+  "total_min": 15,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 350
+    },
+    {
+      "ingredient": "pita-whole-wheat",
+      "grams": 120
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 80
+    },
+    {
+      "ingredient": "onion",
+      "grams": 50
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 8
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press the tofu, then crumble it.",
+      "technique": "press-tofu",
+      "timer_sec": 600
+    },
+    {
+      "text": "Fry onion and cumin in oil, add spinach until wilted, then the tofu and turmeric.",
+      "technique": "press-tofu",
+      "timer_sec": 420,
+      "cue": "The tofu is golden-yellow and crumbly, dry rather than watery, and the spinach is wilted.",
+      "tip": "Cook until the pan is dry. Wet tofu makes a soggy pita."
+    },
+    {
+      "text": "Warm the pita and fill with the scramble.",
+      "cue": "The pita is soft and slightly puffed."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "slug": "tofu-edamame-stir-fry",
+  "name": "Tofu edamame stir-fry",
+  "kind": "recipe",
+  "family": "bowls",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "asian-fusion",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 12,
+  "active_min": 15,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "tofu-extra-firm",
+      "grams": 300
+    },
+    {
+      "ingredient": "edamame-prepared",
+      "grams": 120
+    },
+    {
+      "ingredient": "broccoli",
+      "grams": 150
+    },
+    {
+      "ingredient": "capsicum-green",
+      "grams": 100
+    },
+    {
+      "ingredient": "carrot",
+      "grams": 80
+    },
+    {
+      "ingredient": "mushroom-white",
+      "grams": 100
+    },
+    {
+      "ingredient": "soy-sauce-shoyu",
+      "grams": 15
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 6
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "sesame-seeds",
+      "grams": 5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Press the tofu and cut into cubes.",
+      "technique": "press-tofu",
+      "timer_sec": 600
+    },
+    {
+      "text": "Sear the tofu in half the oil for 3 minutes a side, then set aside.",
+      "technique": "press-tofu",
+      "timer_sec": 360,
+      "cue": "The tofu has a golden crust on two sides and releases from the pan without sticking.",
+      "tip": "Leave the cubes alone for the full 3 minutes. Moving them early tears the crust."
+    },
+    {
+      "text": "Stir-fry ginger, garlic and the vegetables in the rest of the oil for 5 minutes, add edamame and tofu, then soy sauce.",
+      "timer_sec": 300,
+      "cue": "The vegetables are bright and still crisp-tender, and a thin glossy sauce coats everything.",
+      "tip": "The pan must be hot. Cook the vegetables in two batches if they do not fit in one layer."
+    },
+    {
+      "text": "Sprinkle with sesame and serve."
+    }
+  ]
+}

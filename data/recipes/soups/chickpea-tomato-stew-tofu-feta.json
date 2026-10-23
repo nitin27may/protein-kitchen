@@ -1,0 +1,82 @@
+{
+  "slug": "chickpea-tomato-stew-tofu-feta",
+  "name": "Chickpea tomato stew with tofu feta",
+  "kind": "recipe",
+  "family": "soups",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 10,
+  "active_min": 15,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 300
+    },
+    {
+      "ingredient": "tomatoes-canned-whole",
+      "grams": 200
+    },
+    {
+      "ingredient": "spinach",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 8
+    },
+    {
+      "ingredient": "paprika",
+      "grams": 2
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    },
+    {
+      "component": "tofu-feta",
+      "grams": 150
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Soften the onion in the oil, add garlic, paprika and cumin.",
+      "technique": "soup-basics",
+      "timer_sec": 480
+    },
+    {
+      "text": "Add chickpeas and crushed tomatoes with 150 ml water and simmer 12 minutes.",
+      "technique": "soup-basics",
+      "timer_sec": 720,
+      "cue": "The tomatoes have broken down into a thick sauce and the chickpeas are hot through."
+    },
+    {
+      "text": "Stir in spinach until wilted and top with tofu feta.",
+      "technique": "soup-basics"
+    }
+  ]
+}

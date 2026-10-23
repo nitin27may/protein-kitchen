@@ -1,0 +1,88 @@
+{
+  "slug": "bhindi-chana-masala",
+  "name": "Bhindi chana masala",
+  "kind": "recipe",
+  "family": "curries",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 12,
+  "active_min": 18,
+  "total_min": 30,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "okra",
+      "grams": 250
+    },
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 250
+    },
+    {
+      "ingredient": "onion",
+      "grams": 80
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 120
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "coriander-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "chili-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Cut the okra into rounds and dry-roast in a pan for 5 minutes to reduce stickiness.",
+      "timer_sec": 300,
+      "cue": "The okra pieces look dry and slightly browned, with no sticky strings.",
+      "tip": "Dry the okra completely after washing. Wet okra turns slimy."
+    },
+    {
+      "text": "Fry cumin and onion in the oil, add tomato and spices and cook to a paste.",
+      "timer_sec": 420,
+      "cue": "Onion golden brown at the edges, tomato broken into a thick paste with oil shimmering at the sides.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Add okra and chickpeas, cover and cook 8 minutes, then finish with lemon.",
+      "timer_sec": 480,
+      "cue": "The okra is tender when a knife goes in and the masala clings to the pieces."
+    }
+  ]
+}

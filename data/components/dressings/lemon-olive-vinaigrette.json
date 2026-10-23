@@ -1,0 +1,58 @@
+{
+  "slug": "lemon-olive-vinaigrette",
+  "name": "Lemon olive oil vinaigrette",
+  "kind": "component",
+  "family": "dressings",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 7,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "oil-olive",
+      "grams": 60
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 20
+    },
+    {
+      "ingredient": "mustard-prepared",
+      "grams": 5
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 3
+    },
+    {
+      "ingredient": "oregano-dried",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Shake everything in a closed jar for 20 seconds. Ratio is 3 oil to 1 acid.",
+      "technique": "vinaigrette-ratio",
+      "cue": "The dressing looks cloudy and thick, with no clear layer of oil on top."
+    },
+    {
+      "text": "Taste on a leaf and correct with salt or lemon.",
+      "cue": "A dipped leaf tastes bright and lightly salty, not sharp or flat."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "slug": "lauki-chana-dal-yogurt",
+  "name": "Lauki chana dal with yogurt",
+  "kind": "recipe",
+  "family": "dals",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 4,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 45,
+  "equipment": [
+    "pressure cooker"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "bottle-gourd",
+      "grams": 400
+    },
+    {
+      "ingredient": "chana-dal",
+      "grams": 120
+    },
+    {
+      "ingredient": "onion",
+      "grams": 60
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 100
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "greek-yogurt-0pct",
+      "grams": 300
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 12
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "turmeric-powder",
+      "grams": 1.5
+    },
+    {
+      "ingredient": "coriander-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3.5
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "chana-dal",
+      "grams": 120,
+      "lead_hours": 4,
+      "instruction": "Soak chana dal, drain"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Pressure cook soaked chana dal with turmeric until soft, about 5 whistles.",
+      "technique": "cook-legumes",
+      "timer_sec": 1200,
+      "cue": "The dal is soft and holds its shape but crushes easily."
+    },
+    {
+      "text": "Fry cumin, onion and ginger in the oil, add tomato and ground coriander, then the diced lauki and 200 ml water.",
+      "timer_sec": 600,
+      "cue": "The lauki turns translucent and the tomato has softened.",
+      "technique": "masala-base-bhuna"
+    },
+    {
+      "text": "Combine with the dal and simmer 8 minutes. Serve each bowl with 75 g Greek yogurt.",
+      "timer_sec": 480,
+      "cue": "The lauki is tender and the dal is creamy."
+    }
+  ]
+}

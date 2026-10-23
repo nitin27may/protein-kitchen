@@ -1,0 +1,71 @@
+{
+  "slug": "hummus",
+  "name": "Hummus",
+  "kind": "component",
+  "family": "sauces",
+  "meal_slots": [
+    "lunch",
+    "snack"
+  ],
+  "cuisine": "middle-eastern",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 10,
+  "active_min": 10,
+  "total_min": 10,
+  "equipment": [
+    "blender"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 5,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-canned",
+      "grams": 240
+    },
+    {
+      "ingredient": "tahini",
+      "grams": 50
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 40
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 6
+    },
+    {
+      "ingredient": "oil-olive",
+      "grams": 20
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 60
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blend chickpeas, tahini, lemon juice, garlic, cumin and salt until crumbly.",
+      "cue": "The mixture is a thick, crumbly paste with no whole chickpeas left.",
+      "tip": "Scrape down the sides once so it blends evenly."
+    },
+    {
+      "text": "Add the cold water and oil a little at a time with the blender running, until smooth and pale.",
+      "cue": "The hummus is smooth and pale and falls from a spoon in a soft ribbon.",
+      "tip": "Keep the blender running while you add liquid so it turns light and creamy."
+    }
+  ]
+}

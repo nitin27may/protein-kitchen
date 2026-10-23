@@ -1,0 +1,44 @@
+{
+  "slug": "peanut-butter-banana-pita",
+  "name": "Peanut butter banana pita",
+  "kind": "recipe",
+  "family": "snacks",
+  "meal_slots": [
+    "snack"
+  ],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "pita-whole-wheat",
+      "grams": 60
+    },
+    {
+      "ingredient": "peanut-butter-natural",
+      "grams": 30
+    },
+    {
+      "ingredient": "banana",
+      "grams": 80
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Warm the pita for 20 seconds so it is soft.",
+      "technique": "high-protein-snacks",
+      "cue": "The pita is soft and slightly puffed."
+    },
+    {
+      "text": "Spread with peanut butter, add sliced banana and fold."
+    }
+  ]
+}

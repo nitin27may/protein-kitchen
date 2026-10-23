@@ -1,0 +1,84 @@
+{
+  "slug": "moong-chilla-paneer",
+  "name": "Moong chilla with paneer",
+  "kind": "recipe",
+  "family": "chillas",
+  "meal_slots": [
+    "breakfast",
+    "lunch"
+  ],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 20,
+  "total_min": 25,
+  "equipment": [
+    "stove"
+  ],
+  "tags": [],
+  "fridge_days": 2,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "moong-whole-dry",
+      "grams": 100
+    },
+    {
+      "ingredient": "paneer",
+      "grams": 100
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 5
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 10
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 2
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "moong-whole-dry",
+      "grams": 100,
+      "lead_hours": 6,
+      "instruction": "Soak whole moong, drain before blending"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Blend soaked moong with chilli, cumin and salt into a pourable batter.",
+      "timer_sec": 180
+    },
+    {
+      "text": "Cook 4 thin chillas (about 18 cm) on a hot non-stick pan, 2 minutes a side.",
+      "cue": "Bubbles appear across the surface, the edges lift and the underside is golden. Flip once, when the top is no longer shiny.",
+      "tip": "Pour the batter in the centre and spread it quickly in a spiral. A hot pan, lightly greased, stops sticking."
+    },
+    {
+      "text": "Fill with crumbled paneer, onion and coriander, fold."
+    }
+  ],
+  "serving_unit": {
+    "singular": "chilla",
+    "plural": "chillas",
+    "per_serving": 2
+  }
+}

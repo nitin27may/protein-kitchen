@@ -1,0 +1,105 @@
+{
+  "slug": "baked-falafel",
+  "name": "Baked falafel",
+  "kind": "component",
+  "family": "bakes",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "middle-eastern",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 20,
+  "active_min": 20,
+  "total_min": 60,
+  "equipment": [
+    "oven",
+    "blender"
+  ],
+  "tags": [
+    "batch-friendly"
+  ],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chickpeas-dry",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 20
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 20
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 8
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 3
+    },
+    {
+      "ingredient": "coriander-seed",
+      "grams": 2
+    },
+    {
+      "ingredient": "besan",
+      "grams": 15
+    },
+    {
+      "ingredient": "baking-powder",
+      "grams": 2
+    },
+    {
+      "ingredient": "oil-canola",
+      "grams": 10
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 3
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "chickpeas-dry",
+      "grams": 150,
+      "lead_hours": 12,
+      "instruction": "Soak chickpeas for falafel. Do not cook them first"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Use soaked, uncooked chickpeas. Drain well and pulse with onion, herbs, garlic and spices into a coarse crumb, not a paste.",
+      "technique": "cook-legumes",
+      "cue": "The mixture looks like coarse crumbs and just holds together when you squeeze a handful.",
+      "tip": "Pulse in short bursts. A smooth paste bakes dense."
+    },
+    {
+      "text": "Stir in besan, baking powder and salt and rest 15 minutes.",
+      "timer_sec": 900,
+      "cue": "The mixture feels drier and holds together when pressed into a ball."
+    },
+    {
+      "text": "Shape into small patties. Weights in recipes are for the raw mixture.",
+      "cue": "A patty keeps its shape when lifted, with no cracks around the edge.",
+      "tip": "Wet your hands so the mixture does not stick."
+    },
+    {
+      "text": "Bake on an oiled tray at 200°C for 25 minutes, turning once.",
+      "technique": "oven-basics",
+      "timer_sec": 1500,
+      "cue": "Patties are deep golden and firm, and feel crisp when tapped.",
+      "tip": "Space them out on the tray so they crisp instead of steaming."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "slug": "greek-lentil-salad",
+  "name": "Greek lentil salad with tofu feta",
+  "kind": "recipe",
+  "family": "salads",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "mediterranean",
+  "is_indian": false,
+  "servings": 2,
+  "prep_min": 15,
+  "active_min": 15,
+  "total_min": 15,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 3,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "lentils-green-brown-cooked",
+      "grams": 350
+    },
+    {
+      "ingredient": "cucumber",
+      "grams": 150
+    },
+    {
+      "ingredient": "tomato",
+      "grams": 150
+    },
+    {
+      "ingredient": "onion",
+      "grams": 40
+    },
+    {
+      "ingredient": "olives-black",
+      "grams": 25
+    },
+    {
+      "ingredient": "parsley-fresh",
+      "grams": 10
+    },
+    {
+      "ingredient": "cottage-cheese-1pct",
+      "grams": 120
+    },
+    {
+      "component": "tofu-feta",
+      "grams": 130
+    },
+    {
+      "component": "lemon-olive-vinaigrette",
+      "grams": 35
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Use cooled cooked lentils so they keep their shape.",
+      "technique": "cook-legumes",
+      "cue": "The lentils are tender with a slight bite and the skins are not split."
+    },
+    {
+      "text": "Dress the lentils first with some vinaigrette, then fold in vegetables and olives.",
+      "technique": "salad-formula"
+    },
+    {
+      "text": "Top with tofu feta and parsley just before serving.",
+      "technique": "salad-formula"
+    }
+  ]
+}

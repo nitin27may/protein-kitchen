@@ -1,0 +1,63 @@
+{
+  "slug": "mint-yogurt-chutney",
+  "name": "Mint yoghurt chutney",
+  "kind": "component",
+  "family": "sauces",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "indian-fusion",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 8,
+  "active_min": 8,
+  "total_min": 8,
+  "equipment": [
+    "blender"
+  ],
+  "tags": [],
+  "fridge_days": 4,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "dahi-plain",
+      "grams": 150
+    },
+    {
+      "ingredient": "mint-fresh",
+      "grams": 20
+    },
+    {
+      "ingredient": "coriander-leaves",
+      "grams": 20
+    },
+    {
+      "ingredient": "green-chilli",
+      "grams": 5
+    },
+    {
+      "ingredient": "lemon-juice",
+      "grams": 10
+    },
+    {
+      "ingredient": "cumin-seed",
+      "grams": 1
+    },
+    {
+      "ingredient": "salt-table",
+      "grams": 1.5
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blend mint, coriander, chilli, lemon juice, cumin and salt with a splash of dahi.",
+      "cue": "The herbs are a smooth, bright green paste with no leaf pieces."
+    },
+    {
+      "text": "Stir through the rest of the dahi.",
+      "cue": "The chutney is evenly pale green with no white streaks."
+    }
+  ]
+}

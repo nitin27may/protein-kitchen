@@ -1,0 +1,45 @@
+{
+  "slug": "whey-banana-shake",
+  "name": "Whey banana peanut shake",
+  "kind": "recipe",
+  "family": "shakes",
+  "meal_slots": [
+    "shake"
+  ],
+  "cuisine": "global",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 3,
+  "active_min": 3,
+  "total_min": 3,
+  "equipment": [
+    "blender"
+  ],
+  "tags": [],
+  "fridge_days": 1,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "whey-protein-powder",
+      "grams": 30
+    },
+    {
+      "ingredient": "milk-2pct",
+      "grams": 250
+    },
+    {
+      "ingredient": "banana",
+      "grams": 100
+    },
+    {
+      "ingredient": "peanut-butter-natural",
+      "grams": 15
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Blend until smooth."
+    }
+  ]
+}

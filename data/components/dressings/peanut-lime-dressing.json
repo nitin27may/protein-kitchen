@@ -1,0 +1,58 @@
+{
+  "slug": "peanut-lime-dressing",
+  "name": "Peanut lime dressing",
+  "kind": "component",
+  "family": "dressings",
+  "meal_slots": [
+    "lunch",
+    "dinner"
+  ],
+  "cuisine": "asian",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 5,
+  "active_min": 5,
+  "total_min": 5,
+  "equipment": [],
+  "tags": [],
+  "fridge_days": 5,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "peanut-butter-natural",
+      "grams": 60
+    },
+    {
+      "ingredient": "lime-juice",
+      "grams": 30
+    },
+    {
+      "ingredient": "soy-sauce-shoyu",
+      "grams": 20
+    },
+    {
+      "ingredient": "maple-syrup",
+      "grams": 10
+    },
+    {
+      "ingredient": "ginger",
+      "grams": 8
+    },
+    {
+      "ingredient": "garlic",
+      "grams": 4
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 40
+    }
+  ],
+  "advance_prep": [],
+  "steps": [
+    {
+      "text": "Whisk everything with grated ginger and garlic, then thin with warm water until pourable.",
+      "technique": "vinaigrette-ratio",
+      "cue": "The dressing is smooth and runs off a spoon in a thin stream."
+    }
+  ]
+}

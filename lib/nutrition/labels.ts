@@ -1,0 +1,42 @@
+/** Display labels and units for the micronutrient keys in data/nutrients/micros.json. Order is the display order. */
+export const MICRO_LABELS: { key: string; label: string; unit: string; digits: number }[] = [
+  { key: "sugars_g", label: "Sugars", unit: "g", digits: 1 },
+  { key: "sat_fat_g", label: "Saturated fat", unit: "g", digits: 1 },
+  { key: "mono_fat_g", label: "Monounsaturated fat", unit: "g", digits: 1 },
+  { key: "poly_fat_g", label: "Polyunsaturated fat", unit: "g", digits: 1 },
+  { key: "omega3_g", label: "Omega-3", unit: "g", digits: 2 },
+  { key: "ala_18_3_g", label: "ALA (plant omega-3)", unit: "g", digits: 2 },
+  { key: "omega6_g", label: "Omega-6", unit: "g", digits: 2 },
+  { key: "cholesterol_mg", label: "Cholesterol", unit: "mg", digits: 0 },
+  { key: "calcium_mg", label: "Calcium", unit: "mg", digits: 0 },
+  { key: "iron_mg", label: "Iron", unit: "mg", digits: 1 },
+  { key: "magnesium_mg", label: "Magnesium", unit: "mg", digits: 0 },
+  { key: "phosphorus_mg", label: "Phosphorus", unit: "mg", digits: 0 },
+  { key: "potassium_mg", label: "Potassium", unit: "mg", digits: 0 },
+  { key: "sodium_mg", label: "Sodium", unit: "mg", digits: 0 },
+  { key: "zinc_mg", label: "Zinc", unit: "mg", digits: 1 },
+  { key: "copper_mg", label: "Copper", unit: "mg", digits: 2 },
+  { key: "manganese_mg", label: "Manganese", unit: "mg", digits: 2 },
+  { key: "selenium_ug", label: "Selenium", unit: "µg", digits: 1 },
+  { key: "vitamin_a_rae_ug", label: "Vitamin A", unit: "µg RAE", digits: 0 },
+  { key: "vitamin_c_mg", label: "Vitamin C", unit: "mg", digits: 1 },
+  { key: "vitamin_d_ug", label: "Vitamin D", unit: "µg", digits: 1 },
+  { key: "vitamin_e_mg", label: "Vitamin E", unit: "mg", digits: 1 },
+  { key: "vitamin_k_ug", label: "Vitamin K", unit: "µg", digits: 1 },
+  { key: "thiamin_mg", label: "Thiamin (B1)", unit: "mg", digits: 2 },
+  { key: "riboflavin_mg", label: "Riboflavin (B2)", unit: "mg", digits: 2 },
+  { key: "niacin_mg", label: "Niacin (B3)", unit: "mg", digits: 1 },
+  { key: "pantothenic_acid_mg", label: "Pantothenic acid (B5)", unit: "mg", digits: 2 },
+  { key: "vitamin_b6_mg", label: "Vitamin B6", unit: "mg", digits: 2 },
+  { key: "biotin_ug", label: "Biotin (B7)", unit: "µg", digits: 1 },
+  { key: "folate_dfe_ug", label: "Folate", unit: "µg DFE", digits: 0 },
+  { key: "vitamin_b12_ug", label: "Vitamin B12", unit: "µg", digits: 2 },
+  { key: "choline_mg", label: "Choline", unit: "mg", digits: 0 },
+];
+
+/** How the detail page groups the keys above. */
+export const MICRO_GROUPS: { title: string; keys: string[] }[] = [
+  { title: "Minerals", keys: ["calcium_mg", "iron_mg", "magnesium_mg", "phosphorus_mg", "potassium_mg", "sodium_mg", "zinc_mg", "copper_mg", "manganese_mg", "selenium_ug"] },
+  { title: "Vitamins", keys: ["vitamin_a_rae_ug", "vitamin_c_mg", "vitamin_d_ug", "vitamin_e_mg", "vitamin_k_ug", "thiamin_mg", "riboflavin_mg", "niacin_mg", "pantothenic_acid_mg", "vitamin_b6_mg", "biotin_ug", "folate_dfe_ug", "vitamin_b12_ug", "choline_mg"] },
+  { title: "Fats and sugars", keys: ["sugars_g", "sat_fat_g", "mono_fat_g", "poly_fat_g", "omega3_g", "ala_18_3_g", "omega6_g", "cholesterol_mg"] },
+];
