@@ -1,0 +1,10 @@
+#!/bin/sh
+# Runs before every commit: blocks secrets, and validates /data when it changed.
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+sh scripts/secret-scan.sh || exit 1
+if git diff --cached --name-only | grep -q '^data/'; then
+  echo "pre-commit: /data changed, running pnpm validate"
+  out=$(pnpm -s validate 2>&1) || { echo "$out" | tail -25; echo "pre-commit: pnpm validate failed, commit blocked"; exit 1; }
+fi
+exit 0
