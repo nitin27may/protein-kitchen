@@ -56,6 +56,8 @@ Table `recipe_links(id, recipe_id, part_slug, step_no, kind recipe|video|article
 
 ## 5. Composite meals
 
+Status: PR 4 (data, schema, validator) is done. The Parts UI, cook mode and links are PR 5 to 7. Done in PR 4: `baked-falafel-mix` renamed to `baked-falafel`; components moved to `data/components/<family>/`; `water-tap` and `hummus-commercial` added (USDA, because CNF was unreachable); `alt_ingredient`, `display_qty`, `display_unit` and `label` on component items; `effectiveActiveMin` and `makeAheadMin`; expandRecipe make/buy/have resolver; falafel recipes shortened to their own assembly steps.
+
 - **Naming:** slugs name the thing you make, with no prefix. Variants use a suffix (`hummus-beetroot`). Store-bought versions are ingredients (`hummus-commercial`, with a CNF or USDA source), never components. A component is never also a recipe; to eat hummus as a snack, write a recipe that wraps it. Display names read like a menu ("Hummus", "Lemon tahini dressing", "Baked falafel"). Rename `baked-falafel-mix` to `baked-falafel`, and move components to `data/components/<family>/`.
 - **Relax the "used by two or more recipes" rule** when the part has its own method and keeps two days or more, or has a buy alternative.
 - **Referencing:** extend the component item with `display_qty`/`display_unit`, `label`, and `alt_ingredient`. Make, buy or have is chosen per plan in `plan_part_state`.

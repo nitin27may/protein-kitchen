@@ -57,7 +57,8 @@ describe("parts: data set", () => {
   it("gives every component step a cue and lists water in grams, not in a footnote", () => {
     for (const rec of data.recipes.values()) {
       expect(componentStepsWithoutCue(rec), rec.slug).toEqual([]);
-      for (const s of rec.steps) expect(s.text.toLowerCase()).not.toContain("water is not counted");
+      // Uncounted water only matters for a part, whose yield turns totals into per-gram rates.
+      if (rec.kind === "component") for (const s of rec.steps) expect(s.text.toLowerCase()).not.toContain("water is not counted");
     }
     expect(r("hummus").items.some((i) => "ingredient" in i && i.ingredient === "water-tap")).toBe(true);
     expect(r("lemon-tahini-dressing").items.some((i) => "ingredient" in i && i.ingredient === "water-tap")).toBe(true);
