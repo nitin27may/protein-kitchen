@@ -15,6 +15,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
+| 6 | Cook mode across parts: start screen with Already made toggles, steps ordered by hands-off time with a 'While X rests: make Y' hint, a timer tray whose timers keep their end time (survive step changes and reloads) | Done |
 | 5 | Parts of a meal: timeline, per-part cards, Make / Buy / Have saved per plan, groceries and prep respect it, "Used in" on part pages | Done |
 | 1a | Async data layer behind one transaction helper; one write path and export/import for human-owned data (ratings, saved views); portable column helpers; renames file | Done |
 | 0b | CI (typecheck, validate, test, build, secret scan), pre-commit secret hook, Dependabot, branch protection (no force-push or deletion, `ci` and `secrets` required for PRs, owner can still push) | Done |
@@ -39,7 +40,7 @@ Scope: a "Parts of this meal" section for falafel bowl and similar: each part wi
 You will see: how to make hummus from the falafel bowl page. Done when: Have removes hummus from groceries and Buy adds store-bought hummus at the same grams.
 Needs: `plan_part_state` table (text and integer types only).
 
-### Step 5. Cook mode across parts and several timers (6)
+### Step 5. Cook mode across parts and several timers (6) (done)
 Scope: cook mode orders parts (longest hands-off first, "While the falafel bakes: make the hummus"), skips parts marked Have or Buy, shows which part each step belongs to, and replaces the single timer with a tray of timers that survive step changes and store their end time so they do not drift in a background tab.
 Done when: starting a 25 minute bake, moving to the hummus step and back keeps the bake timer running.
 

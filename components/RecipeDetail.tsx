@@ -128,7 +128,7 @@ export function RecipeDetail(p: DetailProps) {
 
           {error ? <Banner tone="bad">{error}</Banner> : null}
 
-          <LinkButton href={`/recipes/${p.slug}/cook`} size="lg" className="w-full">Start cooking</LinkButton>
+          <LinkButton href={`/recipes/${p.slug}/cook${p.planId ? `?plan=${p.planId}` : ""}`} size="lg" className="w-full">Start cooking</LinkButton>
 
           <section aria-labelledby="per" className="rounded-card border border-line bg-surface p-4">
             <h2 id="per" className="mb-3 text-base font-semibold">Per serving</h2>
