@@ -4,6 +4,8 @@ import { buildCandidates } from "@/lib/planner/candidates";
 import type { Feedback } from "@/lib/planner/candidates";
 import { datesBetween } from "@/lib/planner/dates";
 import { summariseDays } from "@/lib/planner/generate";
+import { groceryProgressFrom } from "@/lib/plan/phase";
+import type { GroceryProgress } from "@/lib/plan/phase";
 import type { Candidate, DayPersonSummary, PersonTarget, PlanInput, PlannedSlot, Slot } from "@/lib/planner/types";
 import { getData, getDb } from "./context";
 import { defaultViewQuery } from "./saved-views";
@@ -204,4 +206,11 @@ export function getSavedViews(list: string): SavedView[] {
 /** The query string saved as this list's default view, or null. */
 export function getDefaultViewQuery(list: string): string | null {
   return defaultViewQuery(getDb(), list);
+}
+
+/** Items left to buy for a whole plan, counted the way the Groceries page counts them. */
+export function groceryProgress(view: PlanView): GroceryProgress {
+  const data = getData();
+  const meals = view.slots.map((sl) => ({ recipeSlug: sl.recipeSlug, servings: Object.values(sl.servings).reduce((a, b) => a + b, 0) }));
+  return groceryProgressFrom(meals, data.recipes, data.ingredients, groceryChecks(view.id).checked);
 }
