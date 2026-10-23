@@ -6,6 +6,8 @@ export { writeRecipeFeedback } from "./feedback";
 export type { FeedbackPatch } from "./feedback";
 export { clearSavedView, writeSavedView } from "./saved-views";
 export type { SavedViewInput } from "./saved-views";
+export { deleteLinkRow, reorderLinks, updateLinkRow, writeLink } from "./links";
+export type { LinkRowInput } from "./links";
 export { registerExporter, registeredClasses } from "./registry";
 export type { HumanDataClass, ImportContext } from "./registry";
 export { markExported } from "./util";

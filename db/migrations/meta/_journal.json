@@ -57,6 +57,13 @@
       "when": 1792797537105,
       "tag": "0007_normal_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792798782641,
+      "tag": "0008_ancient_justin_hammer",
+      "breakpoints": true
     }
   ]
 }

@@ -7,8 +7,10 @@ import { summariseDays } from "@/lib/planner/generate";
 import { groceryProgressFrom } from "@/lib/plan/phase";
 import type { GroceryProgress } from "@/lib/plan/phase";
 import type { PartModes } from "@/lib/parts/mode";
+import type { RecipeLinkView } from "@/lib/links/types";
 import type { Candidate, DayPersonSummary, PersonTarget, PlanInput, PlannedSlot, Slot } from "@/lib/planner/types";
 import { getData, getDb } from "./context";
+import { recipeLinksFor } from "./link-view";
 import { readPartModes } from "./part-state";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
@@ -254,4 +256,9 @@ export async function getBatchPrepTicks(planId: number): Promise<{ taskKey: stri
 /** What a reset would delete, for the Settings page. */
 export async function getResetCounts(): Promise<ResetCounts> {
   return resetCounts(await getDb());
+}
+
+/** Every link saved on a recipe page, in display order, with video embeds worked out. See link-view.ts. */
+export async function getRecipeLinks(recipeSlug: string): Promise<RecipeLinkView[]> {
+  return recipeLinksFor(await getDb(), recipeSlug);
 }

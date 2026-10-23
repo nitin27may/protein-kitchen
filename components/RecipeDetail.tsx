@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { setRecipeFeedback } from "@/app/actions";
 import { Markdown } from "@/components/Markdown";
+import { LinksCard } from "@/components/links/LinksCard";
+import { LinksProvider } from "@/components/links/LinksProvider";
+import { StepLinks } from "@/components/links/StepLinks";
 import { PartsSection } from "@/components/parts/PartsSection";
 import { Sheet } from "@/components/Sheet";
 import { RecipeThumb } from "@/components/RecipeThumb";
@@ -10,6 +13,8 @@ import { MinusIcon, PlusIcon } from "@/components/icons";
 import { Banner, Button, Chip, LinkButton, Pill, SectionCard, Segmented } from "@/components/ui";
 import { round1 } from "@/lib/format";
 import type { PartModes } from "@/lib/parts/mode";
+import { flattenParts } from "@/lib/recipes/linkview";
+import type { OwnedLink } from "@/lib/recipes/linkview";
 import type { UsedIn } from "@/lib/recipes/parts";
 import type { PartAdvance, PartView } from "@/lib/recipes/timeline";
 
@@ -62,6 +67,8 @@ export interface DetailProps {
   mealAdvancePrep: PartAdvance[];
   /** For a part: the meals that use it. */
   usedIn: UsedIn[];
+  /** Saved links for this page, plus those saved on its parts' own pages. */
+  links: OwnedLink[];
 }
 
 const fmtGrams = (g: number) => (g < 10 ? `${round1(g)} g` : `${Math.round(g)} g`);
@@ -103,6 +110,7 @@ export function RecipeDetail(p: DetailProps) {
   ];
 
   return (
+    <LinksProvider recipeSlug={p.slug} links={p.links} parts={flattenParts(p.parts)} mealStepCount={p.steps.length}>
     <div className="pb-10">
       {p.image || p.thumbs.length ? <RecipeThumb image={p.image} thumbs={p.thumbs} label="" className="aspect-[4/3] w-full lg:hidden" /> : null}
 
@@ -153,6 +161,8 @@ export function RecipeDetail(p: DetailProps) {
               <Button variant="secondary" size="sm" aria-label="More servings" disabled={servings >= 24} onClick={() => setServings((x) => x + 0.5)} className="size-11 px-0 lg:size-9"><PlusIcon className="size-5" /></Button>
             </div>
           </section>
+
+          <LinksCard />
 
           {p.advancePrep.length ? (
             <Banner tone="warn" title="Plan ahead">
@@ -248,6 +258,7 @@ export function RecipeDetail(p: DetailProps) {
                     <p className="text-base leading-relaxed">{s.text}</p>
                     {s.cue ? <p className="mt-2 rounded-control bg-oksoft px-3 py-2 text-sm text-ok"><span className="font-semibold">Done when: </span>{s.cue}</p> : null}
                     {s.tip ? <p className="mt-2 text-sm text-muted"><span className="font-semibold text-fg">Tip: </span>{s.tip}</p> : null}
+                    <StepLinks partSlug={null} stepNo={i + 1} />
                     {s.timerSec || s.technique ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {s.timerSec ? <Pill>{Math.round(s.timerSec / 60)} min timer</Pill> : null}
@@ -313,5 +324,6 @@ export function RecipeDetail(p: DetailProps) {
         <div className="p-4">{tech ? <Markdown>{tech.body}</Markdown> : null}</div>
       </Sheet>
     </div>
+    </LinksProvider>
   );
 }

@@ -7,6 +7,7 @@ import { isLight, isLowSugar, qualityPerServing } from "@/lib/nutrition/quality"
 import { storageAdvice } from "@/lib/recipes/storage";
 import { expandRecipe } from "@/lib/grocery/aggregate";
 import { makeAheadMin } from "@/lib/data/rules";
+import { collectLinks, flattenParts } from "@/lib/recipes/linkview";
 import { partsOf, usedIn } from "@/lib/recipes/parts";
 import { anchorIngredients, perServing } from "@/lib/nutrition/macros";
 import { microsPerServing } from "@/lib/nutrition/micros";
@@ -14,7 +15,7 @@ import { TARGETS, targetFor } from "@/lib/nutrition/dri";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { getData } from "@/lib/server/context";
-import { feedbackMap, getCandidates, getPartModes, listPeople, listPlans } from "@/lib/server/queries";
+import { feedbackMap, getCandidates, getPartModes, getRecipeLinks, listPeople, listPlans } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,14 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const planId = Number.isInteger(requested) && requested > 0 && (await listPlans(500)).some((pl) => pl.id === requested) ? requested : null;
   const partModes = planId ? await getPartModes(planId) : {};
 
+  // Links saved on this page, plus the whole-page links saved on each part's own page (so a part's video shows in every meal).
+  const parts = partsOf(r, data.recipes, data.ingredients, r.servings);
+  const [ownLinks, partLinkEntries] = await Promise.all([
+    getRecipeLinks(slug),
+    Promise.all(flattenParts(parts).map(async (pt) => [pt.slug, await getRecipeLinks(pt.slug)] as const)),
+  ]);
+  const links = collectLinks(slug, ownLinks, Object.fromEntries(partLinkEntries.map(([s, ls]) => [s, ls.filter((l) => l.partSlug === null)])));
+
   const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
   const candidate = (await getCandidates()).find((c) => c.slug === slug);
   const techniqueRefs = r.steps.map((s) => s.technique).filter((t): t is string => !!t);
@@ -100,12 +109,13 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
     feedback: { favourite: fb?.favourite ?? false, banned: fb?.banned ?? false, rating: fb?.rating ?? null, tested: fb?.tested ?? false },
     techniques: [...new Set(techniqueRefs)].map((t) => ({ slug: t, title: data.techniques.get(t)?.title ?? t })),
     kind: r.kind === "component" ? "component" : "recipe",
-    parts: partsOf(r, data.recipes, data.ingredients, r.servings),
+    parts,
     partModes,
     planId,
     makeAheadMin: makeAheadMin(r, data.recipes),
     mealAdvancePrep: r.advance_prep.map((a) => ({ leadHours: a.lead_hours, instruction: a.instruction })),
     usedIn: r.kind === "component" ? usedIn(slug, data.recipes) : [],
+    links,
   };
   return <RecipeDetail {...props} />;
 }

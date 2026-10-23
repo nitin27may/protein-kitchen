@@ -1,4 +1,5 @@
 import { feedbackClass } from "./feedback";
+import { linksClass } from "./links";
 import { registerExporter } from "./registry";
 import { savedViewsClass } from "./saved-views";
 
@@ -11,5 +12,6 @@ export function registerBuiltinClasses(): void {
   if (done) return;
   registerExporter(feedbackClass);
   registerExporter(savedViewsClass);
+  registerExporter(linksClass);
   done = true;
 }

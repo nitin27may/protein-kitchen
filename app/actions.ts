@@ -7,6 +7,8 @@ import { z } from "zod";
 import * as s from "@/lib/db/schema";
 import { withTx } from "@/lib/db/tx";
 import { writeRecipeFeedback } from "@/lib/human/feedback";
+import type { LinkInput } from "@/lib/links/types";
+import { addLinkChecked, moveLinkChecked, removeLinkChecked, updateLinkChecked } from "@/lib/server/link-actions";
 import type { PartMode } from "@/lib/parts/mode";
 import { datesBetween } from "@/lib/planner/dates";
 import { dueDateOfKey } from "@/lib/prep/night";
@@ -420,5 +422,42 @@ export async function setPartMode(planId: number, componentSlug: string, mode: P
   revalidatePath(`/plan/${planId}/prep`);
   revalidatePath("/groceries");
   refresh(planId);
+  return { ok: true };
+}
+
+// ---------- Recipe links ----------
+
+function refreshRecipe(slug: string) {
+  revalidatePath(`/recipes/${slug}`);
+  revalidatePath(`/recipes/${slug}/cook`);
+}
+
+/** Saves a link to a recipe page, video or article on a recipe or one of its parts. Human-owned data. */
+export async function addLink(input: LinkInput): Promise<Result<{ id: number }>> {
+  const result = await addLinkChecked(await getDb(), getData().recipes, input);
+  if (!result.ok) return result;
+  refreshRecipe(result.recipeSlug);
+  return { ok: true, id: result.id };
+}
+
+export async function updateLink(id: number, input: LinkInput): Promise<Result> {
+  const result = await updateLinkChecked(await getDb(), getData().recipes, id, input);
+  if (!result.ok) return result;
+  refreshRecipe(result.recipeSlug);
+  return { ok: true };
+}
+
+export async function removeLink(id: number): Promise<Result> {
+  const result = await removeLinkChecked(await getDb(), id);
+  if (!result.ok) return result;
+  refreshRecipe(result.recipeSlug);
+  return { ok: true };
+}
+
+export async function moveLink(id: number, direction: "up" | "down"): Promise<Result> {
+  if (direction !== "up" && direction !== "down") return fail("Direction must be up or down");
+  const result = await moveLinkChecked(await getDb(), id, direction);
+  if (!result.ok) return result;
+  refreshRecipe(result.recipeSlug);
   return { ok: true };
 }

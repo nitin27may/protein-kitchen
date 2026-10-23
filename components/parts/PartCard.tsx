@@ -1,5 +1,7 @@
 "use client";
 
+import { PartLinks } from "@/components/links/PartLinks";
+import { StepLinks } from "@/components/links/StepLinks";
 import { ModeSwitch } from "@/components/parts/ModeSwitch";
 import { Pill } from "@/components/ui";
 import { round1 } from "@/lib/format";
@@ -83,14 +85,14 @@ export function PartCard({ part, modes, factor, onMode, busy, depth = 0 }: { par
                     {s.cue ? <p className="mt-1.5 rounded-control bg-oksoft px-2.5 py-1.5 text-sm text-ok"><span className="font-semibold">Done when: </span>{s.cue}</p> : null}
                     {s.tip ? <p className="mt-1.5 text-sm text-muted"><span className="font-semibold text-fg">Tip: </span>{s.tip}</p> : null}
                     {s.timerSec ? <p className="mt-1.5"><Pill>{Math.round(s.timerSec / 60)} min timer</Pill></p> : null}
+                    <StepLinks partSlug={part.slug} stepNo={i + 1} />
                   </div>
                 </li>
               ))}
             </ol>
           </details>
 
-          {/* PR 7 renders this part's saved links and videos here. */}
-          <div data-slot="part-links" />
+          <PartLinks partSlug={part.slug} partName={part.name} />
 
           {part.children.length ? (
             <div>

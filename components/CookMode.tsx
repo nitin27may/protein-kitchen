@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";
+import { LinkChips } from "@/components/links/LinkChips";
+import { LinkItem } from "@/components/links/LinkItem";
+import { VideoSheet } from "@/components/links/VideoSheet";
 import { ArrowLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { Button, LinkButton, Pill, SwitchRow } from "@/components/ui";
@@ -11,6 +14,8 @@ import { useCookTimers } from "@/components/cook/useCookTimers";
 import { round1 } from "@/lib/format";
 import { formatClock, isDone, remainingMs, timersKey } from "@/lib/recipes/cooktimers";
 import { schedule } from "@/lib/recipes/cookschedule";
+import { cookSheetGroups, linksForCookStep } from "@/lib/recipes/linkview";
+import type { OwnedLink } from "@/lib/recipes/linkview";
 import type { CookInput } from "@/lib/recipes/cookschedule";
 
 export interface CookTechnique {
@@ -26,11 +31,13 @@ interface Props {
   input: CookInput;
   techniques: Record<string, CookTechnique>;
   ingredients: { name: string; grams: number }[];
+  /** Saved links for this meal and its parts. Read only here; they are added and edited on the recipe page. */
+  links: OwnedLink[];
 }
 
 const minutesLabel = (sec: number) => (sec % 60 === 0 ? `${sec / 60} min` : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`);
 
-export function CookMode({ slug, name, servings, planId, input, techniques, ingredients }: Props) {
+export function CookMode({ slug, name, servings, planId, input, techniques, ingredients, links }: Props) {
   const hasParts = input.parts.length > 0;
   const [started, setStarted] = useState(!hasParts);
   const [alreadyMade, setAlreadyMade] = useState<string[]>([]);
@@ -39,6 +46,9 @@ export function CookMode({ slug, name, servings, planId, input, techniques, ingr
   const [wakeSupported, setWakeSupported] = useState(false);
   const [showIng, setShowIng] = useState(false);
   const [showTech, setShowTech] = useState(false);
+  const [showLinks, setShowLinks] = useState(false);
+  // Videos play in a sheet on top of cook mode, so the step, the timers and the screen lock are never left.
+  const [playing, setPlaying] = useState<OwnedLink | null>(null);
   const lock = useRef<WakeLockSentinel | null>(null);
   const { timers, now, announcement, add, addTime, remove } = useCookTimers(timersKey(slug, planId));
 
@@ -97,13 +107,18 @@ export function CookMode({ slug, name, servings, planId, input, techniques, ingr
   };
   /** The step's number within its own part, for the timer label. */
   const stepNumberInPart = (at: number) => steps.slice(0, at + 1).filter((s) => s.partSlug === steps[at]!.partSlug).length;
+  const stepLinks = step.kind === "cook" ? linksForCookStep(links, step.partSlug, stepNumberInPart(index)) : [];
+  const sheetGroups = useMemo(() => cookSheetGroups(links, name, input.parts.map((p) => ({ slug: p.slug, name: p.name, stepCount: 0 }))), [links, name, input.parts]);
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-bg">
       <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-1.5 lg:px-6">
         <LinkButton href={`/recipes/${slug}${planId ? `?plan=${planId}` : ""}`} variant="ghost" size="sm"><ArrowLeftIcon className="size-4" />Exit</LinkButton>
         <p className="min-w-0 truncate text-center font-display text-base font-semibold" title={name}>{name}</p>
-        <Button variant="ghost" size="sm" onClick={() => setShowIng(true)}>Ingredients</Button>
+        <div className="flex items-center">
+          {links.length ? <Button variant="ghost" size="sm" onClick={() => setShowLinks(true)} aria-label={`Links, ${links.length} saved`}>Links ({links.length})</Button> : null}
+          <Button variant="ghost" size="sm" onClick={() => setShowIng(true)}>Ingredients</Button>
+        </div>
       </div>
 
       {!started ? (
@@ -169,6 +184,8 @@ export function CookMode({ slug, name, servings, planId, input, techniques, ingr
                 ) : null}
 
                 {technique ? <Button variant="secondary" className="mt-5 self-start" onClick={() => setShowTech(true)}>How to: {technique.title}</Button> : null}
+
+                <LinkChips links={stepLinks} onPlay={setPlaying} />
               </div>
 
               <TimerPanel timers={timers} now={now} onAddTime={addTime} onRemove={remove} />
@@ -206,6 +223,20 @@ export function CookMode({ slug, name, servings, planId, input, techniques, ingr
       <Sheet open={showTech} onClose={() => setShowTech(false)} title={technique?.title ?? "Technique"}>
         <div className="p-4">{technique ? <Markdown>{technique.body}</Markdown> : null}</div>
       </Sheet>
+      <Sheet open={showLinks} onClose={() => setShowLinks(false)} title="Watch and read">
+        <div className="space-y-5 p-4">
+          {sheetGroups.length === 0 ? <p className="text-sm text-muted">No links for the whole meal or its parts. Links for a single step show under that step.</p> : null}
+          {sheetGroups.map((g) => (
+            <section key={g.partSlug ?? "meal"} aria-label={g.name}>
+              <h3 className="mb-2 text-base font-semibold">{g.name}</h3>
+              <ul className="space-y-2">
+                {g.links.map((l) => <LinkItem key={l.id} link={l} actions={{ onPlay: setPlaying }} />)}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </Sheet>
+      {playing ? <VideoSheet key={playing.id} link={playing} onClose={() => setPlaying(null)} /> : null}
     </div>
   );
 }

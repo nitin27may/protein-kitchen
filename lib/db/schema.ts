@@ -404,3 +404,36 @@ export const syncState = sqliteTable("sync_state", {
   changedAt: isoTimestamp("changed_at").notNull(),
   exportedAt: isoTimestamp("exported_at"),
 });
+
+/**
+ * Links to recipe pages, videos and articles. Human-owned: written only through lib/human/links, never by the
+ * agent. A link belongs to a recipe or component page, optionally to one part of the meal and one step. Only the
+ * URL, your own title and the source name are stored; the app never fetches the page. Plain text and integer
+ * columns only, so the table moves to Postgres unchanged.
+ */
+export const recipeLinks = sqliteTable(
+  "recipe_links",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    uid: text("uid").notNull(),
+    recipeId: integer("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    partSlug: text("part_slug"),
+    stepNo: integer("step_no"),
+    kind: text("kind").notNull(),
+    url: text("url").notNull(),
+    title: text("title").notNull(),
+    source: text("source"),
+    startSec: integer("start_sec"),
+    position: integer("position").notNull().default(0),
+    createdAt: isoTimestamp("created_at").notNull(),
+    updatedAt: isoTimestamp("updated_at").notNull(),
+    createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    index("recipe_links_recipe_idx").on(t.recipeId),
+    uniqueIndex("recipe_links_uid_uq").on(t.uid),
+    check("recipe_links_kind_ck", sql`${t.kind} in ('recipe', 'video', 'article')`),
+  ],
+);

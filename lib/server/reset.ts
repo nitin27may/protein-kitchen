@@ -23,6 +23,8 @@ export interface ResetCounts {
   ratings: number;
   /** Make, buy or have choices saved on plans. They go with the plans. */
   partChoices: number;
+  /** Saved recipe and video links. Only "Everything" clears them: they are yours, like ratings. */
+  links: number;
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
@@ -44,6 +46,7 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
     progressTicks: (await count(db, s.habitLog)) + (await count(db, s.prepTaskState)),
     ratings: Number(feedback?.n ?? 0),
     partChoices: await count(db, s.planPartState),
+    links: await count(db, s.recipeLinks),
   };
 }
 
@@ -101,6 +104,8 @@ export async function resetData(db: Db, scope: ResetScope): Promise<void> {
         clearRatings(tx);
         tx.delete(s.savedViews).run();
         markChanged(tx, "saved-views", nowIso());
+        tx.delete(s.recipeLinks).run();
+        markChanged(tx, "recipe-links", nowIso());
         return;
     }
   });

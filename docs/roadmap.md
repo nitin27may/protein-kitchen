@@ -15,6 +15,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
+| 7 | Recipe and video links on a recipe, part or step; https only, tracking stripped, YouTube and Vimeo play in a click-to-load sheet; human-owned, exported with ratings | Done |
 | 6 | Cook mode across parts: start screen with Already made toggles, steps ordered by hands-off time with a 'While X rests: make Y' hint, a timer tray whose timers keep their end time (survive step changes and reloads) | Done |
 | 5 | Parts of a meal: timeline, per-part cards, Make / Buy / Have saved per plan, groceries and prep respect it, "Used in" on part pages | Done |
 | 1a | Async data layer behind one transaction helper; one write path and export/import for human-owned data (ratings, saved views); portable column helpers; renames file | Done |
@@ -44,7 +45,7 @@ Needs: `plan_part_state` table (text and integer types only).
 Scope: cook mode orders parts (longest hands-off first, "While the falafel bakes: make the hummus"), skips parts marked Have or Buy, shows which part each step belongs to, and replaces the single timer with a tray of timers that survive step changes and store their end time so they do not drift in a background tab.
 Done when: starting a 25 minute bake, moving to the hummus step and back keeps the bake timer running.
 
-### Step 6. Recipe links and videos (7)
+### Step 6. Recipe links and videos (7) (done)
 Scope: add a link (recipe page, video, article) to any recipe, part or step; stored in the database, edited from a small sheet, never written by the agent. Only https links, no credentials in the URL, tracking parameters removed, your own title. YouTube and Vimeo play in a sheet inside cook mode; everything else opens normally. Added to the exporter from step 3.
 Done when: a link survives a re-seed and an export and import round trip.
 
