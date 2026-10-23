@@ -50,6 +50,13 @@
       "when": 1792796835985,
       "tag": "0006_elite_inertia",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792797537105,
+      "tag": "0007_normal_nekra",
+      "breakpoints": true
     }
   ]
 }

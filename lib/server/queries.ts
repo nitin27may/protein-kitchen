@@ -6,8 +6,10 @@ import { datesBetween } from "@/lib/planner/dates";
 import { summariseDays } from "@/lib/planner/generate";
 import { groceryProgressFrom } from "@/lib/plan/phase";
 import type { GroceryProgress } from "@/lib/plan/phase";
+import type { PartModes } from "@/lib/parts/mode";
 import type { Candidate, DayPersonSummary, PersonTarget, PlanInput, PlannedSlot, Slot } from "@/lib/planner/types";
 import { getData, getDb } from "./context";
+import { readPartModes } from "./part-state";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
@@ -210,11 +212,16 @@ export async function getDefaultViewQuery(list: string): Promise<string | null> 
   return defaultViewQuery(await getDb(), list);
 }
 
+/** How each part of a meal is provided for one plan; a part not in the result is made. */
+export async function getPartModes(planId: number): Promise<PartModes> {
+  return readPartModes(await getDb(), planId);
+}
+
 /** Items left to buy for a whole plan, counted the way the Groceries page counts them. */
 export async function groceryProgress(view: PlanView): Promise<GroceryProgress> {
   const data = getData();
   const meals = view.slots.map((sl) => ({ recipeSlug: sl.recipeSlug, servings: Object.values(sl.servings).reduce((a, b) => a + b, 0) }));
-  return groceryProgressFrom(meals, data.recipes, data.ingredients, (await groceryChecks(view.id)).checked);
+  return groceryProgressFrom(meals, data.recipes, data.ingredients, (await groceryChecks(view.id)).checked, await getPartModes(view.id));
 }
 
 // ---------- Reads that pages used to do themselves ----------

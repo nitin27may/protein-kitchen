@@ -5,6 +5,7 @@ import { buildNight, migrateTickKey } from "@/lib/prep/night";
 import type { NightTask } from "@/lib/prep/night";
 import type { PrepGuide } from "@/lib/prep/session";
 import { getData, getDb } from "./context";
+import { getPartModes } from "./queries";
 import type { PlanView } from "./queries";
 
 export interface NightTaskView extends NightTask {
@@ -45,7 +46,7 @@ export async function migrateTickKeys(planId: number, tasks: readonly NightTask[
 
 /** Night-before tasks for a plan with their ticks, plus the prep guide they came from. The single entry point for every screen. */
 export async function loadNight(view: PlanView, earliest: string): Promise<NightView> {
-  const { guide, tasks } = buildNight({ planId: view.id, meals: mealsOf(view), recipes: getData().recipes, earliest });
+  const { guide, tasks } = buildNight({ planId: view.id, meals: mealsOf(view), recipes: getData().recipes, earliest, partModes: await getPartModes(view.id) });
   await migrateTickKeys(view.id, tasks);
   const rows = await (await getDb()).select().from(s.prepTaskState).where(like(s.prepTaskState.taskKey, `night:${view.id}:%`));
   const done = new Set(rows.filter((r) => r.done).map((r) => r.taskKey));

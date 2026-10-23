@@ -1,4 +1,5 @@
 import { aisleLabel } from "../format";
+import type { PartModes } from "../parts/mode";
 import { buildGroceryList } from "../grocery/aggregate";
 import { perServing } from "../nutrition/macros";
 import { microsPerServing } from "../nutrition/micros";
@@ -126,6 +127,8 @@ export interface ExportInput {
   recipes: ReadonlyMap<string, Recipe>;
   ingredients: ReadonlyMap<string, Ingredient>;
   micros: MicrosFile;
+  /** The plan's part modes. The grocery sheet leaves out parts you already have and swaps in ready-made ones you buy. */
+  partModes?: PartModes;
 }
 
 const SLOT_LABEL: Record<string, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack", shake: "Shake" };
@@ -256,8 +259,8 @@ export function buildPlanExport(i: ExportInput): PlanExport {
 
   const mealRefs = (from: string, to: string) =>
     i.slots.filter((s) => s.date >= from && s.date <= to).map((s) => ({ recipeSlug: s.recipeSlug, servings: Object.values(s.servings).reduce((a, b) => a + b, 0) }));
-  const whole = buildGroceryList(mealRefs(i.startDate, i.endDate), i.recipes, i.ingredients);
-  const perWeek = weeks.map((w) => new Map(buildGroceryList(mealRefs(w.from, w.to), i.recipes, i.ingredients).lines.map((l) => [l.ingredient, l.grams])));
+  const whole = buildGroceryList(mealRefs(i.startDate, i.endDate), i.recipes, i.ingredients, i.partModes);
+  const perWeek = weeks.map((w) => new Map(buildGroceryList(mealRefs(w.from, w.to), i.recipes, i.ingredients, i.partModes).lines.map((l) => [l.ingredient, l.grams])));
   const grocery: GroceryRow[] = whole.lines.map((l) => {
     const ing = i.ingredients.get(l.ingredient)!;
     return {

@@ -6,13 +6,15 @@ import { displayName } from "@/lib/schemas";
 import { isLight, isLowSugar, qualityPerServing } from "@/lib/nutrition/quality";
 import { storageAdvice } from "@/lib/recipes/storage";
 import { expandRecipe } from "@/lib/grocery/aggregate";
+import { makeAheadMin } from "@/lib/data/rules";
+import { partsOf, usedIn } from "@/lib/recipes/parts";
 import { anchorIngredients, perServing } from "@/lib/nutrition/macros";
 import { microsPerServing } from "@/lib/nutrition/micros";
 import { TARGETS, targetFor } from "@/lib/nutrition/dri";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { getData } from "@/lib/server/context";
-import { feedbackMap, getCandidates, listPeople } from "@/lib/server/queries";
+import { feedbackMap, getCandidates, getPartModes, listPeople, listPlans } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: getData().recipes.get(slug)?.name ?? "Recipe" };
 }
 
-export default async function RecipePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function RecipePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ plan?: string }> }) {
   const { slug } = await params;
+  const { plan } = await searchParams;
   const data = getData();
   const r = data.recipes.get(slug);
   if (!r) notFound();
@@ -61,6 +64,11 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
       }),
   ];
 
+  // The plan in the URL (when it exists) is where Make / Buy / Have choices are read from and saved to.
+  const requested = Number(plan);
+  const planId = Number.isInteger(requested) && requested > 0 && (await listPlans(500)).some((pl) => pl.id === requested) ? requested : null;
+  const partModes = planId ? await getPartModes(planId) : {};
+
   const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
   const candidate = (await getCandidates()).find((c) => c.slug === slug);
   const techniqueRefs = r.steps.map((s) => s.technique).filter((t): t is string => !!t);
@@ -91,6 +99,13 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
     targetFor: sex === "other" ? "male values" : `${sex} values`,
     feedback: { favourite: fb?.favourite ?? false, banned: fb?.banned ?? false, rating: fb?.rating ?? null, tested: fb?.tested ?? false },
     techniques: [...new Set(techniqueRefs)].map((t) => ({ slug: t, title: data.techniques.get(t)?.title ?? t })),
+    kind: r.kind === "component" ? "component" : "recipe",
+    parts: partsOf(r, data.recipes, data.ingredients, r.servings),
+    partModes,
+    planId,
+    makeAheadMin: makeAheadMin(r, data.recipes),
+    mealAdvancePrep: r.advance_prep.map((a) => ({ leadHours: a.lead_hours, instruction: a.instruction })),
+    usedIn: r.kind === "component" ? usedIn(slug, data.recipes) : [],
   };
   return <RecipeDetail {...props} />;
 }

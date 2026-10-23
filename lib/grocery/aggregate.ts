@@ -1,6 +1,12 @@
 import { displayName } from "../schemas";
 import type { Ingredient, Recipe } from "../schemas";
 import { UnknownReferenceError } from "../nutrition/macros";
+import type { PartModes } from "../parts/mode";
+import { resolverFor } from "../parts/resolve";
+import type { PartResolver } from "../parts/resolve";
+
+export type { PartMode } from "../parts/mode";
+export type { PartResolver } from "../parts/resolve";
 
 export interface PlanMealRef {
   recipeSlug: string;
@@ -28,12 +34,6 @@ export interface GroceryList {
   /** Items used by exactly one recipe. A high count means the list could be shortened by swapping a meal. */
   singleUseItems: number;
 }
-
-/** How a part of a meal is sourced for one plan: made from its ingredients, bought ready-made, or already in the fridge. */
-export type PartMode = "make" | "buy" | "have";
-
-/** Decides the mode for a part (component slug). Returning undefined means "make", the default. */
-export type PartResolver = (componentSlug: string) => PartMode | undefined;
 
 /**
  * Ingredient grams for one cooking of a recipe, scaled to `servings`, expanded through components.
@@ -89,12 +89,15 @@ export function buildGroceryList(
   meals: readonly PlanMealRef[],
   recipes: ReadonlyMap<string, Recipe>,
   ingredients: ReadonlyMap<string, Ingredient>,
+  /** The plan's part modes. A part marked "have" is left off the list; "buy" swaps in the ready-made ingredient. */
+  partModes?: PartModes,
 ): GroceryList {
+  const resolve = resolverFor(partModes);
   const totals = new Map<string, number>();
   const usedBy = new Map<string, Set<string>>();
   for (const meal of meals) {
     if (meal.servings <= 0) continue;
-    for (const [slug, g] of expandRecipe(meal.recipeSlug, meal.servings, recipes)) {
+    for (const [slug, g] of expandRecipe(meal.recipeSlug, meal.servings, recipes, [], resolve)) {
       if (FREE_INGREDIENTS.has(slug)) continue;
       totals.set(slug, (totals.get(slug) ?? 0) + g);
       const set = usedBy.get(slug) ?? new Set<string>();

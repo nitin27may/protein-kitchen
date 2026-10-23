@@ -7,14 +7,16 @@ import { z } from "zod";
 import * as s from "@/lib/db/schema";
 import { withTx } from "@/lib/db/tx";
 import { writeRecipeFeedback } from "@/lib/human/feedback";
+import type { PartMode } from "@/lib/parts/mode";
 import { datesBetween } from "@/lib/planner/dates";
 import { dueDateOfKey } from "@/lib/prep/night";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
 import type { GeneratedPlan, PlannedSlot, Slot } from "@/lib/planner/types";
 import { ACTIVITY_LEVELS, MEAL_SLOTS, PlanSetupSchema, SEXES } from "@/lib/schemas";
-import { getDb, getSqlite } from "@/lib/server/context";
+import { getData, getDb, getSqlite } from "@/lib/server/context";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
+import { writePartMode } from "@/lib/server/part-state";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 
@@ -402,5 +404,21 @@ export async function clearDefaultView(list: string): Promise<Result> {
   if (!parsed.success) return fail("Unknown list");
   await clearDefaultViewRow(await getDb(), parsed.data);
   revalidatePath(`/${parsed.data}`);
+  return { ok: true };
+}
+
+// ---------- Parts of a meal ----------
+
+/**
+ * Chooses how a part of a meal (a component such as hummus) is provided for one plan: make it, buy it ready-made, or
+ * already have it. "Make" is the default, so choosing it removes the row. Groceries, the prep guide and the reminders
+ * read this.
+ */
+export async function setPartMode(planId: number, componentSlug: string, mode: PartMode): Promise<Result> {
+  const written = await writePartMode(await getDb(), getData().recipes, planId, componentSlug, mode);
+  if (!written.ok) return fail(written.error);
+  revalidatePath(`/plan/${planId}/prep`);
+  revalidatePath("/groceries");
+  refresh(planId);
   return { ok: true };
 }

@@ -4,7 +4,8 @@ import { MacroLine } from "@/components/ui";
 import { SLOT_LABEL } from "@/lib/format";
 import type { MealView } from "./types";
 
-export function MealsToday({ title, meals }: { title: string; meals: MealView[] }) {
+/** `planId` carries the plan into the recipe page so Make / Buy / Have choices for parts are saved to it. */
+export function MealsToday({ title, meals, planId }: { title: string; meals: MealView[]; planId?: number | null }) {
   if (meals.length === 0) return <p className="px-1 text-sm text-muted">No meals planned for this day.</p>;
   return (
     <section aria-labelledby="meals-h">
@@ -12,7 +13,7 @@ export function MealsToday({ title, meals }: { title: string; meals: MealView[] 
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {meals.map((m) => (
           <li key={m.id}>
-            <Link href={`/recipes/${m.slug}`} className="flex h-full overflow-hidden rounded-card border border-line bg-surface hover:border-primary sm:flex-col">
+            <Link href={planId ? `/recipes/${m.slug}?plan=${planId}` : `/recipes/${m.slug}`} className="flex h-full overflow-hidden rounded-card border border-line bg-surface hover:border-primary sm:flex-col">
               <RecipeThumb image={m.image} thumbs={m.thumbs} label={SLOT_LABEL[m.slot] ?? m.slot} className="aspect-[4/3] w-28 shrink-0 sm:aspect-[16/9] sm:w-full" />
               <div className="min-w-0 flex-1 p-3">
                 <p className="text-sm font-semibold text-primary">{SLOT_LABEL[m.slot] ?? m.slot}</p>

@@ -3,11 +3,15 @@
 import { useState, useTransition } from "react";
 import { setRecipeFeedback } from "@/app/actions";
 import { Markdown } from "@/components/Markdown";
+import { PartsSection } from "@/components/parts/PartsSection";
 import { Sheet } from "@/components/Sheet";
 import { RecipeThumb } from "@/components/RecipeThumb";
 import { MinusIcon, PlusIcon } from "@/components/icons";
 import { Banner, Button, Chip, LinkButton, Pill, SectionCard, Segmented } from "@/components/ui";
 import { round1 } from "@/lib/format";
+import type { PartModes } from "@/lib/parts/mode";
+import type { UsedIn } from "@/lib/recipes/parts";
+import type { PartAdvance, PartView } from "@/lib/recipes/timeline";
 
 export interface DetailItem {
   kind: "ingredient" | "component";
@@ -44,6 +48,20 @@ export interface DetailProps {
   targetFor: string;
   feedback: { favourite: boolean; banned: boolean; rating: number | null; tested: boolean };
   techniques: { slug: string; title: string }[];
+  /** "component" for a part of other meals, such as hummus. */
+  kind: "recipe" | "component";
+  /** The parts this meal is made of, at its base servings. Empty for a recipe without components. */
+  parts: PartView[];
+  /** Saved Make / Buy / Have choices for the plan in the URL, or empty. */
+  partModes: PartModes;
+  /** The plan the choices are saved to, from `?plan=` in the URL. */
+  planId: number | null;
+  /** Hands-on minutes that can be done ahead because the parts keep. */
+  makeAheadMin: number;
+  /** The meal's own advance prep (not its parts'). */
+  mealAdvancePrep: PartAdvance[];
+  /** For a part: the meals that use it. */
+  usedIn: UsedIn[];
 }
 
 const fmtGrams = (g: number) => (g < 10 ? `${round1(g)} g` : `${Math.round(g)} g`);
@@ -198,8 +216,30 @@ export function RecipeDetail(p: DetailProps) {
             </ul>
           </SectionCard>
 
+          {p.parts.length ? <PartsSection parts={p.parts} initialModes={p.partModes} planId={p.planId} factor={factor} makeAheadMin={p.makeAheadMin} mealAdvancePrep={p.mealAdvancePrep} /> : null}
+
+          {p.kind === "component" ? (
+            <SectionCard id="used" title="Used in" description="This is part of other meals. Open one to choose whether to make, buy or already have it.">
+              {p.usedIn.length === 0 ? (
+                <p className="text-sm text-muted">No meal uses this yet.</p>
+              ) : (
+                <ul className="grid gap-2 md:grid-cols-2">
+                  {p.usedIn.map((u) => (
+                    <li key={u.slug}>
+                      <a href={`/recipes/${u.slug}${p.planId ? `?plan=${p.planId}` : ""}`} className="flex min-h-12 items-center justify-between gap-3 rounded-control border border-line px-3 py-2 hover:bg-surface2">
+                        <span className="min-w-0 font-semibold leading-snug">{u.name}{u.kind === "component" ? <span className="font-normal text-muted"> (part)</span> : null}</span>
+                        <span className="shrink-0 text-sm tabular-nums text-muted">{round1(u.gramsPerServing)} g a serving</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </SectionCard>
+          ) : null}
+
           <section aria-labelledby="steps">
-            <h2 id="steps" className="mb-3 text-lg font-semibold">Method</h2>
+            <h2 id="steps" className="mb-1 text-lg font-semibold">{p.parts.length ? "Putting it together" : "Method"}</h2>
+            {p.parts.length ? <p className="mb-3 text-sm text-muted">The steps for the meal itself. Each part's own steps are above.</p> : <div className="mb-2" />}
             <ol className="space-y-3">
               {p.steps.map((s, i) => (
                 <li key={i} className="flex gap-4 rounded-card border border-line bg-surface p-4">

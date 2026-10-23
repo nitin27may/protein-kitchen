@@ -21,6 +21,8 @@ export interface ResetCounts {
   groceryItems: number;
   progressTicks: number;
   ratings: number;
+  /** Make, buy or have choices saved on plans. They go with the plans. */
+  partChoices: number;
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
@@ -41,10 +43,12 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
     groceryItems: (await count(db, s.groceryState)) + (await count(db, s.groceryManual)) + (await count(db, s.pantry)),
     progressTicks: (await count(db, s.habitLog)) + (await count(db, s.prepTaskState)),
     ratings: Number(feedback?.n ?? 0),
+    partChoices: await count(db, s.planPartState),
   };
 }
 
 function clearPlans(tx: Tx) {
+  tx.delete(s.planPartState).run();
   tx.delete(s.planSlotPortions).run();
   tx.delete(s.groceryState).run();
   tx.delete(s.groceryManual).run();

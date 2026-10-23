@@ -54,7 +54,7 @@ describe("resetData", () => {
 
   it("all: user data is gone and the library is untouched", async () => {
     await resetData(h.db, "all");
-    expect(await resetCounts(h.db)).toEqual({ profiles: 0, plans: 0, groceryItems: 0, progressTicks: 0, ratings: 0 });
+    expect(await resetCounts(h.db)).toEqual({ profiles: 0, plans: 0, groceryItems: 0, progressTicks: 0, ratings: 0, partChoices: 0 });
     expect(await n(s.recipes)).toBe(data.recipes.size);
     expect(await n(s.ingredients)).toBe(data.ingredients.size);
     expect(await n(s.habits)).toBeGreaterThan(0);

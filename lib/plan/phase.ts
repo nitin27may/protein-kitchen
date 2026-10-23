@@ -1,4 +1,5 @@
 import { buildGroceryList } from "../grocery/aggregate";
+import type { PartModes } from "../parts/mode";
 import type { Ingredient, Recipe } from "../schemas";
 import { addDays } from "../planner/dates";
 
@@ -118,7 +119,8 @@ export function groceryProgressFrom(
   recipes: ReadonlyMap<string, Recipe>,
   ingredients: ReadonlyMap<string, Ingredient>,
   checked: ReadonlySet<string>,
+  partModes?: PartModes,
 ): GroceryProgress {
-  const lines = buildGroceryList(meals, recipes, ingredients).lines.filter((l) => !l.isPantryStaple);
+  const lines = buildGroceryList(meals, recipes, ingredients, partModes).lines.filter((l) => !l.isPantryStaple);
   return { total: lines.length, left: lines.filter((l) => !checked.has(l.ingredient)).length };
 }

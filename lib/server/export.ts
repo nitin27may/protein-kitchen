@@ -1,6 +1,6 @@
 import { buildPlanExport, type PlanExport } from "@/lib/export/model";
 import { getData } from "./context";
-import { getPlanView, proteinTargetOf } from "./queries";
+import { getPartModes, getPlanView, proteinTargetOf } from "./queries";
 import { todayISO } from "./time";
 
 export async function getPlanExport(planId: number): Promise<PlanExport | undefined> {
@@ -16,5 +16,6 @@ export async function getPlanExport(planId: number): Promise<PlanExport | undefi
     recipes: data.recipes,
     ingredients: data.ingredients,
     micros: data.micros,
+    partModes: await getPartModes(planId),
   });
 }

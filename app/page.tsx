@@ -137,7 +137,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
       </PhaseCard>
     ),
     grocery: grocery ? <GroceryStatusCard progress={grocery} shopBy={shopBy} today={today} /> : null,
-    meals: planHasMeals ? <MealsToday title={isToday ? "Today's meals" : `Meals on ${formatDay(focusDate).long}`} meals={meals} /> : null,
+    meals: planHasMeals ? <MealsToday title={isToday ? "Today's meals" : `Meals on ${formatDay(focusDate).long}`} meals={meals} planId={view?.id} /> : null,
     tonight: view ? <TonightCard tonight={grouped.tonight.map(toView)} overdue={grouped.overdue.map(toView)} preview={preview} today={today} /> : null,
     basics: <DailyBasics key={`${person.id}-${part === "morning"}`} date={today} personId={person.id} habits={habits} defaultOpen={part === "morning"} />,
     snack: <SnackNow snacks={snacks} />,

@@ -1,5 +1,7 @@
 import type { Recipe } from "../schemas";
 import { addDays } from "../planner/dates";
+import type { PartModes } from "../parts/mode";
+import { partIsMade, resolverFor } from "../parts/resolve";
 
 export interface MealRef {
   date: string;
@@ -75,6 +77,8 @@ export interface PrepGuide {
 interface Options {
   /** Nothing can be cooked before this date, usually today. */
   earliest: string;
+  /** The plan's part modes. A part marked "have", or "buy" with a ready-made alternative, is not cooked, so it gets no cook event and no night-before tasks. */
+  partModes?: PartModes;
 }
 
 const diffDays = (a: string, b: string): number => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
@@ -98,6 +102,7 @@ interface Demand {
  * its use-by day, so a plan longer than the fridge life gets top-up sessions automatically.
  */
 export function buildPrepGuide(meals: readonly MealRef[], recipes: ReadonlyMap<string, Recipe>, opts: Options): PrepGuide {
+  const resolve = resolverFor(opts.partModes);
   const sorted = [...meals].filter((m) => m.servings > 0 && recipes.has(m.recipeSlug)).sort((a, b) => a.date.localeCompare(b.date));
 
   // Demand per item: recipes by servings, components by grams. Components are expanded recursively, so a component
@@ -107,6 +112,8 @@ export function buildPrepGuide(meals: readonly MealRef[], recipes: ReadonlyMap<s
   const walk = (r: Recipe, factor: number, meal: MealRef, stack: readonly string[]) => {
     for (const item of r.items) {
       if (!("component" in item) || stack.includes(item.component)) continue;
+      // A part that is bought or already made is not cooked, so neither it nor anything inside it needs prep.
+      if (!partIsMade(resolve?.(item.component), Boolean(item.alt_ingredient))) continue;
       const sub = recipes.get(item.component);
       if (!sub) continue;
       const grams = item.grams * factor;

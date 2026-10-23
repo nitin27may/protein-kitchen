@@ -1,4 +1,5 @@
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { bool, isoTimestamp, json } from "./columns";
 
 // ---- Content tables: rebuilt from /data on every seed. Never hold user state here. ----
@@ -304,6 +305,24 @@ export const groceryState = sqliteTable(
     checked: bool("checked").notNull(),
   },
   (t) => [primaryKey({ columns: [t.planId, t.ingredientId] })],
+);
+
+/**
+ * How a part of a meal (a component such as hummus) is provided for one plan: made from its ingredients, bought
+ * ready-made, or already in the fridge. A part with no row is made. Plan state: it belongs to the household's plan, is
+ * deleted with the plan, and is not exported by lib/human. The allowed values are listed in lib/parts/mode.ts.
+ */
+export const planPartState = sqliteTable(
+  "plan_part_state",
+  {
+    planId: integer("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    componentSlug: text("component_slug").notNull(),
+    mode: text("mode").notNull(),
+    updatedAt: isoTimestamp("updated_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.componentSlug] }), check("plan_part_state_mode_ck", sql`${t.mode} in ('make', 'buy', 'have')`)],
 );
 
 export const groceryManual = sqliteTable("grocery_manual", {

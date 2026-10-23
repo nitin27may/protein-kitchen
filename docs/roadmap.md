@@ -15,6 +15,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
+| 5 | Parts of a meal: timeline, per-part cards, Make / Buy / Have saved per plan, groceries and prep respect it, "Used in" on part pages | Done |
 | 1a | Async data layer behind one transaction helper; one write path and export/import for human-owned data (ratings, saved views); portable column helpers; renames file | Done |
 | 0b | CI (typecheck, validate, test, build, secret scan), pre-commit secret hook, Dependabot, branch protection (no force-push or deletion, `ci` and `secrets` required for PRs, owner can still push) | Done |
 
@@ -33,7 +34,7 @@ Decision: GitHub Pro for branch protection, yes or no.
 Scope: make the data helpers async now, move direct database calls out of pages, add portable column helpers, a single `lib/human/` module for anything you create in the app (ratings, links, photos, saved views, routine choices), and the first version of the exporter with a round-trip test. Add `data/renames.json` so a renamed slug moves ratings, links and photos with it. Clean up the stale `baked-falafel-mix` row.
 You will see: nothing new on screen. Done when: tests prove export then import gives identical data.
 
-### Step 4. Parts of a meal on the recipe page (5)
+### Step 4. Parts of a meal on the recipe page (5) (done)
 Scope: a "Parts of this meal" section for falafel bowl and similar: each part with its time, fridge life, protein it adds, ingredients, steps with cues and its own links later. A Make / Buy / Have switch per part saved per plan, and a plain timeline ("soak chickpeas the night before; hummus up to five days ahead; bake falafel on the day"). Part pages get a "Used in" list and appear in the Recipes list behind "Show parts". Groceries respect Have and Buy.
 You will see: how to make hummus from the falafel bowl page. Done when: Have removes hummus from groceries and Buy adds store-bought hummus at the same grams.
 Needs: `plan_part_state` table (text and integer types only).

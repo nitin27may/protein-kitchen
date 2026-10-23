@@ -1,3 +1,4 @@
+import type { PartModes } from "../parts/mode";
 import type { Recipe } from "../schemas";
 import { buildPrepGuide } from "./session";
 import type { MealRef, PrepGuide } from "./session";
@@ -46,6 +47,8 @@ export interface NightInput {
   /** Nothing can be cooked before this date, usually today. */
   earliest: string;
   routines?: readonly RoutineInput[];
+  /** The plan's part modes; parts that are bought or already made produce no tasks. */
+  partModes?: PartModes;
 }
 
 export const nightKey = (planId: number, dueDate: string, source: TaskSource, slug: string, index: number): string => `night:${planId}:${dueDate}:${source}:${slug}:${index}`;
@@ -56,7 +59,7 @@ export interface NightResult {
 }
 
 export function buildNight(input: NightInput): NightResult {
-  const guide = buildPrepGuide(input.meals, input.recipes, { earliest: input.earliest });
+  const guide = buildPrepGuide(input.meals, input.recipes, { earliest: input.earliest, partModes: input.partModes });
   const byKey = new Map<string, NightTask & { grams: number | null; instruction: string; cooks: number }>();
 
   for (const e of guide.events) {
