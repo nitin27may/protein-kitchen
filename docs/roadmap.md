@@ -14,15 +14,16 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 2 | Filters: toolbar, drawer, URL state, saved default, Recipes and Ingredients | Done |
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
-| 10a | Today dashboard by plan phase and time of day | Running |
+| 10a | Today dashboard by plan phase and time of day | Done |
+| 0b | CI (typecheck, validate, test, build, secret scan), pre-commit secret hook, Dependabot, branch protection (no force-push or deletion, `ci` and `secrets` required for PRs, owner can still push) | Done |
 
 ## The sequence from here
 
-### Step 1. Finish Today (10a), then verify
+### Step 1. Finish Today (10a), then verify (done)
 Scope: phase hero, per-person protein bars, tonight and overdue prep, grocery status, morning basics, time-of-day order. Routine pieces wait for step 9.
 You will see: a Today screen that says what to do next. Done when: phase and clock tests pass, and the screen is checked for each phase using a scratch database.
 
-### Step 2. Repo safety (0b), about 3 hours
+### Step 2. Repo safety (0b), about 3 hours (done)
 Scope: CI workflow (typecheck, test, validate, build, secret scan), a pre-commit hook that scans staged files for secrets and runs `pnpm validate` when `/data` changes, Dependabot, branch protection if the plan allows it on a private repo (otherwise a note and a decision on GitHub Pro).
 Done when: a push triggers a green CI run, and a test commit containing a fake key is blocked.
 Decision: GitHub Pro for branch protection, yes or no.
