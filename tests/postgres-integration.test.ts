@@ -15,7 +15,7 @@ import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persi
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
-import { acceptInvitation, claimHousehold, issueInvitation } from "../lib/auth/household";
+import { acceptInvitation, claimHousehold, createMemberProfile, issueInvitation } from "../lib/auth/household";
 import { createAuth } from "../lib/auth/create";
 
 const url = process.env.POSTGRES_TEST_URL;
@@ -97,6 +97,27 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(await handle.db.select().from(s.householdInvitations)).toMatchObject([{
       acceptedByUserId: "cook", acceptedAt: expect.any(Date),
     }]);
+  });
+
+  it("creates exactly one linked profile across simultaneous onboarding submissions", async () => {
+    await handle.db.insert(s.authUsers).values({
+      id: "owner", name: "Synthetic owner", email: "owner@example.test", emailVerified: true,
+    });
+    const secret = "synthetic-bootstrap-concurrency-secret";
+    await claimHousehold(handle.db, "owner", secret, secret);
+    const input = {
+      name: "Synthetic targets", sex: "other" as const, birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light" as const, proteinMode: "fixed" as const, proteinValue: 95, kcalTarget: null, reminderTime: null,
+    };
+    const results = await Promise.allSettled([
+      createMemberProfile(handle.db, "owner", input), createMemberProfile(handle.db, "owner", input),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((r) => r.status === "rejected");
+    expect(rejected?.status === "rejected" && rejected.reason.message).toContain("already has a profile");
+    const profiles = await handle.db.select().from(s.people);
+    expect(profiles).toHaveLength(1);
+    expect(await handle.db.select().from(s.householdMembers)).toMatchObject([{ personId: profiles[0]!.id }]);
   });
 
   it("atomically enforces shared HTTP signup limits across concurrent auth instances", async () => {

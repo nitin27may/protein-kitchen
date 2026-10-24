@@ -46,9 +46,10 @@ test("night-before prep completion survives reload", async ({ page }) => {
   await page.goto(`/plan/${process.env.E2E_PREP_PLAN_ID}/prep`);
   const checkbox = page.getByRole("checkbox").first();
   await expect(checkbox).toBeVisible();
-  await mutation(page, () => checkbox.check());
+  const checked = await checkbox.isChecked();
+  await mutation(page, () => checkbox.setChecked(!checked));
   await page.reload();
-  await expect(page.getByRole("checkbox").first()).toBeChecked();
+  await expect(page.getByRole("checkbox").first()).toBeChecked({ checked: !checked });
 });
 
 test("Excel and PDF exports return actual file payloads", async ({ request }) => {

@@ -5,6 +5,7 @@ import type { Db } from "../db/client";
 import { withTx, type Tx } from "../db/tx";
 import { authUsers, householdBootstrap, householdInvitations, householdMembers, people } from "../db/schema";
 import { secretsMatch, tokenHash } from "./tokens";
+import { PersonInput, personRow, type PersonInputData } from "../schemas/person";
 
 export class HouseholdAccessError extends Error {
   override name = "HouseholdAccessError";
@@ -35,6 +36,22 @@ async function availableProfile(tx: Tx, personId: number) {
   if (!person) throw new HouseholdAccessError("The selected profile no longer exists.");
   const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.personId, personId));
   if (member) throw new HouseholdAccessError("That profile is already linked to a household account.");
+}
+
+export async function createMemberProfile(db: Db, userId: string, input: PersonInputData) {
+  const v = PersonInput.parse(input);
+  if (v.id !== undefined) throw new HouseholdAccessError("Onboarding cannot overwrite an existing profile.");
+  return withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    await verifiedUser(tx, userId);
+    const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, userId)).for("update");
+    if (!member) throw new HouseholdAccessError("Join the household before creating your profile.");
+    if (member.personId !== null) throw new HouseholdAccessError("Your account already has a profile.");
+    const [person] = await tx.insert(people).values(personRow(v)).returning({ id: people.id });
+    await tx.update(householdMembers).set({ personId: person!.id, updatedAt: new Date() })
+      .where(eq(householdMembers.userId, userId));
+    return person!;
+  });
 }
 
 /** Server-only admission: userId must come from the authenticated session, never a form field. */

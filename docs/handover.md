@@ -10,7 +10,7 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
-**Identity backend, 2026-10-24:** Better Auth 1.7.12 and atomic household admission are implemented locally. One verified owner claims the deployment once; hashed email-bound invitations admit additional cooks and can reserve existing profiles. Signup, verification, password/code login, recovery and persistent rate limits have real HTTP/browser coverage. All 903 tests (12 native checks), seven retained browser cases and database-free build pass. Auth module coverage is 99.51% statements / 98.63% branches; critical admission/config/mail modules have 100% gates. Onboarding/account screens and complete application authorization remain pending; the app must remain private. No real mail was sent, Neon services remain unchanged and auth migrations have not been applied remotely.
+**Identity/onboarding core, 2026-10-24:** Better Auth 1.7.12, atomic household admission and signup/login/verification/recovery/onboarding screens are implemented locally. One verified owner claims the deployment once; email-bound invitations admit other cooks and can reserve existing profiles. New profiles are created/linked atomically, with duplicate and rollback checks. All 939 tests (13 native checks), nine retained browser cases, typecheck, validation and database-free build pass. New critical onboarding/access/validation modules have 100% coverage gates. Actual owner/member browser flows share one plan, shopping list and prep while retaining separate profiles. Account export/deletion and complete application authorization remain pending; the app must remain private. Invitation codes are manually shared, real mail was not sent, Neon services remain unchanged and auth migrations have not been applied remotely.
 
 A personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Next.js 16, React 19, Tailwind 4, Drizzle on Postgres, pnpm 10, Node 22. Owner: Nitin, a senior architect. He wants direct, plain writing, no emojis, no filler phrases, code first.
 
@@ -23,7 +23,7 @@ The product intent is in `PLAN.md`. The one rule that shapes everything: **macro
 3. Prepare a disposable local Postgres database or a reviewed isolated Neon development branch. Copy `.env.example` to `.env.local`, set `DATABASE_ENV=development` and the pooled `DATABASE_URL`. Do not reuse an old production pointer.
 4. Supply direct `DATABASE_URL_UNPOOLED`, `DATABASE_ENV` and, remotely, exact `DATABASE_NONPRODUCTION_HOST` plus the explicit Neon ids and server-only API key listed in `.env.example` to `pnpm db:migrate:postgres`, then `pnpm seed`. CLI commands do not load `.env.local` automatically. Remote non-production targets require live branch verification; requests never migrate or seed a database.
 5. `pnpm dev` and open http://localhost:3000. Reminders additionally need VAPID keys from `pnpm dlx web-push generate-vapid-keys`.
-6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 903 tests; 12 native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures. Seven saved browser tests additionally run with `POSTGRES_E2E_URL` naming disposable loopback `protein_kitchen_e2e`; setup clears that database's application tables. Auth browser tests use a guarded synthetic-only file mailbox, never real email. No project lint script is configured.
+6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 939 tests; 13 native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures. Nine saved browser tests additionally run with `POSTGRES_E2E_URL` naming disposable loopback `protein_kitchen_e2e`; setup clears that database's application tables. Auth browser tests use a guarded synthetic-only file mailbox, never real email. No project lint script is configured.
 
 ### What is NOT in git (and so does not travel)
 | Thing | Where it is | How to move it |
@@ -145,7 +145,7 @@ Full plan in `docs/plan-v3-publish-and-protect.md`. In order:
 - Cook-mode timers are throttled in background tabs; stored end times fix the countdown but the beep needs the page visible.
 
 ## 9. How to resume in a new Claude session
-1. Open the repo and say: "Read docs/handover.md, CLAUDE.md and docs/roadmap.md, then continue at step 10."
-2. Confirm `db/app.db` is the real copy before testing anything; test on scratch copies.
-3. Work one roadmap step at a time. Each ends with typecheck, test, validate, build, a browser look at desktop and phone width, then one commit pushed to `main`.
+1. Read `docs/handover.md`, `CLAUDE.md`, `docs/roadmap.md` and the current checkpoint in `docs/plan-v3-publish-and-protect.md`. Continue with complete application authorization (step 16), not the historical step-10 list.
+2. Keep source SQLite and local/cloud household data untouched. Use disposable PGlite or explicitly guarded loopback Postgres test databases; never point tests at an existing environment URL.
+3. Work one roadmap checkpoint at a time, with a detailed plan first. End with typecheck, tests/coverage, validate, build and retained phone/desktop Playwright flows, then a focused local commit. A push or public cutover is a separate permission gate.
 4. Update `docs/roadmap.md` status after each step.

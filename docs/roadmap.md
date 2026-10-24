@@ -1,6 +1,6 @@
 # Roadmap: step by step, in order
 
-Last updated 2026-10-24 (steps 10 and 11 built; auth backend complete locally, onboarding next; see docs/plan-step-10-11.md). This merges `plan-v2-experience.md` (UI and data) and `plan-v3-publish-and-protect.md` (database, login, backup, go-live) into one ordered list. Work top to bottom; a step starts only when the ones it depends on are done and verified.
+Last updated 2026-10-24 (steps 10 and 11 built; identity/onboarding core complete locally, authorization next; see docs/plan-step-10-11.md). This merges `plan-v2-experience.md` (UI and data) and `plan-v3-publish-and-protect.md` (database, login, backup, go-live) into one ordered list. Work top to bottom; a step starts only when the ones it depends on are done and verified.
 
 Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` all pass, the screen is looked at in a browser (desktop and phone width), then one commit pushed to `main` on GitHub.
 
@@ -8,7 +8,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 
 | Step | What | State |
 |---|---|---|
-| 15 / 3A-3B | Better Auth backend and atomic household admission | Implemented locally: verified bootstrap/invitations, signup, verification, password/code login, recovery, persistent rate limits and sanitized mail failures. 903 tests and seven saved browser cases pass. Onboarding/account UI and complete authorization are next; real mail and deployment remain unconfigured. |
+| 15 / 3A-3C | Better Auth, household admission and profile onboarding | Implemented locally: signup/verification/login/recovery screens, atomic owner/member admission, new/reserved-profile onboarding, account entry and manual invitation codes. 939 tests and nine saved browser cases pass. Full authorization and remaining account management are next; real mail and deployment remain unconfigured. |
 | 12 | Awaited Postgres transactions, atomic persistence and seed/renames, runtime/content-version guards, isolated database tests and native TCP checks | Implemented locally; cloud import/deployment not performed |
 | 11 | Data debts: water in four recipes, kheera-raita override, falafel step wording, effective time in tags, make-ahead total in the plan review, reset counts, phone-width audit, nutrition source review. Open: falafel soaked weight (needs your measurement), four unsourced foods, CNF values when the service returns | Done except those |
 | 10 | Photos: your own uploads, reviewed candidates from Commons and Openverse, aisle tiles, collage only with 3+ photos, BlobStore, exporters, backup of uploads. Open: you review the candidates; real-iPhone upload check | Built |

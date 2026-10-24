@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deletePerson, savePerson } from "@/app/actions";
+import type { Result, PersonInputData } from "@/app/actions";
 import { ReminderSettings } from "@/components/ReminderSettings";
 import { RoutinePicker } from "@/components/routines/RoutinePicker";
 import type { PersonRoutineView, RoutineOption } from "@/lib/routines/types";
@@ -47,7 +48,7 @@ export interface ProfileRoutines {
   chosen: PersonRoutineView[];
 }
 
-export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null }: { initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null }) {
+export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null, saveAction = savePerson }: { initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null; saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>> }) {
   const router = useRouter();
   const [v, setV] = useState<ProfileInitial>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
     setError(null);
     setFields({});
     start(async () => {
-      const res = await savePerson({
+      const res = await saveAction({
         id: v.id,
         name: v.name,
         sex: v.sex,
@@ -78,7 +79,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
         proteinValue: v.proteinValue === "" ? Number.NaN : v.proteinValue,
         kcalTarget: v.kcalTarget === "" ? null : v.kcalTarget,
         reminderTime: v.reminderTime === "" ? null : v.reminderTime,
-      });
+      }).catch(() => ({ ok: false as const, error: "The profile could not be saved. Check your connection and try again.", fields: undefined }));
       if (!res.ok) {
         setError(res.error);
         setFields(res.fields ?? {});

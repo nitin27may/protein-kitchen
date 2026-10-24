@@ -1,8 +1,8 @@
-// Minimal offline support. Network first for pages, cache fallback so the grocery list opens in a shop with no signal.
-const CACHE = "pk-v1";
+// Only public static assets are safe to keep across account changes.
+const CACHE = "pk-static-v2";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/groceries", "/icon.svg"])).catch(() => undefined));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/icon.svg"])).catch(() => undefined));
   self.skipWaiting();
 });
 
@@ -17,16 +17,17 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (!url.pathname.startsWith("/_next/static/") && url.pathname !== "/icon.svg") return;
   event.respondWith(
     fetch(req)
       .then((res) => {
-        if (res.ok && (req.mode === "navigate" || url.pathname.startsWith("/_next/static/") || url.pathname === "/icon.svg")) {
+        if (res.ok) {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy));
         }
         return res;
       })
-      .catch(() => caches.match(req).then((hit) => hit || caches.match("/"))),
+      .catch(() => caches.match(req).then((hit) => hit || Response.error())),
   );
 });
 

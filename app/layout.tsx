@@ -46,6 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
                 <div className="flex items-center">
                   <ThemeToggle />
+                  <Link href="/account" className="flex min-h-11 items-center rounded-control px-2 text-sm font-semibold text-primary">
+                    Account
+                  </Link>
                   <Link href="/settings" className="flex min-h-11 items-center rounded-control px-3 text-base font-semibold text-muted hover:bg-surface2">
                     Settings
                   </Link>

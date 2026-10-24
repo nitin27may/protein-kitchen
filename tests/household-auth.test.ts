@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as s from "../lib/db/schema";
 import {
-  acceptInvitation, assignMemberProfile, claimHousehold, issueInvitation, revokeInvitation,
+  acceptInvitation, assignMemberProfile, claimHousehold, createMemberProfile, issueInvitation, revokeInvitation,
 } from "../lib/auth/household";
 import { openDb, type DbHandle } from "./helpers/db";
 import { exportHumanData } from "../lib/human/export";
@@ -33,6 +33,51 @@ async function profile() {
   }).returning();
   return person!.id;
 }
+
+describe("atomic member profile onboarding", () => {
+  const input = {
+    name: "Synthetic new cook", sex: "other" as const, birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+    activityLevel: "light" as const, proteinMode: "per_kg" as const, proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+  };
+  it("creates and links a profile once without generating a separate plan", async () => {
+    await owner();
+    const created = await createMemberProfile(h.db, "owner", input);
+    expect(await h.db.select().from(s.people)).toMatchObject([{ id: created.id, proteinGPerKg: 1.2, proteinTargetG: null }]);
+    expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "owner", personId: created.id }]);
+    await expect(createMemberProfile(h.db, "owner", input)).rejects.toThrow("already has a profile");
+    expect(await h.db.select().from(s.people)).toHaveLength(1);
+    expect(await h.db.select().from(s.plans)).toEqual([]);
+  });
+  it("creates fixed targets for an admitted second cook without touching the owner's profile", async () => {
+    await owner();
+    const first = await createMemberProfile(h.db, "owner", input);
+    await user("cook");
+    const invitation = await issueInvitation(h.db, "owner", { email: "cook@example.test" });
+    await acceptInvitation(h.db, "cook", invitation.token);
+    const second = await createMemberProfile(h.db, "cook", { ...input, name: "Second cook", proteinMode: "fixed", proteinValue: 95 });
+    expect(second.id).not.toBe(first.id);
+    expect(await h.db.select().from(s.people).where(eq(s.people.id, second.id))).toMatchObject([{ proteinGPerKg: null, proteinTargetG: 95 }]);
+  });
+  it("rejects unverified, unaffiliated, invalid and existing-profile submissions", async () => {
+    await user("outsider");
+    await user("unverified", "unverified@example.test", false);
+    await expect(createMemberProfile(h.db, "unverified", input)).rejects.toThrow("Verify your email");
+    await expect(createMemberProfile(h.db, "outsider", input)).rejects.toThrow("Join the household");
+    await expect(createMemberProfile(h.db, "outsider", { ...input, id: 300 })).rejects.toThrow("cannot overwrite");
+    await expect(createMemberProfile(h.db, "outsider", { ...input, proteinValue: 5 })).rejects.toThrow("between 0.6 and 3");
+    expect(await h.db.select().from(s.people)).toEqual([]);
+  });
+  it("rolls back the new profile if linking fails, then retries without an orphan", async () => {
+    await owner();
+    await h.failWrite("household_members", "UPDATE", "reject_profile_link");
+    try {
+      await expect(createMemberProfile(h.db, "owner", input)).rejects.toThrow();
+      expect(await h.db.select().from(s.people)).toEqual([]);
+      expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ personId: null }]);
+    } finally { await h.dropFailure("household_members", "reject_profile_link"); }
+    expect(await createMemberProfile(h.db, "owner", input)).toHaveProperty("id");
+  });
+});
 
 describe("one-time household bootstrap", () => {
   it("claims exactly one owner without creating meal profiles or plans", async () => {
