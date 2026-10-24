@@ -70,9 +70,9 @@ export function RoutineCard({ option, state, onChange, notice }: { option: Routi
           <div>
             <p className="mb-1 text-sm font-semibold">Servings</p>
             <div className="inline-flex items-center gap-3">
-              <Button variant="secondary" size="sm" aria-label={`Fewer servings of ${option.title}`} disabled={state.servings <= SERVINGS_MIN} onClick={() => send({ servings: stepServings(state.servings, -1) })}>−</Button>
+              <Button variant="secondary" size="sm" className="min-w-11" aria-label={`Fewer servings of ${option.title}`} disabled={state.servings <= SERVINGS_MIN} onClick={() => send({ servings: stepServings(state.servings, -1) })}>−</Button>
               <span className="min-w-8 text-center text-lg font-semibold tabular-nums" aria-live="polite">{servingsLabel(state.servings)}</span>
-              <Button variant="secondary" size="sm" aria-label={`More servings of ${option.title}`} disabled={state.servings >= SERVINGS_MAX} onClick={() => send({ servings: stepServings(state.servings, 1) })}>+</Button>
+              <Button variant="secondary" size="sm" className="min-w-11" aria-label={`More servings of ${option.title}`} disabled={state.servings >= SERVINGS_MAX} onClick={() => send({ servings: stepServings(state.servings, 1) })}>+</Button>
             </div>
           </div>
         </div>

@@ -173,7 +173,9 @@ export function PrepClient(p: PrepProps) {
             {s.events.map((e, i) => (
               <li key={e.id} className={`overflow-hidden rounded-card border bg-surface ${e.done ? "border-ok/50" : "border-line"}`}>
                 <div className="flex gap-3 p-3">
-                  <input type="checkbox" aria-label={`Mark ${e.name} done`} checked={e.done} onChange={(ev) => tickEvent(s.date, e.id, ev.target.checked)} className="mt-1 size-6 shrink-0 accent-[var(--primary)]" />
+                  <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+                    <input type="checkbox" aria-label={`Mark ${e.name} done`} checked={e.done} onChange={(ev) => tickEvent(s.date, e.id, ev.target.checked)} className="size-6 accent-[var(--primary)]" />
+                  </label>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primarysoft text-sm font-bold text-primary" aria-hidden="true">{i + 1}</span>

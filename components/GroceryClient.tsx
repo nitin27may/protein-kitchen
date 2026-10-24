@@ -272,7 +272,7 @@ export function GroceryClient(p: GroceryProps) {
               <ul className="divide-y divide-line border-t border-line">
                 {pantry.map((l) => (
                   <li key={l.slug} className="flex min-h-12 items-center justify-between gap-3 px-3 py-1 text-base">
-                    <label className="flex flex-1 cursor-pointer items-center gap-3">
+                    <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-3">
                       <input type="checkbox" checked={!!checked[l.slug]} onChange={(e) => tick(l.slug, e.target.checked)} className="size-6 accent-[var(--primary)]" />
                       <span className={checked[l.slug] ? "text-muted line-through" : ""}>{l.name}</span>
                     </label>

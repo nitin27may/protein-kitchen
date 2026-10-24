@@ -270,6 +270,23 @@ describe("photo review", () => {
     expect(await rejectCandidateChecked(a.db, file(), { kind: "recipe", slug: "falafel-bowl", key: "commons:nope" })).toMatchObject({ ok: false });
   });
 
+  it("rejects a shared candidate per subject and safely retries the same rejection", async () => {
+    const { pendingReview, rejectCandidateChecked } = await import("../lib/server/photo-review");
+    const candidates = file();
+    const shared = candidates.recipes["falafel-bowl"]![0]!;
+    candidates.ingredients["tofu-extra-firm"] = [shared];
+    const input = { kind: "recipe" as const, slug: "falafel-bowl", key: shared.key };
+
+    expect(await rejectCandidateChecked(a.db, candidates, input)).toMatchObject({ ok: true });
+    expect(await rejectCandidateChecked(a.db, candidates, input)).toMatchObject({ ok: true });
+    expect(await a.db.select().from(s.photoDecisions)).toHaveLength(1);
+    expect((await pendingReview(a.db, candidates, names)).map((i) => i.slug)).toEqual(["tofu-extra-firm"]);
+
+    expect(await rejectCandidateChecked(a.db, candidates, { ...input, kind: "ingredient", slug: "tofu-extra-firm" })).toMatchObject({ ok: true });
+    expect(await pendingReview(a.db, candidates, names)).toEqual([]);
+    expect(await a.db.select().from(s.photoDecisions)).toHaveLength(2);
+  });
+
   it("approves from the server's own list: licence rechecked, image fetched from the listed URL, never a client URL", async () => {
     const { approveCandidateChecked, pendingReview } = await import("../lib/server/photo-review");
     await addRecipe(a, "falafel-bowl");
