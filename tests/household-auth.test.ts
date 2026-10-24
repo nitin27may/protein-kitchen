@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as s from "../lib/db/schema";
 import {
-  acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, issueInvitation, removeHouseholdMember, revokeInvitation,
+  acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember, revokeInvitation,
 } from "../lib/auth/household";
 import { openDb, type DbHandle } from "./helpers/db";
 import { exportHumanData } from "../lib/human/export";
@@ -26,11 +26,29 @@ async function owner() {
   await claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret);
   return id;
 }
+async function ownerHouseholdId() {
+  const [member] = await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "owner"));
+  if (!member?.householdId) throw new Error("Expected an owned synthetic household.");
+  return member.householdId;
+}
 async function profile() {
   const [person] = await h.db.insert(s.people).values({
+    householdId: await ownerHouseholdId(),
     name: "Synthetic meal profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
     activityLevel: "light", dietFlags: ["vegetarian"],
   }).returning();
+  return person!.id;
+}
+async function otherHousehold() {
+  await h.db.insert(s.households).values({ id: "foreign-household", name: "Other synthetic household" });
+  await user("foreign-owner");
+  const [person] = await h.db.insert(s.people).values({
+    householdId: "foreign-household", name: "Foreign synthetic profile", sex: "other", birthDate: "2000-01-01",
+    heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+  }).returning({ id: s.people.id });
+  await h.db.insert(s.householdMembers).values({
+    householdId: "foreign-household", userId: "foreign-owner", personId: person!.id, role: "owner",
+  });
   return person!.id;
 }
 
@@ -55,6 +73,39 @@ async function ownerDevices() {
 }
 
 describe("owner role and household access management", () => {
+  it("refuses foreign member/profile/invitation management and does not count a foreign owner as a replacement", async () => {
+    await cooks();
+    const foreignPerson = await otherHousehold();
+    const invitation = await issueInvitation(h.db, "foreign-owner", { email: "foreign-recipient@example.test" });
+    const before = await h.db.select().from(s.householdMembers);
+    await expect(changeMemberRole(h.db, "owner", "foreign-owner", "member")).rejects.toThrow("no longer in the household");
+    await expect(removeHouseholdMember(h.db, "owner", "foreign-owner")).rejects.toThrow("no longer in the household");
+    await expect(assignMemberProfile(h.db, "owner", "foreign-owner", await profile())).rejects.toThrow("not in the household");
+    await expect(assignMemberProfile(h.db, "owner", "owner", foreignPerson)).rejects.toThrow("no longer exists");
+    await expect(issueInvitation(h.db, "owner", { email: "next@example.test", personId: foreignPerson })).rejects.toThrow("no longer exists");
+    await expect(revokeInvitation(h.db, "owner", invitation.id)).rejects.toThrow("no longer available");
+    await expect(changeMemberRole(h.db, "owner", "owner", "member")).rejects.toThrow("at least one verified owner");
+    await expect(removeHouseholdMember(h.db, "owner", "owner")).rejects.toThrow("at least one verified owner");
+    expect(await h.db.select().from(s.householdMembers)).toEqual(before);
+    expect(await h.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.id, invitation.id)))
+      .toMatchObject([{ id: invitation.id, revokedAt: null }]);
+  });
+
+  it("refuses unowned legacy membership for management, onboarding or deletion instead of guessing a household", async () => {
+    await user("legacy");
+    await h.db.insert(s.householdMembers).values({ userId: "legacy", role: "owner" });
+    await expect(issueInvitation(h.db, "legacy", { email: "next@example.test" })).rejects.toThrow("Only a household owner");
+    await expect(createMemberProfile(h.db, "legacy", {
+      name: "Synthetic profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+    })).rejects.toThrow("Join the household");
+    await expect(deleteOwnAccount(h.db, {
+      userId: "legacy", sessionToken: "unused", password: "unused", verifyPassword: async () => true,
+    })).rejects.toThrow("no longer in the household");
+    expect(await h.db.select().from(s.households)).toEqual([]);
+    expect(await h.db.select().from(s.people)).toEqual([]);
+  });
+
   it("requires a verified owner, existing target and valid role without accepting escalation", async () => {
     await cooks();
     await expect(changeMemberRole(h.db, "cook", "cook", "owner")).rejects.toThrow("Only a household owner");
@@ -118,7 +169,7 @@ describe("owner role and household access management", () => {
     await cooks();
     await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "cook"));
     await removeHouseholdMember(h.db, "owner", "cook");
-    await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member", personId: await profile() });
+    await h.db.insert(s.householdMembers).values({ householdId: await ownerHouseholdId(), userId: "cook", role: "member", personId: await profile() });
     await changeMemberRole(h.db, "owner", "cook", "owner");
     await removeHouseholdMember(h.db, "cook", "owner");
     expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "cook", role: "owner" }]);
@@ -196,6 +247,25 @@ describe("atomic member profile onboarding", () => {
 });
 
 describe("one-time household bootstrap", () => {
+  it("claims the single migrated household without changing its existing human data", async () => {
+    await h.db.insert(s.households).values({ id: "migrated", name: "Existing household" });
+    const id = await user();
+    await h.db.insert(s.people).values({
+      householdId: "migrated", name: "Existing synthetic profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    });
+    const before = await h.db.select().from(s.people);
+    expect(await claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).toMatchObject({ householdId: "migrated", personId: null });
+    expect(await h.db.select().from(s.households)).toHaveLength(1);
+    expect(await h.db.select().from(s.people)).toEqual(before);
+  });
+  it("refuses an ambiguous unclaimed target rather than selecting or merging households", async () => {
+    await h.db.insert(s.households).values([{ id: "a", name: "A fixture" }, { id: "b", name: "B fixture" }]);
+    const id = await user();
+    await expect(claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).rejects.toThrow("explicit operator migration");
+    expect(await h.db.select().from(s.householdMembers)).toEqual([]);
+    expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
+  });
   it("claims exactly one owner without creating meal profiles or plans", async () => {
     const id = await user();
     expect(await claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).toMatchObject({
@@ -226,18 +296,55 @@ describe("one-time household bootstrap", () => {
     await expect(claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).rejects.toThrow("already been claimed");
   });
 
-  it("rolls back the singleton claim if the owner membership insert fails, then retries", async () => {
+  it.each(["households", "household_bootstrap", "household_members"])("rolls back household/bootstrap/membership together if %s fails, then retries", async (table) => {
     const id = await user();
-    await h.failWrite("household_members", "INSERT", "reject_owner");
+    await h.failWrite(table, "INSERT", "reject_owner");
     try {
       await expect(claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).rejects.toThrow();
       expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
-    } finally { await h.dropFailure("household_members", "reject_owner"); }
+      expect(await h.db.select().from(s.households)).toEqual([]);
+    } finally { await h.dropFailure(table, "reject_owner"); }
     expect(await claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).toMatchObject({ role: "owner" });
   });
 });
 
 describe("email-bound, single-use invitations", () => {
+  it("persists ownership through invitation, acceptance and profile onboarding", async () => {
+    await owner();
+    const householdId = await ownerHouseholdId();
+    const invitation = await issueInvitation(h.db, "owner", { email: "cook@example.test" });
+    await user("cook");
+    expect(await acceptInvitation(h.db, "cook", invitation.token)).toMatchObject({ householdId });
+    const person = await createMemberProfile(h.db, "cook", {
+      name: "Synthetic profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+    });
+    expect(await h.db.select().from(s.people)).toMatchObject([{ id: person.id, householdId }]);
+    expect(await h.db.select().from(s.householdInvitations)).toMatchObject([{ householdId, acceptedByUserId: "cook" }]);
+  });
+  it("rejects an unowned or foreign-household invitation without consuming it", async () => {
+    await owner();
+    await otherHousehold();
+    const invitation = await issueInvitation(h.db, "owner", { email: "cook@example.test" });
+    await user("cook");
+    for (const householdId of [null, "foreign-household"]) {
+      await h.db.update(s.householdInvitations).set({ householdId }).where(eq(s.householdInvitations.id, invitation.id));
+      await expect(acceptInvitation(h.db, "cook", invitation.token)).rejects.toThrow("invalid or no longer available");
+    }
+    expect(await h.db.select().from(s.householdMembers)).toHaveLength(2);
+    expect(await h.db.select().from(s.householdInvitations)).toMatchObject([{ acceptedAt: null }]);
+  });
+  it("does not revoke expired associations in another household while issuing a local invitation", async () => {
+    await owner();
+    await otherHousehold();
+    const invitation = await issueInvitation(h.db, "foreign-owner", { email: "foreign-recipient@example.test" });
+    await h.db.update(s.householdInvitations).set({
+      createdAt: new Date(Date.now() - 20000), expiresAt: new Date(Date.now() - 10000),
+    }).where(eq(s.householdInvitations.id, invitation.id));
+    await issueInvitation(h.db, "owner", { email: "local-recipient@example.test" });
+    expect(await h.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.id, invitation.id)))
+      .toMatchObject([{ householdId: "foreign-household", revokedAt: null }]);
+  });
   it("joins a second cook to the existing household with a reserved existing profile", async () => {
     await owner();
     const personId = await profile();
@@ -336,7 +443,7 @@ describe("email-bound, single-use invitations", () => {
     await owner();
     await user("cook");
     const invitation = await issueInvitation(h.db, "owner", { email: "cook@example.test" });
-    await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member" });
+    await h.db.insert(s.householdMembers).values({ householdId: await ownerHouseholdId(), userId: "cook", role: "member" });
     await expect(acceptInvitation(h.db, "cook", invitation.token)).rejects.toThrow("already in the household");
   });
 
@@ -379,7 +486,7 @@ describe("unique, explicitly approved meal profile links", () => {
     await expect(assignMemberProfile(h.db, "owner", "owner", 0)).rejects.toThrow();
     await expect(issueInvitation(h.db, "owner", { email: "cook@example.test", personId })).rejects.toThrow("already linked");
     await user("cook");
-    await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member" });
+    await h.db.insert(s.householdMembers).values({ householdId: await ownerHouseholdId(), userId: "cook", role: "member" });
     await expect(assignMemberProfile(h.db, "owner", "cook", personId)).rejects.toThrow("already linked");
   });
 

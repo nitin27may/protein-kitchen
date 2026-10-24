@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { ProfileForm } from "@/components/ProfileForm";
 import { PageTitle } from "@/components/ui";
 import { getRoutineCatalog } from "@/lib/routines/catalog";
-import { getData } from "@/lib/server/context";
-import { getPerson, getPersonRoutines } from "@/lib/server/queries";
+import { getData, getDb } from "@/lib/server/context";
+import { getPersonRoutines } from "@/lib/server/queries";
+import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { householdPerson } from "@/lib/server/household-plans";
 
 export const metadata: Metadata = { title: "Edit profile" };
 export const dynamic = "force-dynamic";
@@ -13,7 +15,9 @@ export const dynamic = "force-dynamic";
 export default async function EditProfile({ params }: { params: Promise<{ id: string }> }) {
   const member = await requirePageMember({ personId: Number((await params).id) });
   const { id } = await params;
-  const p = Number.isInteger(Number(id)) ? await getPerson(Number(id)) : undefined;
+  const db = await getDb();
+  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const p = Number.isInteger(Number(id)) ? await householdPerson(db, access, Number(id)) : undefined;
   if (!p) notFound();
   const catalog = getRoutineCatalog(getData());
   const chosen = await getPersonRoutines(p.id);

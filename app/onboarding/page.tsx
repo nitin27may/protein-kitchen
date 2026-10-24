@@ -10,6 +10,7 @@ import { HouseholdEntry } from "@/components/auth/HouseholdEntry";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Banner, PageTitle } from "@/components/ui";
 import { finishProfile } from "./actions";
+import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
 
 export const metadata = { title: "Join your household" };
 export const dynamic = "force-dynamic";
@@ -25,13 +26,20 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
   }
   const db = await getDb();
   const [member] = await db.select().from(householdMembers).where(eq(householdMembers.userId, user.id));
-  if (member?.personId !== null && member?.personId !== undefined) redirect(next);
   if (!member) return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
     <h1 className="text-2xl font-bold">Finish joining your household</h1>
     <p className="break-words">Signed in as {user.email}. Re-enter your invitation or initial household key to confirm membership.</p>
     <HouseholdEntry />
   </section>;
-  const profiles = member.role === "owner" ? await db.select({ id: people.id, name: people.name }).from(people) : [];
+  let access;
+  try { access = await resolveOnlyHouseholdAccess(db, user.id); }
+  catch (error) {
+    if (!(error instanceof HouseholdAccessError)) throw error;
+    return <div className="p-4"><Banner tone="bad">Your household ownership needs an operator migration before onboarding can continue.</Banner></div>;
+  }
+  if (access.personId !== null) redirect(next);
+  const profiles = access.role === "owner" ? await db.select({ id: people.id, name: people.name }).from(people)
+    .where(eq(people.householdId, access.householdId)) : [];
   return <>
     <PageTitle title="Your meal profile" sub="Your own portions and targets, on the household's shared plan." />
     {profiles.length ? <section className="mx-4 mb-6 space-y-3 rounded-card border border-line p-4">

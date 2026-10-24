@@ -1,9 +1,88 @@
 import { test, expect } from "./member-fixture";
 import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, people, personRecipeFeedback, recipes } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, recipes } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
+
+test("profile Server Actions persist household ownership and reject foreign profile edits even for owners", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const foreignHouseholdId = `foreign-${randomUUID()}`;
+  const createdIds: number[] = [];
+  try {
+    const [account] = await handle.db.select({ personId: householdMembers.personId, householdId: householdMembers.householdId })
+      .from(householdMembers).innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
+      .where(eq(authUsers.email, "authorized-browser-fixture@example.test"));
+    expect(account?.householdId).toBeTruthy();
+    await handle.db.insert(households).values({ id: foreignHouseholdId, name: "Synthetic unrelated household" });
+    const [foreign] = await handle.db.insert(people).values({
+      householdId: foreignHouseholdId, name: "Unrelated synthetic profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: people.id });
+    createdIds.push(foreign!.id);
+    await handle.db.insert(authUsers).values({
+      id: foreignHouseholdId, name: "Unrelated synthetic account", email: `${foreignHouseholdId}@example.test`, emailVerified: true,
+    });
+    await handle.db.insert(householdMembers).values({
+      householdId: foreignHouseholdId, userId: foreignHouseholdId, personId: foreign!.id, role: "owner",
+    });
+    await page.goto("/profiles");
+    await expect(page.getByText("Unrelated synthetic profile", { exact: true })).toHaveCount(0);
+    expect((await page.goto(`/profiles/${foreign!.id}`))?.status()).toBe(404);
+    await page.goto("/account");
+    await expect(page.getByText(`${foreignHouseholdId}@example.test`, { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Unrelated synthetic profile", { exact: true })).toHaveCount(0);
+    await page.goto(`/profiles/${account!.personId}`);
+    const outgoing = page.waitForRequest((request) => request.method() === "POST" && request.headers()["next-action"] !== undefined);
+    await page.getByRole("button", { name: "Save changes", exact: true }).click();
+    const request = await outgoing;
+    await page.waitForLoadState("networkidle");
+    const [profile] = z.tuple([z.object({ id: z.number(), name: z.string() }).passthrough()]).parse(JSON.parse(request.postData()!));
+    const headers = { origin: "http://127.0.0.1:3112", "content-type": request.headers()["content-type"]!, "next-action": request.headers()["next-action"]! };
+    const foreignAttempt = await page.request.post(`/profiles/${account!.personId}`, {
+      headers, data: JSON.stringify([{ ...profile, id: foreign!.id, name: "Must never persist" }]),
+    });
+    expect(await foreignAttempt.text()).toContain("not in this household");
+    expect(await handle.db.select({ name: people.name }).from(people).where(eq(people.id, foreign!.id)))
+      .toEqual([{ name: "Unrelated synthetic profile" }]);
+    const name = `Owned fixture ${randomUUID()}`;
+    const newProfile = { ...profile, name };
+    Reflect.deleteProperty(newProfile, "id");
+    const response = await page.request.post("/profiles/new", { headers, data: JSON.stringify([newProfile]) });
+    expect(response.status()).toBe(200);
+    const [created] = await handle.db.select().from(people).where(eq(people.name, name));
+    if (created) createdIds.push(created.id);
+    expect(created).toMatchObject({ householdId: account!.householdId });
+    const update = await page.request.post(`/profiles/${created!.id}`, {
+      headers, data: JSON.stringify([{ ...newProfile, id: created!.id, name: `${name} updated` }]),
+    });
+    expect(update.status()).toBe(200);
+    expect(await handle.db.select({ name: people.name, householdId: people.householdId }).from(people).where(eq(people.id, created!.id)))
+      .toEqual([{ name: `${name} updated`, householdId: account!.householdId }]);
+    await page.goto(`/profiles/${created!.id}`);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: `${name} updated`, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Delete profile", exact: true }).click();
+    const deleting = page.waitForRequest((pending) => pending.method() === "POST" && pending.headers()["next-action"] !== undefined);
+    await page.getByRole("button", { name: "Yes, delete", exact: true }).click();
+    const deletion = await deleting;
+    await expect(page).toHaveURL(/\/profiles$/);
+    expect(await handle.db.select().from(people).where(eq(people.id, created!.id))).toEqual([]);
+    const foreignDeletion = await page.request.post("/profiles", {
+      headers: { origin: headers.origin, "content-type": deletion.headers()["content-type"]!, "next-action": deletion.headers()["next-action"]! },
+      data: JSON.stringify([foreign!.id]),
+    });
+    expect(await foreignDeletion.text()).toContain("not in this household");
+    expect(await handle.db.select().from(people).where(eq(people.id, foreign!.id))).toHaveLength(1);
+  } finally {
+    await handle.db.delete(authUsers).where(eq(authUsers.id, foreignHouseholdId));
+    for (const id of createdIds) await handle.db.delete(people).where(eq(people.id, id));
+    await handle.db.delete(households).where(eq(households.id, foreignHouseholdId));
+    await handle.close();
+  }
+});
 
 test("anonymous pages, server components, photo bytes and exports never disclose household data", async ({ browser }) => {
   const anonymous = await browser.newContext({ storageState: { cookies: [], origins: [] } });
@@ -68,7 +147,7 @@ test("captured feedback actions cannot select another person's rating, even for 
 test("captured Server Actions cannot edit another profile or survive revoked household membership", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   try {
-    const [account] = await handle.db.select({ userId: householdMembers.userId, personId: householdMembers.personId })
+    const [account] = await handle.db.select({ userId: householdMembers.userId, personId: householdMembers.personId, householdId: householdMembers.householdId })
       .from(householdMembers).innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
       .where(eq(authUsers.email, "authorized-browser-fixture@example.test"));
     expect(account?.personId).toBeTruthy();
@@ -105,8 +184,8 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       await page.goto("/groceries");
       await expect(page).toHaveURL(/\/onboarding/);
     } finally {
-      await handle.db.insert(householdMembers).values({ userId: account!.userId, personId, role: "owner" })
-        .onConflictDoUpdate({ target: householdMembers.userId, set: { role: "owner", personId } });
+      await handle.db.insert(householdMembers).values({ householdId: account!.householdId, userId: account!.userId, personId, role: "owner" })
+        .onConflictDoUpdate({ target: householdMembers.userId, set: { householdId: account!.householdId, role: "owner", personId } });
       expect(await handle.db.select().from(householdMembers).where(and(eq(householdMembers.userId, account!.userId), eq(householdMembers.personId, personId)))).toHaveLength(1);
     }
   } finally { await handle.close(); }

@@ -72,6 +72,9 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     })));
     const a = await resolveHouseholdAccess(handle.db, "native-a", "native-a");
     const b = await resolveHouseholdAccess(handle.db, "native-b", "native-b");
+    await expect(changeMemberRole(handle.db, "native-a", "native-b", "member")).rejects.toThrow("no longer in the household");
+    await expect(removeHouseholdMember(handle.db, "native-a", "native-b")).rejects.toThrow("no longer in the household");
+    await expect(changeMemberRole(handle.db, "native-a", "native-a", "member")).rejects.toThrow("at least one verified owner");
     await expect(handle.db.update(s.householdMembers).set({ householdId: "native-b" }).where(eq(s.householdMembers.userId, "native-a"))).rejects.toThrow();
     await expect(handle.db.insert(s.householdInvitations).values({
       householdId: "native-b", id: "cross-parent", email: "recipient@example.test", tokenHash: "cross-parent",
@@ -410,8 +413,9 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       id, name: "Synthetic concurrent cook", email: `${id}@example.test`, emailVerified: true,
     })));
     const secret = "synthetic-bootstrap-concurrency-secret";
-    await claimHousehold(handle.db, "owner", secret, secret);
+    const owner = await claimHousehold(handle.db, "owner", secret, secret);
     const [person] = await handle.db.insert(s.people).values({
+      householdId: owner.householdId,
       name: "Synthetic profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
       activityLevel: "light", dietFlags: [],
     }).returning();

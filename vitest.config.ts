@@ -14,6 +14,7 @@ export default defineConfig({
       include: ["lib/**/*.ts", "app/**/*.ts", "components/**/*.tsx"],
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
+        "lib/server/household-account.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/household-access.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-plans.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/household-migration.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

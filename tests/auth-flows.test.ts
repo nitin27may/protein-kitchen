@@ -64,7 +64,8 @@ async function addOwnerDevice(userId: string) {
 async function deletionSession() {
   await addOwnerDevice(await verifiedOwner());
   await h.db.insert(s.authUsers).values({ id: "surviving-owner", name: "Synthetic survivor", email: "survivor@example.test", emailVerified: true });
-  await h.db.insert(s.householdMembers).values({ userId: "surviving-owner", role: "owner" });
+  const [household] = await h.db.select().from(s.households);
+  await h.db.insert(s.householdMembers).values({ householdId: household!.id, userId: "surviving-owner", role: "owner" });
   await createMemberProfile(h.db, "surviving-owner", {
     name: "Surviving owner profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
     activityLevel: "light", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: null, reminderTime: null,

@@ -22,6 +22,7 @@ const input = {
 };
 beforeAll(async () => { h = await openDb(); });
 beforeEach(async () => {
+  await h.db.insert(s.households).values({ id: "fixture", name: "Synthetic household" });
   vi.resetAllMocks();
   vi.stubEnv("HOUSEHOLD_BOOTSTRAP_SECRET", secret);
   vi.mocked(getDb).mockResolvedValue(h.db);
@@ -53,6 +54,7 @@ it("binds owner bootstrap, profile creation and invitations to the server sessio
 it("uses only the verified invitee's identity and an owner-reserved existing profile", async () => {
   await claimHousehold(h.db, "owner", secret, secret);
   const [person] = await h.db.insert(s.people).values({
+    householdId: "fixture",
     name: "Synthetic existing", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
   }).returning({ id: s.people.id });
   const invite = await inviteCook("cook@example.test", person!.id);
@@ -69,6 +71,7 @@ it("uses only the verified invitee's identity and an owner-reserved existing pro
 it("allows an owner to link their existing profile and revoke an invitation", async () => {
   await joinHousehold("bootstrap", secret);
   const [person] = await h.db.insert(s.people).values({
+    householdId: "fixture",
     name: "Synthetic existing", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
   }).returning({ id: s.people.id });
   expect(await linkOwnProfile(person!.id)).toEqual({ ok: true });
@@ -89,7 +92,7 @@ it("refuses anonymous operations before database access", async () => {
 it("requires an owner session for role/removal management and preserves the final owner", async () => {
   await joinHousehold("bootstrap", secret);
   await finishProfile(input);
-  await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member" });
+  await h.db.insert(s.householdMembers).values({ householdId: "fixture", userId: "cook", role: "member" });
   const user = await verifiedSessionUser();
   vi.mocked(verifiedSessionUser).mockResolvedValue({ ...user, id: "cook" });
   await finishProfile({ ...input, name: "Synthetic second cook" });

@@ -6,6 +6,8 @@ import { refreshHouseholdAccess, requireHouseholdProfile, type HouseholdAccess }
 import { HouseholdAccessError } from "../auth/household";
 import { persistIngredientPreferences, persistNewPlan, persistPlanDeletion, persistRegeneratedPlan } from "./plan-persistence";
 import type { PlannedSlot } from "../planner/types";
+import { PersonInput, personRow, type PersonInputData } from "../schemas/person";
+import { deletePersonalFeedbackForPerson } from "../human/personal-feedback";
 
 async function lockHouseholdPeople(tx: Tx, access: HouseholdAccess, ids: readonly number[]) {
   if (!ids.length || new Set(ids).size !== ids.length || ids.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
@@ -111,5 +113,41 @@ export async function saveHouseholdPreferences(
     }
     await lockHouseholdPeople(tx, access, [personId]);
     await persistIngredientPreferences(tx, personId, choices);
+  });
+}
+
+export async function saveHouseholdPerson(db: Db, access: HouseholdAccess, input: PersonInputData) {
+  const value = PersonInput.parse(input);
+  return withTx(db, async (tx) => {
+    await refreshHouseholdAccess(tx, access);
+    requireHouseholdProfile(access);
+    if (access.role !== "owner" && value.id !== access.personId) {
+      throw new HouseholdAccessError("You can only change your own profile.");
+    }
+    const row = personRow(value);
+    if (value.id !== undefined) {
+      await lockHouseholdPeople(tx, access, [value.id]);
+      await tx.update(s.people).set(row).where(and(eq(s.people.id, value.id), eq(s.people.householdId, access.householdId)));
+      return { id: value.id };
+    }
+    const [created] = await tx.insert(s.people).values({ ...row, householdId: access.householdId }).returning({ id: s.people.id });
+    return created!;
+  });
+}
+
+export async function deleteHouseholdPerson(db: Db, access: HouseholdAccess, personId: number) {
+  await withTx(db, async (tx) => {
+    await refreshHouseholdAccess(tx, access);
+    requireHouseholdProfile(access);
+    if (access.role !== "owner") throw new HouseholdAccessError("Only a household owner can delete a profile.");
+    await lockHouseholdPeople(tx, access, [personId]);
+    const [linked] = await tx.select({ id: s.householdMembers.userId }).from(s.householdMembers)
+      .where(eq(s.householdMembers.personId, personId)).limit(1);
+    if (linked) throw new HouseholdAccessError("This profile is linked to an account. Manage that account before deleting its profile.");
+    const [used] = await tx.select({ id: s.planSlotPortions.planSlotId }).from(s.planSlotPortions)
+      .where(eq(s.planSlotPortions.personId, personId)).limit(1);
+    if (used) throw new HouseholdAccessError("This profile is part of a saved plan. Delete those plans first.");
+    await deletePersonalFeedbackForPerson(tx, personId);
+    await tx.delete(s.people).where(and(eq(s.people.id, personId), eq(s.people.householdId, access.householdId)));
   });
 }

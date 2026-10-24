@@ -1,8 +1,8 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { requirePageMember, verifiedSessionUser } from "@/lib/auth/access";
 import { getDb } from "@/lib/server/context";
-import { authUsers, householdInvitations, householdMembers, people } from "@/lib/db/schema";
+import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { householdAccount } from "@/lib/server/household-account";
 import { AccountControls } from "@/components/auth/AccountControls";
 import { LinkButton } from "@/components/ui";
 
@@ -12,16 +12,9 @@ export default async function Account() {
   const member = await requirePageMember();
   const user = await verifiedSessionUser();
   const db = await getDb();
-  const [profile] = await db.select({ id: people.id, name: people.name }).from(people).where(eq(people.id, member.personId));
+  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const { profile, owner, profiles, invitations, members } = await householdAccount(db, access);
   if (!profile) redirect("/onboarding?next=%2Faccount");
-  const owner = member.role === "owner";
-  const profiles = owner ? await db.select({ id: people.id, name: people.name }).from(people) : [];
-  const invitations = owner ? await db.select({ id: householdInvitations.id, email: householdInvitations.email })
-    .from(householdInvitations).where(and(isNull(householdInvitations.acceptedAt), isNull(householdInvitations.revokedAt), gt(householdInvitations.expiresAt, new Date()))) : [];
-  const members = owner ? await db.select({
-    userId: householdMembers.userId, role: householdMembers.role, name: authUsers.name, email: authUsers.email, profileName: people.name,
-  }).from(householdMembers).innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
-    .leftJoin(people, eq(people.id, householdMembers.personId)).orderBy(authUsers.name) : [];
   return <section className="mx-auto max-w-xl space-y-6 px-4 pb-28 pt-8">
     <h1 className="text-2xl font-bold">Your account</h1>
     <p className="break-words">{user.name} · {user.email}</p>

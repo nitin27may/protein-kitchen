@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import * as s from "@/lib/db/schema";
 import { withTx } from "@/lib/db/tx";
-import { deletePersonalFeedbackForPerson, FeedbackInput, writePersonalRecipeFeedback } from "@/lib/human/personal-feedback";
+import { FeedbackInput, writePersonalRecipeFeedback } from "@/lib/human/personal-feedback";
 import type { LinkInput } from "@/lib/links/types";
 import { loadCandidates } from "@/lib/photos/candidates";
 import { approveCandidateChecked, rejectCandidateChecked } from "@/lib/server/photo-review";
@@ -24,7 +24,7 @@ import { todayISO } from "@/lib/server/time";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
 import type { GeneratedPlan, Slot } from "@/lib/planner/types";
 import { MEAL_SLOTS, PlanSetupSchema } from "@/lib/schemas";
-import { PersonInput, personRow, type PersonInputData } from "@/lib/schemas/person";
+import { PersonInput, type PersonInputData } from "@/lib/schemas/person";
 import { getData, getDb } from "@/lib/server/context";
 import { getBlobStore } from "@/lib/blob";
 import { photoWritesEnabled } from "@/lib/blob/config";
@@ -37,6 +37,9 @@ import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } f
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, planExists, slotBelongsToPlan } from "@/lib/server/plan-access";
+import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { HouseholdAccessError } from "@/lib/auth/household";
+import { deleteHouseholdPerson, saveHouseholdPerson } from "@/lib/server/household-plans";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; fields?: Record<string, string> };
 
@@ -64,32 +67,31 @@ export async function savePerson(input: PersonInputData): Promise<Result<{ id: n
     const count = Object.keys(fields).length;
     return { ok: false, error: count === 1 ? "Fix the field marked below." : `Fix the ${count} fields marked below.`, fields };
   }
-  const v = parsed.data;
-  const row = personRow(v);
   const db = await getDb();
-  if (v.id) {
-    const changed = await db.update(s.people).set(row).where(eq(s.people.id, v.id)).returning({ id: s.people.id });
-    if (!changed.length) return fail("Profile not found.");
+  try {
+    const member = await requireMember();
+    const access = await resolveOnlyHouseholdAccess(db, member.userId);
+    const saved = await saveHouseholdPerson(db, access, parsed.data);
     refresh();
-    return { ok: true, id: v.id };
+    return { ok: true, ...saved };
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
   }
-  const [created] = await db.insert(s.people).values(row).returning({ id: s.people.id });
-  refresh();
-  return { ok: true, id: created!.id };
 }
 
 export async function deletePerson(id: number): Promise<Result> {
   const denied = await actionDenial("owner");
   if (denied) return denied;
   const db = await getDb();
-  const [linked] = await db.select({ id: s.householdMembers.userId }).from(s.householdMembers).where(eq(s.householdMembers.personId, id)).limit(1);
-  if (linked) return fail("This profile is linked to an account. Manage that account before deleting its profile.");
-  const [used] = await db.select({ id: s.planSlotPortions.planSlotId }).from(s.planSlotPortions).where(eq(s.planSlotPortions.personId, id)).limit(1);
-  if (used) return fail("This profile is part of a saved plan. Delete those plans first.");
-  await withTx(db, async (tx) => {
-    await deletePersonalFeedbackForPerson(tx, id);
-    await tx.delete(s.people).where(eq(s.people.id, id));
-  });
+  try {
+    const member = await requireMember();
+    const access = await resolveOnlyHouseholdAccess(db, member.userId);
+    await deleteHouseholdPerson(db, access, id);
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
   refresh();
   return { ok: true };
 }

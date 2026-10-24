@@ -2,11 +2,13 @@ import { eq } from "drizzle-orm";
 import { beforeEach, expect, it } from "vitest";
 import * as s from "../lib/db/schema";
 import type { PlannedSlot } from "../lib/planner/types";
-import { refreshHouseholdAccess, requireHouseholdProfile, resolveHouseholdAccess, type HouseholdAccess } from "../lib/auth/household-access";
+import { refreshHouseholdAccess, requireHouseholdProfile, resolveHouseholdAccess, resolveOnlyHouseholdAccess, type HouseholdAccess } from "../lib/auth/household-access";
 import {
   deleteHouseholdPlan, householdPeople, householdPerson, householdPlan, householdPlans,
-  persistHouseholdPlan, regenerateHouseholdPlan, saveHouseholdPreferences,
+  deleteHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
 } from "../lib/server/household-plans";
+import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
+import { householdAccount } from "../lib/server/household-account";
 import { openDb, type DbHandle } from "./helpers/db";
 
 let h: DbHandle;
@@ -272,4 +274,100 @@ it("allows members to edit only their own preferences, and owners only other pro
   await saveHouseholdPreferences(h.db, member, a.personId!, []);
   await expect(saveHouseholdPreferences(h.db, member, second!.id, [])).rejects.toThrow("only change your own");
   expect(await persistHouseholdPlan(h.db, member, input())).toBeGreaterThan(0);
+});
+
+const profileInput = {
+  name: "Synthetic added profile", sex: "other" as const, birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+  activityLevel: "light" as const, proteinMode: "per_kg" as const, proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+};
+
+it("resolves only an explicit existing membership for transitional callers, never an unowned or missing account", async () => {
+  expect(await resolveOnlyHouseholdAccess(h.db, "a")).toMatchObject({ householdId: "a", personId: a.personId });
+  await expect(resolveOnlyHouseholdAccess(h.db, "missing")).rejects.toThrow("Select an available household");
+  await h.db.update(s.householdMembers).set({ householdId: null }).where(eq(s.householdMembers.userId, "a"));
+  await expect(resolveOnlyHouseholdAccess(h.db, "a")).rejects.toThrow("Select an available household");
+});
+
+it("stores ownership on new profiles and rejects foreign edits even for owners", async () => {
+  const created = await saveHouseholdPerson(h.db, a, profileInput);
+  expect(await householdPerson(h.db, a, created.id)).toMatchObject({ householdId: "a", name: profileInput.name });
+  await saveHouseholdPerson(h.db, a, { ...profileInput, id: created.id, name: "Updated synthetic profile" });
+  expect(await householdPerson(h.db, a, created.id)).toMatchObject({ name: "Updated synthetic profile", householdId: "a" });
+  await expect(saveHouseholdPerson(h.db, a, { ...profileInput, id: otherPerson })).rejects.toThrow("not in this household");
+  await expect(saveHouseholdPerson(h.db, a, { ...profileInput, id: 999999 })).rejects.toThrow("not in this household");
+  expect(await householdPerson(h.db, b, otherPerson)).toMatchObject({ name: "Synthetic profile" });
+  await expect(saveHouseholdPerson(h.db, a, { ...profileInput, name: "" })).rejects.toThrow("Enter a name");
+});
+
+it("permits a member's own profile edit but not creation or another profile edit/deletion", async () => {
+  const created = await saveHouseholdPerson(h.db, a, profileInput);
+  await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "a"));
+  const member = await resolveHouseholdAccess(h.db, "a", "a");
+  await saveHouseholdPerson(h.db, member, { ...profileInput, id: a.personId!, name: "Updated own profile" });
+  await expect(saveHouseholdPerson(h.db, member, profileInput)).rejects.toThrow("only change your own");
+  await expect(saveHouseholdPerson(h.db, member, { ...profileInput, id: created.id })).rejects.toThrow("only change your own");
+  await expect(deleteHouseholdPerson(h.db, member, created.id)).rejects.toThrow("Only a household owner");
+});
+
+it("refuses foreign, missing, account-linked and saved-plan profiles before deletion", async () => {
+  await expect(deleteHouseholdPerson(h.db, a, otherPerson)).rejects.toThrow("not in this household");
+  await expect(deleteHouseholdPerson(h.db, a, 999999)).rejects.toThrow("not in this household");
+  await expect(deleteHouseholdPerson(h.db, a, a.personId!)).rejects.toThrow("linked to an account");
+  const created = await saveHouseholdPerson(h.db, a, profileInput);
+  await persistHouseholdPlan(h.db, a, input(created.id));
+  await expect(deleteHouseholdPerson(h.db, a, created.id)).rejects.toThrow("part of a saved plan");
+  expect(await householdPerson(h.db, a, created.id)).toBeDefined();
+});
+
+it("rolls back failed profile writes and personal-feedback cleanup, then deletes only the owned profile", async () => {
+  const created = await saveHouseholdPerson(h.db, a, profileInput);
+  await writePersonalRecipeFeedback(h.db, created.id, recipeId, { rating: 4 });
+  const before = await h.db.select().from(s.personRecipeFeedback);
+  const markers = await h.db.select().from(s.syncState);
+  await h.failWrite("people", "update", "profile_update_failure");
+  await expect(saveHouseholdPerson(h.db, a, { ...profileInput, id: created.id, name: "Must not persist" })).rejects.toThrow();
+  await h.dropFailure("people", "profile_update_failure");
+  await h.failWrite("people", "delete", "profile_delete_failure");
+  await expect(deleteHouseholdPerson(h.db, a, created.id)).rejects.toThrow();
+  expect(await h.db.select().from(s.personRecipeFeedback)).toEqual(before);
+  expect(await h.db.select().from(s.syncState)).toEqual(markers);
+  expect(await householdPerson(h.db, a, created.id)).toMatchObject({ name: profileInput.name });
+  await h.dropFailure("people", "profile_delete_failure");
+  await deleteHouseholdPerson(h.db, a, created.id);
+  expect(await householdPerson(h.db, a, created.id)).toBeUndefined();
+  expect(await h.db.select().from(s.personRecipeFeedback)).toEqual([]);
+  expect(await householdPerson(h.db, b, otherPerson)).toBeDefined();
+});
+
+it("projects only the selected household's account administration without credentials or invitation tokens", async () => {
+  await h.db.insert(s.householdInvitations).values([
+    { id: "local", householdId: "a", email: "local@example.test" },
+    { id: "foreign", householdId: "b", email: "foreign@example.test" },
+    { id: "expired", householdId: "a", email: "expired@example.test", createdAt: new Date(Date.now() - 20000), expiresAt: new Date(Date.now() - 10000) },
+    { id: "revoked", householdId: "a", email: "revoked@example.test", revokedAt: new Date() },
+    { id: "accepted", householdId: "a", email: "accepted@example.test", acceptedAt: new Date() },
+  ].map((row) => ({
+    tokenHash: `secret-${row.id}`, invitedByUserId: row.householdId, expiresAt: new Date(Date.now() + 86400000), ...row,
+  })));
+  const result = await householdAccount(h.db, a);
+  expect(result).toMatchObject({
+    owner: true, profile: { id: a.personId }, profiles: [{ id: a.personId }],
+    invitations: [{ id: "local", email: "local@example.test" }],
+  });
+  expect(result.members.map((member) => member.userId).sort()).toEqual(["a", "pending", "unverified"]);
+  expect(result.members.find((member) => member.userId === "pending")?.profileName).toBeNull();
+  expect(JSON.stringify(result)).not.toContain("secret-");
+  expect(JSON.stringify(result)).not.toContain("foreign@example.test");
+  expect((await householdAccount(h.db, b)).invitations).toEqual([{ id: "foreign", email: "foreign@example.test" }]);
+});
+
+it("withholds household member/email/invitation administration from members and refuses stale or incomplete scopes", async () => {
+  await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "a"));
+  await expect(householdAccount(h.db, a)).rejects.toThrow("access changed");
+  const member = await resolveHouseholdAccess(h.db, "a", "a");
+  expect(await householdAccount(h.db, member)).toEqual({
+    owner: false, profile: { id: a.personId, name: "Synthetic profile" }, profiles: [], invitations: [], members: [],
+  });
+  const pending = await resolveHouseholdAccess(h.db, "pending", "a");
+  await expect(householdAccount(h.db, pending)).rejects.toThrow("Finish your household profile");
 });
