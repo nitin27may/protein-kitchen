@@ -126,6 +126,14 @@ describe("atomic SQLite restore", () => {
     expect(await target.db.select().from(s.people)).toEqual([]);
   });
 
+  it("refuses a destination containing identity data even when every legacy table is empty", async () => {
+    const target = await openDb();
+    await target.db.insert(s.authUsers).values({ id: "existing-account", name: "Synthetic account", email: "existing@example.test" });
+    await expect(restoreSqliteSnapshot(target.db, readSqliteSnapshot(source.file))).rejects.toThrow("auth_users");
+    expect(await target.db.select().from(s.authUsers)).toMatchObject([{ id: "existing-account" }]);
+    expect(await target.db.select().from(s.people)).toEqual([]);
+  });
+
   it("rolls back every table on an interrupted insert, then succeeds on retry", async () => {
     const target = await openDb();
     const snapshot = readSqliteSnapshot(source.file);

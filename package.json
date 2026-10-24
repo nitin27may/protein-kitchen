@@ -24,6 +24,7 @@
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.12",
     "@neon/config": "^1.9.3",
     "@neon/env": "^1.6.4",
     "@univerjs/preset-sheets-core": "^1.2.0",
@@ -31,6 +32,7 @@
     "@univerjs/preset-sheets-sort": "^1.2.0",
     "@univerjs/presets": "^1.2.0",
     "@vercel/functions": "^3.10.3",
+    "better-auth": "1.7.12",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.4",
     "exceljs": "^4.4.0",

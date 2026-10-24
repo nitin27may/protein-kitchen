@@ -77,6 +77,30 @@ Detailed execution slices, to implement in order after checkpoint 2:
 
 Do not expose a partially protected app: complete the server-side authorization inventory in checkpoint 4 before deploying even an authenticated preview with household data.
 
+**Capability decision, 2026-10-24:** select self-hosted Better Auth 1.7.12 on the existing Next.js host with the Drizzle adapter and Neon Postgres. Current [Managed plugins](https://neon.com/docs/auth/guides/plugins) and [Organization support](https://neon.com/docs/auth/guides/plugins/organization) do not expose the custom signup/server hooks required by the invite-only/bootstrap admission rules; upstream [hooks](https://better-auth.com/docs/concepts/hooks) and [Drizzle adapter](https://better-auth.com/docs/adapters/drizzle) document those capabilities. Installed-version types/source must confirm them before wiring routes. Do not disable Neon Auth or migrate any of its users.
+
+Slice 3A execution plan (database/admission foundation, before login/UI):
+
+1. Pin Better Auth/adapter compatibility with Next 16, Drizzle 0.45, pg 8 and the existing Zod 3 app. Generate/review the core auth schema using the installed CLI/config conventions; keep auth tables distinct from the preserved SQLite/library tables.
+2. Add one singleton household bootstrap row, owner/member memberships with a unique optional `person_id`, and email-bound invitations with hashed random tokens, expiry, inviter and optional reserved profile. A household is the deployment, not one generated per login. No email is added to `people`.
+3. Admission functions require a verified account. Bootstrap compares a server-configured high-entropy secret in constant time, serializes competing claims, and creates exactly one owner. Invitation creation requires a current owner; acceptance locks the invitation and membership, checks normalized email/expiry/one-use and consumes it atomically with membership/profile linking. Reject role input, duplicate profile ownership and foreign/missing profiles.
+4. Put identity writes in a dedicated auth module, not pages/scripts or human state exporters. Auth credentials/tokens/membership are operational identity data, excluded from plaintext human-state sync; future encrypted backup covers them. Do not enable destructive auth reset or delete the last owner.
+5. Generate Drizzle migrations, verify fresh and upgrade application tables/ids, and test admission success plus wrong/unverified/reused/expired/parallel claims, rollback, owner-only issuance and unique profile linkage. Run existing browser regressions against the extended schema to prove meal flows still work.
+6. Slice 3B then wires Better Auth password/email-code/verification/reset and signup admission hooks, local test mail, session helpers and protected auth routes. Slice 3C adds complete account/onboarding/profile-link screens and retained owner/member Playwright flows; checkpoint 4 closes every action/route and cache/privacy boundary before public use.
+
+Slice 3A does not claim authentication is enabled or the app is protected. Each following slice must satisfy the larger signup/onboarding/shared-household acceptance list above.
+
+Slice 3A completed locally: migration `0002` adds seven identity tables without changing legacy table shapes. The installed Better Auth adapter creates password credentials/sessions against that schema; household admission has 100% statements/branches/functions/lines with a permanent gate. All 836 tests (11 native TCP checks) and five retained phone-browser regressions pass. Native concurrency proves exactly one bootstrap and one invitation acceptance commit; import refuses existing auth data and human-state export omits identity. Auth `Date` timestamps use `timestamptz`; legacy ISO-string row contracts remain unchanged. pnpm reports an optional Better Call/Zod peer warning against the app's Zod 3, but the lockfile/runtime bind Better Auth and Better Call to their own Zod 4, and actual signup/login integration succeeds; no app-wide schema upgrade is needed.
+
+Slice 3B execution plan (signup/session/recovery backend, before onboarding screens):
+
+1. Build a lazy, explicitly configured Better Auth factory over the existing guarded database. Require a server-only secret and fixed trusted app origin; keep database access out of imports/builds. Map the generated auth models and disable social signup, implicit email-code signup and account deletion.
+2. Guard every user creation with a database hook: only a still-unclaimed deployment bootstrap secret or an unexpired, unconsumed invitation matching the signup email permits registration. Recheck admission after verified login using slice 3A; registering an auth account alone never grants household access.
+3. Enable password signup/login and six-digit email codes for verification, login and password reset, hashed at rest with short expiry/attempt limits. Require verified email, revoke sessions after password reset, do not put one-time codes in URLs, and disable persistent cookie session caching.
+4. Use persistent database rate limits, including signup, OTP send/verify, login and reset. Check the installed adapter's atomic consumption behavior and configured trusted-IP boundary; rate-limit tests must call the actual HTTP handler (server API methods bypass its limiter).
+5. Await injected mail delivery and return an explicit sanitized error if it fails. Use in-memory test delivery for integration tests. Runtime Resend delivery requires explicit sender/API-key configuration; no real email is sent during implementation. A local-only, disposable-database test mailbox for browser automation comes with slice 3C, never an internet-readable OTP endpoint.
+6. Add a no-store auth catch-all route and test real signup -> verification -> password/code login -> session reload -> reset -> old-session refusal. Include bad admission, revoked/expired invites, wrong/reused/expired codes, resend, missing configuration, failed mail and allowed/foreign origins. New auth routes are not a substitute for checkpoint 4's complete authorization inventory; keep the app private.
+
 1. Revalidate current Better Auth capabilities, invitation hooks, email-code support and dependency compatibility before selecting managed versus self-hosted deployment. Preserve the planned invite-only requirement; do not disable existing Neon services as part of investigation.
 2. Implement the selected auth schema/configuration, sessions, verification/reset flows, password and email-code sign-in, Resend integration, and rate limits. Use a test mail transport locally; sending-domain setup can wait without blocking local implementation.
 3. Add household membership, owner/member roles and optional profile linkage. Implement a one-time, race-safe bootstrap claim; public sign-up must not grant ownership. Do not put login email on `people`.
@@ -143,7 +167,7 @@ Verified in the code: `app/actions.ts` has no auth anywhere; `swapSlot`, `setPor
 
 ## Decisions recommended (owner to confirm)
 
-1. Self-hosted `better-auth` with the Drizzle adapter on Neon Postgres, not Neon Auth (Neon Auth has no sign-up hooks, cannot make sign-up invite-only, and cannot send verification links from its shared sender). Turn off the provisioned Neon Auth.
+1. Self-hosted `better-auth` with the Drizzle adapter on Neon Postgres for the required signup hooks. Current capability decision and implementation slices are above. Leave provisioned Neon Auth unchanged; disabling it is a separate owner-approved service change, not an implementation prerequisite.
 2. Do PR 0 (git repo, GitHub, CI) now, before the rest of the UI work.
 3. PR 1a, an async facade: make `queries.ts` and the action helpers async now, so the later Postgres move is mechanical.
 4. Sign-in: email and password, plus an emailed 6-digit code. No magic links (the installed iPhone home-screen app has its own cookie store, so links open in Safari). No social login yet.

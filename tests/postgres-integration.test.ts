@@ -15,6 +15,7 @@ import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persi
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
+import { acceptInvitation, claimHousehold, issueInvitation } from "../lib/auth/household";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -55,6 +56,46 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await tx.update(s.libraryState).set({ version: String(Number(row!.version) + 1) }).where(eq(s.libraryState.key, "counter"));
     })));
     expect(await handle.db.select().from(s.libraryState)).toMatchObject([{ key: "counter", version: "8" }]);
+  });
+
+  it("serializes competing bootstrap claims across real pool connections", async () => {
+    await handle.db.insert(s.authUsers).values(["first", "second"].map((id) => ({
+      id, name: "Synthetic concurrent cook", email: `${id}@example.test`, emailVerified: true,
+    })));
+    const secret = "synthetic-bootstrap-concurrency-secret";
+    const claims = await Promise.allSettled(["first", "second"].map((id) => claimHousehold(handle.db, id, secret, secret)));
+    expect(claims.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const failed = claims.find((r) => r.status === "rejected");
+    expect(failed?.status === "rejected" && failed.reason.message).toContain("already been claimed");
+    expect(await handle.db.select().from(s.householdBootstrap)).toHaveLength(1);
+    expect(await handle.db.select().from(s.householdMembers)).toHaveLength(1);
+  });
+
+  it("atomically consumes one invitation and reserves each meal profile for one account", async () => {
+    await handle.db.insert(s.authUsers).values(["owner", "cook"].map((id) => ({
+      id, name: "Synthetic concurrent cook", email: `${id}@example.test`, emailVerified: true,
+    })));
+    const secret = "synthetic-bootstrap-concurrency-secret";
+    await claimHousehold(handle.db, "owner", secret, secret);
+    const [person] = await handle.db.insert(s.people).values({
+      name: "Synthetic profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light", dietFlags: [],
+    }).returning();
+    const issues = await Promise.allSettled(["cook", "other"].map((id) => issueInvitation(handle.db, "owner", {
+      email: `${id}@example.test`, personId: person!.id,
+    })));
+    expect(issues.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const issued = issues.find((r) => r.status === "fulfilled");
+    if (issued?.status !== "fulfilled") throw new Error("Expected one concurrent invitation.");
+    await handle.db.update(s.authUsers).set({ email: issued.value.email }).where(eq(s.authUsers.id, "cook"));
+    const accepts = await Promise.allSettled([
+      acceptInvitation(handle.db, "cook", issued.value.token), acceptInvitation(handle.db, "cook", issued.value.token),
+    ]);
+    expect(accepts.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await handle.db.select().from(s.householdMembers)).toHaveLength(2);
+    expect(await handle.db.select().from(s.householdInvitations)).toMatchObject([{
+      acceptedByUserId: "cook", acceptedAt: expect.any(Date),
+    }]);
   });
 
   it("seeds the library and preserves human exports through a native reseed", async () => {

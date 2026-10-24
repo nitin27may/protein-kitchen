@@ -1,8 +1,97 @@
 import { sql } from "drizzle-orm";
-import { check, doublePrecision as real, index, integer, pgTable, primaryKey, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { check, doublePrecision as real, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { bool, isoDate, isoTimestamp, json } from "./columns";
 
 const id = () => integer("id").primaryKey().generatedByDefaultAsIdentity();
+
+const authTime = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+
+// Better Auth 1.7.12 generated fields; auth uses Date values, unlike the legacy ISO-string contract.
+export const authUsers = pgTable("auth_users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: bool("email_verified").default(false).notNull(),
+  image: text("image"),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  updatedAt: authTime("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+}, (t) => [uniqueIndex("auth_users_normalized_email_uq").on(sql`lower(trim(${t.email}))`)]);
+
+export const authSessions = pgTable("auth_sessions", {
+  id: text("id").primaryKey(),
+  expiresAt: authTime("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  updatedAt: authTime("updated_at").$onUpdate(() => new Date()).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
+}, (t) => [index("auth_sessions_user_idx").on(t.userId)]);
+
+export const authAccounts = pgTable("auth_accounts", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: authTime("access_token_expires_at"),
+  refreshTokenExpiresAt: authTime("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  updatedAt: authTime("updated_at").$onUpdate(() => new Date()).notNull(),
+}, (t) => [
+  index("auth_accounts_user_idx").on(t.userId),
+  uniqueIndex("auth_accounts_provider_account_uq").on(t.providerId, t.accountId),
+]);
+
+export const authVerifications = pgTable("auth_verifications", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: authTime("expires_at").notNull(),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  updatedAt: authTime("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+}, (t) => [index("auth_verifications_identifier_idx").on(t.identifier)]);
+
+export const householdBootstrap = pgTable("household_bootstrap", {
+  id: integer("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull().references(() => authUsers.id, { onDelete: "restrict" }),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+}, (t) => [check("household_bootstrap_singleton", sql`${t.id} = 1`)]);
+
+export const householdMembers = pgTable("household_members", {
+  userId: text("user_id").primaryKey().references(() => authUsers.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["owner", "member"] }).notNull(),
+  personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  updatedAt: authTime("updated_at").defaultNow().notNull(),
+}, (t) => [
+  check("household_members_role_check", sql`${t.role} in ('owner', 'member')`),
+  uniqueIndex("household_members_person_uq").on(t.personId),
+]);
+
+export const householdInvitations = pgTable("household_invitations", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  invitedByUserId: text("invited_by_user_id").notNull().references(() => authUsers.id, { onDelete: "restrict" }),
+  personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
+  expiresAt: authTime("expires_at").notNull(),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  acceptedAt: authTime("accepted_at"),
+  acceptedByUserId: text("accepted_by_user_id").references(() => authUsers.id, { onDelete: "set null" }),
+  revokedAt: authTime("revoked_at"),
+}, (t) => [
+  check("household_invitations_email_check", sql`${t.email} = lower(trim(${t.email}))`),
+  check("household_invitations_expiry_check", sql`${t.expiresAt} > ${t.createdAt}`),
+  uniqueIndex("household_invitations_pending_email_uq").on(t.email)
+    .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+  uniqueIndex("household_invitations_pending_person_uq").on(t.personId)
+    .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+]);
 
 export const libraryState = pgTable("library_state", {
   key: text("key").primaryKey(),
