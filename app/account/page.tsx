@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePageMember, verifiedSessionUser } from "@/lib/auth/access";
 import { getDb } from "@/lib/server/context";
-import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { memberHouseholdAccess } from "@/lib/auth/household-access";
 import { householdAccount } from "@/lib/server/household-account";
 import { AccountControls } from "@/components/auth/AccountControls";
 import { LinkButton } from "@/components/ui";
@@ -12,7 +12,7 @@ export default async function Account() {
   const member = await requirePageMember();
   const user = await verifiedSessionUser();
   const db = await getDb();
-  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const access = await memberHouseholdAccess(db, member);
   const { profile, owner, profiles, invitations, members } = await householdAccount(db, access);
   if (!profile) redirect("/onboarding?next=%2Faccount");
   return <section className="mx-auto max-w-xl space-y-6 px-4 pb-28 pt-8">

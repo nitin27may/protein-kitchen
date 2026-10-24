@@ -473,7 +473,7 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       expect(await handle.db.select({ name: people.name }).from(people).where(eq(people.id, foreign!.id))).toEqual([{ name: foreign!.name }]);
       await handle.db.delete(householdMembers).where(eq(householdMembers.userId, account!.userId));
       const replay = await page.request.post(`/profiles/${personId}`, { headers, data: body! });
-      expect(await replay.text()).toContain("Finish household and profile onboarding");
+      expect(await replay.text()).toContain("Select an available household");
       const exportResult = await page.request.get(`/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=pdf`);
       expect(exportResult.status()).toBe(403);
       expect(exportResult.headers()["cache-control"]).toContain("no-store");

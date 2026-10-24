@@ -23,10 +23,13 @@ beforeEach(async () => {
   vi.mocked(headers).mockResolvedValue(new Headers({ cookie: "synthetic" }));
   vi.mocked(getDb).mockResolvedValue(h.db);
   vi.mocked(getAuth).mockResolvedValue({ handler: vi.fn(), api: { getSession: session } });
-  session.mockResolvedValue({ user: { id: "cook", emailVerified: true } });
+  session.mockResolvedValue({ user: { id: "cook", emailVerified: true }, session: { id: "session" } });
   vi.stubEnv("BETTER_AUTH_URL", origin);
   vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-authorization-secret-32-characters");
   await h.db.insert(s.authUsers).values({ id: "cook", name: "Synthetic cook", email: "cook@example.test", emailVerified: true });
+  await h.db.insert(s.authSessions).values({
+    id: "session", userId: "cook", token: "synthetic-token", updatedAt: new Date(), expiresAt: new Date(Date.now() + 60_000),
+  });
 });
 afterEach(async () => {
   vi.unstubAllEnvs(); vi.restoreAllMocks();
@@ -52,15 +55,15 @@ describe("authoritative household membership", () => {
       weightKg: 70, activityLevel: "light", dietFlags: [],
     }).returning({ id: s.people.id }) : [];
     await h.db.insert(s.householdMembers).values({ householdId: "b", userId: "cook", role: "member", personId: profile?.id });
-    await expect(requireMember()).rejects.toThrow("Select a household");
-    expect(await actionDenial()).toEqual({ ok: false, error: "Select a household before continuing." });
+    await expect(requireMember()).rejects.toThrow("Select an available household");
+    expect(await actionDenial()).toEqual({ ok: false, error: "Select an available household before continuing." });
     expect((await routeAccess(new Request(`${origin}/api/account/export`))).response?.status).toBe(403);
     await expect(requirePageMember()).rejects.toThrow("redirect:/onboarding");
   });
   it("refuses unowned membership even with a profile and owned membership without a profile", async () => {
     const personId = await admit();
     await h.db.update(s.householdMembers).set({ householdId: null }).where(eq(s.householdMembers.userId, "cook"));
-    await expect(requireMember()).rejects.toThrow("Finish household");
+    await expect(requireMember()).rejects.toThrow("Select an available household");
     await h.db.update(s.householdMembers).set({ householdId: "a", personId: null }).where(eq(s.householdMembers.userId, "cook"));
     await expect(requireMember()).rejects.toThrow("Finish household");
     expect(await h.db.select().from(s.people).where(eq(s.people.id, personId))).toHaveLength(1);
@@ -73,21 +76,21 @@ describe("authoritative household membership", () => {
   it("rejects unverified, unaffiliated and incomplete accounts", async () => {
     session.mockResolvedValueOnce({ user: { id: "cook", emailVerified: false } });
     await expect(requireMember()).rejects.toThrow("Verify your email");
-    await expect(requireMember()).rejects.toThrow("Finish household");
+    await expect(requireMember()).rejects.toThrow("Select an available household");
     await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member" });
-    await expect(requireMember()).rejects.toThrow("Finish household");
+    await expect(requireMember()).rejects.toThrow("Select an available household");
   });
   it("rechecks verification, profile links, roles and revoked memberships on every request", async () => {
     const personId = await admit("owner");
-    expect(await requireMember(new Headers({ cookie: "explicit" }))).toEqual({ userId: "cook", role: "owner", personId });
+    expect(await requireMember(new Headers({ cookie: "explicit" }))).toMatchObject({ userId: "cook", role: "owner", personId });
     expect(session).toHaveBeenCalledWith({ headers: new Headers({ cookie: "explicit" }) });
     await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "cook"));
     expect(await actionDenial("owner")).toMatchObject({ ok: false, error: "Only a household owner can do that." });
     await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "cook"));
-    await expect(requireMember()).rejects.toThrow("Finish household");
+    await expect(requireMember()).rejects.toThrow("verified account");
     await h.db.update(s.authUsers).set({ emailVerified: true }).where(eq(s.authUsers.id, "cook"));
     await h.db.delete(s.householdMembers);
-    await expect(requireMember()).rejects.toThrow("Finish household");
+    await expect(requireMember()).rejects.toThrow("Select an available household");
   });
   it("limits private profile mutations to the linked member or an owner", async () => {
     const personId = await admit();
@@ -104,6 +107,8 @@ describe("authoritative household membership", () => {
     expect(log).toHaveBeenCalled();
     session.mockRejectedValueOnce(new Error("synthetic database failure"));
     await expect(actionDenial()).rejects.toThrow("synthetic database failure");
+    vi.mocked(getDb).mockRejectedValueOnce(new Error("synthetic resolver failure"));
+    await expect(requireMember()).rejects.toThrow("synthetic resolver failure");
   });
 });
 
@@ -128,7 +133,7 @@ describe("page and route boundaries", () => {
   it("checks route cookies and rejects missing/foreign mutation origins", async () => {
     const personId = await admit();
     const request = new Request(`${origin}/api/push/subscribe`, { headers: { origin, cookie: "route-cookie" } });
-    expect(await routeAccess(request, true)).toEqual({ member: { userId: "cook", role: "member", personId } });
+    expect(await routeAccess(request, true)).toMatchObject({ member: { userId: "cook", role: "member", personId } });
     expect(session).toHaveBeenCalledWith({ headers: request.headers });
     vi.stubEnv("BETTER_AUTH_URL", `${origin}/`);
     expect((await routeAccess(request, true)).member?.personId).toBe(personId);

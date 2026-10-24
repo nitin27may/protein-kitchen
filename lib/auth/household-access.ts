@@ -2,6 +2,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { authSessions, authUsers, householdMembers, households, people } from "../db/schema";
 import { HouseholdAccessError } from "./household";
+import type { MemberAccess } from "./access";
 
 const verifiedHousehold = Symbol("verified-household");
 
@@ -60,6 +61,15 @@ export async function refreshHouseholdAccess(db: Db, access: HouseholdAccess): P
 export function requireHouseholdProfile(access: HouseholdAccess) {
   if (access.personId === null) throw new HouseholdAccessError("Finish your household profile before continuing.");
   return access.personId;
+}
+
+export async function memberHouseholdAccess(db: Db, member: MemberAccess) {
+  const access = member.householdAccess;
+  if (!access) return resolveOnlyHouseholdAccess(db, member.userId);
+  if (access.userId !== member.userId || access.role !== member.role || access.personId !== member.personId) {
+    throw new HouseholdAccessError("Your household access changed. Reload before continuing.");
+  }
+  return refreshHouseholdAccess(db, access);
 }
 
 /** Transitional single-membership callers must fail rather than guess once switching becomes possible. */

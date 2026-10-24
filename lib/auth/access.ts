@@ -1,44 +1,52 @@
 import { headers } from "next/headers";
-import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getAuth } from "./server";
 import { HouseholdAccessError } from "./household";
 import { AuthConfigurationError, authConfiguration } from "./config";
 import { getDb } from "../server/context";
-import { authUsers, householdMembers, people } from "../db/schema";
+import { resolveSessionHouseholdAccess, type SessionIdentity } from "./household-session";
+import type { HouseholdAccess } from "./household-access";
 
 export class AccessDenied extends HouseholdAccessError {
   constructor(message: string, readonly status: 401 | 403 = 403) { super(message); }
 }
 
-export async function verifiedSessionUser(requestHeaders?: Headers) {
+async function verifiedProviderSession(requestHeaders?: Headers) {
   const incoming = requestHeaders ?? await headers();
   const session = await (await getAuth()).api.getSession({ headers: incoming });
   if (!session) throw new AccessDenied("Sign in before continuing.", 401);
   if (!session.user.emailVerified) throw new AccessDenied("Verify your email before continuing.");
-  return session.user;
+  return session;
+}
+
+export async function verifiedSessionUser(requestHeaders?: Headers) {
+  return (await verifiedProviderSession(requestHeaders)).user;
+}
+
+export async function verifiedSessionIdentity(requestHeaders?: Headers): Promise<SessionIdentity> {
+  const session = await verifiedProviderSession(requestHeaders);
+  return { userId: session.user.id, sessionId: session.session.id };
 }
 
 export interface MemberAccess {
   userId: string;
   role: "owner" | "member";
   personId: number;
+  readonly householdAccess?: HouseholdAccess;
 }
 
 export async function requireMember(requestHeaders?: Headers): Promise<MemberAccess> {
-  const user = await verifiedSessionUser(requestHeaders);
-  const memberships = await (await getDb()).select({
-    userId: householdMembers.userId, role: householdMembers.role, personId: people.id, householdId: householdMembers.householdId,
-  }).from(householdMembers)
-    .innerJoin(authUsers, and(eq(authUsers.id, householdMembers.userId), eq(authUsers.emailVerified, true)))
-    .leftJoin(people, and(eq(people.id, householdMembers.personId), eq(people.householdId, householdMembers.householdId)))
-    .where(eq(householdMembers.userId, user.id)).limit(2);
-  if (memberships.length > 1) throw new AccessDenied("Select a household before continuing.");
-  const member = memberships[0];
-  if (!member || member.householdId === null || member.personId === null) {
+  const identity = await verifiedSessionIdentity(requestHeaders);
+  let access: HouseholdAccess;
+  try { access = await resolveSessionHouseholdAccess(await getDb(), identity); }
+  catch (error) {
+    if (error instanceof HouseholdAccessError) throw new AccessDenied(error.message);
+    throw error;
+  }
+  if (access.personId === null) {
     throw new AccessDenied("Finish household and profile onboarding before continuing.");
   }
-  return { userId: member.userId, role: member.role, personId: member.personId };
+  return { userId: access.userId, role: access.role, personId: access.personId, householdAccess: access };
 }
 
 export type AccessPolicy = "member" | "owner" | { personId: number };

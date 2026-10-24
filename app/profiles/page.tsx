@@ -5,7 +5,7 @@ import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { ageFrom } from "@/lib/format";
 import { proteinTargetOf } from "@/lib/server/queries";
 import { getDb } from "@/lib/server/context";
-import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { memberHouseholdAccess } from "@/lib/auth/household-access";
 import { householdPeople } from "@/lib/server/household-plans";
 
 export const metadata: Metadata = { title: "Profiles" };
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function ProfilesPage() {
   const member = await requirePageMember();
   const db = await getDb();
-  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const access = await memberHouseholdAccess(db, member);
   const people = (await householdPeople(db, access)).filter((p) => access.role === "owner" || p.id === access.personId);
   return (
     <>

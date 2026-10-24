@@ -36,7 +36,7 @@ import { changeHouseholdDefaultView, VIEW_LISTS } from "@/lib/server/saved-views
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, slotBelongsToPlan } from "@/lib/server/plan-access";
-import { requireHouseholdProfile, resolveOnlyHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
+import { requireHouseholdProfile, memberHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
 import { HouseholdAccessError } from "@/lib/auth/household";
 import {
   deleteHouseholdPerson, householdPeople, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
@@ -53,7 +53,7 @@ async function householdContext(): Promise<Result<{ db: Db; access: HouseholdAcc
   try {
     const member = await requireMember();
     const db = await getDb();
-    return { ok: true, db, access: await resolveOnlyHouseholdAccess(db, member.userId) };
+    return { ok: true, db, access: await memberHouseholdAccess(db, member) };
   } catch (error) {
     if (error instanceof HouseholdAccessError) return fail(error.message);
     throw error;
@@ -141,7 +141,7 @@ export async function savePerson(input: PersonInputData): Promise<Result<{ id: n
   const db = await getDb();
   try {
     const member = await requireMember();
-    const access = await resolveOnlyHouseholdAccess(db, member.userId);
+    const access = await memberHouseholdAccess(db, member);
     const saved = await saveHouseholdPerson(db, access, parsed.data);
     refresh();
     return { ok: true, ...saved };
@@ -157,7 +157,7 @@ export async function deletePerson(id: number): Promise<Result> {
   const db = await getDb();
   try {
     const member = await requireMember();
-    const access = await resolveOnlyHouseholdAccess(db, member.userId);
+    const access = await memberHouseholdAccess(db, member);
     await deleteHouseholdPerson(db, access, id);
   } catch (error) {
     if (error instanceof HouseholdAccessError) return fail(error.message);

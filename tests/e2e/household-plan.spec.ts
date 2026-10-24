@@ -49,6 +49,89 @@ test("shopping progress is shared between independent browser contexts and persi
   } finally { await other.close(); }
 });
 
+test("two real sessions of one account use separate selected households and reject captured foreign-plan actions", async ({ page, browser }) => {
+  await page.goto("/groceries");
+  const checkbox = page.getByRole("checkbox").first();
+  await expect(checkbox).toBeVisible();
+  const original = await checkbox.isChecked();
+  const outgoing = page.waitForRequest((request) => request.method() === "POST" && !!request.headers()["next-action"]);
+  await mutation(page, () => checkbox.setChecked(!original));
+  const captured = await outgoing;
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const other = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const householdId = randomUUID();
+  let primary: typeof s.authSessions.$inferSelect | undefined;
+  let secondarySessionId: string | undefined;
+  let personId: number | undefined;
+  try {
+    const [account] = await handle.db.select({ id: s.authUsers.id }).from(s.authUsers)
+      .where(eq(s.authUsers.email, "authorized-browser-fixture@example.test"));
+    const sessions = await handle.db.select().from(s.authSessions).where(eq(s.authSessions.userId, account!.id));
+    expect(sessions).toHaveLength(1);
+    primary = sessions[0]!;
+    await handle.db.insert(s.households).values({ id: householdId, name: "Separate selected household" });
+    const [profile] = await handle.db.insert(s.people).values({
+      householdId, name: "Secondary selected profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    personId = profile!.id;
+    await handle.db.insert(s.householdMembers).values({ householdId, userId: account!.id, role: "member", personId });
+    await handle.db.update(s.authSessions).set({
+      activeHouseholdId: "00000000-0000-4000-8000-000000000001",
+      householdSelectionVersion: primary.householdSelectionVersion + 1,
+    }).where(eq(s.authSessions.id, primary.id));
+    const login = await other.request.post("http://127.0.0.1:3112/api/auth/sign-in/email", {
+      headers: { origin: "http://127.0.0.1:3112", "x-forwarded-for": "127.0.0.32" },
+      data: { email: "authorized-browser-fixture@example.test", password: "Synthetic-authorized-browser-password-123!" },
+    });
+    expect(login.status()).toBe(200);
+    const secondSessions = (await handle.db.select().from(s.authSessions).where(eq(s.authSessions.userId, account!.id)))
+      .filter((session) => session.id !== primary!.id);
+    expect(secondSessions).toHaveLength(1);
+    secondarySessionId = secondSessions[0]!.id;
+    await handle.db.update(s.authSessions).set({ activeHouseholdId: householdId, householdSelectionVersion: 1 })
+      .where(eq(s.authSessions.id, secondarySessionId));
+    const second = await other.newPage();
+    await second.goto("http://127.0.0.1:3112/account");
+    await expect(second.getByRole("link", { name: "Profile: Secondary selected profile", exact: true })).toBeVisible();
+    await expect(second.getByRole("heading", { name: "Household cooks", exact: true })).toHaveCount(0);
+    await page.goto("/account");
+    await expect(page.getByRole("link", { name: "Profile: Synthetic authorized fixture", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Household cooks", exact: true })).toBeVisible();
+    await second.goto("http://127.0.0.1:3112/profiles");
+    await expect(second.getByText("Secondary selected profile", { exact: true })).toBeVisible();
+    await expect(second.getByText("Synthetic authorized fixture", { exact: true })).toHaveCount(0);
+    const download = await other.request.get("http://127.0.0.1:3112/api/account/export");
+    expect(download.status()).toBe(200);
+    const file = await download.json();
+    expect(file.profile.name).toBe("Secondary selected profile");
+    expect(JSON.stringify(file)).not.toContain(primary.token);
+    const before = await handle.db.select().from(s.groceryState);
+    const denied = await other.request.post("http://127.0.0.1:3112/groceries", {
+      headers: {
+        origin: "http://127.0.0.1:3112", "next-action": captured.headers()["next-action"]!,
+        "content-type": captured.headers()["content-type"]!,
+      },
+      data: captured.postData()!,
+    });
+    expect(denied.status()).toBe(200);
+    expect(await denied.text()).toContain("not available");
+    expect(await handle.db.select().from(s.groceryState)).toEqual(before);
+    await page.goto("/groceries");
+    await mutation(page, () => page.getByRole("checkbox").first().setChecked(original));
+  } finally {
+    await other.close();
+    if (secondarySessionId) await handle.db.delete(s.authSessions).where(eq(s.authSessions.id, secondarySessionId));
+    if (primary) await handle.db.update(s.authSessions).set({
+      activeHouseholdId: primary.activeHouseholdId, householdSelectionVersion: primary.householdSelectionVersion + 2,
+    }).where(eq(s.authSessions.id, primary.id));
+    await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
+    if (personId !== undefined) await handle.db.delete(s.people).where(eq(s.people.id, personId));
+    await handle.db.delete(s.households).where(eq(s.households.id, householdId));
+    await handle.close();
+  }
+});
+
 test("ambiguous household membership blocks private pages, downloads and captured mutations until resolved", async ({ page }) => {
   await page.goto("/groceries");
   const checkbox = page.getByRole("checkbox").first();
@@ -74,11 +157,11 @@ test("ambiguous household membership blocks private pages, downloads and capture
       data: captured.postData()!,
     });
     expect(denied.status()).toBe(200);
-    expect(await denied.text()).toContain("Select a household");
+    expect(await denied.text()).toContain("Select an available household");
     expect(await handle.db.select().from(s.groceryState)).toEqual(before);
     const download = await page.request.get("/api/account/export");
     expect(download.status()).toBe(403);
-    expect(await download.text()).toContain("Select a household");
+    expect(await download.text()).toContain("Select an available household");
     await page.goto("/groceries");
     await expect(page).toHaveURL(/\/onboarding/);
     await expect(page.getByRole("alert").filter({ hasText: "Your household ownership" })).toContainText("before onboarding can continue");

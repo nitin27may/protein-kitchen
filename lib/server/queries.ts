@@ -28,7 +28,7 @@ import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
 import { householdFeedback, personalFeedback, planningFeedback } from "./feedback";
 import { requireMember } from "../auth/access";
-import { resolveOnlyHouseholdAccess } from "../auth/household-access";
+import { memberHouseholdAccess } from "../auth/household-access";
 import { householdPeople, householdPerson, householdPlan, householdPlans } from "./household-plans";
 import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
@@ -40,7 +40,7 @@ export type PersonRow = typeof s.people.$inferSelect;
 
 async function requestHousehold(db: Db) {
   const member = await requireMember();
-  return resolveOnlyHouseholdAccess(db, member.userId);
+  return memberHouseholdAccess(db, member);
 }
 
 export async function getPhotoIndex() {

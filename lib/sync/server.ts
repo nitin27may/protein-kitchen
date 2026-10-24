@@ -6,13 +6,13 @@ import { readStateRunStatus, runStateSync } from "./run";
 import { readStateSyncStatus } from "./snapshot";
 import { localStateTestFetch } from "./test-fetch";
 import { requireMember } from "../auth/access";
-import { resolveOnlyHouseholdAccess, requireHouseholdProfile } from "../auth/household-access";
+import { memberHouseholdAccess, requireHouseholdProfile } from "../auth/household-access";
 import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
 
 async function configuredOwner(db: Db, householdId: string) {
   const member = await requireMember();
-  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const access = await memberHouseholdAccess(db, member);
   requireHouseholdProfile(access);
   if (access.householdId !== householdId || access.role !== "owner") {
     throw new HouseholdAccessError("Private shared-state sync is not configured for this household.");

@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { memberHouseholdAccess } from "@/lib/auth/household-access";
 import { HouseholdAccessError } from "@/lib/auth/household";
 import { getBlobStore } from "@/lib/blob";
 import * as s from "@/lib/db/schema";
@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ uid: st
   const db = await getDb();
   let householdId: string;
   try {
-    householdId = (await resolveOnlyHouseholdAccess(db, access.member.userId)).householdId;
+    householdId = (await memberHouseholdAccess(db, access.member)).householdId;
   } catch (error) {
     if (!(error instanceof HouseholdAccessError)) throw error;
     return new Response("Household not available", { status: 403, headers: { "Cache-Control": "private, no-store" } });

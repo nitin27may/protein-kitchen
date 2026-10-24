@@ -1,7 +1,7 @@
 import { and, eq, getTableName, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from "vitest";
 import * as s from "../lib/db/schema";
-import { refreshHouseholdAccess } from "../lib/auth/household-access";
+import { memberHouseholdAccess, refreshHouseholdAccess } from "../lib/auth/household-access";
 import { resolveSessionHouseholdAccess, selectSessionHousehold, sessionHouseholds, type SessionIdentity } from "../lib/auth/household-session";
 import { mutateHouseholdState } from "../lib/server/household-plans";
 import { openDb, type DbHandle } from "./helpers/db";
@@ -100,6 +100,19 @@ it("keeps repeated selection idempotent and isolates simultaneous sessions of th
   await selectSessionHousehold(h.db, { userId: "cook", sessionId: "two" }, "b");
   expect(await resolveSessionHouseholdAccess(h.db, identity)).toMatchObject({ householdId: "a" });
   expect(await resolveSessionHouseholdAccess(h.db, { userId: "cook", sessionId: "two" })).toMatchObject({ householdId: "b" });
+});
+
+it("preserves the request capability and refuses mismatched account, role, profile or stale session metadata", async () => {
+  const access = await resolveSessionHouseholdAccess(h.db, identity);
+  const member = { userId: "cook", role: "owner" as const, personId: firstPerson, householdAccess: access };
+  expect(await memberHouseholdAccess(h.db, member)).toEqual(access);
+  for (const mismatch of [
+    { ...member, userId: "other" }, { ...member, role: "member" as const }, { ...member, personId: secondPerson },
+  ]) {
+    await expect(memberHouseholdAccess(h.db, mismatch)).rejects.toThrow("access changed");
+  }
+  await selectSessionHousehold(h.db, identity, "a");
+  await expect(memberHouseholdAccess(h.db, member)).rejects.toThrow("session changed");
 });
 
 it.each([

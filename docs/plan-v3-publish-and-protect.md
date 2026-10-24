@@ -324,6 +324,50 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: session-bound private request adoption
+
+Dependencies: session selection storage/capabilities passed full local acceptance.
+Carry that verified capability out of the authoritative member guard, without
+returning session ids in any response or accepting them from a form. Resolve the
+provider session once at the boundary; independently recheck database account,
+exact session/expiry, selected membership and linked profile. Convert expected
+household refusals into the existing uncached access-denial/page redirects, while
+unexpected infrastructure failures continue to propagate.
+
+Replace single-membership guesses in private plan/profile/shared-state queries,
+actions, private photo bytes, account projections and interactive sync with a
+shared member-to-household resolver. Preserve the session/version binding through
+transaction refresh. Trusted internal callers without a bound request capability
+remain constrained to exactly one household; this is transitional compatibility,
+not a client-controlled fallback or support for ambiguous memberships. Reject a
+capability whose account, role or profile disagrees with the member projection.
+
+Acceptance: actual guards refuse missing/expired/foreign/unverified sessions;
+selected membership drives role/profile and all adopted private surfaces.
+Backend tests exercise bound-scope mismatches and preserve legacy trusted test
+callers. Retained browser coverage uses two genuine provider sessions for the
+same synthetic account, selects separate households in fixture SQL, verifies
+isolated account/profile views and captured foreign-plan action refusal, then
+cleans only the synthetic fixture. Also retain the unselected-ambiguity refusal
+journey. Run full coverage/native locking, browser, types and build.
+
+This slice does not expose a switcher or change admission. Onboarding management
+and selector UX remain the next coordinated slice; no second membership is
+created by a normal user yet. No cloud operations or secrets changes.
+
+Acceptance complete locally: the authoritative member guard derives exact
+provider identity and carries a verified session-bound capability; all adopted
+private reads/actions/photo delivery/account projections/interactive sync use
+the shared resolver rather than guessing a membership. Expected scope/session
+refusals retain private denial semantics, and unexpected failures propagate.
+All **1,924 tests / 95 files**, **32 retained browser journeys**, types and build
+pass; existing critical gates remain intact, overall statements 72.61%. The new
+real-provider two-session browser case verifies separate account/profile views,
+correct private download and captured foreign-plan write refusal for one account
+in two selected households. The revoked-membership case now asserts the current
+selection-required message rather than the old onboarding copy. Selector and
+onboarding-management UX remain pending; no normal-user admission was widened.
+
 ### H1/H2 slice: session selection storage and verified capability
 
 Dependencies: composite membership identity is accepted locally. Before wiring a

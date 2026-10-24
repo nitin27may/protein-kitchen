@@ -10,6 +10,20 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest session-bound private requests:** the member guard resolves the exact
+provider session and current selected membership/profile. Private queries,
+actions, account/profile pages, photo bytes and interactive sync now retain that
+capability through revalidation rather than guessing a membership; trusted
+internal legacy callers remain restricted to exactly one household. **Acceptance:
+1,924 tests / 95 files, all 32 retained browser journeys, types/build and critical
+coverage gates pass**, overall statements 72.61%. A retained real-provider case
+uses two sessions of the same account with separate fixture-selected households,
+verifies isolated account/profile/download projections and rejects captured
+foreign-plan writes. No session ids/tokens are added to responses. Selector
+action/UI and onboarding-management scope remain pending before plural/email-first
+admission, alongside operator and deployment contracts. No remote operations or
+secrets changed.
+
 **Latest session-selection foundation:** migration `0018` adds internal session
 household preference and version, preserving provider fields and existing null/
 zero behavior. Transactional list/select/resolve services verify the account,

@@ -6,7 +6,7 @@ import { PageTitle } from "@/components/ui";
 import { getRoutineCatalog } from "@/lib/routines/catalog";
 import { getData, getDb } from "@/lib/server/context";
 import { getPersonRoutines } from "@/lib/server/queries";
-import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { memberHouseholdAccess } from "@/lib/auth/household-access";
 import { householdPerson } from "@/lib/server/household-plans";
 
 export const metadata: Metadata = { title: "Edit profile" };
@@ -16,7 +16,7 @@ export default async function EditProfile({ params }: { params: Promise<{ id: st
   const member = await requirePageMember({ personId: Number((await params).id) });
   const { id } = await params;
   const db = await getDb();
-  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const access = await memberHouseholdAccess(db, member);
   const p = Number.isInteger(Number(id)) ? await householdPerson(db, access, Number(id)) : undefined;
   if (!p) notFound();
   const catalog = getRoutineCatalog(getData());
