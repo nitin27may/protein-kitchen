@@ -55,12 +55,19 @@ describe("Postgres baseline parity", () => {
           foreign: ref.foreignColumns.map((c) => c.name), onDelete: key.onDelete ?? "no action",
         };
       }).sort((a, b) => a.columns.join().localeCompare(b.columns.join()));
-      expect(foreignKeys(target).filter((fk) => fk.table !== "households"), name).toEqual(foreignKeys(source));
+      expect(foreignKeys(target).filter((fk) => fk.table !== "households" && !fk.columns.includes("household_id")), name).toEqual(foreignKeys(source));
+      expect(foreignKeys(target).filter((fk) => fk.columns.includes("household_id") && fk.table !== "households"), name).toEqual(
+        name === "plans" ? [{ columns: ["household_id", "setup_id"], table: "plan_setups", foreign: ["household_id", "id"], onDelete: "no action" }] : [],
+      );
       const indexes = (config: typeof source | typeof target) => config.indexes.map((index) => ({
         name: index.config.name, unique: index.config.unique,
         columns: index.config.columns.map((c) => "name" in c ? c.name : undefined),
       })).sort((a, b) => a.name!.localeCompare(b.name!));
-      expect(indexes(target).filter((index) => !index.name!.endsWith("_household_idx")), name).toEqual(indexes(source));
+      expect(indexes(target).filter((index) => !index.name!.endsWith("_household_idx") && !index.name!.endsWith("_household_id_uq")), name).toEqual(indexes(source));
+      expect(indexes(target).filter((index) => index.name!.endsWith("_household_id_uq")), name).toEqual(
+        name === "people" || name === "planSetups"
+          ? [{ name: `${source.name}_household_id_uq`, unique: true, columns: ["household_id", "id"] }] : [],
+      );
       const uniqueConstraints = (config: typeof source | typeof target) => config.uniqueConstraints.map((key) => ({
         columns: key.columns.map((c) => c.name),
       }));
@@ -123,7 +130,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(11);
+    expect(journal.rows).toHaveLength(12);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

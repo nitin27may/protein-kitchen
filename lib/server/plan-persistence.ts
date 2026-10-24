@@ -34,7 +34,7 @@ export async function persistNewPlan(
 ): Promise<number> {
   return withTx(db, async (tx) => {
     const setupId = await insertPlanSetup(tx, input.setup);
-    const plan = (await tx.insert(s.plans).values({ setupId, seed: input.seed, createdAt: input.setup.createdAt }).returning({ id: s.plans.id }))[0];
+    const plan = (await tx.insert(s.plans).values({ householdId: input.setup.householdId, setupId, seed: input.seed, createdAt: input.setup.createdAt }).returning({ id: s.plans.id }))[0];
     for (const routine of input.routines) await tx.insert(s.planRoutines).values({ ...routine, planId: plan!.id });
     await insertSlots(tx, plan!.id, input.slots, input.recipeIds);
     return plan!.id;

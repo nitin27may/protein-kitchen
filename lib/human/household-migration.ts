@@ -5,7 +5,7 @@ import { withTx } from "../db/tx";
 
 const legacyHouseholdId = "00000000-0000-4000-8000-000000000001";
 const ownershipRoots = [
-  s.householdInvitations, s.householdMembers, s.pantry, s.people, s.photoDecisions, s.photos,
+  s.people, s.householdInvitations, s.householdMembers, s.pantry, s.photoDecisions, s.photos,
   s.planSetups, s.plans, s.prepTaskState, s.recipeFeedback, s.recipeLinks, s.savedViews, s.stateSyncJobs, s.syncState,
 ];
 

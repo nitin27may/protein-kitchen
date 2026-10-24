@@ -22,7 +22,7 @@ const ownershipTables = [
 ];
 
 /** Run the real previous journal, then upgrade with the real current journal. */
-async function beforeHouseholdMigration(run: (db: Db, upgrade: () => Promise<void>) => Promise<void>) {
+async function beforeHouseholdMigration(run: (db: Db, upgrade: () => Promise<void>) => Promise<void>, beforeIndex = 10) {
   const directory = mkdtempSync(path.join(os.tmpdir(), "pk-household-migration-"));
   const client = new PGlite();
   const db = drizzle(client, { schema });
@@ -30,7 +30,7 @@ async function beforeHouseholdMigration(run: (db: Db, upgrade: () => Promise<voi
     cpSync(folder, directory, { recursive: true });
     const journalFile = path.join(directory, "meta/_journal.json");
     const journal = JSON.parse(readFileSync(journalFile, "utf8")) as { entries: { idx: number }[] };
-    journal.entries = journal.entries.filter((entry) => entry.idx < 10);
+    journal.entries = journal.entries.filter((entry) => entry.idx < beforeIndex);
     writeFileSync(journalFile, JSON.stringify(journal));
     await migrate(db, { migrationsFolder: directory });
     await run(db, () => migrate(db, { migrationsFolder: folder }));
@@ -62,6 +62,41 @@ async function insertLegacy(db: Db, snapshot: SqliteSnapshot) {
 }
 
 describe("household ownership expansion migration", () => {
+  it("rolls back all cross-parent DDL on inconsistent owned rows and permits an explicit repair then retry", async () => {
+    await beforeHouseholdMigration(async (db, upgrade) => {
+      await db.insert(schema.households).values([{ id: "a", name: "First fixture" }, { id: "b", name: "Second fixture" }]);
+      const [person] = await db.insert(schema.people).values({
+        householdId: "a", name: "Synthetic profile", sex: "other", birthDate: "2000-01-01",
+        heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+      }).returning({ id: schema.people.id });
+      await db.insert(schema.authUsers).values({ id: "fixture", name: "Fixture", email: "fixture@example.test", emailVerified: true });
+      await db.insert(schema.householdMembers).values({ householdId: "b", userId: "fixture", personId: person!.id, role: "owner" });
+      await db.insert(schema.householdInvitations).values({
+        householdId: "b", id: "fixture", email: "future@example.test", tokenHash: "fixture", invitedByUserId: "fixture", personId: person!.id,
+        createdAt: new Date("2026-11-01T12:00:00.000Z"), expiresAt: new Date("2026-11-08T12:00:00.000Z"),
+      });
+      const [setup] = await db.insert(schema.planSetups).values({
+        householdId: "a", personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["dinner"],
+        cuisineBalance: 0.5, createdAt: "2026-11-01T12:00:00.000Z",
+      }).returning({ id: schema.planSetups.id });
+      await db.insert(schema.plans).values({ householdId: "b", setupId: setup!.id, seed: 42, createdAt: "2026-11-01T12:00:00.000Z" });
+      const original = await db.select().from(schema.people);
+      for (const table of [schema.householdInvitations, schema.householdMembers, schema.plans]) {
+        await expect(upgrade()).rejects.toThrow();
+        const index = await db.execute(sql`select to_regclass('public.people_household_id_uq') as name`);
+        expect(index).toMatchObject({ rows: [{ name: null }] });
+        expect(await db.select().from(schema.people)).toEqual(original);
+        await db.update(table).set({ householdId: "a" });
+      }
+      await upgrade();
+      await upgrade();
+      expect(await db.select().from(schema.people)).toEqual(original);
+      await expect(db.update(schema.householdMembers).set({ householdId: "b" })).rejects.toThrow();
+      await expect(db.update(schema.householdInvitations).set({ householdId: "b" })).rejects.toThrow();
+      await expect(db.update(schema.plans).set({ householdId: "b" })).rejects.toThrow();
+    }, 11);
+  });
+
   it("leaves fresh empty targets empty for guarded source imports and is journal-idempotent", async () => {
     await beforeHouseholdMigration(async (db, upgrade) => {
       await upgrade();

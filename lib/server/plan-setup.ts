@@ -5,6 +5,7 @@ import { isIsoWeekday } from "../planner/weekdays";
 /** Relative imports only, so tests can run this against an in-memory database. */
 
 export interface PlanSetupValues {
+  householdId?: string;
   personIds: number[];
   startDate: string;
   endDate: string;
@@ -24,6 +25,7 @@ export async function insertPlanSetup(tx: Tx, v: PlanSetupValues): Promise<numbe
   const row = (await tx
     .insert(s.planSetups)
     .values({
+      householdId: v.householdId,
       personIds: v.personIds,
       startDate: v.startDate,
       endDate: v.endDate,

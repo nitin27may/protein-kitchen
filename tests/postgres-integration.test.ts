@@ -36,6 +36,8 @@ import { fixtureConfiguration as syncConfig, fixtureTime, githubFixture } from "
 import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
+import { resolveHouseholdAccess } from "../lib/auth/household-access";
+import { deleteHouseholdPlan, householdPlan, householdPlans, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -54,6 +56,64 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it("scopes owned plan writes on native Postgres and serializes membership/verification revocation until commit", async () => {
+    await handle.db.insert(s.households).values([{ id: "native-a", name: "Fixture A" }, { id: "native-b", name: "Fixture B" }]);
+    const profiles = await handle.db.insert(s.people).values(["native-a", "native-b"].map((householdId) => ({
+      householdId, name: "Synthetic profile", sex: "other" as const, birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light" as const, dietFlags: [],
+    }))).returning({ id: s.people.id });
+    await handle.db.insert(s.authUsers).values(["native-a", "native-b"].map((id) => ({
+      id, name: "Synthetic account", email: `${id}@example.test`, emailVerified: true,
+    })));
+    await handle.db.insert(s.householdMembers).values(profiles.map((profile, i) => ({
+      householdId: i === 0 ? "native-a" : "native-b", userId: i === 0 ? "native-a" : "native-b",
+      personId: profile.id, role: "owner" as const,
+    })));
+    const a = await resolveHouseholdAccess(handle.db, "native-a", "native-a");
+    const b = await resolveHouseholdAccess(handle.db, "native-b", "native-b");
+    await expect(handle.db.update(s.householdMembers).set({ householdId: "native-b" }).where(eq(s.householdMembers.userId, "native-a"))).rejects.toThrow();
+    await expect(handle.db.insert(s.householdInvitations).values({
+      householdId: "native-b", id: "cross-parent", email: "recipient@example.test", tokenHash: "cross-parent",
+      invitedByUserId: "native-b", personId: profiles[0]!.id, expiresAt: new Date(Date.now() + 86_400_000),
+    })).rejects.toThrow();
+    const input = {
+      setup: {
+        personIds: [profiles[0]!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["dinner"],
+        cuisineBalance: 0.5, maxActiveMin: null, healthFocus: { nutrientDense: true, lowSugar: true, light: true },
+        prepStyle: "leftovers" as const, createdAt: at,
+      },
+      seed: 42, slots: [], routines: [], recipeIds: new Map<string, number>(),
+    };
+    const contender = await handle.pool.connect();
+    try {
+      await withTx(handle.db, async (tx) => {
+        const id = await persistHouseholdPlan(tx, a, input);
+        expect(await householdPlan(tx, a, id)).toMatchObject({ plan: { householdId: "native-a" } });
+        for (const statement of [
+          "delete from household_members where user_id = 'native-a'",
+          "update auth_users set email_verified = false where id = 'native-a'",
+        ]) {
+          await contender.query("begin");
+          try {
+            await contender.query("set local lock_timeout = '150ms'");
+            await expect(contender.query(statement)).rejects.toMatchObject({ code: "55P03" });
+          } finally { await contender.query("rollback"); }
+        }
+      });
+      expect(await householdPlans(handle.db, a)).toHaveLength(1);
+      expect(await householdPlans(handle.db, b)).toEqual([]);
+      await expect(handle.db.update(s.planSetups).set({ householdId: "native-b" })).rejects.toThrow();
+      await expect(handle.db.update(s.plans).set({ householdId: "native-b" })).rejects.toThrow();
+      const [owned] = await householdPlans(handle.db, a);
+      await expect(deleteHouseholdPlan(handle.db, b, owned!.id)).rejects.toThrow("not available");
+      await expect(regenerateHouseholdPlan(handle.db, b, owned!.id, 7, [], input.recipeIds)).rejects.toThrow("not available");
+      await expect(persistHouseholdPlan(handle.db, a, { ...input, setup: { ...input.setup, personIds: [profiles[1]!.id] } })).rejects.toThrow("not in this household");
+      await contender.query("delete from household_members where user_id = 'native-a'");
+      await expect(persistHouseholdPlan(handle.db, a, input)).rejects.toThrow("not available");
+      expect(await handle.db.select().from(s.plans)).toHaveLength(1);
+    } finally { contender.release(); }
+  });
 
   it("atomically expands populated legacy household ownership on native Postgres and never replays a successful backfill", async () => {
     const database = `protein_kitchen_household_${randomUUID().replaceAll("-", "")}`;

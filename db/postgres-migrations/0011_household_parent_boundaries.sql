@@ -1,0 +1,5 @@
+CREATE UNIQUE INDEX "people_household_id_uq" ON "people" USING btree ("household_id","id");--> statement-breakpoint
+CREATE UNIQUE INDEX "plan_setups_household_id_uq" ON "plan_setups" USING btree ("household_id","id");--> statement-breakpoint
+ALTER TABLE "household_invitations" ADD CONSTRAINT "household_invitations_profile_household_fk" FOREIGN KEY ("household_id","person_id") REFERENCES "public"."people"("household_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "household_members" ADD CONSTRAINT "household_members_profile_household_fk" FOREIGN KEY ("household_id","person_id") REFERENCES "public"."people"("household_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "plans" ADD CONSTRAINT "plans_setup_household_fk" FOREIGN KEY ("household_id","setup_id") REFERENCES "public"."plan_setups"("household_id","id") ON DELETE no action ON UPDATE no action;

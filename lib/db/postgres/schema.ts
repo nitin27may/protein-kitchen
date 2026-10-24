@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, doublePrecision as real, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, check, doublePrecision as real, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { bool, isoDate, isoTimestamp, json } from "./columns";
 
 const id = () => integer("id").primaryKey().generatedByDefaultAsIdentity();
@@ -90,6 +90,7 @@ export const householdMembers = pgTable("household_members", {
   index("household_members_household_idx").on(t.householdId),
   check("household_members_role_check", sql`${t.role} in ('owner', 'member')`),
   uniqueIndex("household_members_person_uq").on(t.personId),
+  foreignKey({ name: "household_members_profile_household_fk", columns: [t.householdId, t.personId], foreignColumns: [people.householdId, people.id] }),
 ]);
 
 export const householdInvitations = pgTable("household_invitations", {
@@ -106,6 +107,7 @@ export const householdInvitations = pgTable("household_invitations", {
   revokedAt: authTime("revoked_at"),
 }, (t) => [
   index("household_invitations_household_idx").on(t.householdId),
+  foreignKey({ name: "household_invitations_profile_household_fk", columns: [t.householdId, t.personId], foreignColumns: [people.householdId, people.id] }),
   check("household_invitations_email_check", sql`${t.email} = lower(trim(${t.email}))`),
   check("household_invitations_expiry_check", sql`${t.expiresAt} > ${t.createdAt}`),
   uniqueIndex("household_invitations_pending_email_uq").on(t.email)
@@ -237,7 +239,10 @@ export const people = pgTable("people", {
   reminderTime: text("reminder_time"),
   reminderTimezone: text("reminder_timezone"),
   dietFlags: json<string[]>("diet_flags").notNull(),
-}, (t) => [index("people_household_idx").on(t.householdId)]);
+}, (t) => [
+  index("people_household_idx").on(t.householdId),
+  uniqueIndex("people_household_id_uq").on(t.householdId, t.id),
+]);
 
 export const recipeFeedback = pgTable("recipe_feedback", {
   householdId: householdId(),
@@ -291,7 +296,10 @@ export const planSetups = pgTable("plan_setups", {
   shoppingDay: integer("shopping_day"),
   prepDay: integer("prep_day"),
   createdAt: isoTimestamp("created_at").notNull(),
-}, (t) => [index("plan_setups_household_idx").on(t.householdId)]);
+}, (t) => [
+  index("plan_setups_household_idx").on(t.householdId),
+  uniqueIndex("plan_setups_household_id_uq").on(t.householdId, t.id),
+]);
 
 export const plans = pgTable("plans", {
   householdId: householdId(),
@@ -299,7 +307,10 @@ export const plans = pgTable("plans", {
   setupId: integer("setup_id").notNull().references(() => planSetups.id, { onDelete: "no action" }),
   seed: integer("seed").notNull(),
   createdAt: isoTimestamp("created_at").notNull(),
-}, (t) => [index("plans_household_idx").on(t.householdId)]);
+}, (t) => [
+  index("plans_household_idx").on(t.householdId),
+  foreignKey({ name: "plans_setup_household_fk", columns: [t.householdId, t.setupId], foreignColumns: [planSetups.householdId, planSetups.id] }),
+]);
 
 export const planSlots = pgTable("plan_slots", {
   id: id(),
