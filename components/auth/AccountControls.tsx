@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { cancelInvitation, inviteCook } from "@/app/onboarding/actions";
+import { cancelInvitation, changeCookRole, inviteCook, removeCook } from "@/app/onboarding/actions";
 import { authRequest } from "@/lib/auth/browser";
 import { Banner, Button, Field, Input, Select } from "@/components/ui";
 
-export function AccountControls({ owner, profiles, invitations }: {
+export function AccountControls({ owner, profiles, invitations, members, currentUserId }: {
   owner: boolean; profiles: { id: number; name: string }[];
   invitations: { id: string; email: string }[];
+  members: { userId: string; role: "owner" | "member"; name: string; email: string; profileName: string | null }[];
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -17,6 +19,7 @@ export function AccountControls({ owner, profiles, invitations }: {
   const [tokenEmail, setTokenEmail] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [confirmation, setConfirmation] = useState<{ userId: string; role?: "owner" | "member" } | null>(null);
   async function run(task: () => Promise<void>) {
     setPending(true); setError("");
     try { await task(); }
@@ -29,6 +32,33 @@ export function AccountControls({ owner, profiles, invitations }: {
       await authRequest("/sign-out", {});
       setToken(""); window.location.replace("/sign-in");
     })}>Sign out</Button>
+    {owner ? <section className="space-y-4">
+      <h2 className="text-xl font-semibold">Household cooks</h2>
+      <p className="text-sm text-muted">Owners manage access and private profiles. Removing a cook signs them out but keeps their meal profile and the household's shared plans, shopping and prep.</p>
+      {members.map((member) => <fieldset key={member.userId} aria-label={`Cook ${member.name}`} disabled={pending} className="space-y-3 rounded-control border border-line p-4">
+        <legend className="px-1 font-semibold">{member.name}{member.userId === currentUserId ? " (you)" : ""}</legend>
+        <p className="break-all text-sm">{member.email}</p>
+        <p className="text-sm"><span className="capitalize">{member.role}</span>{member.profileName ? ` · ${member.profileName}` : " · Profile onboarding incomplete"}</p>
+        {confirmation?.userId === member.userId ? <div className="space-y-3">
+          <p className="text-sm">{confirmation.role
+            ? `Make ${member.name} ${confirmation.role === "owner" ? "an owner" : "a member"}? Demotion also revokes their pending invitations.`
+            : `Remove ${member.name}'s household access and sign out all their devices? Their profile and shared data will remain.`}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant={confirmation.role ? "primary" : "danger"} loading={pending} onClick={() => void run(async () => {
+              const result = confirmation.role ? await changeCookRole(member.userId, confirmation.role) : await removeCook(member.userId);
+              if (!result.ok) { setError(result.error); return; }
+              setConfirmation(null); setToken(""); router.refresh();
+            })}>{confirmation.role ? "Confirm role change" : "Confirm removal"}</Button>
+            <Button variant="secondary" onClick={() => setConfirmation(null)}>Cancel</Button>
+          </div>
+        </div> : <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setConfirmation({ userId: member.userId, role: member.role === "owner" ? "member" : "owner" })}>
+            {member.role === "owner" ? "Make member" : "Make owner"}
+          </Button>
+          <Button variant="danger" onClick={() => setConfirmation({ userId: member.userId })}>Remove cook</Button>
+        </div>}
+      </fieldset>)}
+    </section> : null}
     {owner ? <section className="space-y-4">
       <h2 className="text-xl font-semibold">Invite another cook</h2>
       <p>They get their own login and targets, and use this household's existing plans, shopping list and prep.</p>

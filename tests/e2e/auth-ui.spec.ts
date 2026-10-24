@@ -71,6 +71,11 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
   await expect(page.getByRole("link", { name: "Profile: Synthetic owner targets" })).toBeVisible();
   const ownerProfile = await page.getByRole("link", { name: "Profile: Synthetic owner targets" }).getAttribute("href");
   expect(ownerProfile).toMatch(/^\/profiles\/\d+$/);
+  const ownerControls = page.getByRole("group", { name: "Cook Synthetic UI owner", exact: true });
+  await ownerControls.getByRole("button", { name: "Make member", exact: true }).click();
+  await ownerControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("at least one verified owner");
+  await ownerControls.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByLabel("Cook's email").fill(cook);
   await page.getByLabel("Reserve an existing profile (optional)").selectOption("300");
   await page.getByRole("button", { name: "Create invitation code" }).click();
@@ -99,6 +104,23 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await expect(second).toHaveURL(/\/account$/);
     await second.goto("/profiles/new");
     await expect(second).toHaveURL(/\/account$/);
+    await page.reload();
+    const cookControls = page.getByRole("group", { name: "Cook Synthetic UI cook", exact: true });
+    await cookControls.getByRole("button", { name: "Make owner", exact: true }).click();
+    await cookControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
+    await expect(cookControls.getByRole("button", { name: "Make member", exact: true })).toBeVisible();
+    await second.reload();
+    await expect(second.getByRole("heading", { name: "Household cooks", exact: true })).toBeVisible();
+    await cookControls.getByRole("button", { name: "Make member", exact: true }).click();
+    await page.route("**/account", (route) => route.request().method() === "POST" ? route.abort("failed") : route.continue());
+    await cookControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+    await expect(cookControls.getByRole("button", { name: "Confirm role change", exact: true })).toBeEnabled();
+    await page.unroute("**/account");
+    await cookControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
+    await expect(cookControls.getByRole("button", { name: "Make owner", exact: true })).toBeVisible();
+    await second.reload();
+    await expect(second.getByRole("heading", { name: "Household cooks", exact: true })).toHaveCount(0);
     const plan = `/plan/${process.env.E2E_PREP_PLAN_ID}`;
     await page.goto(plan);
     await second.goto(plan);
@@ -151,6 +173,18 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
       .toEqual({ local: [], session: [] });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: "test-results/auth-account-phone.png", fullPage: true });
+    await cookControls.getByRole("button", { name: "Remove cook", exact: true }).click();
+    await cookControls.getByRole("button", { name: "Confirm removal", exact: true }).click();
+    await expect(cookControls).toHaveCount(0);
+    await second.goto("/groceries");
+    await expect(second).toHaveURL(/\/sign-in$/);
+    expect((await other.request.get(`http://127.0.0.1:3112/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=pdf`)).status()).toBe(401);
+    await page.goto(plan);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(title);
+    await page.goto("/groceries");
+    await expect(page.getByRole("checkbox").first()).toBeChecked({ checked: !checked });
+    await page.goto(`${plan}/prep`);
+    await expect(page.getByRole("checkbox").first()).toBeChecked({ checked: !done });
   } finally { await other.close(); }
 });
 

@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z, ZodError } from "zod";
 import type { Result } from "@/app/actions";
 import { getDb } from "@/lib/server/context";
-import { verifiedSessionUser } from "@/lib/auth/access";
+import { checkPermission, requireMember, verifiedSessionUser } from "@/lib/auth/access";
 import { AuthConfigurationError } from "@/lib/auth/config";
-import { acceptInvitation, assignMemberProfile, claimHousehold, createMemberProfile, HouseholdAccessError, issueInvitation, revokeInvitation } from "@/lib/auth/household";
+import { acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, HouseholdAccessError, issueInvitation, removeHouseholdMember, revokeInvitation } from "@/lib/auth/household";
 import type { PersonInputData } from "@/lib/schemas/person";
 
 async function attempt<T extends object>(task: () => Promise<T>): Promise<Result<T>> {
@@ -70,6 +70,24 @@ export async function cancelInvitation(id: string): Promise<Result> {
   return attempt(async () => {
     const user = await verifiedSessionUser();
     await revokeInvitation(await getDb(), user.id, id);
+    return {};
+  });
+}
+
+export async function changeCookRole(userId: string, role: "owner" | "member"): Promise<Result> {
+  return attempt(async () => {
+    const actor = await requireMember();
+    checkPermission(actor, "owner");
+    await changeMemberRole(await getDb(), actor.userId, userId, role);
+    return {};
+  });
+}
+
+export async function removeCook(userId: string): Promise<Result> {
+  return attempt(async () => {
+    const actor = await requireMember();
+    checkPermission(actor, "owner");
+    await removeHouseholdMember(await getDb(), actor.userId, userId);
     return {};
   });
 }

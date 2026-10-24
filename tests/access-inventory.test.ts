@@ -55,4 +55,20 @@ describe("application authorization inventory", () => {
     expect(actions).toHaveLength(33);
     for (const action of actions) expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
   });
+  it("admission and account actions resolve the session inside the explicit error boundary", () => {
+    const actions = source("app/onboarding/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(actions).toHaveLength(7);
+    const management = new Set(["changeCookRole", "removeCook"]);
+    for (const action of actions) {
+      const statement = action.body?.statements[0];
+      expect(statement && ts.isReturnStatement(statement)).toBe(true);
+      if (!statement || !ts.isReturnStatement(statement) || !statement.expression || !ts.isCallExpression(statement.expression)) throw new Error("An account action must return attempt(async () => ...).");
+      expect(statement.expression.expression.getText()).toBe("attempt");
+      const task = statement.expression.arguments[0];
+      expect(task && ts.isArrowFunction(task) && ts.isBlock(task.body)).toBe(true);
+      if (!task || !ts.isArrowFunction(task) || !ts.isBlock(task.body)) throw new Error("Missing account action body.");
+      expect(task.body.statements[0]?.getText()).toContain(management.has(action.name!.getText()) ? "await requireMember()" : "await verifiedSessionUser()");
+      if (management.has(action.name!.getText())) expect(task.body.statements[1]?.getText()).toBe('checkPermission(actor, "owner");');
+    }
+  });
 });

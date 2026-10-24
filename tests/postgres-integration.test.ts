@@ -15,7 +15,7 @@ import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persi
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
-import { acceptInvitation, claimHousehold, createMemberProfile, issueInvitation } from "../lib/auth/household";
+import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
 import { createAuth } from "../lib/auth/create";
 
 const url = process.env.POSTGRES_TEST_URL;
@@ -70,6 +70,32 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(failed?.status === "rejected" && failed.reason.message).toContain("already been claimed");
     expect(await handle.db.select().from(s.householdBootstrap)).toHaveLength(1);
     expect(await handle.db.select().from(s.householdMembers)).toHaveLength(1);
+  });
+
+  it.each(["demote", "remove", "mixed"])("preserves a final owner under concurrent %s requests", async (operation) => {
+    await handle.db.insert(s.authUsers).values(["first", "second"].map((id) => ({
+      id, name: "Synthetic concurrent owner", email: `${id}@example.test`, emailVerified: true,
+    })));
+    const input = {
+      name: "Synthetic owner profile", sex: "other" as const, birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light" as const, proteinMode: "per_kg" as const, proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+    };
+    const secret = "synthetic-bootstrap-concurrency-secret";
+    await claimHousehold(handle.db, "first", secret, secret);
+    await createMemberProfile(handle.db, "first", input);
+    const invite = await issueInvitation(handle.db, "first", { email: "second@example.test" });
+    await acceptInvitation(handle.db, "second", invite.token);
+    await createMemberProfile(handle.db, "second", input);
+    await changeMemberRole(handle.db, "first", "second", "owner");
+    const results = await Promise.allSettled(["first", "second"].map((id, index) =>
+      operation === "remove" || (operation === "mixed" && index === 0)
+        ? removeHouseholdMember(handle.db, id, id)
+        : changeMemberRole(handle.db, id, id, "member")));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((r) => r.status === "rejected");
+    expect(rejected?.status === "rejected" && rejected.reason.message).toContain("at least one verified owner");
+    expect(await handle.db.select().from(s.householdMembers).where(eq(s.householdMembers.role, "owner"))).toHaveLength(1);
+    expect(await handle.db.select().from(s.people)).toHaveLength(2);
   });
 
   it("atomically consumes one invitation and reserves each meal profile for one account", async () => {

@@ -2,7 +2,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { requirePageMember, verifiedSessionUser } from "@/lib/auth/access";
 import { getDb } from "@/lib/server/context";
-import { householdInvitations, people } from "@/lib/db/schema";
+import { authUsers, householdInvitations, householdMembers, people } from "@/lib/db/schema";
 import { AccountControls } from "@/components/auth/AccountControls";
 import { LinkButton } from "@/components/ui";
 
@@ -18,6 +18,10 @@ export default async function Account() {
   const profiles = owner ? await db.select({ id: people.id, name: people.name }).from(people) : [];
   const invitations = owner ? await db.select({ id: householdInvitations.id, email: householdInvitations.email })
     .from(householdInvitations).where(and(isNull(householdInvitations.acceptedAt), isNull(householdInvitations.revokedAt), gt(householdInvitations.expiresAt, new Date()))) : [];
+  const members = owner ? await db.select({
+    userId: householdMembers.userId, role: householdMembers.role, name: authUsers.name, email: authUsers.email, profileName: people.name,
+  }).from(householdMembers).innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
+    .leftJoin(people, eq(people.id, householdMembers.personId)).orderBy(authUsers.name) : [];
   return <section className="mx-auto max-w-xl space-y-6 px-4 pb-28 pt-8">
     <h1 className="text-2xl font-bold">Your account</h1>
     <p className="break-words">{user.name} · {user.email}</p>
@@ -27,6 +31,6 @@ export default async function Account() {
       <LinkButton href="/">Shared meal plan</LinkButton>
       <LinkButton href="/groceries" variant="secondary">Shared shopping list</LinkButton>
     </div>
-    <AccountControls owner={owner} profiles={profiles} invitations={invitations} />
+    <AccountControls owner={owner} profiles={profiles} invitations={invitations} members={members} currentUserId={member.userId} />
   </section>;
 }

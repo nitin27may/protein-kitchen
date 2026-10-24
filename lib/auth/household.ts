@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client";
 import { withTx, type Tx } from "../db/tx";
-import { authUsers, householdBootstrap, householdInvitations, householdMembers, people } from "../db/schema";
+import { authSessions, authUsers, householdBootstrap, householdInvitations, householdMembers, people, pushSubscriptions } from "../db/schema";
 import { secretsMatch, tokenHash } from "./tokens";
 import { PersonInput, personRow, type PersonInputData } from "../schemas/person";
 
@@ -36,6 +36,51 @@ async function availableProfile(tx: Tx, personId: number) {
   if (!person) throw new HouseholdAccessError("The selected profile no longer exists.");
   const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.personId, personId));
   if (member) throw new HouseholdAccessError("That profile is already linked to a household account.");
+}
+
+async function requireAnotherOwner(tx: Tx, userId: string) {
+  const [other] = await tx.select({ id: householdMembers.userId }).from(householdMembers)
+    .innerJoin(authUsers, and(eq(authUsers.id, householdMembers.userId), eq(authUsers.emailVerified, true)))
+    .where(and(eq(householdMembers.role, "owner"), ne(householdMembers.userId, userId), isNotNull(householdMembers.personId)))
+    .limit(1);
+  if (!other) throw new HouseholdAccessError("Keep at least one verified owner with a completed profile.");
+}
+
+export async function changeMemberRole(db: Db, actorUserId: string, targetUserId: string, role: "owner" | "member") {
+  z.string().min(1).max(128).parse(targetUserId);
+  z.enum(["owner", "member"]).parse(role);
+  await withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    await requireOwner(tx, actorUserId);
+    const [target] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, targetUserId)).for("update");
+    if (!target) throw new HouseholdAccessError("That account is no longer in the household.");
+    if (target.role === role) return;
+    if (role === "owner") {
+      await verifiedUser(tx, targetUserId);
+      if (target.personId === null) throw new HouseholdAccessError("Complete profile onboarding before making this account an owner.");
+    } else {
+      await requireAnotherOwner(tx, targetUserId);
+      await tx.update(householdInvitations).set({ revokedAt: new Date() })
+        .where(and(pending(), eq(householdInvitations.invitedByUserId, targetUserId)));
+    }
+    await tx.update(householdMembers).set({ role, updatedAt: new Date() }).where(eq(householdMembers.userId, targetUserId));
+  });
+}
+
+export async function removeHouseholdMember(db: Db, actorUserId: string, targetUserId: string) {
+  z.string().min(1).max(128).parse(targetUserId);
+  await withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    await requireOwner(tx, actorUserId);
+    const [target] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, targetUserId)).for("update");
+    if (!target) throw new HouseholdAccessError("That account is no longer in the household.");
+    if (target.role === "owner") await requireAnotherOwner(tx, targetUserId);
+    if (target.personId !== null) await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.personId, target.personId));
+    await tx.delete(authSessions).where(eq(authSessions.userId, targetUserId));
+    await tx.update(householdInvitations).set({ revokedAt: new Date() })
+      .where(and(pending(), eq(householdInvitations.invitedByUserId, targetUserId)));
+    await tx.delete(householdMembers).where(eq(householdMembers.userId, targetUserId));
+  });
 }
 
 export async function createMemberProfile(db: Db, userId: string, input: PersonInputData) {

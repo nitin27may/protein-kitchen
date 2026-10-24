@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as s from "../lib/db/schema";
 import {
-  acceptInvitation, assignMemberProfile, claimHousehold, createMemberProfile, issueInvitation, revokeInvitation,
+  acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, issueInvitation, removeHouseholdMember, revokeInvitation,
 } from "../lib/auth/household";
 import { openDb, type DbHandle } from "./helpers/db";
 import { exportHumanData } from "../lib/human/export";
@@ -33,6 +33,122 @@ async function profile() {
   }).returning();
   return person!.id;
 }
+
+async function cooks() {
+  await owner();
+  await assignMemberProfile(h.db, "owner", "owner", await profile());
+  await user("cook");
+  const invitation = await issueInvitation(h.db, "owner", { email: "cook@example.test", personId: await profile() });
+  await acceptInvitation(h.db, "cook", invitation.token);
+}
+async function ownerDevices() {
+  await cooks();
+  await changeMemberRole(h.db, "owner", "cook", "owner");
+  const [cook] = await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook"));
+  await h.db.insert(s.authSessions).values({
+    id: "synthetic-session", userId: "cook", token: "synthetic-token", updatedAt: new Date(), expiresAt: new Date(Date.now() + 60000),
+  });
+  await h.db.insert(s.pushSubscriptions).values({
+    personId: cook!.personId!, endpoint: "https://push.example.test/cook-device", p256dh: "synthetic-key", auth: "synthetic-auth", createdAt: new Date().toISOString(),
+  });
+  await issueInvitation(h.db, "cook", { email: "next@example.test" });
+}
+
+describe("owner role and household access management", () => {
+  it("requires a verified owner, existing target and valid role without accepting escalation", async () => {
+    await cooks();
+    await expect(changeMemberRole(h.db, "cook", "cook", "owner")).rejects.toThrow("Only a household owner");
+    await expect(removeHouseholdMember(h.db, "cook", "owner")).rejects.toThrow("Only a household owner");
+    await expect(changeMemberRole(h.db, "unknown", "cook", "owner")).rejects.toThrow("Verify your email");
+    await expect(changeMemberRole(h.db, "owner", "unknown", "member")).rejects.toThrow("no longer in the household");
+    await expect(removeHouseholdMember(h.db, "owner", "unknown")).rejects.toThrow("no longer in the household");
+    await expect(Reflect.apply(changeMemberRole, undefined, [h.db, "owner", "cook", "administrator"])).rejects.toThrow();
+    await expect(removeHouseholdMember(h.db, "owner", "")).rejects.toThrow();
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook"))).toMatchObject([{ role: "member" }]);
+  });
+  it("promotes only verified accounts with complete profiles and makes repeat assignments idempotent", async () => {
+    await cooks();
+    const before = await h.db.select().from(s.householdMembers);
+    await changeMemberRole(h.db, "owner", "cook", "member");
+    expect(await h.db.select().from(s.householdMembers)).toEqual(before);
+    await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "cook"));
+    await expect(changeMemberRole(h.db, "owner", "cook", "owner")).rejects.toThrow("Complete profile onboarding");
+    await h.db.update(s.householdMembers).set({ personId: await profile() }).where(eq(s.householdMembers.userId, "cook"));
+    await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "cook"));
+    await expect(changeMemberRole(h.db, "owner", "cook", "owner")).rejects.toThrow("Verify your email");
+    await h.db.update(s.authUsers).set({ emailVerified: true }).where(eq(s.authUsers.id, "cook"));
+    await changeMemberRole(h.db, "owner", "cook", "owner");
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook"))).toMatchObject([{ role: "owner" }]);
+  });
+  it("preserves the final usable owner for demotion and removal", async () => {
+    await cooks();
+    await expect(changeMemberRole(h.db, "owner", "owner", "member")).rejects.toThrow("at least one verified owner");
+    await expect(removeHouseholdMember(h.db, "owner", "owner")).rejects.toThrow("at least one verified owner");
+    await changeMemberRole(h.db, "owner", "cook", "owner");
+    await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "cook"));
+    await expect(removeHouseholdMember(h.db, "owner", "owner")).rejects.toThrow("at least one verified owner");
+    await h.db.update(s.authUsers).set({ emailVerified: true }).where(eq(s.authUsers.id, "cook"));
+    await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "cook"));
+    await expect(changeMemberRole(h.db, "owner", "owner", "member")).rejects.toThrow("at least one verified owner");
+  });
+  it("revokes pending invitations on demotion but retains the profile and sessions", async () => {
+    await ownerDevices();
+    const profiles = await h.db.select().from(s.people);
+    await changeMemberRole(h.db, "owner", "cook", "member");
+    expect(await h.db.select().from(s.people)).toEqual(profiles);
+    expect(await h.db.select().from(s.authSessions)).toHaveLength(1);
+    const [invitation] = await h.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.email, "next@example.test"));
+    expect(invitation?.revokedAt).toBeInstanceOf(Date);
+    await expect(issueInvitation(h.db, "cook", { email: "other@example.test" })).rejects.toThrow("Only a household owner");
+  });
+  it("removes sessions, device registrations and pending invitations without deleting profiles or credentials", async () => {
+    await ownerDevices();
+    const profiles = await h.db.select().from(s.people);
+    const users = await h.db.select().from(s.authUsers);
+    await removeHouseholdMember(h.db, "owner", "cook");
+    expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "owner", role: "owner" }]);
+    expect(await h.db.select().from(s.authSessions)).toEqual([]);
+    expect(await h.db.select().from(s.pushSubscriptions)).toEqual([]);
+    expect(await h.db.select().from(s.people)).toEqual(profiles);
+    expect(await h.db.select().from(s.authUsers)).toEqual(users);
+    const [invitation] = await h.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.email, "next@example.test"));
+    expect(invitation?.revokedAt).toBeInstanceOf(Date);
+  });
+  it("can remove an incomplete member and the original owner after another owner is ready", async () => {
+    await cooks();
+    await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "cook"));
+    await removeHouseholdMember(h.db, "owner", "cook");
+    await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member", personId: await profile() });
+    await changeMemberRole(h.db, "owner", "cook", "owner");
+    await removeHouseholdMember(h.db, "cook", "owner");
+    expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "cook", role: "owner" }]);
+    expect(await h.db.select().from(s.householdBootstrap)).toMatchObject([{ ownerUserId: "owner" }]);
+  });
+  it.each([
+    ["push_subscriptions", "DELETE"], ["auth_sessions", "DELETE"], ["household_invitations", "UPDATE"], ["household_members", "DELETE"],
+  ])("rolls back every removal side effect if %s fails", async (table, operation) => {
+    await ownerDevices();
+    const snapshot = async () => Promise.all([
+      h.db.select().from(s.householdMembers), h.db.select().from(s.authSessions), h.db.select().from(s.pushSubscriptions), h.db.select().from(s.householdInvitations),
+    ]);
+    const before = await snapshot();
+    await h.failWrite(table!, operation!, "reject_member_removal");
+    try {
+      await expect(removeHouseholdMember(h.db, "owner", "cook")).rejects.toThrow();
+      expect(await snapshot()).toEqual(before);
+    } finally { await h.dropFailure(table!, "reject_member_removal"); }
+    await removeHouseholdMember(h.db, "owner", "cook");
+    expect(await h.db.select().from(s.authSessions)).toEqual([]);
+  });
+  it("rolls back invitation revocation when a role change fails", async () => {
+    await ownerDevices();
+    await h.failWrite("household_members", "UPDATE", "reject_role_update");
+    try {
+      await expect(changeMemberRole(h.db, "owner", "cook", "member")).rejects.toThrow();
+      expect(await h.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.email, "next@example.test"))).toMatchObject([{ revokedAt: null }]);
+    } finally { await h.dropFailure("household_members", "reject_role_update"); }
+  });
+});
 
 describe("atomic member profile onboarding", () => {
   const input = {

@@ -8,6 +8,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 
 | Step | What | State |
 |---|---|---|
+| 17A | Owner role changes and household membership removal | Implemented locally: confirmed owner UI, serialized last-owner protection, session/device/invitation revocation and shared-data preservation. Current acceptance: 1,040 tests, sixteen native TCP checks, eleven saved browser cases. Remaining step 17: historical feedback attribution/versioning, personal download and account deletion. |
 | 16 / 4A-4E | Household authorization, profile privacy, private routes and device/cache boundaries | Implemented locally: 1,024 tests, 13 native TCP checks and eleven saved browser cases pass. All 33 legacy actions, seventeen private pages and five non-auth route files are guarded. Actual action replay/profile-id tampering, revoked membership, anonymous HTML/RSC/files and logout/back are covered. Step 17 and cloud/deployment gates remain open. |
 | 15 / 3A-3C | Better Auth, household admission and profile onboarding | Implemented locally: signup/verification/login/recovery screens, atomic owner/member admission, new/reserved-profile onboarding, account entry and manual invitation codes. Included in current acceptance above. Remaining account management is next; real mail and deployment remain unconfigured. |
 | 12 | Awaited Postgres transactions, atomic persistence and seed/renames, runtime/content-version guards, isolated database tests and native TCP checks | Implemented locally; cloud import/deployment not performed |
