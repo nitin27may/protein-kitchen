@@ -14,6 +14,7 @@ export default defineConfig({
       include: ["lib/**/*.ts", "app/**/*.ts", "components/**/*.tsx"],
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
+        "lib/deployment/preflight.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/household.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/account-deletion.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/blob/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

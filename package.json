@@ -14,6 +14,7 @@
     "backup:postgres": "tsx scripts/backup-postgres.ts",
     "restore:postgres": "tsx scripts/restore-postgres.ts",
     "vault:postgres": "tsx scripts/vault-postgres.ts",
+    "deploy:preflight": "tsx scripts/preview-preflight.ts",
     "photos:check": "tsx scripts/photos-check.ts",
     "photos:candidates": "tsx scripts/photo-candidates.ts",
     "db:generate": "drizzle-kit generate",
