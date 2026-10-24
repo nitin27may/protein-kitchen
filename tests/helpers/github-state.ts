@@ -13,7 +13,7 @@ export const fixtureConfiguration: GitHubStateConfiguration = {
 export const fixtureTime = Date.parse("2026-10-24T12:00:00.000Z");
 export const base = "/repos/synthetic-owner/private-state";
 
-export function githubFixture() {
+export function githubFixture(now: () => number = () => fixtureTime) {
   const config = fixtureConfiguration;
   const requests: { path: string; method: string; body: Record<string, unknown> | undefined; authorization: string }[] = [];
   const blobs = new Map<string, Buffer>();
@@ -58,7 +58,7 @@ export function githubFixture() {
       json(response, { id: config.installationId, app_id: config.appId, account: { login: config.owner }, suspended_at: null, permissions: { contents: "write" } }); return;
     }
     if (path === `/app/installations/${config.installationId}/access_tokens` && request.method === "POST") {
-      json(response, { token: "synthetic-installation-token", expires_at: new Date(fixtureTime + 3600000).toISOString(),
+      json(response, { token: "synthetic-installation-token", expires_at: new Date(now() + 3600000).toISOString(),
         permissions: { contents: "write" }, repositories: [{ id: config.repositoryId, full_name: `${config.owner}/${config.repository}`, private: true }] }, 201); return;
     }
     if (path === base) {
@@ -103,6 +103,7 @@ export function githubFixture() {
   return {
     requests, blobs, trees, commits, json, edit, putBlob, putTree, putCommit,
     get head() { return head; },
+    get endpoint() { return endpoint; },
     set head(id: string) { head = id; },
     set intercept(value: typeof intercept) { intercept = value; },
     reset() {

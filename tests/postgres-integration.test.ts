@@ -22,6 +22,11 @@ import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
 import { createAuth } from "../lib/auth/create";
+import { randomUUID } from "node:crypto";
+import { runStateSync, stateTargetKey } from "../lib/sync/run";
+import { createMemoryStore } from "../lib/blob/memory";
+import { openPrivateStateRepository } from "../lib/sync/github";
+import { fixtureConfiguration as syncConfig, fixtureTime, githubFixture } from "./helpers/github-state";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -88,6 +93,7 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await writeSavedView(handle.db, { list: "recipes", query: "changed-on-another-connection" });
       return original(snapshotDb);
     });
+
     try {
       const snapshot = await captureStateSnapshot(handle.db, ["saved-views"]);
       expect(Object.values(snapshot.bundle.files)).toHaveLength(1);
@@ -96,6 +102,47 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       expect(await acknowledgeStateSnapshot(handle.db, snapshot.revisions)).toEqual([]);
       expect(await readStateSyncStatus(handle.db, ["saved-views"])).toMatchObject([{ revision: 2, exportedRevision: 0, pending: true }]);
     } finally { exportSpy.mockRestore(); }
+  });
+
+  it("serializes real concurrent sync acquisition and fences a stale worker after another connection takes over", async () => {
+      const fixture = githubFixture(); fixture.reset(); await fixture.start();
+      const target = stateTargetKey(syncConfig);
+      const store = createMemoryStore();
+      const repository = () => openPrivateStateRepository(syncConfig, fixture.fetch, () => fixtureTime);
+      const ready = Promise.withResolvers<void>();
+      const resume = Promise.withResolvers<void>();
+      const oldId = randomUUID();
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const old = runStateSync(handle.db, target, ["saved-views"], {
+          store, repository: async () => { ready.resolve(); await resume.promise; return repository(); },
+        }, oldId);
+        await ready.promise;
+        expect(await runStateSync(handle.db, target, ["saved-views"], { repository, store })).toEqual({ state: "busy", replayed: false });
+        expect(fixture.requests).toEqual([]);
+        await handle.db.update(s.stateSyncJobs).set({ leaseExpiresAt: at }).where(eq(s.stateSyncJobs.targetKey, target));
+        expect(await runStateSync(handle.db, target, ["saved-views"], { repository, store })).toMatchObject({ state: "success" });
+        const successful = (await handle.db.select().from(s.stateSyncJobs))[0]!;
+        resume.resolve();
+        expect(await old).toMatchObject({ state: "error" });
+        expect(await handle.db.select().from(s.stateSyncJobs)).toEqual([successful]);
+        expect(await handle.db.select().from(s.stateSyncRequests).where(eq(s.stateSyncRequests.id, oldId))).toMatchObject([{ status: "error" }]);
+        expect(await readStateSyncStatus(handle.db, ["saved-views"])).toMatchObject([{ pending: false, exportedRevision: 1 }]);
+      } finally { resume.resolve(); errors.mockRestore(); await fixture.close(); }
+  });
+
+  it("does not let racing requests bind a single idempotency key to two different targets", async () => {
+      const id = randomUUID();
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const repository = async () => { throw new Error("Synthetic offline repository"); };
+        const results = await Promise.allSettled(["a", "b"].map((key) =>
+          runStateSync(handle.db, key.repeat(64), ["saved-views"], { repository, store: createMemoryStore() }, id)));
+        expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+        expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+        expect(await handle.db.select().from(s.stateSyncJobs)).toHaveLength(1);
+        expect(await handle.db.select().from(s.stateSyncRequests)).toHaveLength(1);
+      } finally { errors.mockRestore(); }
   });
 
   it("preserves independent concurrent favourite/rating patches and another cook's feedback", async () => {

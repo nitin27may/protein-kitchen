@@ -11,7 +11,7 @@ export interface StateSnapshot {
   revisions: Record<string, number>;
 }
 
-function selection(names: readonly string[]): string[] {
+export function selectedStateClasses(names: readonly string[]): string[] {
   if (!names.length || new Set(names).size !== names.length ||
       names.some((name) => !STATE_SYNC_CLASSES.some((allowed) => name === allowed))) {
     throw new Error("State sync requires an explicit, unique selection of permitted shared data classes.");
@@ -21,7 +21,7 @@ function selection(names: readonly string[]): string[] {
 
 /** No blob/network I/O: files and their receipts must describe the same database snapshot. */
 export async function captureStateSnapshot(db: Db, names: readonly string[]): Promise<StateSnapshot> {
-  const selected = selection(names);
+  const selected = selectedStateClasses(names);
   return db.transaction(async (tx) => {
     for (const dataClass of selected) {
       await tx.insert(s.syncState).values({ dataClass, changedAt: nowIso() }).onConflictDoNothing();
@@ -34,7 +34,7 @@ export async function captureStateSnapshot(db: Db, names: readonly string[]): Pr
 
 /** Call only after verified remote success; stale receipts leave newer writes pending. */
 export async function acknowledgeStateSnapshot(db: Db, revisions: Readonly<Record<string, number>>): Promise<string[]> {
-  const selected = selection(Object.keys(revisions));
+  const selected = selectedStateClasses(Object.keys(revisions));
   if (selected.some((name) => !Number.isSafeInteger(revisions[name]) || revisions[name]! < 1)) {
     throw new Error("State sync receipts require positive integer revisions.");
   }
@@ -53,7 +53,7 @@ export async function acknowledgeStateSnapshot(db: Db, revisions: Readonly<Recor
 }
 
 export async function readStateSyncStatus(db: Db, names: readonly string[]) {
-  const selected = selection(names);
+  const selected = selectedStateClasses(names);
   const rows = await db.select().from(s.syncState).where(inArray(s.syncState.dataClass, selected));
   return selected.map((dataClass) => {
     const row = rows.find((candidate) => candidate.dataClass === dataClass);

@@ -50,6 +50,13 @@
       "when": 1792828570270,
       "tag": "0006_classy_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792830476269,
+      "tag": "0007_crazy_pete_wisdom",
+      "breakpoints": true
     }
   ]
 }

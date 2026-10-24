@@ -390,6 +390,28 @@ export const syncState = pgTable("sync_state", {
   exportedRevision: integer("exported_revision").notNull().default(0),
 }, (t) => [check("sync_state_revision_valid", sql`${t.revision} > 0 and ${t.exportedRevision} >= 0 and ${t.exportedRevision} <= ${t.revision}`)]);
 
+// Operational coordination only: never part of human-state exporters.
+export const stateSyncJobs = pgTable("state_sync_jobs", {
+  targetKey: text("target_key").primaryKey(),
+  status: text("status").$type<"idle" | "running" | "success" | "error" | "conflict">().notNull().default("idle"),
+  leaseToken: text("lease_token"),
+  leaseExpiresAt: isoTimestamp("lease_expires_at"),
+  checkpointCommit: text("checkpoint_commit"),
+  acknowledged: json<Record<string, number>>("acknowledged").notNull().default({}),
+  pending: json<{ revisions: Record<string, number>; files: Record<string, string> }>("pending"),
+  lastAttemptAt: isoTimestamp("last_attempt_at"),
+  lastSuccessAt: isoTimestamp("last_success_at"),
+  errorCode: text("error_code"),
+}, (t) => [check("state_sync_job_status_valid", sql`${t.status} in ('idle', 'running', 'success', 'error', 'conflict')`)]);
+
+export const stateSyncRequests = pgTable("state_sync_requests", {
+  id: text("id").primaryKey(),
+  targetKey: text("target_key").notNull().references(() => stateSyncJobs.targetKey, { onDelete: "cascade" }),
+  status: text("status").$type<"running" | "success" | "error" | "conflict">().notNull(),
+  startedAt: isoTimestamp("started_at").notNull(),
+  completedAt: isoTimestamp("completed_at"),
+}, (t) => [check("state_sync_request_status_valid", sql`${t.status} in ('running', 'success', 'error', 'conflict')`)]);
+
 export const recipeLinks = pgTable("recipe_links", {
   id: id(),
   uid: text("uid").notNull(),

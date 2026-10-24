@@ -46,6 +46,12 @@ describe("application authorization inventory", () => {
     for (const node of statements) {
       if (!ts.isFunctionDeclaration(node) || !exported(node)) continue;
       it(`${file} ${node.name?.getText()} checks request membership first`, () => {
+        if (file === "app/api/state-sync/route.ts") {
+          expect(node.name?.getText()).toBe("POST");
+          expect(node.body?.statements[0]?.getText()).toBe("const auth = schedulerAuthorized(request, process.env);");
+          expect(node.body?.statements[1]?.getText()).toContain('auth !== "authorized"');
+          return;
+        }
         expect(firstCall(node)).toBe("routeAccess");
       });
     }
@@ -54,6 +60,12 @@ describe("application authorization inventory", () => {
     const actions = source("app/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
     expect(actions).toHaveLength(33);
     for (const action of actions) expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
+  });
+  it("private-state action checks current owner permission before reading configuration", () => {
+    const actions = source("app/settings/sync-actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(actions).toHaveLength(1);
+    expect(firstCall(actions[0]!)).toBe("actionDenial");
+    expect(actions[0]!.body?.statements[0]?.getText()).toBe('const denied = await actionDenial("owner");');
   });
   it("admission and account actions resolve the session inside the explicit error boundary", () => {
     const actions = source("app/onboarding/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));

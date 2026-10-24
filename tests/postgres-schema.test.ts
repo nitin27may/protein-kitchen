@@ -21,7 +21,7 @@ describe("Postgres baseline parity", () => {
 
   it("preserves all tables, columns, nullability, keys, indexes and foreign-key deletion behavior", () => {
     const postgresOnly = ["libraryState", "authUsers", "authSessions", "authAccounts", "authVerifications", "authRateLimits",
-      "householdBootstrap", "householdMembers", "householdInvitations", "personRecipeFeedback"];
+      "householdBootstrap", "householdMembers", "householdInvitations", "personRecipeFeedback", "stateSyncJobs", "stateSyncRequests"];
     expect(Object.keys(pg).filter((key) => !postgresOnly.includes(key)).sort()).toEqual(Object.keys(sqlite).sort());
     for (const name of Object.keys(sqlite) as (keyof typeof sqlite)[]) {
       const source = sqliteConfig(sqlite[name]);
@@ -101,7 +101,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(7);
+    expect(journal.rows).toHaveLength(8);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

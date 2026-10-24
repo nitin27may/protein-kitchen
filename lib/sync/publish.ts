@@ -22,7 +22,7 @@ const prefixes: Record<string, string> = {
 };
 
 /** Build once outside transactions; only processed and checksum-verified photo bytes may leave storage. */
-export async function statePayload(snapshot: StateSnapshot, store: BlobStore): Promise<Record<string, Uint8Array>> {
+export async function statePayload(snapshot: StateSnapshot, store: Pick<BlobStore, "get">): Promise<Record<string, Uint8Array>> {
   const classes = Object.keys(snapshot.revisions).sort();
   if (!classes.length || classes.some((name) => !STATE_SYNC_CLASSES.some((allowed) => allowed === name) ||
       !Number.isSafeInteger(snapshot.revisions[name]) || snapshot.revisions[name]! < 1) ||
@@ -102,26 +102,46 @@ export class StateSyncConflict extends Error {
  * expectedCommit is a server-persisted checkpoint, never browser input.
  * No force updates: an upstream race or ambiguous write is safe to retry with the same payload/checkpoint.
  */
-export async function publishState(
-  repository: PrivateStateRepository, files: Readonly<Record<string, Uint8Array>>, expectedCommit: string | null,
-): Promise<{ commit: string; changed: boolean }> {
+export function publicationHashes(files: Readonly<Record<string, Uint8Array>>): Record<string, string> {
   const desired: Record<string, string> = {};
   if (!files[CHECKPOINT]) throw new Error("State payload requires its manifest.");
   for (const [path, bytes] of Object.entries(files)) {
     if (!path.startsWith(ROOT) || !safePath(path)) throw new Error("State payload contains an unmanaged path.");
     desired[path] = blobSha(bytes);
   }
+  return desired;
+}
+
+async function publicationBase(repository: PrivateStateRepository, desired: Record<string, string>, expectedCommit: string | null) {
+  if (!desired[CHECKPOINT] || Object.entries(desired).some(([path, sha]) => !path.startsWith(ROOT) || !safePath(path) || !/^[0-9a-f]{40}$/.test(sha))) {
+    throw new Error("Invalid pending state publication receipt.");
+  }
   const head = await repository.head();
   const current = await repository.commit(head);
   const currentTree = await repository.tree(current.tree.sha);
   const currentFiles = managed(currentTree);
-  if (same(currentFiles, desired)) return { commit: head, changed: false };
+  if (same(currentFiles, desired)) return { head, current, currentTree, currentFiles, synchronized: true };
   let baseline: Record<string, string> = {};
   if (expectedCommit !== null) {
     const checkpoint = await repository.commit(expectedCommit);
     baseline = managed(await repository.tree(checkpoint.tree.sha));
   }
   if (!same(currentFiles, baseline)) throw new StateSyncConflict();
+  return { head, current, currentTree, currentFiles, synchronized: false };
+}
+
+/** Recover an attempted publication from immutable hashes without rereading possibly deleted photo bytes. */
+export async function reconcileState(repository: PrivateStateRepository, desired: Record<string, string>, expectedCommit: string | null) {
+  const result = await publicationBase(repository, desired, expectedCommit);
+  return { commit: result.head, synchronized: result.synchronized };
+}
+
+export async function publishState(
+  repository: PrivateStateRepository, files: Readonly<Record<string, Uint8Array>>, expectedCommit: string | null,
+): Promise<{ commit: string; changed: boolean }> {
+  const desired = publicationHashes(files);
+  const { head, current, currentTree, currentFiles, synchronized } = await publicationBase(repository, desired, expectedCommit);
+  if (synchronized) return { commit: head, changed: false };
   const entries: { path: string; sha: string | null }[] = [];
   for (const path of Object.keys(desired).sort()) {
     if (currentFiles[path] === desired[path]) continue;
