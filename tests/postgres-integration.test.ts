@@ -16,6 +16,7 @@ import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 import { acceptInvitation, claimHousehold, issueInvitation } from "../lib/auth/household";
+import { createAuth } from "../lib/auth/create";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -96,6 +97,26 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(await handle.db.select().from(s.householdInvitations)).toMatchObject([{
       acceptedByUserId: "cook", acceptedAt: expect.any(Date),
     }]);
+  });
+
+  it("atomically enforces shared HTTP signup limits across concurrent auth instances", async () => {
+    const options = {
+      secret: "synthetic-native-auth-session-secret",
+      baseURL: "http://localhost:3112", isVercel: false, sendCode: async () => {},
+    };
+    const instances = [createAuth(handle.db, options), createAuth(handle.db, options)];
+    const results = await Promise.all(Array.from({ length: 8 }, (_, index) => instances[index % 2]!.handler(new Request(
+      "http://localhost:3112/api/auth/sign-up/email", {
+        method: "POST", headers: {
+          origin: "http://localhost:3112", "content-type": "application/json", "x-forwarded-for": "127.0.0.1",
+        },
+        body: JSON.stringify({ name: "Synthetic cook", email: `${index}@example.test`, password: "Synthetic-password-123!" }),
+      },
+    ))));
+    expect(results.filter((r) => r.status === 403)).toHaveLength(3);
+    expect(results.filter((r) => r.status === 429)).toHaveLength(5);
+    expect(await handle.db.select().from(s.authUsers)).toEqual([]);
+    expect(await handle.db.select().from(s.authRateLimits)).toMatchObject([{ count: 3 }]);
   });
 
   it("seeds the library and preserves human exports through a native reseed", async () => {

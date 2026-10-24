@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, doublePrecision as real, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, check, doublePrecision as real, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { bool, isoDate, isoTimestamp, json } from "./columns";
 
 const id = () => integer("id").primaryKey().generatedByDefaultAsIdentity();
@@ -55,6 +55,13 @@ export const authVerifications = pgTable("auth_verifications", {
   createdAt: authTime("created_at").defaultNow().notNull(),
   updatedAt: authTime("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
 }, (t) => [index("auth_verifications_identifier_idx").on(t.identifier)]);
+
+export const authRateLimits = pgTable("auth_rate_limits", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
 
 export const householdBootstrap = pgTable("household_bootstrap", {
   id: integer("id").primaryKey(),

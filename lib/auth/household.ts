@@ -1,15 +1,15 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client";
 import { withTx, type Tx } from "../db/tx";
 import { authUsers, householdBootstrap, householdInvitations, householdMembers, people } from "../db/schema";
+import { secretsMatch, tokenHash } from "./tokens";
 
 export class HouseholdAccessError extends Error {
   override name = "HouseholdAccessError";
 }
 
-const tokenHash = (value: string) => createHash("sha256").update(value).digest("hex");
 const pending = () => and(isNull(householdInvitations.acceptedAt), isNull(householdInvitations.revokedAt));
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 
@@ -42,7 +42,7 @@ export async function claimHousehold(db: Db, userId: string, submittedSecret: st
   if (!configuredSecret || configuredSecret.length < 32) {
     throw new Error("Household bootstrap requires a server-configured secret of at least 32 characters.");
   }
-  if (!timingSafeEqual(Buffer.from(tokenHash(submittedSecret)), Buffer.from(tokenHash(configuredSecret)))) {
+  if (!secretsMatch(submittedSecret, configuredSecret)) {
     throw new HouseholdAccessError("Invalid household claim.");
   }
   return withTx(db, async (tx) => {

@@ -10,6 +10,8 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Identity backend, 2026-10-24:** Better Auth 1.7.12 and atomic household admission are implemented locally. One verified owner claims the deployment once; hashed email-bound invitations admit additional cooks and can reserve existing profiles. Signup, verification, password/code login, recovery and persistent rate limits have real HTTP/browser coverage. All 903 tests (12 native checks), seven retained browser cases and database-free build pass. Auth module coverage is 99.51% statements / 98.63% branches; critical admission/config/mail modules have 100% gates. Onboarding/account screens and complete application authorization remain pending; the app must remain private. No real mail was sent, Neon services remain unchanged and auth migrations have not been applied remotely.
+
 A personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Next.js 16, React 19, Tailwind 4, Drizzle on Postgres, pnpm 10, Node 22. Owner: Nitin, a senior architect. He wants direct, plain writing, no emojis, no filler phrases, code first.
 
 The product intent is in `PLAN.md`. The one rule that shapes everything: **macros live only on ingredients, every ingredient has a real source (CNF, then USDA, then IFCT), and nothing is estimated from memory.** Unknown means "list it as unresolved".
@@ -21,7 +23,7 @@ The product intent is in `PLAN.md`. The one rule that shapes everything: **macro
 3. Prepare a disposable local Postgres database or a reviewed isolated Neon development branch. Copy `.env.example` to `.env.local`, set `DATABASE_ENV=development` and the pooled `DATABASE_URL`. Do not reuse an old production pointer.
 4. Supply direct `DATABASE_URL_UNPOOLED`, `DATABASE_ENV` and, remotely, exact `DATABASE_NONPRODUCTION_HOST` plus the explicit Neon ids and server-only API key listed in `.env.example` to `pnpm db:migrate:postgres`, then `pnpm seed`. CLI commands do not load `.env.local` automatically. Remote non-production targets require live branch verification; requests never migrate or seed a database.
 5. `pnpm dev` and open http://localhost:3000. Reminders additionally need VAPID keys from `pnpm dlx web-push generate-vapid-keys`.
-6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 836 tests; 11 native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures. Five saved browser tests additionally run with `POSTGRES_E2E_URL` naming disposable loopback `protein_kitchen_e2e`; setup clears that database's application tables. No project lint script is configured.
+6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 903 tests; 12 native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures. Seven saved browser tests additionally run with `POSTGRES_E2E_URL` naming disposable loopback `protein_kitchen_e2e`; setup clears that database's application tables. Auth browser tests use a guarded synthetic-only file mailbox, never real email. No project lint script is configured.
 
 ### What is NOT in git (and so does not travel)
 | Thing | Where it is | How to move it |
@@ -109,7 +111,7 @@ Full plan in `docs/plan-v3-publish-and-protect.md`. In order:
 12. Finish the async conversion.
 13. Postgres schema as one baseline (all tables, including auth, household, sync), node-postgres pool, PGlite or testcontainers tests, build-time seed.
 14. Neon `dev` branch, a startup guard that refuses `production` in development, SQLite import with counts and checksums, rehearsal.
-15. Better Auth, self-hosted, invite-only, owner and member roles, password plus emailed 6-digit code, no magic links, Resend for email. Turn off the provisioned Neon Auth. Login email lives on the auth user; a profile can exist without a login; the existing profile is claimed through a bootstrap invitation.
+15. Better Auth, self-hosted, invite-only, owner and member roles, password plus emailed 6-digit code, no magic links, Resend for email. Preserve provisioned Neon Auth unless a later explicit service decision changes it. Login email lives on the auth user; a profile can exist without a login; the owner links an existing profile after a one-time bootstrap claim.
 16. Authorisation on every action and route. Known gaps: `swapSlot`, `setPortion` and manual grocery items lack plan checks; `/api/plan/[id]/export` is open with sequential ids; push subscribe trusts the body `personId`; the service worker caches personal pages. Add security headers.
 17. Household and account screens: invite by email, roles, account page, delete and export.
 18. Photos on the Neon bucket with signed URLs.
@@ -147,4 +149,3 @@ Full plan in `docs/plan-v3-publish-and-protect.md`. In order:
 2. Confirm `db/app.db` is the real copy before testing anything; test on scratch copies.
 3. Work one roadmap step at a time. Each ends with typecheck, test, validate, build, a browser look at desktop and phone width, then one commit pushed to `main`.
 4. Update `docs/roadmap.md` status after each step.
-**Identity foundation, 2026-10-24:** Better Auth 1.7.12 core tables and atomic household admission are implemented locally. One verified owner claims a deployment once; owner-issued hashed, email-bound invitations join additional cooks, optionally linking an existing meal profile without duplicating it. Competing native Postgres claims/acceptances serialize. Admission has a 100% coverage gate; all 836 tests (11 native checks), five retained browser cases, typecheck and database-free build passed. Auth routes, verification/recovery delivery, onboarding screens and full application authorization are still pending; the app must remain private. No Neon service was disabled and no auth migration was applied remotely.
