@@ -21,14 +21,14 @@ import type { IsoWeekday, TimeOfDay } from "@/lib/routines/types";
 import { planRoutineRowsFor, savePersonRoutine } from "@/lib/server/routine-state";
 import { dueDateOfKey } from "@/lib/prep/night";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
-import type { GeneratedPlan, PlannedSlot, Slot } from "@/lib/planner/types";
+import type { GeneratedPlan, Slot } from "@/lib/planner/types";
 import { ACTIVITY_LEVELS, MEAL_SLOTS, PlanSetupSchema, SEXES } from "@/lib/schemas";
 import { getData, getDb, getSqlite } from "@/lib/server/context";
 import { getBlobStore } from "@/lib/blob";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
-import { insertPlanSetup } from "@/lib/server/plan-setup";
+import { persistIngredientPreferences, persistNewPlan, persistPlanDeletion, persistRegeneratedPlan } from "@/lib/server/plan-persistence";
 import { writePlanStep } from "@/lib/server/plan-progress";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
@@ -137,25 +137,11 @@ export type CreatePlanData = z.input<typeof CreatePlanInput>;
 async function savePrefs(personId: number, liked: string[], avoided: string[]) {
   const db = await getDb();
   const ids = await ingredientIds();
-  await db.delete(s.preferences).where(and(eq(s.preferences.personId, personId), inArray(s.preferences.kind, ["like", "avoid"])));
   const rows = [
     ...liked.filter((l) => !avoided.includes(l)).map((slug) => ({ personId, ingredientId: ids.bySlug.get(slug), kind: "like" as const })),
     ...avoided.map((slug) => ({ personId, ingredientId: ids.bySlug.get(slug), kind: "avoid" as const })),
   ].filter((r) => r.ingredientId !== undefined);
-  for (const r of rows) await db.insert(s.preferences).values({ personId, ingredientId: r.ingredientId!, kind: r.kind });
-}
-
-async function persistSlots(planId: number, slots: readonly PlannedSlot[]) {
-  const db = await getDb();
-  const rid = await recipeIds();
-  for (const sl of slots) {
-    const recipeId = rid.bySlug.get(sl.recipeSlug);
-    if (recipeId === undefined) continue;
-    const [row] = await db.insert(s.planSlots).values({ planId, date: sl.date, slot: sl.slot, recipeId, locked: sl.locked, isLeftover: sl.isLeftover ?? false }).returning({ id: s.planSlots.id });
-    for (const [pid, servings] of Object.entries(sl.servings)) {
-      await db.insert(s.planSlotPortions).values({ planSlotId: row!.id, personId: Number(pid), servings });
-    }
-  }
+  await persistIngredientPreferences(db, personId, rows.map((r) => ({ ingredientId: r.ingredientId!, kind: r.kind })));
 }
 
 export async function createPlan(input: CreatePlanData): Promise<Result<{ planId: number; gaps: number }>> {
@@ -197,13 +183,10 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   const now = new Date().toISOString();
   // Routine choices of the people in the plan are copied into the plan, so its groceries and prep stay stable if a choice changes later.
   const routineRows = await planRoutineRowsFor(db, v.personIds, v.startDate, v.endDate, 0);
-  const planId = await withTx(db, (tx) => {
-    const setupId = insertPlanSetup(tx, { personIds: v.personIds, startDate: v.startDate, endDate: v.endDate, mealTypes: v.mealTypes, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, shoppingDay: v.shoppingDay ?? null, prepDay: v.prepDay ?? null, createdAt: now });
-    const created = tx.insert(s.plans).values({ setupId, seed, createdAt: now }).returning({ id: s.plans.id }).get();
-    for (const row of routineRows) tx.insert(s.planRoutines).values({ ...row, planId: created.id }).run();
-    return created.id;
+  const planId = await persistNewPlan(db, {
+    setup: { personIds: v.personIds, startDate: v.startDate, endDate: v.endDate, mealTypes: v.mealTypes, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, shoppingDay: v.shoppingDay ?? null, prepDay: v.prepDay ?? null, createdAt: now },
+    seed, slots: plan.slots, routines: routineRows, recipeIds: (await recipeIds()).bySlug,
   });
-  await persistSlots(planId, plan.slots);
   refresh(planId);
   return { ok: true, planId, gaps: plan.warnings.filter((w) => w.type === "protein_gap").length };
 }
@@ -255,9 +238,7 @@ export async function regeneratePlan(planId: number): Promise<Result> {
   const seed = Math.floor(Math.random() * 2 ** 31);
   const plan = generatePlan({ ...view.input, seed }, await getCandidates());
   const db = await getDb();
-  await db.delete(s.planSlots).where(and(eq(s.planSlots.planId, planId), eq(s.planSlots.locked, false)));
-  await persistSlots(planId, plan.slots.filter((x) => !x.locked));
-  await db.update(s.plans).set({ seed }).where(eq(s.plans.id, planId));
+  await persistRegeneratedPlan(db, planId, seed, plan.slots, (await recipeIds()).bySlug);
   refresh(planId);
   return { ok: true };
 }
@@ -331,9 +312,7 @@ export async function setPortion(planId: number, slotId: number, personId: numbe
 
 export async function deletePlan(planId: number): Promise<Result> {
   const db = await getDb();
-  const [row] = await db.select({ setupId: s.plans.setupId }).from(s.plans).where(eq(s.plans.id, planId)).limit(1);
-  await db.delete(s.plans).where(eq(s.plans.id, planId));
-  if (row) await db.delete(s.planSetups).where(eq(s.planSetups.id, row.setupId));
+  await persistPlanDeletion(db, planId);
   refresh();
   return { ok: true };
 }

@@ -43,6 +43,7 @@ First run: open Profiles, add everyone who eats, then create a plan.
 | `pnpm validate` | Validate all `/data` files, compute macros, print the report |
 | `pnpm seed` | Validate, then upsert `/data` into the database |
 | `pnpm test` | Vitest (nutrition maths, planner, prep, reminders) |
+| `pnpm test:coverage` | Full suite with V8 coverage for library code, actions/routes and client components; HTML and JSON reports in `coverage/` |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm backup` | `VACUUM INTO backups/app-<timestamp>.db` |
 | `pnpm db:generate` | Generate a Drizzle migration after a schema change |
@@ -51,7 +52,9 @@ First run: open Profiles, add everyone who eats, then create a plan.
 
 ## CI and deployment
 
-The [GitHub Actions workflow](https://github.com/nitin27may/protein-kitchen/actions/workflows/ci.yml) runs on every branch push and pull request, and supports **Run workflow** for a branch already on GitHub. It checks types, validates data, runs tests, builds the app with a temporary SQLite database, and scans for secrets. Test results are available as a `test-results` artifact for 14 days. Local, unpushed changes do not start a GitHub run.
+The [GitHub Actions workflow](https://github.com/nitin27may/protein-kitchen/actions/workflows/ci.yml) runs on every branch push and pull request, and supports **Run workflow** for a branch already on GitHub. It checks types, validates data, runs tests with coverage, builds the app with a temporary SQLite database, and scans for secrets. Test results and coverage reports are available as `test-results` and `coverage` artifacts for 14 days. Local, unpushed changes do not start a GitHub run.
+
+Coverage includes untested application files rather than reporting only imported modules. Atomic plan persistence has a 100% statement/branch/function/line gate; this is not a claim of 100% app-wide coverage. UI interaction, real device and TCP Postgres checks remain separate from unit coverage.
 
 Neon and Vercel deployment are not implemented yet. Follow [the roadmap](docs/roadmap.md), steps 12-21, and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). The current SQLite app has no login or authorization and must not be exposed publicly. Postgres, safe development databases, authentication, authorization, cloud photo storage and recoverable backups precede the Vercel cutover.
 

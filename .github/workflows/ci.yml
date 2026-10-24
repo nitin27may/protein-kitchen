@@ -21,13 +21,13 @@ jobs:
       DB_PATH: ${{ runner.temp }}/protein-kitchen-ci.db
       NEXT_DIST_DIR: .next-build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -41,7 +41,7 @@ jobs:
         run: pnpm validate
 
       - name: Test
-        run: pnpm test --reporter=default --reporter=junit --outputFile.junit=${{ runner.temp }}/test-results.xml
+        run: pnpm test:coverage --reporter=default --reporter=junit --outputFile.junit=${{ runner.temp }}/test-results.xml
 
       - name: Upload test results
         if: ${{ always() }}
@@ -49,6 +49,15 @@ jobs:
         with:
           name: test-results
           path: ${{ runner.temp }}/test-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
           if-no-files-found: warn
           retention-days: 14
 
@@ -62,9 +71,9 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

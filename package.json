@@ -6,6 +6,7 @@
   "scripts": {
     "validate": "tsx scripts/validate.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/validate.ts && tsx scripts/seed.ts",
     "backup": "tsx scripts/backup.ts",
@@ -53,6 +54,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/web-push": "^3.6.4",
+    "@vitest/coverage-v8": "5.0.5",
     "drizzle-kit": "^0.31.11",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3",
