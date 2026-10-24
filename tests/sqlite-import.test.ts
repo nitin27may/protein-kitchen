@@ -31,7 +31,7 @@ describe("read-only SQLite snapshot", () => {
     expect(digestRows([{ x: 1 }])).not.toEqual(digestRows([{ x: 2 }]));
   });
 
-  it("only allows explicit local development/test destinations, never production or relabelled Neon hosts", () => {
+  it("allows local dev/test but refuses production and remote targets without the additional branch pin", () => {
     expect(sqliteImportTarget({ DATABASE_ENV: "test", DATABASE_URL_UNPOOLED: "postgres://fixture@127.0.0.1/protein_kitchen_test" }).databaseEnvironment).toBe("test");
     expect(() => sqliteImportTarget({ DATABASE_ENV: "production", DATABASE_URL_UNPOOLED: "postgres://fixture@127.0.0.1/protein_kitchen_test" })).toThrow();
     expect(() => sqliteImportTarget({ DATABASE_ENV: "test", DATABASE_URL: "postgres://fixture@127.0.0.1/protein_kitchen_test" })).toThrow();
@@ -39,6 +39,17 @@ describe("read-only SQLite snapshot", () => {
       DATABASE_ENV: "development", DATABASE_URL_UNPOOLED: "postgres://fixture@ep-production.neon.tech/neondb?sslmode=verify-full",
       DATABASE_NONPRODUCTION_HOST: "ep-production.neon.tech",
     })).toThrow("loopback");
+  });
+
+  it("allows remote rehearsal configuration only with a matching explicit development branch pin", () => {
+    const env = {
+      DATABASE_ENV: "development",
+      DATABASE_URL_UNPOOLED: "postgres://fixture@ep-development.neon.tech/neondb?sslmode=verify-full",
+      DATABASE_NONPRODUCTION_HOST: "ep-development.neon.tech", NEON_DEVELOPMENT_BRANCH_ID: "br-development",
+      SQLITE_IMPORT_NEON_BRANCH_ID: "br-development",
+    };
+    expect(sqliteImportTarget(env).nonProductionHost).toBe("ep-development.neon.tech");
+    expect(() => sqliteImportTarget({ ...env, SQLITE_IMPORT_NEON_BRANCH_ID: "br-other" })).toThrow("explicitly match");
   });
 
   it("refuses an absent source instead of creating a new SQLite file", () => {

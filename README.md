@@ -57,7 +57,8 @@ First run: open Profiles, add everyone who eats, then create a plan.
 | `pnpm db:generate:postgres` | Generate application Postgres migrations without connecting to a database |
 | `pnpm db:migrate:postgres` | Apply Postgres migrations to an explicitly configured development/test database only |
 | `pnpm db:verify:postgres runtime` / `migration` | Verify runtime or direct CLI configuration and live remote branch mapping without opening Postgres or changing credentials |
-| `pnpm db:import:sqlite /absolute/path/to/source-copy.db` | Read-only legacy snapshot, atomic import and checksum verification into an empty loopback dev/test Postgres database |
+| `pnpm db:import:sqlite /absolute/path/to/source-copy.db` | Read-only legacy snapshot and checksum-verified import into an empty dev/test target; remote rehearsal needs an explicit branch pin and live verification |
+| `pnpm test:e2e` | Saved phone-width Chromium browser regressions against an explicitly selected disposable local Postgres database |
 
 ## CI and deployment
 
@@ -75,19 +76,33 @@ Remote non-production application startup, migration and seed additionally requi
 
 The live check rejects the production id, default/primary/protected branches, production/main names, non-ready branches, mismatched project/branch ids and unknown/read-only endpoints. Both the exact direct host and its derived pooler host must map to one read-write endpoint of the configured branch. API errors, missing metadata and unavailable credentials fail closed before pool creation. Remote non-Neon development targets are intentionally blocked until another provider-verification mechanism exists. Local loopback targets do not require Neon credentials; production remains outside this development-only control-plane check.
 
-Application readiness shares one in-flight verification and pool across concurrent requests and retries after failure. A successful branch verification lasts for that process's pool lifetime, not each request; restart the process after changing branch identity/endpoint configuration. It does not authorize public exposure or replace database permissions. `pnpm db:verify:postgres runtime` or `migration` performs the same preflight without opening Postgres. Neither command writes `.env.local` or `.neon`. Creating the isolated development branch and the actual cloud rehearsal still need approval.
+Application readiness shares one in-flight verification and pool across concurrent requests and retries after failure. A successful branch verification lasts for that process's pool lifetime, not each request; restart the process after changing branch identity/endpoint configuration. It does not authorize public exposure or replace database permissions. `pnpm db:verify:postgres runtime` or `migration` performs the same preflight without opening Postgres. Neither command writes `.env.local` or `.neon`. The approved schema-only `dev-step14-rehearsal` branch was created and rehearsed with synthetic data; it expires 2026-10-31 at 04:30 UTC. Existing credential files still select their original targets; do not assume they were switched.
 
-### Local SQLite import rehearsal
+### SQLite import rehearsal
 
-Use synthetic data only for now. The importer refuses **all remote hosts**, even a host labelled development; an approved isolated Neon branch/rehearsal and final household cutover approval are still pending. The new runtime/migration metadata guard does not by itself enable remote imports. The importer requires the explicit direct `DATABASE_URL_UNPOOLED` and `DATABASE_ENV=development|test`; it does not load local credentials.
+Use synthetic data only for now. Remote rehearsals require `SQLITE_IMPORT_NEON_BRANCH_ID` explicitly matching `NEON_DEVELOPMENT_BRANCH_ID`, in addition to all live branch/endpoint verification variables above. A host merely labelled development is insufficient; the verified pool is opened only after the metadata check passes. Production/preview imports remain disabled and actual household cutover needs separate approval. The importer requires the explicit direct `DATABASE_URL_UNPOOLED` and `DATABASE_ENV=development|test`; it does not load local credentials.
 
 1. Prepare a private copy of the source database using the legacy backup procedure, never a file-only copy of a live WAL database. The source must have the current legacy SQLite schema. Missing/unknown tables or columns are errors; if necessary migrate another private copy, not the original.
-2. Create a fresh disposable local Postgres database and apply `pnpm db:migrate:postgres`. **Do not seed first**: all application tables, including `library_state`, must be empty. The command never truncates or overwrites an existing destination.
+2. Create a fresh disposable local Postgres database, or a fresh database on an explicitly approved schema-only Neon development branch, and apply `pnpm db:migrate:postgres`. **Do not seed first**: all application tables, including `library_state`, must be empty. The command never truncates or overwrites an existing destination.
 3. Run `pnpm db:import:sqlite /absolute/path/to/private-source-copy.db`. A read-only SQLite transaction captures a consistent snapshot, checks integrity/references and normalizes booleans, JSON and explicit-offset timestamps. The Postgres transaction preserves ids, uids, creator ids and timestamps, verifies canonical per-table counts/SHA-256 digests and transactionally restarts identities. Timestamp spelling and JSON key order are normalized, not compared byte-for-byte.
 4. On failure, all destination rows and identity restarts roll back; fix the reported source/constraint issue and retry against the same empty database. Driver SQL parameters are suppressed in CLI errors to avoid exposing human data. A completed import refuses a second run; use another disposable database for the second rehearsal.
 5. Run `pnpm seed` explicitly before app startup. The importer deliberately leaves `library_state` empty rather than claiming old content matches the current library.
 
 The source is never migrated or modified. An entirely empty source is refused; use the guarded seed for a new library instead. Top-level JSON null, unsafe JSON integers, malformed JSON/booleans/dates and unrepresentable values are refused rather than silently coerced. Digests cover database rows only: photo **metadata** is preserved, but photo bytes are not copied or verified. No new photo approval or human decision is created. Protect reports and source copies as private migration artifacts. This is not yet the production migration or backup/restore procedure.
+
+### Repeatable browser tests
+
+Create a disposable local database named exactly `protein_kitchen_e2e`, then supply `POSTGRES_E2E_URL` explicitly:
+
+```bash
+POSTGRES_E2E_URL=postgres://fixture@127.0.0.1:5432/protein_kitchen_e2e pnpm test:e2e
+# Rerun only the relevant case during development:
+POSTGRES_E2E_URL=postgres://fixture@127.0.0.1:5432/protein_kitchen_e2e pnpm test:e2e --grep "photo rejection"
+```
+
+The runner refuses remote URLs, alternate database names and host-override query parameters **before any test write**. Setup migrates and clears application tables in that disposable database, imports an all-table synthetic fixture, seeds the current library and prepares a deterministic night-before task. It starts its own loopback-only server on port 3112 with `.next-e2e`, scratch uploads and push disabled, and never reuses another server. Install Chromium once with `pnpm exec playwright install chromium` if the runner reports it missing.
+
+Saved cases cover plan creation/swap/locked regeneration, shopping persistence across two browser contexts, night-before prep, real Excel/PDF payloads, and photo Reject success/failure/retry. The separate CI `browser` job uses a disposable Postgres 17 service and Chromium, without Neon secrets. Failure screenshots/traces are retained for seven days; local artifacts are ignored. This currently verifies shared data, **not multi-account authorization**, which will get distinct signup/onboarding/invitation browser cases during the identity stage.
 
 ## Configuration
 
@@ -106,6 +121,8 @@ Set in `.env.local` (git-ignored). Never commit it.
 | `NEON_DEVELOPMENT_BRANCH_ID` | Explicit non-default, non-primary, unprotected development branch id |
 | `NEON_PRODUCTION_BRANCH_ID` | Production branch id that non-production traffic must never select |
 | `NEON_API_KEY` | Server-only credential for live read-only Neon metadata verification; never exposed to the browser |
+| `SQLITE_IMPORT_NEON_BRANCH_ID` | Explicit remote rehearsal opt-in; must match the verified development branch id |
+| `POSTGRES_E2E_URL` | Disposable loopback-only `protein_kitchen_e2e` database; browser setup clears its application tables |
 | `DB_PATH` | Legacy SQLite source backup only; not used by the application |
 
 Reminders run on a 1-minute timer started in `instrumentation.ts`, and only when both VAPID keys are set. On iPhone, install the app to the Home Screen first, otherwise push is not available.

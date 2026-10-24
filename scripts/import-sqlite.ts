@@ -1,7 +1,7 @@
 import path from "node:path";
 import { DrizzleQueryError } from "drizzle-orm/errors";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
-import { openPostgres } from "../lib/db/postgres/client";
+import { openVerifiedPostgres } from "../lib/db/postgres/verified-client";
 import { sqliteImportTarget } from "../lib/db/postgres/import-target";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 
@@ -10,7 +10,7 @@ const file = process.argv[2]!;
 if (!path.isAbsolute(file)) throw new Error("SQLite import requires an explicit absolute source path.");
 const target = sqliteImportTarget(process.env);
 const snapshot = readSqliteSnapshot(file);
-const handle = openPostgres(target);
+const handle = await openVerifiedPostgres(target);
 try {
   const report = await restoreSqliteSnapshot(handle.db, snapshot).catch((error: unknown) => {
     if (!(error instanceof DrizzleQueryError)) throw error;

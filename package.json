@@ -7,6 +7,7 @@
     "validate": "tsx scripts/validate.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/validate.ts && tsx scripts/seed.ts",
     "backup": "tsx scripts/backup.ts",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.11",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",

@@ -1,10 +1,12 @@
 import { postgresMigrationTarget } from "./migration-target";
 
-/** Remote imports stay blocked until the isolated cloud rehearsal is explicitly approved and enabled. */
+/** Remote rehearsals require a second explicit branch pin in addition to live pool verification. */
 export function sqliteImportTarget(env: Readonly<Record<string, string | undefined>>) {
   const target = postgresMigrationTarget(env);
   if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(target.connectionString).hostname)) {
-    throw new Error("SQLite import currently supports loopback dev/test destinations only. The isolated cloud rehearsal must be approved and enabled first.");
+    if (!env.SQLITE_IMPORT_NEON_BRANCH_ID || env.SQLITE_IMPORT_NEON_BRANCH_ID !== env.NEON_DEVELOPMENT_BRANCH_ID) {
+      throw new Error("Remote SQLite rehearsal requires SQLITE_IMPORT_NEON_BRANCH_ID to explicitly match NEON_DEVELOPMENT_BRANCH_ID; loopback imports need no remote opt-in.");
+    }
   }
   return target;
 }

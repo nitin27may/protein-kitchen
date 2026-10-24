@@ -4,6 +4,9 @@ node_modules/
 .next-*/
 out/
 coverage/
+playwright-report/
+test-results/
+.playwright-mcp/
 next-env.d.ts
 *.tsbuildinfo
 .vercel/
