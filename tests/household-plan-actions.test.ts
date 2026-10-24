@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, expect, it, vi } from "vitest";
 import * as s from "../lib/db/schema";
 import { loadData } from "../lib/data/load";
+import { getRoutineCatalog } from "../lib/routines/catalog";
 import { requireMember } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
 import { getPlanView } from "../lib/server/queries";
@@ -10,7 +11,7 @@ import { todayISO } from "../lib/server/time";
 import { persistNewPlan } from "../lib/server/plan-persistence";
 import {
   addManualItem, deletePlan, enableShake, getSwapOptions, markPlanStep, regeneratePlan, removeManualItem,
-  setGroceryChecked, setManualChecked, setPartMode, setPortion, setPrepDone, swapSlot, toggleLock,
+  setGroceryChecked, setManualChecked, setPartMode, setPortion, setPrepDone, swapSlot, toggleLock, setPersonRoutine, setHabitDone,
 } from "../app/actions";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -19,6 +20,7 @@ vi.mock("../lib/auth/access", () => ({ requireMember: vi.fn(), actionDenial: vi.
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn(), getData: vi.fn() }));
 
 const data = loadData(process.cwd());
+const routine = getRoutineCatalog(data)[0]!;
 let h: DbHandle;
 let own: number;
 let foreign: number;
@@ -69,6 +71,49 @@ beforeEach(async () => {
   vi.mocked(getDb).mockResolvedValue(h.db);
   vi.mocked(getData).mockReturnValue(data);
   vi.mocked(requireMember).mockResolvedValue({ userId: "a", role: "owner", personId: 1 });
+});
+
+it("refuses foreign profile routines/habits while preserving valid owner and member-self writes", async () => {
+  const [habit] = await h.db.insert(s.habits).values({
+    slug: routine.habitSlug, title: routine.title, category: "routine_drink",
+    evidenceGrade: "practical", evidenceNote: "Synthetic fixture", defaultOn: false,
+  }).returning({ id: s.habits.id });
+  expect((await setPersonRoutine(2, routine.habitSlug, { active: true })).ok).toBe(false);
+  expect((await setHabitDone("2026-11-02", 2, routine.habitSlug, true)).ok).toBe(false);
+  expect(await h.db.select().from(s.personRoutines)).toEqual([]);
+  expect(await h.db.select().from(s.habitLog)).toEqual([]);
+  expect(await setPersonRoutine(1, routine.habitSlug, { active: true })).toEqual({ ok: true });
+  const [stored] = await h.db.select().from(s.personRoutines);
+  expect(stored).toMatchObject({ personId: 1, habitId: habit!.id, active: true });
+  expect(await h.db.select().from(s.syncState)).toHaveLength(1);
+  expect(await setHabitDone("2026-11-02", 1, routine.habitSlug, true)).toEqual({ ok: true });
+  expect(await setHabitDone("2026-11-02", 1, routine.habitSlug, false)).toEqual({ ok: true });
+  expect(await h.db.select().from(s.habitLog)).toMatchObject([{ personId: 1, done: false }]);
+  expect((await setPersonRoutine(1, routine.habitSlug, { active: true, days: [] })).ok).toBe(false);
+  expect((await setHabitDone("2026-11-02", 1, "missing", true)).ok).toBe(false);
+  await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "a"));
+  vi.mocked(requireMember).mockResolvedValue({ userId: "a", role: "member", personId: 1 });
+  expect(await setPersonRoutine(1, routine.habitSlug, { active: false })).toEqual({ ok: true });
+  const [other] = await h.db.insert(s.people).values({
+    id: 3, householdId: "a", name: "Another synthetic profile", sex: "other", birthDate: "2000-01-01",
+    heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+  }).returning({ id: s.people.id });
+  expect((await setPersonRoutine(other!.id, routine.habitSlug, { active: true })).ok).toBe(false);
+  expect((await setHabitDone("2026-11-02", other!.id, routine.habitSlug, true)).ok).toBe(false);
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  expect((await setPersonRoutine(1, routine.habitSlug, { active: true })).ok).toBe(false);
+  expect((await setHabitDone("2026-11-02", 1, routine.habitSlug, true)).ok).toBe(false);
+});
+
+it("propagates profile infrastructure failures and rolls routine choices and sync markers back together", async () => {
+  await h.db.insert(s.habits).values({
+    slug: routine.habitSlug, title: routine.title, category: "routine_drink",
+    evidenceGrade: "practical", evidenceNote: "Synthetic fixture", defaultOn: false,
+  });
+  await h.db.execute(sql`alter table sync_state add constraint synthetic_sync_failure check (data_class <> 'person-routines')`);
+  await expect(setPersonRoutine(1, routine.habitSlug, { active: true })).rejects.toThrow("sync_state");
+  expect(await h.db.select().from(s.personRoutines)).toEqual([]);
+  expect(await h.db.select().from(s.syncState)).toEqual([]);
 });
 
 it("refuses every foreign plan and shopping mutation even for a household owner", async () => {

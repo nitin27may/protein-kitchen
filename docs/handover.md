@@ -10,6 +10,20 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest private-profile request boundaries:** profile details/preferences,
+routine choices, today's routines and habit completion reads now require an
+owned household profile. Routine and daily-habit writes refresh verified
+membership, enforce owner-or-self access and hold the profile lock through the
+existing writer; infrastructure failures propagate and routine/sync writes roll
+back together. Exact request payloads, foreign/missing/stale refusal, member
+permissions and native revocation/profile-write contention are covered. A new
+retained mobile browser journey verifies routine save/reload and captured-action
+foreign-profile refusal. **Acceptance: 1,840 tests / 93 files, all 26 saved
+browser journeys, typecheck and production build pass**; household core stays
+gated at 100%, overall statements are 70.57%. Shared feedback/candidate filters,
+pantry, saved views, links/photos, exports/jobs and composite/non-null ownership
+still need adoption before email-first signup or deployment.
+
 **Latest transactional plan/shopping mutations:** slot locks, portions, swaps,
 milestones, shopping/manual items, prep completion and part modes now refresh
 verified household membership and lock the owned plan/setup and selected
@@ -20,7 +34,7 @@ competing plan writes wait for the transaction; a captured browser action cannot
 lock another household's meal. **Acceptance: 1,836 tests / 93 files, all 25 saved
 browser journeys, typecheck and production build pass**, with the core 100%
 coverage gate intact and 70.25% statements overall. Remaining shared feedback,
-pantry, saved views, links/photos, personal consumers, sync/export/jobs and the
+pantry, saved views, links/photos, sync/export/jobs and the
 non-null/composite membership contract still block open signup and deployment.
 
 **Latest request-owned plan projections:** verified household scope now controls

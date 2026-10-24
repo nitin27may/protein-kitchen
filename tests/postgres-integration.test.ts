@@ -37,7 +37,7 @@ import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
-import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
+import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -127,6 +127,19 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
         }
       });
       expect(await handle.db.select().from(s.groceryManual)).toMatchObject([{ planId: owned!.id, text: "Owned native write" }]);
+      await mutateHouseholdPerson(handle.db, a, profiles[0]!.id, async () => {
+        for (const statement of [
+          "delete from household_members where user_id = 'native-a'",
+          "update auth_users set email_verified = false where id = 'native-a'",
+          `update people set name = 'Competing profile write' where id = ${profiles[0]!.id}`,
+        ]) {
+          await contender.query("begin");
+          try {
+            await contender.query("set local lock_timeout = '150ms'");
+            await expect(contender.query(statement)).rejects.toMatchObject({ code: "55P03" });
+          } finally { await contender.query("rollback"); }
+        }
+      });
       await expect(deleteHouseholdPlan(handle.db, b, owned!.id)).rejects.toThrow("not available");
       await expect(regenerateHouseholdPlan(handle.db, b, owned!.id, 7, [], input.recipeIds)).rejects.toThrow("not available");
       await expect(persistHouseholdPlan(handle.db, a, { ...input, setup: { ...input.setup, personIds: [profiles[1]!.id] } })).rejects.toThrow("not in this household");

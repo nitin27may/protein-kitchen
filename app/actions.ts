@@ -39,7 +39,7 @@ import { resolveOnlyHouseholdAccess, type HouseholdAccess } from "@/lib/auth/hou
 import { HouseholdAccessError } from "@/lib/auth/household";
 import {
   deleteHouseholdPerson, householdPeople, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
-  deleteHouseholdPlan, mutateHouseholdPlan, regenerateHouseholdPlan,
+  deleteHouseholdPlan, mutateHouseholdPlan, mutateHouseholdPerson, regenerateHouseholdPlan,
 } from "@/lib/server/household-plans";
 import type { Db } from "@/lib/db/client";
 
@@ -76,6 +76,17 @@ async function planMutation<T = object>(
 function refresh(planId?: number) {
   revalidatePath("/", "layout");
   if (planId) revalidatePath(`/plan/${planId}`);
+}
+
+async function personMutation(personId: number, write: (db: Db) => Promise<Result>): Promise<Result> {
+  const context = await householdContext();
+  if (!context.ok) return context;
+  try {
+    return await mutateHouseholdPerson(context.db, context.access, personId, write);
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
 }
 
 // ---------- Profiles ----------
@@ -505,14 +516,13 @@ export async function removeManualItem(id: number): Promise<Result> {
 export async function setHabitDone(date: string, personId: number, habitSlug: string, done: boolean): Promise<Result> {
   const denied = await actionDenial({ personId });
   if (denied) return denied;
-  const db = await getDb();
-  const [habit] = await db.select({ id: s.habits.id }).from(s.habits).where(eq(s.habits.slug, habitSlug)).limit(1);
-  if (!habit) return fail("Unknown habit");
-  await db
-    .insert(s.habitLog)
-    .values({ date, personId, habitId: habit.id, done })
-    .onConflictDoUpdate({ target: [s.habitLog.date, s.habitLog.personId, s.habitLog.habitId], set: { done } });
-  return { ok: true };
+  return personMutation(personId, async (db) => {
+    const [habit] = await db.select({ id: s.habits.id }).from(s.habits).where(eq(s.habits.slug, habitSlug)).limit(1);
+    if (!habit) return fail("Unknown habit");
+    await db.insert(s.habitLog).values({ date, personId, habitId: habit.id, done })
+      .onConflictDoUpdate({ target: [s.habitLog.date, s.habitLog.personId, s.habitLog.habitId], set: { done } });
+    return { ok: true };
+  });
 }
 
 export async function setPrepDone(date: string, taskKey: string, done: boolean): Promise<Result> {
@@ -684,7 +694,7 @@ export async function setPersonRoutine(
   const denied = await actionDenial({ personId });
   if (denied) return denied;
   const catalog = catalogByHabit(getRoutineCatalog(getData()));
-  const res = await savePersonRoutine(await getDb(), catalog, personId, habitSlug, patch);
+  const res = await personMutation(personId, (db) => savePersonRoutine(db, catalog, personId, habitSlug, patch));
   if (!res.ok) return fail(res.error);
   revalidatePath(`/profiles/${personId}`);
   revalidatePath("/profiles");

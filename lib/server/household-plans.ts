@@ -118,6 +118,20 @@ export async function mutateHouseholdPlan<T>(
   });
 }
 
+export async function mutateHouseholdPerson<T>(
+  db: Db, access: HouseholdAccess, personId: number, write: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return withTx(db, async (tx) => {
+    await refreshHouseholdAccess(tx, access);
+    requireHouseholdProfile(access);
+    if (access.role !== "owner" && access.personId !== personId) {
+      throw new HouseholdAccessError("You can only change your own profile.");
+    }
+    await lockHouseholdPeople(tx, access, [personId]);
+    return write(tx);
+  });
+}
+
 export async function saveHouseholdPreferences(
   db: Db, access: HouseholdAccess, personId: number, choices: Parameters<typeof persistIngredientPreferences>[2],
 ) {

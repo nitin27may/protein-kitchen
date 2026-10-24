@@ -29,7 +29,7 @@ import { defaultViewQuery } from "./saved-views";
 import { householdFeedback, personalFeedback, planningFeedback } from "./feedback";
 import { requireMember } from "../auth/access";
 import { resolveOnlyHouseholdAccess } from "../auth/household-access";
-import { householdPeople, householdPlan, householdPlans } from "./household-plans";
+import { householdPeople, householdPerson, householdPlan, householdPlans } from "./household-plans";
 import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
 
@@ -46,6 +46,12 @@ async function requestPlan(db: Db, planId: number) {
   if (!row) throw new HouseholdAccessError("This plan is not available in your household.");
   await selectedPeople(db, row.setup.personIds, access.householdId);
   return { ...row, access };
+}
+
+async function requestPerson(db: Db, personId: number) {
+  const person = await householdPerson(db, await requestHousehold(db), personId);
+  if (!person) throw new HouseholdAccessError("This profile is not available in your household.");
+  return person;
 }
 
 async function selectedPeople(db: Db, ids: readonly number[], householdId: string): Promise<PersonRow[]> {
@@ -69,12 +75,14 @@ export async function listPeople(): Promise<PersonRow[]> {
 }
 
 export async function getPerson(id: number): Promise<PersonRow | undefined> {
-  const [row] = await (await getDb()).select().from(s.people).where(eq(s.people.id, id)).limit(1);
-  return row;
+  const db = await getDb();
+  return householdPerson(db, await requestHousehold(db), id);
 }
 
 export async function getPrefs(personId: number): Promise<{ liked: string[]; avoided: string[] }> {
-  const rows = await (await getDb())
+  const db = await getDb();
+  await requestPerson(db, personId);
+  const rows = await db
     .select({ kind: s.preferences.kind, slug: s.ingredients.slug })
     .from(s.preferences)
     .innerJoin(s.ingredients, eq(s.ingredients.id, s.preferences.ingredientId))
@@ -256,12 +264,16 @@ export async function getPartModes(planId: number): Promise<PartModes> {
 
 /** Each routine one person chose (days, time of day, servings). The profile page lists them. */
 export async function getPersonRoutines(personId: number): Promise<PersonRoutineView[]> {
-  return readPersonRoutines(await getDb(), personId);
+  const db = await getDb();
+  await requestPerson(db, personId);
+  return readPersonRoutines(db, personId);
 }
 
 /** A person's routines scheduled on `date`'s weekday, ticked or not, for the morning card on Today. */
 export async function getTodayRoutines(personId: number, date: string): Promise<TodayRoutine[]> {
-  return readTodayRoutines(await getDb(), personId, date);
+  const db = await getDb();
+  await requestPerson(db, personId);
+  return readTodayRoutines(db, personId, date);
 }
 
 /** What a plan took from its people's routine choices when it was generated. */
@@ -311,6 +323,7 @@ export interface HabitRow {
 /** Every habit from the library, plus the ids this person ticked on `date`. */
 export async function getHabitsFor(date: string, personId: number): Promise<{ habits: HabitRow[]; doneIds: Set<number> }> {
   const db = await getDb();
+  await requestPerson(db, personId);
   const habits = await db.select().from(s.habits);
   const log = await db.select().from(s.habitLog).where(and(eq(s.habitLog.date, date), eq(s.habitLog.personId, personId)));
   return { habits, doneIds: new Set(log.filter((r) => r.done).map((r) => r.habitId)) };

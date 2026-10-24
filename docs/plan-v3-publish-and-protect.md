@@ -203,6 +203,47 @@ foreign/missing children are refused before writes; failed shake regeneration
 rolls its setup change back. Household core coverage retains its 100% gate;
 overall statements are 70.25%. No public admission or deployment was enabled.
 
+### Next H2 slice: profile preferences, routines and daily habit requests
+
+Dependencies: reuse verified household resolution, scoped profile lookup, the
+existing routine validator/human writer and transaction lock order. No schema,
+remote resources, admission or human-data export format changes belong here.
+Replace global request profile/preference/routine/today-habit reads with an
+owned-profile boundary. Household members may read household profiles for shared
+planning; missing/foreign details must be unavailable, never an empty
+success-shaped preference or routine projection.
+
+Add an owned-profile mutation transaction that refreshes verification/membership,
+requires a linked profile, enforces owner-or-self editing, locks the selected
+household profile and only then invokes the existing writer. Adopt it for routine
+choices and daily habit completion. Preserve routine validation, human sync
+marking, schedule defaults and existing profile rules; expected ownership failures
+are explicit action errors, while infrastructure errors propagate.
+
+Acceptance: two-household request-loader tests for detail/preferences/routines/
+today habits, missing profiles and stale verification; real action cases for
+foreign-owner refusal, member self-only edits, valid household-owner edits,
+rollback and existing routine validation. Native contention must hold membership
+and verification stable during the profile callback. Retain a browser journey
+that changes/reloads a routine, replays its captured action against a foreign
+profile and verifies no foreign write. Run focused tests, full native coverage,
+saved browser cases, types and build before committing. Feedback, pantry, saved
+views, photos/links, exports/jobs and composite/non-null schema remain separate
+pending boundaries; this slice does not enable open signup.
+
+**Profile-request acceptance:** 1,840 tests / 93 files pass with all existing
+coverage gates, including the household core's 100% gate. Overall statements are
+70.57%. All 26 retained browser journeys, typecheck and production build pass.
+Exact owned preference/routine/today-completion payloads and the other
+household's independent empty state are covered, alongside foreign/missing
+profile refusal and stale verification. Actual actions cover owner/member-self
+rules, routine validation and rollback of both the choice and sync marker on a
+database failure. Native contention blocks concurrent membership revocation,
+verification changes and profile edits during the callback. The new mobile
+journey taps the routine label, reloads persisted state, replays the action
+against another household, confirms no write and restores the original toggle.
+No deployment, schema contract or admission gate changed.
+
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.
 
 The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity with explicit additive Postgres-only fields; the schema now has 48 tables including households, library versioning, eight identity/rate-limit tables, separate personal recipe feedback and four operational sync/reminder tables. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists. Existing SQLite files were not touched or imported.

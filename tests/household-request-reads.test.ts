@@ -2,11 +2,14 @@ import { eq } from "drizzle-orm";
 import { beforeEach, expect, it, vi } from "vitest";
 import * as s from "../lib/db/schema";
 import { loadData } from "../lib/data/load";
+import { getRoutineCatalog } from "../lib/routines/catalog";
+import { writePersonRoutine } from "../lib/human/routines";
 import { requireMember } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
 import {
   getBatchPrepTicks, getPartModes, getPlanMilestones, getPlanRoutines, getPlanView, groceryChecks,
   lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans,
+  getPerson, getPrefs, getPersonRoutines, getTodayRoutines, getHabitsFor,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
@@ -66,6 +69,53 @@ it("loads only the verified request household's people and last setup", async ()
   await h.db.delete(s.plans).where(eq(s.plans.householdId, "b"));
   await h.db.delete(s.planSetups).where(eq(s.planSetups.householdId, "b"));
   expect(await lastSetup()).toBeUndefined();
+});
+
+it("scopes profile preferences, routines and daily habits without foreign empty-success projections", async () => {
+  const routine = getRoutineCatalog(data)[0]!;
+  const [habit] = await h.db.insert(s.habits).values({
+    slug: routine.habitSlug, title: routine.title, category: "routine_drink", evidenceGrade: "practical",
+    evidenceNote: "Synthetic fixture", defaultOn: false,
+  }).returning({ id: s.habits.id });
+  await writePersonRoutine(h.db, 1, habit!.id, { active: true, days: [1], timeOfDay: "morning", servings: 1.5 });
+  await h.db.insert(s.habitLog).values({ date: "2026-11-02", personId: 1, habitId: habit!.id, done: true });
+  const [ingredient] = await h.db.insert(s.ingredients).values({
+    slug: "synthetic-preference", name: "Synthetic", state: "ready", source: "USDA", sourceId: "synthetic-fixture",
+    aisle: "test", isPantryStaple: false, containsOnionGarlic: false, isDairy: false,
+    kcal: 100, proteinG: 5, carbsG: 10, fatG: 4, fibreG: 1, aliases: [], whereToBuy: [],
+  }).returning({ id: s.ingredients.id });
+  await h.db.insert(s.preferences).values({ personId: 1, ingredientId: ingredient!.id, kind: "like" });
+  expect((await getPerson(1))?.id).toBe(1);
+  expect(await getPerson(2)).toBeUndefined();
+  expect(await getPerson(999)).toBeUndefined();
+  const readers = [
+    getPrefs, getPersonRoutines, (id: number) => getTodayRoutines(id, "2026-11-02"),
+    (id: number) => getHabitsFor("2026-11-02", id),
+  ];
+  for (const reader of readers) {
+    await expect(reader(1)).resolves.toBeDefined();
+    await expect(reader(2)).rejects.toThrow("profile is not available in your household");
+    await expect(reader(999)).rejects.toThrow("profile is not available in your household");
+  }
+  expect(await getPrefs(1)).toEqual({ liked: ["synthetic-preference"], avoided: [] });
+  expect(await getPersonRoutines(1)).toEqual([{
+    habitSlug: routine.habitSlug, active: true, days: [1], timeOfDay: "morning", servings: 1.5,
+  }]);
+  expect(await getTodayRoutines(1, "2026-11-02")).toEqual([{
+    habitSlug: routine.habitSlug, timeOfDay: "morning", servings: 1.5, done: true,
+  }]);
+  expect((await getHabitsFor("2026-11-02", 1)).doneIds).toEqual(new Set([habit!.id]));
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect((await getPerson(2))?.id).toBe(2);
+  expect(await getPrefs(2)).toEqual({ liked: [], avoided: [] });
+  expect(await getPersonRoutines(2)).toEqual([]);
+  expect(await getTodayRoutines(2, "2026-11-02")).toEqual([]);
+  expect((await getHabitsFor("2026-11-02", 2)).doneIds).toEqual(new Set());
+  vi.mocked(requireMember).mockResolvedValue({ userId: "a", role: "owner", personId: 1 });
+  await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "a"));
+  for (const reader of [getPerson, ...readers]) {
+    await expect(reader(1)).rejects.toThrow("verified account");
+  }
 });
 
 it("selects only request-owned latest/list/detail plans, including when a foreign plan is newer", async () => {

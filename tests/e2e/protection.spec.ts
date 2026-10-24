@@ -3,9 +3,59 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, recipes, plans, planSetups, planSlots } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipes, plans, planSetups, planSlots } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
+
+test("routine choices persist on reload and captured actions cannot change a foreign household profile", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = `foreign-routine-${randomUUID()}`;
+  let foreignPersonId: number | undefined;
+  try {
+    const [account] = await handle.db.select({ personId: householdMembers.personId })
+      .from(householdMembers).innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
+      .where(eq(authUsers.email, "authorized-browser-fixture@example.test"));
+    await handle.db.insert(households).values({ id: householdId, name: "Unrelated synthetic routine household" });
+    const [foreign] = await handle.db.insert(people).values({
+      householdId, name: "Foreign private routine profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: people.id });
+    foreignPersonId = foreign!.id;
+    const path = `/profiles/${account!.personId}`;
+    await page.goto(path);
+    const routines = page.getByRole("region", { name: "Daily routine", exact: true });
+    const card = routines.getByRole("listitem").filter({ has: page.getByRole("switch", { name: "Do this routine" }) }).first();
+    const title = await card.getByRole("heading").innerText();
+    const toggle = card.getByRole("switch", { name: "Do this routine" });
+    const original = await toggle.isChecked();
+    const capturing = page.waitForRequest((request) => request.method() === "POST" && request.headers()["next-action"] !== undefined);
+    await card.getByText("Do this routine", { exact: true }).click();
+    const captured = await capturing;
+    await expect(routines.getByRole("status").filter({ hasText: "Saved for" })).toBeVisible();
+    const [personId, habit, patch] = z.tuple([
+      z.number(), z.string(), z.object({ active: z.boolean() }).passthrough(),
+    ]).parse(JSON.parse(captured.postData()!));
+    expect(personId).toBe(account!.personId);
+    const savedToggle = routines.getByRole("listitem", { name: title, exact: true }).getByRole("switch", { name: "Do this routine" });
+    await page.reload();
+    await expect(savedToggle).toBeChecked({ checked: !original });
+    const headers = {
+      origin: "http://127.0.0.1:3112", "content-type": captured.headers()["content-type"]!,
+      "next-action": captured.headers()["next-action"]!,
+    };
+    const replay = await page.request.post(path, { headers, data: JSON.stringify([foreignPersonId, habit, patch]) });
+    expect(await replay.text()).toContain("not in this household");
+    expect(await handle.db.select().from(personRoutines).where(eq(personRoutines.personId, foreignPersonId))).toEqual([]);
+    const restore = await page.request.post(path, { headers, data: JSON.stringify([personId, habit, { ...patch, active: original }]) });
+    expect(await restore.text()).toContain('"ok":true');
+    await page.reload();
+    await expect(savedToggle).toBeChecked({ checked: original });
+  } finally {
+    if (foreignPersonId) await handle.db.delete(people).where(eq(people.id, foreignPersonId));
+    await handle.db.delete(households).where(eq(households.id, householdId));
+    await handle.close();
+  }
+});
 
 test("owners cannot read or mutate another household's newer plan, prep, groceries or exports", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));

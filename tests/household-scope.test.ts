@@ -6,7 +6,7 @@ import { refreshHouseholdAccess, requireHouseholdProfile, resolveHouseholdAccess
 import {
   deleteHouseholdPlan, householdPeople, householdPerson, householdPlan, householdPlans,
   deleteHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
-  mutateHouseholdPlan,
+  mutateHouseholdPlan, mutateHouseholdPerson,
 } from "../lib/server/household-plans";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { householdAccount } from "../lib/server/household-account";
@@ -62,6 +62,34 @@ function input(personId = a.personId!) {
     recipeIds: new Map([["scope-fixture", recipeId]]),
   };
 }
+
+it("refreshes and locks profile ownership, enforces member self edits and rolls callback failures back", async () => {
+  let called = 0;
+  const write = async () => { called++; return "saved"; };
+  await expect(mutateHouseholdPerson(h.db, a, otherPerson, write)).rejects.toThrow("not in this household");
+  await expect(mutateHouseholdPerson(h.db, a, 999, write)).rejects.toThrow("not in this household");
+  expect(called).toBe(0);
+  const [additional] = await h.db.insert(s.people).values({
+    householdId: "a", name: "Another synthetic profile", sex: "other", birthDate: "2000-01-01",
+    heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+  }).returning({ id: s.people.id });
+  expect(await mutateHouseholdPerson(h.db, a, additional!.id, write)).toBe("saved");
+  await expect(mutateHouseholdPerson(h.db, a, a.personId!, async (tx) => {
+    await tx.update(s.people).set({ name: "Must roll back" }).where(eq(s.people.id, a.personId!));
+    throw new Error("Synthetic profile write failure");
+  })).rejects.toThrow("Synthetic profile write failure");
+  expect((await h.db.select().from(s.people).where(eq(s.people.id, a.personId!)))[0]!.name).toBe("Synthetic profile");
+  await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "a"));
+  await expect(mutateHouseholdPerson(h.db, a, a.personId!, write)).rejects.toThrow("access changed");
+  const member = await resolveHouseholdAccess(h.db, "a", "a");
+  expect(await mutateHouseholdPerson(h.db, member, member.personId!, write)).toBe("saved");
+  await expect(mutateHouseholdPerson(h.db, member, additional!.id, write)).rejects.toThrow("own profile");
+  const pending = await resolveHouseholdAccess(h.db, "pending", "a");
+  await expect(mutateHouseholdPerson(h.db, pending, member.personId!, write)).rejects.toThrow("Finish");
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  await expect(mutateHouseholdPerson(h.db, member, member.personId!, write)).rejects.toThrow("not available");
+  expect(called).toBe(2);
+});
 
 it("refreshes and locks plan ownership before any shared-state callback and rolls failures back", async () => {
   const id = await persistHouseholdPlan(h.db, a, input());
