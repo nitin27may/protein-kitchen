@@ -60,6 +60,30 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
   });
   afterAll(async () => { if (handle) await handle.close(); });
 
+  it("keeps concurrent pantry and prep upserts independent in each household and legacy namespace", async () => {
+    await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const [ingredient] = await handle.db.insert(s.ingredients).values({
+      slug: "fixture", name: "Fixture", aliases: [], state: "ready", kcal: 1, proteinG: 0, carbsG: 0,
+      fatG: 0, fibreG: 0, source: "USDA", sourceId: "fixture", aisle: "test", whereToBuy: [],
+      isPantryStaple: false, containsOnionGarlic: false, isDairy: false,
+    }).returning({ id: s.ingredients.id });
+    await Promise.all(Array.from({ length: 12 }, (_, i) => {
+      const householdId = ["a", "b", null][i % 3];
+      return handle.db.transaction(async (tx) => {
+        await tx.insert(s.pantry).values({ householdId, ingredientId: ingredient!.id, have: householdId === "a", alwaysStock: false })
+          .onConflictDoUpdate({ target: [s.pantry.householdId, s.pantry.ingredientId], set: { have: householdId === "a" } });
+        await tx.insert(s.prepTaskState).values({ householdId, date: "2026-11-02", taskKey: "shared-fixture", done: householdId === "b" })
+          .onConflictDoUpdate({ target: [s.prepTaskState.householdId, s.prepTaskState.date, s.prepTaskState.taskKey], set: { done: householdId === "b" } });
+      });
+    }));
+    expect(await handle.db.select().from(s.pantry).orderBy(s.pantry.householdId)).toMatchObject([
+      { householdId: "a", have: true }, { householdId: "b", have: false }, { householdId: null, have: false },
+    ]);
+    expect(await handle.db.select().from(s.prepTaskState).orderBy(s.prepTaskState.householdId)).toMatchObject([
+      { householdId: "a", done: false }, { householdId: "b", done: true }, { householdId: null, done: false },
+    ]);
+  });
+
   it("scopes owned plan writes on native Postgres and serializes membership/verification revocation until commit", async () => {
     await handle.db.insert(s.households).values([{ id: "native-a", name: "Fixture A" }, { id: "native-b", name: "Fixture B" }]);
     const profiles = await handle.db.insert(s.people).values(["native-a", "native-b"].map((householdId) => ({

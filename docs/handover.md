@@ -10,6 +10,17 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest pantry/prep identities:** migration `0016` preserves all existing rows
+and replaces global ingredient/date-task keys with null-safe household-composite
+uniqueness. Actual prep completion and legacy renames upsert only the owned
+namespace; foreign/null rows neither block nor inherit the owned change.
+**Acceptance: 1,871 tests / 93 files, all 29 retained browser journeys, types and
+build pass**, existing critical gates intact, overall statements 72.06%.
+Native twelve-way upserts keep three independent namespaces; real browser
+toggle/reload leaves foreign same-key completions unchanged. Pantry still has no
+new request writer or UI. Remaining operator import/reset/recovery, non-null
+ownership, membership selection and email-first admission/deployment stay open.
+
 **Latest household sync:** migration `0015` preserves existing markers and
 replaces class-only identity with null-safe household/class uniqueness. Shared
 human writers mark their household atomically; snapshots, status and receipts

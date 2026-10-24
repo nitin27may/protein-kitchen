@@ -430,7 +430,7 @@ it("migrates only the plan household's legacy prep ticks and preserves ownership
   expect(await h.db.select().from(s.prepTaskState)).toEqual(ticks);
 });
 
-it("rolls back a legacy tick rename rather than merging into a foreign-owned completion", async () => {
+it("renames owned legacy ticks independently of foreign completions with the same key", async () => {
   const view = (await getPlanView(planId, []))!;
   const task = (await loadNight(view, "2026-11-02")).tasks[0]!;
   const old = `night:${planId}:${task.dueDate}:0:${task.text}`;
@@ -438,10 +438,12 @@ it("rolls back a legacy tick rename rather than merging into a foreign-owned com
     { householdId: "a", date: task.dueDate, taskKey: old, done: true },
     { householdId: "b", date: task.dueDate, taskKey: task.key, done: true },
   ]);
-  const before = await h.db.select().from(s.prepTaskState);
-  await expect(migrateTickKeys(planId, [task])).rejects.toThrow("ownership conflicts");
-  expect(await h.db.select().from(s.prepTaskState)).toEqual(before);
-  await h.db.delete(s.prepTaskState).where(eq(s.prepTaskState.taskKey, old));
+  await migrateTickKeys(planId, [task]);
+  expect(await h.db.select().from(s.prepTaskState).orderBy(s.prepTaskState.householdId)).toEqual([
+    { householdId: "a", date: task.dueDate, taskKey: task.key, done: true },
+    { householdId: "b", date: task.dueDate, taskKey: task.key, done: true },
+  ]);
+  await h.db.delete(s.prepTaskState).where(eq(s.prepTaskState.householdId, "a"));
   expect((await loadNight(view, "2026-11-02")).tasks[0]!.done).toBe(false);
 });
 

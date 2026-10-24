@@ -355,7 +355,10 @@ export const prepTaskState = pgTable("prep_task_state", {
   date: isoDate("date").notNull(),
   taskKey: text("task_key").notNull(),
   done: bool("done").notNull(),
-}, (t) => [primaryKey({ columns: [t.date, t.taskKey] }), index("prep_task_state_household_idx").on(t.householdId)]);
+}, (t) => [
+  unique("prep_task_state_household_task_uq").on(t.householdId, t.date, t.taskKey).nullsNotDistinct(),
+  index("prep_task_state_household_idx").on(t.householdId),
+]);
 
 export const groceryState = pgTable("grocery_state", {
   planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
@@ -385,10 +388,13 @@ export const groceryManual = pgTable("grocery_manual", {
 
 export const pantry = pgTable("pantry", {
   householdId: householdId(),
-  ingredientId: integer("ingredient_id").primaryKey().references(() => ingredients.id, { onDelete: "no action" }),
+  ingredientId: integer("ingredient_id").notNull().references(() => ingredients.id, { onDelete: "no action" }),
   have: bool("have").notNull(),
   alwaysStock: bool("always_stock").notNull(),
-}, (t) => [index("pantry_household_idx").on(t.householdId)]);
+}, (t) => [
+  unique("pantry_household_ingredient_uq").on(t.householdId, t.ingredientId).nullsNotDistinct(),
+  index("pantry_household_idx").on(t.householdId),
+]);
 
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: id(),

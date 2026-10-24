@@ -30,7 +30,7 @@ describe("Postgres baseline parity", () => {
       const target = pgConfig(pg[name]);
       expect(target.name, name).toBe(source.name);
       const columns = (config: typeof source | typeof target) => config.columns.map((c) => ({
-        name: c.name, notNull: c.notNull, primary: (name === "recipeFeedback" && c.name === "recipe_id") || (name === "syncState" && c.name === "data_class") ? false : c.primary, unique: c.isUnique,
+        name: c.name, notNull: c.notNull, primary: (name === "recipeFeedback" && c.name === "recipe_id") || (name === "syncState" && c.name === "data_class") || (name === "pantry" && c.name === "ingredient_id") ? false : c.primary, unique: c.isUnique,
         enum: c.enumValues, default: c.default,
       })).sort((a, b) => a.name.localeCompare(b.name));
       expect(columns(target).filter((c) => (name !== "syncState" || !["revision", "exported_revision"].includes(c.name)) &&
@@ -47,7 +47,7 @@ describe("Postgres baseline parity", () => {
         ]);
       }
       expect(target.primaryKeys.map((key) => key.columns.map((c) => c.name)), name)
-        .toEqual(source.primaryKeys.map((key) => key.columns.map((c) => c.name)));
+        .toEqual(name === "prepTaskState" ? [] : source.primaryKeys.map((key) => key.columns.map((c) => c.name)));
       const foreignKeys = (config: typeof source | typeof target) => config.foreignKeys.map((key) => {
         const ref = key.reference();
         return {
@@ -72,7 +72,14 @@ describe("Postgres baseline parity", () => {
       const uniqueConstraints = (config: typeof source | typeof target) => config.uniqueConstraints.map((key) => ({
         columns: key.columns.map((c) => c.name),
       }));
-      expect(uniqueConstraints(target).filter((key) => !["recipeFeedback", "photoDecisions", "syncState"].includes(name) || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
+      expect(uniqueConstraints(target).filter((key) => !["recipeFeedback", "photoDecisions", "syncState", "pantry", "prepTaskState"].includes(name) || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
+      if (name === "pantry" || name === "prepTaskState") {
+        expect(target.uniqueConstraints).toMatchObject([{
+          name: name === "pantry" ? "pantry_household_ingredient_uq" : "prep_task_state_household_task_uq",
+          nullsNotDistinct: true,
+          columns: (name === "pantry" ? ["household_id", "ingredient_id"] : ["household_id", "date", "task_key"]).map((name) => ({ name })),
+        }]);
+      }
       if (name === "syncState") {
         expect(target.uniqueConstraints).toMatchObject([{
           name: "sync_state_household_class_uq", nullsNotDistinct: true,
@@ -111,6 +118,36 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("preserves pantry and prep bytes while allowing independent null-safe household identities", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 16)) for (const statement of migration.sql) await old.exec(statement);
+      const previous = drizzle(old, { schema: pg });
+      await previous.insert(pg.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+      await previous.insert(pg.ingredients).values({
+        id: 1, slug: "fixture", name: "Fixture", aliases: [], state: "ready", kcal: 1, proteinG: 0, carbsG: 0,
+        fatG: 0, fibreG: 0, source: "USDA", sourceId: "fixture", aisle: "test", whereToBuy: [],
+        isPantryStaple: false, containsOnionGarlic: false, isDairy: false,
+      });
+      await previous.insert(pg.pantry).values({ householdId: "a", ingredientId: 1, have: true, alwaysStock: false });
+      await previous.insert(pg.prepTaskState).values({ householdId: null, date: "2026-11-02", taskKey: "shared-fixture", done: true });
+      const pantry = (await old.query("select * from pantry")).rows;
+      const prep = (await old.query("select * from prep_task_state")).rows;
+      for (const migration of migrations.slice(16)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from pantry")).rows).toEqual(pantry);
+      expect((await old.query("select * from prep_task_state")).rows).toEqual(prep);
+      await previous.insert(pg.pantry).values(["b", null].map((householdId) => ({ householdId, ingredientId: 1, have: false, alwaysStock: true })));
+      await previous.insert(pg.prepTaskState).values(["a", "b"].map((householdId) => ({ householdId, date: "2026-11-02", taskKey: "shared-fixture", done: false })));
+      for (const householdId of ["a", "b", null]) {
+        await expect(previous.insert(pg.pantry).values({ householdId, ingredientId: 1, have: true, alwaysStock: true })).rejects.toThrow();
+        await expect(previous.insert(pg.prepTaskState).values({ householdId, date: "2026-11-02", taskKey: "shared-fixture", done: true })).rejects.toThrow();
+      }
+      expect(await previous.select().from(pg.pantry)).toHaveLength(3);
+      expect(await previous.select().from(pg.prepTaskState)).toHaveLength(3);
+    } finally { await old.close(); }
+  });
+
   it("preserves revision receipts and permits one class marker per household including the null namespace", async () => {
     const old = new PGlite();
     try {
@@ -224,7 +261,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(16);
+    expect(journal.rows).toHaveLength(17);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

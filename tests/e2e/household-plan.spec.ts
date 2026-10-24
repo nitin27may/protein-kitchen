@@ -1,6 +1,11 @@
 import { test, expect } from "./member-fixture";
 import type { Page } from "@playwright/test";
 import sharp from "sharp";
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { openPostgres } from "../../lib/db/postgres/client";
+import * as s from "../../lib/db/schema";
+import { e2eTarget } from "./target";
 
 async function mutation(page: Page, action: () => Promise<unknown>) {
   const response = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).origin === "http://127.0.0.1:3112");
@@ -52,6 +57,23 @@ test("night-before prep completion survives reload", async ({ page }) => {
   await mutation(page, () => checkbox.setChecked(!checked));
   await page.reload();
   await expect(page.getByRole("checkbox").first()).toBeChecked({ checked: !checked });
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = randomUUID();
+  try {
+    await handle.db.insert(s.households).values({ id: householdId, name: "Independent prep fixture" });
+    const own = await handle.db.select().from(s.prepTaskState).where(eq(s.prepTaskState.householdId, "00000000-0000-4000-8000-000000000001"));
+    expect(own.length).toBeGreaterThan(0);
+    await handle.db.insert(s.prepTaskState).values(own.map((row) => ({ ...row, householdId })));
+    const foreign = await handle.db.select().from(s.prepTaskState).where(eq(s.prepTaskState.householdId, householdId));
+    await mutation(page, () => page.getByRole("checkbox").first().setChecked(checked));
+    await page.reload();
+    await expect(page.getByRole("checkbox").first()).toBeChecked({ checked });
+    expect(await handle.db.select().from(s.prepTaskState).where(eq(s.prepTaskState.householdId, householdId))).toEqual(foreign);
+  } finally {
+    await handle.db.delete(s.prepTaskState).where(eq(s.prepTaskState.householdId, householdId));
+    await handle.db.delete(s.households).where(eq(s.households.id, householdId));
+    await handle.close();
+  }
 });
 
 test("Excel and PDF exports return actual file payloads", async ({ request }) => {

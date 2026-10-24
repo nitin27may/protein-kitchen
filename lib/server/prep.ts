@@ -47,10 +47,8 @@ export async function migrateTickKeys(planId: number, tasks: readonly NightTask[
     for (const { r, m } of changes) {
       await tx.delete(s.prepTaskState).where(and(eq(s.prepTaskState.householdId, householdId), eq(s.prepTaskState.date, r.date), eq(s.prepTaskState.taskKey, r.taskKey)));
       if (m.action === "rename" && r.done) {
-        const saved = await tx.insert(s.prepTaskState).values({ householdId, date: m.date, taskKey: m.key, done: true })
-          .onConflictDoUpdate({ target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done: true }, setWhere: eq(s.prepTaskState.householdId, householdId) })
-          .returning({ key: s.prepTaskState.taskKey });
-        if (saved.length === 0) throw new Error("Prep tick ownership conflicts with this household.");
+        await tx.insert(s.prepTaskState).values({ householdId, date: m.date, taskKey: m.key, done: true })
+          .onConflictDoUpdate({ target: [s.prepTaskState.householdId, s.prepTaskState.date, s.prepTaskState.taskKey], set: { done: true } });
       }
     }
   });

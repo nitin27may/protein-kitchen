@@ -584,12 +584,10 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
   if (!task && !session) return fail("Prep task not found in this plan.");
   date = task?.dueDate ?? session!.date;
   return planMutation(planId, async (db, access) => {
-    const saved = await db.insert(s.prepTaskState).values({ householdId: access.householdId, date, taskKey, done })
+    await db.insert(s.prepTaskState).values({ householdId: access.householdId, date, taskKey, done })
       .onConflictDoUpdate({
-        target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done },
-        setWhere: eq(s.prepTaskState.householdId, access.householdId),
-      }).returning({ key: s.prepTaskState.taskKey });
-    if (saved.length === 0) return fail("Prep task ownership conflicts with this household.");
+        target: [s.prepTaskState.householdId, s.prepTaskState.date, s.prepTaskState.taskKey], set: { done },
+      });
     return { ok: true };
   });
 }

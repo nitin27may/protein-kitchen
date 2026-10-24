@@ -405,7 +405,7 @@ it("refuses foreign child ids, invalid portions, missing items and stale members
   expect((await addManualItem(own, "No stale writes")).ok).toBe(false);
 });
 
-it("writes prep ownership and refuses an existing foreign completion instead of transferring it", async () => {
+it("writes independent owned prep completion without transferring foreign or legacy completions", async () => {
   const view = (await getPlanView(own, []))!;
   const task = (await loadNight(view, todayISO())).tasks[0]!;
   expect(task).toBeDefined();
@@ -414,8 +414,13 @@ it("writes prep ownership and refuses an existing foreign completion instead of 
     { householdId: "a", date: task.dueDate, taskKey: task.key, done: true },
   ]);
   await h.db.update(s.prepTaskState).set({ householdId: "b" });
-  expect((await setPrepDone(task.dueDate, task.key, false)).ok).toBe(false);
-  expect(await h.db.select().from(s.prepTaskState)).toMatchObject([{ householdId: "b", done: true }]);
+  await h.db.insert(s.prepTaskState).values({ householdId: null, date: task.dueDate, taskKey: task.key, done: true });
+  expect(await setPrepDone(task.dueDate, task.key, false)).toEqual({ ok: true });
+  expect(await setPrepDone(task.dueDate, task.key, true)).toEqual({ ok: true });
+  expect(await setPrepDone(task.dueDate, task.key, false)).toEqual({ ok: true });
+  expect(await h.db.select().from(s.prepTaskState).orderBy(s.prepTaskState.householdId)).toMatchObject([
+    { householdId: "a", done: false }, { householdId: "b", done: true }, { householdId: null, done: true },
+  ]);
 });
 
 it("propagates persistence failures and rolls shake setup changes back when regeneration fails", async () => {

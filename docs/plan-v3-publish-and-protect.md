@@ -324,6 +324,40 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: pantry and prep identity namespaces
+
+Scope: replace ingredient-only pantry and date/task-only prep identities with
+null-safe household-composite uniqueness. Preserve every existing row and null
+legacy ownership; never adopt or reassign rows during migration. Pantry has no
+request mutation today: change only its storage identity, not product scope.
+Update actual prep completion and legacy-key migration to upsert on owned
+identity so a foreign completion does not block an independent owned completion.
+All reads remain household-filtered. Retain database-enforced duplicate refusal
+within each household and the null namespace.
+
+Dependencies: accepted verified plan reads/mutations and scoped prep migration.
+Permission boundaries: selected plan membership refresh and parent validation
+remain mandatory; no new endpoint, fixture on cloud, reset, import, credentials
+or signup change. Shared plan completion remains shared inside one household.
+
+Acceptance: migration preserves exact bytes; same ingredient/date/task allowed
+for two households plus null, duplicates refused within each. Actual action can
+set/unset its own completion without changing foreign/null rows; foreign plan
+and stale membership still fail. Legacy-key migration cannot consume or alter
+another namespace. Retain backend/native coverage, real browser prep rerun and
+all saved journeys, types/build.
+
+Acceptance complete locally: migration `0016` preserves pantry/prep bytes and
+uses null-safe household-composite uniqueness. The pantry primary-key placeholder
+was replaced with its baseline constraint name. Actual completion and legacy
+rename upserts target the full owned identity. All 1,871 tests / 93 files,
+29 browser journeys, types and production build pass; critical gates remain
+intact, overall statements 72.06%. Native twelve-way concurrent upserts retain
+exactly one independent row per household/null namespace. The retained browser
+prep case copies identical keys into another household, toggles/reloads its own
+completion and verifies foreign rows unchanged. No pantry feature, remote
+migration, signup or deployment was added.
+
 ### H2 slice: shared revision namespaces and pinned sync
 
 Scope: replace class-only sync marker identity with null-safe household/class
