@@ -1,4 +1,5 @@
-import { count as countRows, eq, isNotNull, or } from "drizzle-orm";
+import { and, count as countRows, eq, inArray, isNotNull, or, type SQL } from "drizzle-orm";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
@@ -35,29 +36,33 @@ export interface ResetCounts {
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function count(db: Db, table: any): Promise<number> {
-  const [row] = await db.select({ n: countRows() }).from(table);
+async function count(db: Db, table: PgTable, where?: SQL): Promise<number> {
+  const [row] = await db.select({ n: countRows() }).from(table).where(where);
   return Number(row?.n ?? 0);
 }
 
-export async function resetCounts(db: Db): Promise<ResetCounts> {
+export async function resetCounts(db: Db, householdId?: string): Promise<ResetCounts> {
+  const owned = (column: AnyPgColumn<{ data: string }>) => householdId === undefined ? undefined : eq(column, householdId);
+  const people = db.select({ id: s.people.id }).from(s.people).where(owned(s.people.householdId));
+  const plans = db.select({ id: s.plans.id }).from(s.plans).where(owned(s.plans.householdId));
+  const person = (column: AnyPgColumn<{ data: number }>) => householdId === undefined ? undefined : inArray(column, people);
+  const plan = (column: AnyPgColumn<{ data: number }>) => householdId === undefined ? undefined : inArray(column, plans);
   const [feedback] = await db
     .select({ n: countRows() })
     .from(s.recipeFeedback)
-    .where(or(isNotNull(s.recipeFeedback.rating), eq(s.recipeFeedback.favourite, true), eq(s.recipeFeedback.banned, true), eq(s.recipeFeedback.status, "tested"), isNotNull(s.recipeFeedback.notes)));
+    .where(and(owned(s.recipeFeedback.householdId), or(isNotNull(s.recipeFeedback.rating), eq(s.recipeFeedback.favourite, true), eq(s.recipeFeedback.banned, true), eq(s.recipeFeedback.status, "tested"), isNotNull(s.recipeFeedback.notes))));
   return {
-    profiles: await count(db, s.people),
-    plans: await count(db, s.plans),
-    groceryItems: (await count(db, s.groceryState)) + (await count(db, s.groceryManual)) + (await count(db, s.pantry)),
-    progressTicks: (await count(db, s.habitLog)) + (await count(db, s.prepTaskState)),
-    ratings: Number(feedback?.n ?? 0) + await count(db, s.personRecipeFeedback),
-    partChoices: await count(db, s.planPartState),
-    links: await count(db, s.recipeLinks),
-    routineChoices: await count(db, s.personRoutines),
-    planRoutines: await count(db, s.planRoutines),
-    planSteps: await count(db, s.planProgress),
-    photos: await count(db, s.photos),
+    profiles: await count(db, s.people, owned(s.people.householdId)),
+    plans: await count(db, s.plans, owned(s.plans.householdId)),
+    groceryItems: (await count(db, s.groceryState, plan(s.groceryState.planId))) + (await count(db, s.groceryManual, plan(s.groceryManual.planId))) + (await count(db, s.pantry, owned(s.pantry.householdId))),
+    progressTicks: (await count(db, s.habitLog, person(s.habitLog.personId))) + (await count(db, s.prepTaskState, owned(s.prepTaskState.householdId))),
+    ratings: Number(feedback?.n ?? 0) + await count(db, s.personRecipeFeedback, person(s.personRecipeFeedback.personId)),
+    partChoices: await count(db, s.planPartState, plan(s.planPartState.planId)),
+    links: await count(db, s.recipeLinks, owned(s.recipeLinks.householdId)),
+    routineChoices: await count(db, s.personRoutines, person(s.personRoutines.personId)),
+    planRoutines: await count(db, s.planRoutines, and(plan(s.planRoutines.planId), person(s.planRoutines.personId))),
+    planSteps: await count(db, s.planProgress, plan(s.planProgress.planId)),
+    photos: await count(db, s.photos, owned(s.photos.householdId)),
   };
 }
 

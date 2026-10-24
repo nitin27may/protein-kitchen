@@ -13,13 +13,25 @@ test("photo metadata credits bytes and candidate decisions stay within the curre
   const householdId = `foreign-photo-${randomUUID()}`;
   const uid = randomUUID();
   try {
+    await page.goto("/settings");
+    const profileSummary = page.locator('a[href="/profiles"]').filter({ hasText: "saved." }).locator("p");
+    const photoSummary = page.locator('a[href="/photos/review"]').filter({ hasText: "kept." }).locator("p");
+    const originalProfiles = await profileSummary.innerText();
+    const originalPhotos = await photoSummary.innerText();
     await handle.db.insert(households).values({ id: householdId, name: "Synthetic photo household" });
+    await handle.db.insert(people).values({
+      householdId, name: "Foreign private settings profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    });
     const [recipe] = await handle.db.select().from(recipes).where(eq(recipes.slug, "tofu-burrito-bowl"));
     await handle.db.insert(photos).values({
       householdId, uid, recipeId: recipe!.id, origin: "commons", isCover: true, sha256: "0".repeat(64),
       width: 10, height: 10, title: "Foreign private photo", author: "Foreign private credit", licence: "CC0 1.0",
       createdAt: "2026-11-02", updatedAt: "2026-11-02",
     });
+    await page.reload();
+    await expect(profileSummary).toHaveText(originalProfiles);
+    await expect(photoSummary).toHaveText(originalPhotos);
     for (const path of ["/recipes/tofu-burrito-bowl", "/recipes", "/groceries", "/"]) {
       await page.goto(path);
       expect(await page.content()).not.toContain(uid);
@@ -51,6 +63,7 @@ test("photo metadata credits bytes and candidate decisions stay within the curre
   } finally {
     await handle.db.delete(photoDecisions).where(eq(photoDecisions.householdId, householdId));
     await handle.db.delete(photos).where(eq(photos.householdId, householdId));
+    await handle.db.delete(people).where(eq(people.householdId, householdId));
     await handle.db.delete(households).where(eq(households.id, householdId));
     await handle.close();
   }

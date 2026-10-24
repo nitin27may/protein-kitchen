@@ -324,6 +324,34 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: Settings household counts
+
+Scope: replace the request's deployment-wide reset-summary counts with explicit
+household predicates. Count private roots by household and children only through
+owned profile/plan subqueries: profiles, plans, manual/checked groceries, pantry,
+habit/prep progress, shared/personal feedback, links, routines, plan parts/steps
+and photos. Keep the existing operator helper usable without a request scope;
+the request loader must always resolve verified membership before reading counts.
+Do not execute resets or backups, alter human decisions or enable destructive
+controls. The existing Postgres recovery gate remains closed.
+
+Dependencies: completed private request boundaries and owned parent tables.
+Permission boundary: household owners are not deployment administrators.
+Acceptance: exact payloads for two households across every count, foreign/null
+root exclusion, child-parent isolation and revoked membership refusal. Retain a
+Settings browser assertion proving unrelated household profiles/photos do not
+change visible counts; preserve layout and existing photo/profile navigation.
+Run focused backend cases, full coverage/native checks, browser flows, types and
+build. Deployment-wide sync/reset invocation remains a separate, explicitly
+unfinished operator boundary, not something this read-only stage claims to close.
+
+Acceptance complete locally: all 1,858 tests / 93 files, 29 retained browser
+journeys, strict types and build pass. Exact two-household payloads cover all
+summary fields and foreign/null root exclusion; revoked membership refuses
+counts. The browser proves unrelated profile/photo creation does not change
+Settings descriptions. Overall statements 71.94%, existing gates maintained.
+No destructive or operational path was enabled.
+
 ### H2 slice: photo requests, decisions and private bytes
 
 Scope: household-filter every signed-in photo index, recipe/ingredient gallery,

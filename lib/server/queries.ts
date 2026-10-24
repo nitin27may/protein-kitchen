@@ -377,7 +377,8 @@ export async function getBatchPrepTicks(planId: number): Promise<{ taskKey: stri
 
 /** What a reset would delete, for the Settings page. */
 export async function getResetCounts(): Promise<ResetCounts> {
-  return resetCounts(await getDb());
+  const db = await getDb();
+  return resetCounts(db, (await requestHousehold(db)).householdId);
 }
 
 /** Every link saved on a recipe page, in display order, with video embeds worked out. See link-view.ts. */

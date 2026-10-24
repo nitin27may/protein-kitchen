@@ -16,6 +16,7 @@ import {
   feedbackMap, getCandidates,
   getRecipeLinks,
   getPhotoIndex, getRecipePhotos, getIngredientPhotos, getCreditedPhotos, getPhotoReview,
+  getResetCounts,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
@@ -75,6 +76,57 @@ it("loads only the verified request household's people and last setup", async ()
   await h.db.delete(s.plans).where(eq(s.plans.householdId, "b"));
   await h.db.delete(s.planSetups).where(eq(s.planSetups.householdId, "b"));
   expect(await lastSetup()).toBeUndefined();
+});
+
+it("counts only owned Settings roots and children, excluding foreign and null-owned data in every summary", async () => {
+  const empty = {
+    profiles: 1, plans: 1, groceryItems: 0, progressTicks: 0, ratings: 0, partChoices: 0,
+    links: 0, routineChoices: 0, planRoutines: 0, planSteps: 0, photos: 0,
+  };
+  expect(await getResetCounts()).toEqual(empty);
+  const [foreign] = await h.db.select().from(s.plans).where(eq(s.plans.householdId, "b"));
+  const [stored] = await h.db.select().from(s.recipes);
+  const [ingredient, legacyIngredient] = await h.db.insert(s.ingredients).values(["foreign", "legacy"].map((slug): typeof s.ingredients.$inferInsert => ({
+    slug, name: slug, aliases: [], state: "ready", kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, fibreG: 0,
+    source: "CNF", sourceId: "fixture", aisle: "test", whereToBuy: [], isPantryStaple: false, containsOnionGarlic: false, isDairy: false,
+  }))).returning();
+  const [habit] = await h.db.insert(s.habits).values({
+    slug: "synthetic-count", title: "Synthetic", category: "routine_drink", evidenceGrade: "practical", evidenceNote: "Fixture", defaultOn: false,
+  }).returning();
+  const at = "2026-11-02T00:00:00Z";
+  await h.db.insert(s.groceryState).values({ planId: foreign!.id, ingredientId: ingredient!.id, checked: true });
+  await h.db.insert(s.groceryManual).values({ planId: foreign!.id, text: "Foreign", checked: false });
+  await h.db.insert(s.pantry).values([
+    { householdId: "b", ingredientId: ingredient!.id, have: true, alwaysStock: false },
+    { householdId: null, ingredientId: legacyIngredient!.id, have: true, alwaysStock: false },
+  ]);
+  await h.db.insert(s.habitLog).values({ personId: 2, habitId: habit!.id, date: "2026-11-02", done: true });
+  await h.db.insert(s.prepTaskState).values([
+    { householdId: "b", date: "2026-11-02", taskKey: "foreign", done: true },
+    { householdId: null, date: "2026-11-02", taskKey: "legacy", done: true },
+  ]);
+  await h.db.insert(s.recipeFeedback).values([
+    { householdId: "b", recipeId: stored!.id, notes: "Foreign" }, { householdId: null, recipeId: stored!.id, notes: "Legacy" },
+  ]);
+  await h.db.insert(s.personRecipeFeedback).values({
+    personId: 2, recipeId: stored!.id, rating: 3, uid: "foreign-personal", createdAt: at, updatedAt: at,
+  });
+  await h.db.insert(s.planPartState).values({ planId: foreign!.id, componentSlug: "synthetic", mode: "make", updatedAt: at });
+  await h.db.insert(s.planProgress).values({ planId: foreign!.id, step: "reviewed", doneAt: at });
+  await h.db.insert(s.personRoutines).values({ personId: 2, habitId: habit!.id, days: [1], timeOfDay: "morning", servings: 1, active: true });
+  await h.db.insert(s.planRoutines).values({ planId: foreign!.id, personId: 2, habitId: habit!.id, days: [1], timeOfDay: "morning", servings: 1 });
+  for (const householdId of ["b", null]) {
+    await h.db.insert(s.recipeLinks).values({ householdId, recipeId: stored!.id, uid: `count-link-${householdId}`, kind: "recipe", url: "https://example.com", title: "Fixture", createdAt: at, updatedAt: at });
+    await h.db.insert(s.photos).values({ householdId, recipeId: stored!.id, uid: `count-photo-${householdId}`, origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, createdAt: at, updatedAt: at });
+  }
+  expect(await getResetCounts()).toEqual(empty);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect(await getResetCounts()).toEqual({
+    profiles: 1, plans: 1, groceryItems: 3, progressTicks: 2, ratings: 2,
+    partChoices: 1, links: 1, routineChoices: 1, planRoutines: 1, planSteps: 1, photos: 1,
+  });
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
+  await expect(getResetCounts()).rejects.toThrow("Select an available household");
 });
 
 it("reads only household saved views and never adopts an unowned legacy default", async () => {

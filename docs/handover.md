@@ -10,6 +10,17 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest Settings summaries:** the request resolves verified household membership
+before counting profiles/plans, groceries/pantry, progress, feedback, links,
+routines, plan choices/steps and photos. Private roots use household ownership;
+children use owned profile/plan subqueries. Operator counts remain a separate
+unscoped helper, not the request path. **Acceptance: 1,858 tests / 93 files, all 29
+retained browser journeys, types and build pass**; overall statements 71.94%.
+The browser inserts an unrelated household/profile/photo and verifies the visible
+Settings descriptions do not change. The Postgres reset gate stays closed;
+deployment-wide sync/reset invocation and tenant-aware operational formats remain
+unfinished. No reset, backup, source-data or remote operation was performed.
+
 **Latest household photo requests:** migration `0014` preserves decisions while
 adding null-safe household/subject/candidate identity. Galleries/covers, review
 decisions/photo-presence, credits and private uid bytes use verified household
