@@ -81,12 +81,14 @@ const householdId = () => text("household_id").references(() => households.id, {
 
 export const householdMembers = pgTable("household_members", {
   householdId: householdId(),
-  userId: text("user_id").primaryKey().references(() => authUsers.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["owner", "member"] }).notNull(),
   personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
   createdAt: authTime("created_at").defaultNow().notNull(),
   updatedAt: authTime("updated_at").defaultNow().notNull(),
 }, (t) => [
+  unique("household_members_household_user_uq").on(t.householdId, t.userId).nullsNotDistinct(),
+  index("household_members_user_idx").on(t.userId),
   index("household_members_household_idx").on(t.householdId),
   check("household_members_role_check", sql`${t.role} in ('owner', 'member')`),
   uniqueIndex("household_members_person_uq").on(t.personId),

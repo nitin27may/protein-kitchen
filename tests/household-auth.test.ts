@@ -72,7 +72,97 @@ async function ownerDevices() {
   await issueInvitation(h.db, "cook", { email: "next@example.test" });
 }
 
+async function additionalMembership(userId: string, role: "owner" | "member" = "member") {
+  await otherHousehold();
+  const [person] = await h.db.insert(s.people).values({
+    householdId: "foreign-household", name: "Second membership profile", sex: "other", birthDate: "2000-01-01",
+    heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+  }).returning({ id: s.people.id });
+  const [membership] = await h.db.insert(s.householdMembers).values({
+    householdId: "foreign-household", userId, personId: person!.id, role,
+  }).returning();
+  return membership!;
+}
+
 describe("owner role and household access management", () => {
+  it("refuses ambiguous actor management and profile onboarding rather than selecting a membership", async () => {
+    await cooks();
+    await additionalMembership("owner");
+    const before = await h.db.select().from(s.householdMembers);
+    await expect(issueInvitation(h.db, "owner", { email: "next@example.test" })).rejects.toThrow("Select a household");
+    await expect(changeMemberRole(h.db, "owner", "cook", "owner")).rejects.toThrow("Select a household");
+    await expect(removeHouseholdMember(h.db, "owner", "cook")).rejects.toThrow("Select a household");
+    await expect(assignMemberProfile(h.db, "owner", "cook", await profile())).rejects.toThrow("Select a household");
+    await expect(createMemberProfile(h.db, "owner", {
+      name: "Synthetic profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+    })).rejects.toThrow("Select a household");
+    expect(await h.db.select().from(s.householdMembers)).toEqual(before);
+  });
+  it("changes only the selected household role when the target has another membership", async () => {
+    await cooks();
+    const foreign = await additionalMembership("cook");
+    await changeMemberRole(h.db, "owner", "cook", "owner");
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.householdId, foreign.householdId!)))
+      .toContainEqual(foreign);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.householdId, await ownerHouseholdId())))
+      .toContainEqual(expect.objectContaining({ userId: "cook", role: "owner" }));
+  });
+  it("changes only the selected household profile link when the target has another membership", async () => {
+    await cooks();
+    const foreign = await additionalMembership("cook");
+    const personId = await profile();
+    await assignMemberProfile(h.db, "owner", "cook", personId);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.householdId, "foreign-household")))
+      .toContainEqual(foreign);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.householdId, await ownerHouseholdId())))
+      .toContainEqual(expect.objectContaining({ userId: "cook", personId }));
+  });
+  it("removes only one membership and its devices while retaining the account and foreign devices", async () => {
+    await ownerDevices();
+    const foreign = await additionalMembership("cook");
+    await h.db.insert(s.pushSubscriptions).values({
+      personId: foreign.personId!, endpoint: "https://push.example.test/foreign-device", p256dh: "synthetic", auth: "synthetic", createdAt: new Date().toISOString(),
+    });
+    const profiles = await h.db.select().from(s.people);
+    await removeHouseholdMember(h.db, "owner", "cook");
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook"))).toEqual([foreign]);
+    expect(await h.db.select().from(s.pushSubscriptions)).toMatchObject([{ personId: foreign.personId }]);
+    expect(await h.db.select().from(s.authSessions)).toEqual([]);
+    expect(await h.db.select().from(s.authUsers).where(eq(s.authUsers.id, "cook"))).toHaveLength(1);
+    expect(await h.db.select().from(s.people)).toEqual(profiles);
+  });
+  it("checks every household's final owner before account-wide deletion and removes all linked devices on success", async () => {
+    await ownerDevices();
+    const foreign = await additionalMembership("cook", "owner");
+    await h.db.insert(s.authAccounts).values({
+      id: "synthetic-credential", userId: "cook", accountId: "cook", providerId: "credential", password: "synthetic-hash",
+    });
+    await h.db.insert(s.pushSubscriptions).values({
+      personId: foreign.personId!, endpoint: "https://push.example.test/foreign-device", p256dh: "synthetic", auth: "synthetic", createdAt: new Date().toISOString(),
+    });
+    await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "foreign-owner"));
+    const memberships = await h.db.select().from(s.householdMembers);
+    const devices = await h.db.select().from(s.pushSubscriptions);
+    const profiles = await h.db.select().from(s.people);
+    const input = { userId: "cook", sessionToken: "synthetic-token", password: "synthetic", verifyPassword: async () => true };
+    await expect(deleteOwnAccount(h.db, input)).rejects.toThrow("at least one verified owner");
+    expect(await h.db.select().from(s.householdMembers)).toEqual(memberships);
+    expect(await h.db.select().from(s.pushSubscriptions)).toEqual(devices);
+    expect(await h.db.select().from(s.authSessions)).toHaveLength(1);
+    await h.db.update(s.householdMembers).set({ role: "owner" }).where(eq(s.householdMembers.userId, "foreign-owner"));
+    await deleteOwnAccount(h.db, input);
+    expect(await h.db.select().from(s.authUsers).where(eq(s.authUsers.id, "cook"))).toEqual([]);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook"))).toEqual([]);
+    expect(await h.db.select().from(s.pushSubscriptions)).toEqual([]);
+    expect(await h.db.select().from(s.people)).toEqual(profiles);
+  });
+  it("refuses account deletion for a verified account without membership", async () => {
+    await user("unaffiliated");
+    await expect(deleteOwnAccount(h.db, {
+      userId: "unaffiliated", sessionToken: "unused", password: "unused", verifyPassword: async () => true,
+    })).rejects.toThrow("no longer in the household");
+  });
   it("refuses foreign member/profile/invitation management and does not count a foreign owner as a replacement", async () => {
     await cooks();
     const foreignPerson = await otherHousehold();

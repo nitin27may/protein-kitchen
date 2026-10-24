@@ -34,14 +34,37 @@ afterEach(async () => {
 });
 afterAll(async () => { await h.close(); });
 async function admit(role: "owner" | "member" = "member") {
+  await h.db.insert(s.households).values({ id: "a", name: "First synthetic household" });
   const [p] = await h.db.insert(s.people).values({
+    householdId: "a",
     name: "Synthetic cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
   }).returning({ id: s.people.id });
-  await h.db.insert(s.householdMembers).values({ userId: "cook", role, personId: p!.id });
+  await h.db.insert(s.householdMembers).values({ householdId: "a", userId: "cook", role, personId: p!.id });
   return p!.id;
 }
 
 describe("authoritative household membership", () => {
+  it.each([false, true])("refuses ambiguous memberships even when the second profile is incomplete: %s", async (complete) => {
+    await admit("owner");
+    await h.db.insert(s.households).values({ id: "b", name: "Second synthetic household" });
+    const [profile] = complete ? await h.db.insert(s.people).values({
+      householdId: "b", name: "Second profile", sex: "other", birthDate: "2000-01-01", heightCm: 170,
+      weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id }) : [];
+    await h.db.insert(s.householdMembers).values({ householdId: "b", userId: "cook", role: "member", personId: profile?.id });
+    await expect(requireMember()).rejects.toThrow("Select a household");
+    expect(await actionDenial()).toEqual({ ok: false, error: "Select a household before continuing." });
+    expect((await routeAccess(new Request(`${origin}/api/account/export`))).response?.status).toBe(403);
+    await expect(requirePageMember()).rejects.toThrow("redirect:/onboarding");
+  });
+  it("refuses unowned membership even with a profile and owned membership without a profile", async () => {
+    const personId = await admit();
+    await h.db.update(s.householdMembers).set({ householdId: null }).where(eq(s.householdMembers.userId, "cook"));
+    await expect(requireMember()).rejects.toThrow("Finish household");
+    await h.db.update(s.householdMembers).set({ householdId: "a", personId: null }).where(eq(s.householdMembers.userId, "cook"));
+    await expect(requireMember()).rejects.toThrow("Finish household");
+    expect(await h.db.select().from(s.people).where(eq(s.people.id, personId))).toHaveLength(1);
+  });
   it("requires a session before touching household data", async () => {
     session.mockResolvedValue(null);
     await expect(requireMember()).rejects.toMatchObject({ status: 401 });

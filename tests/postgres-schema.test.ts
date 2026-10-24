@@ -118,6 +118,25 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("preserves memberships while replacing user-only identity with null-safe household uniqueness", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 17)) for (const statement of migration.sql) await old.exec(statement);
+      await old.exec("insert into households(id,name) values ('a','First'),('b','Second')");
+      await old.exec("insert into auth_users(id,name,email,email_verified) values ('cook','Synthetic','cook@example.test',true),('legacy','Legacy','legacy@example.test',true)");
+      await old.query("insert into household_members(household_id,user_id,role,created_at,updated_at) values ('a','cook','owner',$1,$1),(null,'legacy','member',$1,$1)", [now]);
+      const before = (await old.query("select * from household_members order by user_id")).rows;
+      for (const migration of migrations.slice(17)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from household_members order by user_id")).rows).toEqual(before);
+      await old.exec("insert into household_members(household_id,user_id,role) values ('b','cook','member'),(null,'cook','member')");
+      for (const householdId of ["a", "b", null]) {
+        await expect(old.query("insert into household_members(household_id,user_id,role) values ($1,'cook','member')", [householdId])).rejects.toThrow();
+      }
+      await expect(old.exec("insert into household_members(user_id,role) values ('legacy','member')")).rejects.toThrow();
+      expect((await old.query("select * from household_members")).rows).toHaveLength(4);
+    } finally { await old.close(); }
+  });
   it("preserves pantry and prep bytes while allowing independent null-safe household identities", async () => {
     const old = new PGlite();
     try {
@@ -261,7 +280,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(17);
+    expect(journal.rows).toHaveLength(18);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

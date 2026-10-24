@@ -49,6 +49,51 @@ test("shopping progress is shared between independent browser contexts and persi
   } finally { await other.close(); }
 });
 
+test("ambiguous household membership blocks private pages, downloads and captured mutations until resolved", async ({ page }) => {
+  await page.goto("/groceries");
+  const checkbox = page.getByRole("checkbox").first();
+  await expect(checkbox).toBeVisible();
+  const original = await checkbox.isChecked();
+  const outgoing = page.waitForRequest((request) => request.method() === "POST" && !!request.headers()["next-action"]);
+  await mutation(page, () => checkbox.setChecked(!original));
+  const captured = await outgoing;
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = randomUUID();
+  try {
+    const [account] = await handle.db.select({ id: s.authUsers.id }).from(s.authUsers)
+      .where(eq(s.authUsers.email, "authorized-browser-fixture@example.test"));
+    expect(account).toBeDefined();
+    await handle.db.insert(s.households).values({ id: householdId, name: "Explicit selection fixture" });
+    await handle.db.insert(s.householdMembers).values({ householdId, userId: account!.id, role: "member" });
+    const before = await handle.db.select().from(s.groceryState);
+    const denied = await page.request.post("/groceries", {
+      headers: {
+        origin: "http://127.0.0.1:3112", "next-action": captured.headers()["next-action"]!,
+        "content-type": captured.headers()["content-type"]!,
+      },
+      data: captured.postData()!,
+    });
+    expect(denied.status()).toBe(200);
+    expect(await denied.text()).toContain("Select a household");
+    expect(await handle.db.select().from(s.groceryState)).toEqual(before);
+    const download = await page.request.get("/api/account/export");
+    expect(download.status()).toBe(403);
+    expect(await download.text()).toContain("Select a household");
+    await page.goto("/groceries");
+    await expect(page).toHaveURL(/\/onboarding/);
+    await expect(page.getByRole("alert").filter({ hasText: "Your household ownership" })).toContainText("before onboarding can continue");
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
+    await page.goto("/groceries");
+    await expect(page.getByRole("checkbox").first()).toBeChecked({ checked: !original });
+    await mutation(page, () => page.getByRole("checkbox").first().setChecked(original));
+  } finally {
+    await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
+    await handle.db.delete(s.households).where(eq(s.households.id, householdId));
+    await handle.close();
+  }
+});
+
 test("night-before prep completion survives reload", async ({ page }) => {
   await page.goto(`/plan/${process.env.E2E_PREP_PLAN_ID}/prep`);
   const checkbox = page.getByRole("checkbox").first();

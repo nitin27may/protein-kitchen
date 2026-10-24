@@ -10,6 +10,20 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest membership foundation:** migration `0017` preserves existing membership
+rows and replaces user-only identity with null-safe household/user uniqueness;
+profile uniqueness and ownership foreign keys remain. Management writes change
+only the resolved household even when a target has another membership. Requests
+and actor management refuse multiple memberships, including incomplete profiles,
+until explicit selection is implemented. Account deletion checks the final
+usable owner in every membership before account-wide cleanup. **Acceptance:
+1,901 tests / 94 files, all 31 retained browser journeys, types/build and existing
+critical coverage gates pass**, overall statements 72.51%. Native concurrent
+inserts prove namespace uniqueness; actual browser page/download/action refusal
+and recovery pass. Explicit session selection/switcher, code-free admission and
+remaining operational/deployment contracts are still pending. No live migration,
+secrets, remote resources or deployment changed.
+
 **Latest household reset boundary:** owner requests resolve verified household
 context before the closed recovery gate and no longer call the deployment-wide
 reset helper. `lib/human/reset.ts` owns scoped SQL/markers; the verified service

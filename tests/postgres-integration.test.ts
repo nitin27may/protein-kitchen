@@ -92,6 +92,21 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(await handle.db.select().from(s.householdMembers)).toMatchObject([{ userId: "owner", personId: null }]);
   });
 
+  it("permits concurrent memberships in distinct households but rejects duplicate account membership per namespace", async () => {
+    await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    await handle.db.insert(s.authUsers).values({ id: "cook", name: "Synthetic cook", email: "cook@example.test", emailVerified: true });
+    const writes = await Promise.allSettled(Array.from({ length: 12 }, (_, i) => handle.db.insert(s.householdMembers).values({
+      householdId: ["a", "b", null][i % 3], userId: "cook", role: "member",
+    })));
+    expect(writes.filter((write) => write.status === "fulfilled")).toHaveLength(3);
+    const rejected = writes.filter((write) => write.status === "rejected");
+    expect(rejected).toHaveLength(9);
+    for (const write of rejected) expect(write.reason).toMatchObject({ cause: { code: "23505" } });
+    expect(await handle.db.select().from(s.householdMembers).orderBy(s.householdMembers.householdId)).toMatchObject([
+      { householdId: "a", userId: "cook" }, { householdId: "b", userId: "cook" }, { householdId: null, userId: "cook" },
+    ]);
+  });
+
   it("keeps concurrent pantry and prep upserts independent in each household and legacy namespace", async () => {
     await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
     const [ingredient] = await handle.db.insert(s.ingredients).values({

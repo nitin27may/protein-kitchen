@@ -324,6 +324,51 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H1/H2 slice: plural membership identities and fail-closed compatibility
+
+Dependencies: scoped private consumers, reset/export/sync boundaries and owned
+profile foreign keys are already present. Before introducing session selection,
+replace the deployment-wide membership user primary key with null-safe uniqueness
+on household and user. Preserve every existing row, profile link, role and date;
+keep the unique profile/account link and composite profile ownership constraint.
+Use Drizzle generation and test the actual upgrade journal, including nullable
+legacy memberships. Do not enable second-membership admission or open signup yet.
+
+Permission boundaries: single-household request and management entrypoints must
+refuse multiple memberships, including an incomplete second membership, rather
+than choosing the first complete profile. Role changes, removals and profile
+links must update only the actor's resolved household even when the target
+account has other memberships. Removing one membership may still invalidate all
+account sessions conservatively, but must preserve other memberships, profiles
+and devices. Account deletion is deliberately account-wide: validate a replacement
+owner in every affected household before deleting any personal feedback/devices
+or the account. Keep the existing deployment admission lock during this bounded
+compatibility slice; per-household admission and explicit selection follow.
+
+Acceptance: migration preserves pre-upgrade membership bytes and permits the same
+user in distinct households while rejecting duplicates in each namespace,
+including null. Backend tests exercise ambiguous actors, incomplete second
+profiles, isolated target role/link/removal updates and account-wide last-owner
+rollback/cleanup. Native Postgres proves concurrent composite uniqueness. Retained
+Playwright cases replay the real request boundary with an additional membership
+and verify refusal without private content or mutation, then recover after its
+removal. Run critical coverage gates, types and build alongside the existing
+browser journeys. No live migration, remote changes, secrets or deployment.
+
+Acceptance complete locally: migration `0017` preserves membership bytes and
+permits independent null-safe household/user identities without weakening profile
+ownership. Single-membership management/request boundaries refuse ambiguity,
+including an incomplete second profile; role/link/removal writes stay in the
+actor's household. Account deletion validates replacement owners in every
+membership before account-wide cleanup. All **1,901 tests / 94 files**, **31
+retained browser journeys**, types and production build pass; existing 100%
+auth/household gates remain intact, overall statements 72.51%. Native twelve-way
+inserts yield three independent winners and nine unique-constraint refusals.
+The first browser run exposed an old user-only restoration upsert in its revoked
+membership fixture and an ambiguous alert locator; both retained cases now use
+the composite key/specific banner, and the full browser suite passes. Explicit
+session selection and plural-membership admission are not enabled by this slice.
+
 ### H2 slice: household reset boundary, gate still closed
 
 Scope: give the owner Settings action a verified household reset service rather

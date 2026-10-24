@@ -484,7 +484,7 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       await expect(page).toHaveURL(/\/onboarding/);
     } finally {
       await handle.db.insert(householdMembers).values({ householdId: account!.householdId, userId: account!.userId, personId, role: "owner" })
-        .onConflictDoUpdate({ target: householdMembers.userId, set: { householdId: account!.householdId, role: "owner", personId } });
+        .onConflictDoUpdate({ target: [householdMembers.householdId, householdMembers.userId], set: { role: "owner", personId } });
       expect(await handle.db.select().from(householdMembers).where(and(eq(householdMembers.userId, account!.userId), eq(householdMembers.personId, personId)))).toHaveLength(1);
     }
   } finally { await handle.close(); }

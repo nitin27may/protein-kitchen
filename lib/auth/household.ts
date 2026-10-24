@@ -26,9 +26,16 @@ async function verifiedUser(tx: Tx, userId: string) {
   return user;
 }
 
+async function singleMembership(tx: Tx, userId: string) {
+  const memberships = await tx.select().from(householdMembers)
+    .where(eq(householdMembers.userId, userId)).limit(2).for("update");
+  if (memberships.length > 1) throw new HouseholdAccessError("Select a household before continuing.");
+  return memberships[0];
+}
+
 async function requireOwner(tx: Tx, userId: string) {
   await verifiedUser(tx, userId);
-  const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, userId)).for("update");
+  const member = await singleMembership(tx, userId);
   if (member?.role !== "owner" || member.householdId === null) throw new HouseholdAccessError("Only a household owner can manage invitations and profile links.");
   return { ...member, householdId: member.householdId };
 }
@@ -68,7 +75,8 @@ export async function changeMemberRole(db: Db, actorUserId: string, targetUserId
       await tx.update(householdInvitations).set({ revokedAt: new Date() })
         .where(and(pending(), eq(householdInvitations.householdId, actor.householdId), eq(householdInvitations.invitedByUserId, targetUserId)));
     }
-    await tx.update(householdMembers).set({ role, updatedAt: new Date() }).where(eq(householdMembers.userId, targetUserId));
+    await tx.update(householdMembers).set({ role, updatedAt: new Date() })
+      .where(and(eq(householdMembers.userId, targetUserId), eq(householdMembers.householdId, actor.householdId)));
   });
 }
 
@@ -85,7 +93,8 @@ export async function removeHouseholdMember(db: Db, actorUserId: string, targetU
     await tx.delete(authSessions).where(eq(authSessions.userId, targetUserId));
     await tx.update(householdInvitations).set({ revokedAt: new Date() })
       .where(and(pending(), eq(householdInvitations.householdId, actor.householdId), eq(householdInvitations.invitedByUserId, targetUserId)));
-    await tx.delete(householdMembers).where(eq(householdMembers.userId, targetUserId));
+    await tx.delete(householdMembers)
+      .where(and(eq(householdMembers.userId, targetUserId), eq(householdMembers.householdId, actor.householdId)));
   });
 }
 
@@ -97,8 +106,13 @@ export async function deleteOwnAccount(db: Db, input: {
   await withTx(db, async (tx) => {
     await lockHousehold(tx);
     const user = await verifiedUser(tx, input.userId);
-    const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, user.id)).for("update");
-    if (!member || member.householdId === null) throw new HouseholdAccessError("Your account is no longer in the household.");
+    const memberships = await tx.select().from(householdMembers)
+      .where(eq(householdMembers.userId, user.id)).for("update");
+    if (!memberships.length) throw new HouseholdAccessError("Your account is no longer in the household.");
+    const ownedMemberships = memberships.map((member) => {
+      if (member.householdId === null) throw new HouseholdAccessError("Your account is no longer in the household.");
+      return { ...member, householdId: member.householdId };
+    });
     const [session] = await tx.select({ id: authSessions.id }).from(authSessions).where(and(
       eq(authSessions.userId, user.id), eq(authSessions.token, input.sessionToken), gt(authSessions.expiresAt, new Date()),
     )).for("update");
@@ -108,10 +122,14 @@ export async function deleteOwnAccount(db: Db, input: {
     if (!credential?.password || !await input.verifyPassword({ password: input.password, hash: credential.password })) {
       throw new HouseholdAccessError("Your current password is incorrect. Try again.");
     }
-    if (member.role === "owner") await requireAnotherOwner(tx, member.householdId, user.id);
-    if (member.personId !== null) {
-      await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.personId, member.personId));
-      await deletePersonalFeedbackForPerson(tx, member.personId);
+    for (const member of ownedMemberships) {
+      if (member.role === "owner") await requireAnotherOwner(tx, member.householdId, user.id);
+    }
+    for (const member of ownedMemberships) {
+      if (member.personId !== null) {
+        await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.personId, member.personId));
+        await deletePersonalFeedbackForPerson(tx, member.personId);
+      }
     }
     await tx.delete(householdInvitations).where(or(
       eq(householdInvitations.invitedByUserId, user.id), eq(householdInvitations.email, user.email),
@@ -131,12 +149,12 @@ export async function createMemberProfile(db: Db, userId: string, input: PersonI
   return withTx(db, async (tx) => {
     await lockHousehold(tx);
     await verifiedUser(tx, userId);
-    const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, userId)).for("update");
+    const member = await singleMembership(tx, userId);
     if (!member || member.householdId === null) throw new HouseholdAccessError("Join the household before creating your profile.");
     if (member.personId !== null) throw new HouseholdAccessError("Your account already has a profile.");
     const [person] = await tx.insert(people).values({ ...personRow(v), householdId: member.householdId }).returning({ id: people.id });
     await tx.update(householdMembers).set({ personId: person!.id, updatedAt: new Date() })
-      .where(eq(householdMembers.userId, userId));
+      .where(and(eq(householdMembers.userId, userId), eq(householdMembers.householdId, member.householdId)));
     return person!;
   });
 }
@@ -253,7 +271,7 @@ export async function assignMemberProfile(db: Db, actorUserId: string, targetUse
     ));
     if (reserved) throw new HouseholdAccessError("That profile is reserved by an invitation.");
     const [updated] = await tx.update(householdMembers).set({ personId, updatedAt: new Date() })
-      .where(eq(householdMembers.userId, targetUserId)).returning();
+      .where(and(eq(householdMembers.userId, targetUserId), eq(householdMembers.householdId, actor.householdId))).returning();
     return updated!;
   });
 }

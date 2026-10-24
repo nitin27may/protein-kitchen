@@ -27,14 +27,18 @@ export interface MemberAccess {
 
 export async function requireMember(requestHeaders?: Headers): Promise<MemberAccess> {
   const user = await verifiedSessionUser(requestHeaders);
-  const [member] = await (await getDb()).select({
-    userId: householdMembers.userId, role: householdMembers.role, personId: people.id,
+  const memberships = await (await getDb()).select({
+    userId: householdMembers.userId, role: householdMembers.role, personId: people.id, householdId: householdMembers.householdId,
   }).from(householdMembers)
     .innerJoin(authUsers, and(eq(authUsers.id, householdMembers.userId), eq(authUsers.emailVerified, true)))
-    .innerJoin(people, eq(people.id, householdMembers.personId))
-    .where(eq(householdMembers.userId, user.id));
-  if (!member) throw new AccessDenied("Finish household and profile onboarding before continuing.");
-  return member;
+    .leftJoin(people, and(eq(people.id, householdMembers.personId), eq(people.householdId, householdMembers.householdId)))
+    .where(eq(householdMembers.userId, user.id)).limit(2);
+  if (memberships.length > 1) throw new AccessDenied("Select a household before continuing.");
+  const member = memberships[0];
+  if (!member || member.householdId === null || member.personId === null) {
+    throw new AccessDenied("Finish household and profile onboarding before continuing.");
+  }
+  return { userId: member.userId, role: member.role, personId: member.personId };
 }
 
 export type AccessPolicy = "member" | "owner" | { personId: number };
