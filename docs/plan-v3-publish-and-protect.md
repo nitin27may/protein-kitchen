@@ -41,6 +41,10 @@ Acceptance: existing pure/unit tests pass; database behavior tests run against P
 
 ### Checkpoint 2: Safe Neon development and import rehearsal (roadmap 14)
 
+Local importer implemented: `pnpm db:import:sqlite` reads all 33 legacy tables without changing the source, verifies per-table canonical counts/checksums before commit, restores original human metadata through `lib/human/sqlite-restore.ts` and repairs identities transactionally. It refuses nonempty destinations and every remote host. Synthetic PGlite/native Postgres tests cover two fresh rehearsals, concurrent imports, interrupted writes, checksum mismatch, identity-repair rollback/retry and human export preservation after explicit seed. See README for the local-only procedure.
+
+Cloud gate remains open: read-only Neon inventory found only `production`; no development branch was created, no credentials changed and no remote migration/import ran. Creating a schema-only development branch requires explicit approval. API-verified branch-to-host selection, dev startup protection and the Neon application smoke check remain unfinished; the host allowlist alone does not satisfy them.
+
 1. Inspect the linked Neon project's branch identities and endpoint mapping without printing connection secrets. Select or create an isolated development branch with synthetic/empty data; do not copy personal production data into an unprotected environment.
 2. Reconcile environment-variable names with the pool and migration commands. Separate pooled application traffic from direct migration/import traffic. Verify the actual branch-to-host mapping; an operator-supplied host name alone is not proof of branch identity.
 3. Implement a read-only SQLite source importer and deterministic canonical per-table checksums. Preserve ids/references and human metadata, normalize dates/booleans/JSON, order inserts by dependencies, reset identity sequences and verify counts/checksums. Keep this distinct from ordinary library seeding.

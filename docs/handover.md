@@ -4,6 +4,8 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 **Step-12 update:** the application now uses awaited Postgres transactions, not SQLite. The original SQLite files are untouched import/rollback sources. No cloud migration or deployment has occurred. Requests/builds no longer seed; explicit guarded migration/seed commands prepare an isolated dev/test database. Settings reset is blocked until verified Postgres backup/restore exists. See the current setup below and the step-12 closeout in `roadmap.md`; older numbered implementation notes later in this handover are historical.
 
+**Step-14 local groundwork:** `pnpm db:import:sqlite` now provides a read-only legacy source snapshot and atomic, count/checksum-verified import into an empty loopback dev/test database. Tests use synthetic data, not the household source or photos. It refuses remote imports until real Neon branch verification is implemented. Neon inventory found only production; isolated development branch creation still needs explicit approval. See README for rehearsal, rollback/retry and explicit post-import seed instructions.
+
 ## 1. What this is
 
 A personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Next.js 16, React 19, Tailwind 4, Drizzle on Postgres, pnpm 10, Node 22. Owner: Nitin, a senior architect. He wants direct, plain writing, no emojis, no filler phrases, code first.
@@ -17,7 +19,7 @@ The product intent is in `PLAN.md`. The one rule that shapes everything: **macro
 3. Prepare a disposable local Postgres database or a reviewed isolated Neon development branch. Copy `.env.example` to `.env.local`, set `DATABASE_ENV=development` and the pooled `DATABASE_URL`. Do not reuse an old production pointer.
 4. Supply direct `DATABASE_URL_UNPOOLED`, `DATABASE_ENV` and, remotely, the reviewed exact `DATABASE_NONPRODUCTION_HOST` to `pnpm db:migrate:postgres`, then `pnpm seed`. CLI commands do not load `.env.local` automatically. Requests never create or seed a database.
 5. `pnpm dev` and open http://localhost:3000. Reminders additionally need VAPID keys from `pnpm dlx web-push generate-vapid-keys`.
-6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 698 tests; four native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures.
+6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 735 tests; nine native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures.
 
 ### What is NOT in git (and so does not travel)
 | Thing | Where it is | How to move it |

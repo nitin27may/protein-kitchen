@@ -1,4 +1,6 @@
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { eq, getTableName, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -10,6 +12,9 @@ import { seedDatabase } from "../lib/db/seed";
 import { exportHumanData } from "../lib/human/export";
 import { writeRecipeFeedback } from "../lib/human/feedback";
 import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persistence";
+import { createSqliteSource } from "./helpers/sqlite-source";
+import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
+import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -89,5 +94,80 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     const [plan] = await handle.db.select().from(s.plans);
     expect(await handle.db.select().from(s.planSlots)).toMatchObject([{ planId, date: plan!.seed === 2 ? "2026-11-03" : "2026-11-04" }]);
     expect(await handle.db.select().from(s.planSlotPortions)).toHaveLength(1);
+  });
+
+  it("imports all 33 SQLite tables, repairs identities and repeats into a fresh destination", async () => {
+    const source = createSqliteSource();
+    try {
+      const snapshot = readSqliteSnapshot(source.file);
+      for (let rehearsal = 0; rehearsal < 2; rehearsal++) {
+        expect(await restoreSqliteSnapshot(handle.db, snapshot)).toEqual(snapshot.tables);
+        expect(await handle.db.select().from(s.recipeFeedback)).toMatchObject([{ uid: "feedback-fixture", favourite: true }]);
+        const [person] = await handle.db.insert(s.people).values({
+          name: "Next identity fixture", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+          activityLevel: "light", dietFlags: [],
+        }).returning();
+        expect(person!.id).toBe(301);
+        await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
+      }
+    } finally { source.close(); }
+  });
+
+  it("serializes competing imports; exactly one commits and the other refuses populated tables", async () => {
+    const source = createSqliteSource();
+    try {
+      const snapshot = readSqliteSnapshot(source.file);
+      const results = await Promise.allSettled([
+        restoreSqliteSnapshot(handle.db, snapshot), restoreSqliteSnapshot(handle.db, snapshot),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      const failed = results.find((r) => r.status === "rejected");
+      expect(failed?.status === "rejected" && failed.reason.message).toContain("empty destination");
+      expect(await handle.db.select().from(s.people)).toHaveLength(1);
+      expect(await handle.db.select().from(s.photos)).toHaveLength(1);
+    } finally { source.close(); }
+  });
+
+  it("rolls back native identity repair on failure and can retry without sequence collisions", async () => {
+    const source = createSqliteSource();
+    try {
+      source.sqlite.exec("UPDATE photo_decisions SET id = 2147483647");
+      await expect(restoreSqliteSnapshot(handle.db, readSqliteSnapshot(source.file))).rejects.toThrow("Identity range exhausted");
+      expect(await handle.db.select().from(s.ingredients)).toEqual([]);
+      const result = await handle.pool.query("SELECT nextval('ingredients_id_seq')::integer AS n");
+      expect(result.rows[0]!.n).toBe(1);
+      source.sqlite.exec("UPDATE photo_decisions SET id = 660");
+      const snapshot = readSqliteSnapshot(source.file);
+      expect(await restoreSqliteSnapshot(handle.db, snapshot)).toEqual(snapshot.tables);
+    } finally { source.close(); }
+  });
+
+  it("preserves restored human exports through the required explicit library seed", async () => {
+    const source = createSqliteSource();
+    try {
+      await restoreSqliteSnapshot(handle.db, readSqliteSnapshot(source.file));
+      const before = await exportHumanData(handle.db);
+      await seedDatabase(handle.db, loadData(process.cwd()));
+      expect(await exportHumanData(handle.db)).toEqual(before);
+      expect(await handle.db.select().from(s.libraryState)).toHaveLength(1);
+      expect(await handle.db.select().from(s.planSlotPortions)).toMatchObject([{ planSlotId: 600, personId: 300, servings: 1.25 }]);
+    } finally { source.close(); }
+  });
+
+  it("runs the real import CLI, prints only verification metadata and refuses a repeated invocation", async () => {
+    const source = createSqliteSource();
+    const run = () => promisify(execFile)(process.execPath, ["--import", "tsx", "scripts/import-sqlite.ts", source.file], {
+      cwd: process.cwd(),
+      env: { ...process.env, DATABASE_ENV: "test", DATABASE_URL_UNPOOLED: url },
+    });
+    try {
+      const result = await run();
+      expect(result.stdout).toContain("verified and committed");
+      expect(result.stdout).toContain("photos: 1 rows, sha256");
+      expect(result.stdout).not.toContain("Synthetic human note");
+      expect(result.stderr).toBe("");
+      await expect(run()).rejects.toMatchObject({ stderr: expect.stringContaining("requires an empty destination") });
+      expect(await handle.db.select().from(s.people)).toHaveLength(1);
+    } finally { source.close(); }
   });
 });

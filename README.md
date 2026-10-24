@@ -56,18 +56,31 @@ First run: open Profiles, add everyone who eats, then create a plan.
 | `pnpm db:generate` | Generate application Postgres migrations (same config as the explicit Postgres command) |
 | `pnpm db:generate:postgres` | Generate application Postgres migrations without connecting to a database |
 | `pnpm db:migrate:postgres` | Apply Postgres migrations to an explicitly configured development/test database only |
+| `pnpm db:import:sqlite /absolute/path/to/source-copy.db` | Read-only legacy snapshot, atomic import and checksum verification into an empty loopback dev/test Postgres database |
 
 ## CI and deployment
 
 The [GitHub Actions workflow](https://github.com/nitin27may/protein-kitchen/actions/workflows/ci.yml) runs on every branch push and pull request, and supports **Run workflow** for a branch already on GitHub. It checks types, validates data, runs tests with coverage against isolated PGlite fixtures and a disposable native Postgres 17 service, builds without database access, and scans for secrets. Test results and coverage reports are available as `test-results` and `coverage` artifacts for 14 days. Local, unpushed changes do not start a GitHub run.
 
-Coverage includes untested application files rather than reporting only imported modules. Atomic plan persistence has a 100% statement/branch/function/line gate; this is not a claim of 100% app-wide coverage. Native TCP tests run when `POSTGRES_TEST_URL` names a loopback-only database called `protein_kitchen_test`; they migrate and clear that disposable database. Never point them at household data. UI interaction and real-device checks remain separate from unit coverage.
+Coverage includes untested application files rather than reporting only imported modules. Atomic plan persistence has a 100% statement/branch/function/line gate. SQLite snapshot/restore requires at least 95% statement/branch coverage and 100% line/function coverage; the import-target guard requires 100% across all four metrics. These are not claims of 100% app-wide coverage. Native TCP tests run when `POSTGRES_TEST_URL` names a loopback-only database called `protein_kitchen_test`; they migrate and clear that disposable database. Never point them at household data. UI interaction and real-device checks remain separate from unit coverage.
 
 Neon and Vercel deployment are not implemented yet. Follow [the roadmap](docs/roadmap.md) and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). The Postgres app still has no login or authorization and must not be exposed publicly. Safe cloud database selection/import, authentication, authorization, cloud photo storage and recoverable backups precede the Vercel cutover. Settings reset is deliberately blocked until the Postgres backup/restore prerequisite is complete.
 
 The application schema lives in `lib/db/postgres/`, re-exported by `lib/db/schema.ts`, with Drizzle history in `db/postgres-migrations/`; never apply the SQLite migration history to Postgres. Tests check parity of the 33 legacy tables with `lib/db/sqlite-schema.ts`; the additional `library_state` table records the seeded content version. Login and household tables will be added with the identity implementation.
 
 For a **reviewed, isolated dev/test database**, supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification. Do not point it at an existing production endpoint and label it development: the host allowlist is an explicit operator assertion, not an API lookup of the Neon branch.
+
+### Local SQLite import rehearsal
+
+Use synthetic data only for now. The importer refuses **all remote hosts**, even a host labelled development; API-verified Neon branch selection and final household cutover approval are still pending. It requires the explicit direct `DATABASE_URL_UNPOOLED` and `DATABASE_ENV=development|test`; it does not load local credentials.
+
+1. Prepare a private copy of the source database using the legacy backup procedure, never a file-only copy of a live WAL database. The source must have the current legacy SQLite schema. Missing/unknown tables or columns are errors; if necessary migrate another private copy, not the original.
+2. Create a fresh disposable local Postgres database and apply `pnpm db:migrate:postgres`. **Do not seed first**: all application tables, including `library_state`, must be empty. The command never truncates or overwrites an existing destination.
+3. Run `pnpm db:import:sqlite /absolute/path/to/private-source-copy.db`. A read-only SQLite transaction captures a consistent snapshot, checks integrity/references and normalizes booleans, JSON and explicit-offset timestamps. The Postgres transaction preserves ids, uids, creator ids and timestamps, verifies canonical per-table counts/SHA-256 digests and transactionally restarts identities. Timestamp spelling and JSON key order are normalized, not compared byte-for-byte.
+4. On failure, all destination rows and identity restarts roll back; fix the reported source/constraint issue and retry against the same empty database. Driver SQL parameters are suppressed in CLI errors to avoid exposing human data. A completed import refuses a second run; use another disposable database for the second rehearsal.
+5. Run `pnpm seed` explicitly before app startup. The importer deliberately leaves `library_state` empty rather than claiming old content matches the current library.
+
+The source is never migrated or modified. An entirely empty source is refused; use the guarded seed for a new library instead. Top-level JSON null, unsafe JSON integers, malformed JSON/booleans/dates and unrepresentable values are refused rather than silently coerced. Digests cover database rows only: photo **metadata** is preserved, but photo bytes are not copied or verified. No new photo approval or human decision is created. Protect reports and source copies as private migration artifacts. This is not yet the production migration or backup/restore procedure.
 
 ## Configuration
 
