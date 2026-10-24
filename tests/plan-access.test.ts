@@ -16,7 +16,9 @@ let slotId: number;
 beforeAll(async () => { h = await openDb(); });
 beforeEach(async () => {
   vi.mocked(getDb).mockResolvedValue(h.db);
+  await h.db.insert(s.households).values({ id: "fixture", name: "Synthetic household" });
   const [p] = await h.db.insert(s.people).values({
+    householdId: "fixture",
     name: "Synthetic object fixture", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
   }).returning({ id: s.people.id });
   personId = p!.id;
@@ -89,7 +91,7 @@ describe("device ownership", () => {
     const payload = { title: "Synthetic reminder", body: "Synthetic prep", url: "/" };
     expect(await sendToPerson(personId, payload)).toEqual({ sent: 0, failed: 0, removed: 0 });
     await h.db.insert(s.authUsers).values({ id: "cook", name: "Synthetic cook", email: "cook@example.test", emailVerified: true });
-    await h.db.insert(s.householdMembers).values({ userId: "cook", role: "member", personId });
+    await h.db.insert(s.householdMembers).values({ householdId: "fixture", userId: "cook", role: "member", personId });
     expect((await sendToPerson(personId, payload)).sent).toBe(0);
     await h.db.insert(s.authSessions).values({
       id: "session", userId: "cook", token: "synthetic-session", updatedAt: new Date(), expiresAt: new Date(Date.now() - 1000),

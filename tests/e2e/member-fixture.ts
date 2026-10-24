@@ -3,7 +3,7 @@ import { hashPassword } from "better-auth/crypto";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, authAccounts, householdMembers, households, people } from "../../lib/db/schema";
+import { authUsers, authAccounts, householdMembers, people } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 
 const email = "authorized-browser-fixture@example.test";
@@ -18,8 +18,9 @@ export const test = base.extend({
         const [existing] = await handle.db.select({ id: authUsers.id }).from(authUsers).where(eq(authUsers.email, email)).limit(1);
         if (!existing) await handle.db.transaction(async (tx) => {
           const id = randomUUID();
-          const householdId = randomUUID();
-          await tx.insert(households).values({ id: householdId, name: "Synthetic browser household" });
+          const [source] = await tx.select({ householdId: people.householdId }).from(people).where(eq(people.id, 300));
+          if (!source?.householdId) throw new Error("Synthetic browser account requires the imported fixture household.");
+          const householdId = source.householdId;
           await tx.insert(authUsers).values({ id, name: "Synthetic authorized cook", email, emailVerified: true });
           await tx.insert(authAccounts).values({
             id: randomUUID(), userId: id, providerId: "credential", accountId: id, password: await hashPassword(password),

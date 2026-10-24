@@ -23,8 +23,11 @@ export async function prepareBrowserDatabase() {
     const recipe = [...data.recipes.values()].find((r) => r.kind === "recipe" && r.meal_slots.includes("dinner") && r.advance_prep.some((p) => p.lead_hours >= 4));
     if (!recipe) throw new Error("Browser fixture requires a dinner recipe with night-before prep.");
     const rows = await handle.db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes);
+    const [profile] = await handle.db.select({ householdId: s.people.householdId }).from(s.people).where(eq(s.people.id, 300));
+    if (!profile?.householdId) throw new Error("Imported browser fixture must have explicit household ownership.");
     const prepPlan = await persistNewPlan(handle.db, {
       setup: {
+        householdId: profile.householdId,
         personIds: [300], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["dinner"],
         cuisineBalance: 0.5, maxActiveMin: 20, healthFocus: { nutrientDense: false, lowSugar: true, light: true },
         prepStyle: "leftovers", createdAt: "2026-10-24T00:00:00.000Z",

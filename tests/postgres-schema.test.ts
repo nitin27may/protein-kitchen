@@ -93,6 +93,25 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("leaves pre-ownership reminder batches unclaimed and preserves their frozen messages", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 12)) for (const statement of migration.sql) await old.exec(statement);
+      await old.query("insert into households(id, name) values ('source', 'Synthetic household')");
+      await old.query("insert into people(id, household_id, name, sex, birth_date, height_cm, weight_kg, activity_level, diet_flags) values (1, 'source', 'Synthetic cook', 'other', '2000-01-01', 170, 70, 'light', '[]')");
+      await old.query("insert into reminder_batches(id, person_id, date, payload, expires_at, created_at) values ('legacy', 1, '2026-10-24', $1, $2, $2)", [
+        JSON.stringify({ title: "Synthetic", body: "Frozen legacy message", url: "/" }), now,
+      ]);
+      const before = (await old.query<Record<string, unknown>>("select * from reminder_batches")).rows;
+      for (const migration of migrations.slice(12)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from reminder_batches")).rows).toEqual([{ ...before[0], household_id: null }]);
+      await expect(old.query("update reminder_batches set household_id = 'missing'")).rejects.toThrow();
+      await old.query("update reminder_batches set household_id = 'source'");
+      await expect(old.query("delete from households where id = 'source'")).rejects.toThrow();
+    } finally { await old.close(); }
+  });
+
   it("adds timezone without changing an existing profile or its legacy reminder claim", async () => {
     const old = new PGlite();
     try {
@@ -130,7 +149,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(12);
+    expect(journal.rows).toHaveLength(13);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

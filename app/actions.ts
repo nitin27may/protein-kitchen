@@ -1,7 +1,7 @@
 "use server";
 
 import path from "node:path";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import * as s from "@/lib/db/schema";
@@ -31,19 +31,31 @@ import { photoWritesEnabled } from "@/lib/blob/config";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
-import { persistIngredientPreferences, persistNewPlan, persistPlanDeletion, persistRegeneratedPlan } from "@/lib/server/plan-persistence";
+import { persistPlanDeletion, persistRegeneratedPlan } from "@/lib/server/plan-persistence";
 import { writePlanStep } from "@/lib/server/plan-progress";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, planExists, slotBelongsToPlan } from "@/lib/server/plan-access";
-import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { resolveOnlyHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
 import { HouseholdAccessError } from "@/lib/auth/household";
-import { deleteHouseholdPerson, saveHouseholdPerson } from "@/lib/server/household-plans";
+import { deleteHouseholdPerson, householdPeople, householdPlan, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences } from "@/lib/server/household-plans";
+import type { Db } from "@/lib/db/client";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; fields?: Record<string, string> };
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
+
+async function householdContext(): Promise<Result<{ db: Db; access: HouseholdAccess }>> {
+  try {
+    const member = await requireMember();
+    const db = await getDb();
+    return { ok: true, db, access: await resolveOnlyHouseholdAccess(db, member.userId) };
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
+}
 
 function refresh(planId?: number) {
   revalidatePath("/", "layout");
@@ -116,14 +128,13 @@ const CreatePlanInput = z.object({
 
 export type CreatePlanData = z.input<typeof CreatePlanInput>;
 
-async function savePrefs(personId: number, liked: string[], avoided: string[]) {
-  const db = await getDb();
+async function savePrefs(db: Db, access: HouseholdAccess, personId: number, liked: string[], avoided: string[]) {
   const ids = await ingredientIds();
   const rows = [
     ...liked.filter((l) => !avoided.includes(l)).map((slug) => ({ personId, ingredientId: ids.bySlug.get(slug), kind: "like" as const })),
     ...avoided.map((slug) => ({ personId, ingredientId: ids.bySlug.get(slug), kind: "avoid" as const })),
   ].filter((r) => r.ingredientId !== undefined);
-  await persistIngredientPreferences(db, personId, rows.map((r) => ({ ingredientId: r.ingredientId!, kind: r.kind })));
+  await saveHouseholdPreferences(db, access, personId, rows.map((r) => ({ ingredientId: r.ingredientId!, kind: r.kind })));
 }
 
 export async function createPlan(input: CreatePlanData): Promise<Result<{ planId: number; gaps: number }>> {
@@ -146,12 +157,17 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   });
   if (!setupCheck.success) return fail(setupCheck.error.issues[0]?.message ?? "Check the dates");
 
-  const db = await getDb();
-  const people = await db.select().from(s.people).where(inArray(s.people.id, v.personIds));
+  const context = await householdContext();
+  if (!context.ok) return context;
+  const { db, access } = context;
+  const people = (await householdPeople(db, access)).filter((person) => v.personIds.includes(person.id));
   if (people.length !== v.personIds.length) return fail("One of the selected profiles no longer exists");
+  if (access.role !== "owner" && people.some((person) => person.id !== access.personId && v.prefs[String(person.id)] !== undefined)) {
+    return fail("You can only change your own ingredient preferences.");
+  }
   for (const p of people) {
     const pref = v.prefs[String(p.id)];
-    if (pref) await savePrefs(p.id, pref.liked, pref.avoided);
+    if (pref) await savePrefs(db, access, p.id, pref.liked, pref.avoided);
   }
 
   const dates = datesBetween(v.startDate, v.endDate);
@@ -167,7 +183,7 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   const now = new Date().toISOString();
   // Routine choices of the people in the plan are copied into the plan, so its groceries and prep stay stable if a choice changes later.
   const routineRows = await planRoutineRowsFor(db, v.personIds, v.startDate, v.endDate, 0);
-  const planId = await persistNewPlan(db, {
+  const planId = await persistHouseholdPlan(db, access, {
     setup: { personIds: v.personIds, startDate: v.startDate, endDate: v.endDate, mealTypes: v.mealTypes, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, shoppingDay: v.shoppingDay ?? null, prepDay: v.prepDay ?? null, createdAt: now },
     seed, slots: plan.slots, routines: routineRows, recipeIds: (await recipeIds()).bySlug,
   });
@@ -196,8 +212,10 @@ export async function previewFeasibility(input: FeasibilityInput): Promise<Resul
   });
   if (!setupCheck.success) return fail(setupCheck.error.issues[0]?.message ?? "Check the dates");
 
-  const db = await getDb();
-  const people = await db.select().from(s.people).where(inArray(s.people.id, v.personIds));
+  const context = await householdContext();
+  if (!context.ok) return context;
+  const { db, access } = context;
+  const people = (await householdPeople(db, access)).filter((person) => v.personIds.includes(person.id));
   if (people.length !== v.personIds.length) return fail("One of the selected profiles no longer exists");
   // The choices on screen win over what is saved, so the preview follows them before anything is stored.
   const targets = (await Promise.all(people.map(toPersonTarget))).map((t) => {
@@ -466,7 +484,11 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
   const denied = await actionDenial();
   if (denied) return denied;
   const match = /^(?:night|prep):([1-9]\d*):/.exec(taskKey);
-  if (!match || taskKey.length > 256 || !(await planExists(await getDb(), Number(match[1])))) return fail("Prep task not found in this plan.");
+  if (!match || taskKey.length > 256) return fail("Prep task not found in this plan.");
+  const context = await householdContext();
+  if (!context.ok) return context;
+  const { db, access } = context;
+  if (!(await householdPlan(db, access, Number(match[1])))) return fail("Prep task not found in this plan.");
   const planId = Number(match[1]);
   const view = await getPlanView(planId);
   if (!view) return fail("Plan not found.");
@@ -475,10 +497,14 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
   const session = night.guide.sessions.find((se) => se.events.some((event) => `prep:${planId}:${event.id}` === taskKey));
   if (!task && !session) return fail("Prep task not found in this plan.");
   date = task?.dueDate ?? session!.date;
-  await (await getDb())
+  const saved = await db
     .insert(s.prepTaskState)
-    .values({ date, taskKey, done })
-    .onConflictDoUpdate({ target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done } });
+    .values({ householdId: access.householdId, date, taskKey, done })
+    .onConflictDoUpdate({
+      target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done },
+      setWhere: eq(s.prepTaskState.householdId, access.householdId),
+    }).returning({ key: s.prepTaskState.taskKey });
+  if (saved.length === 0) return fail("Prep task ownership conflicts with this household.");
   return { ok: true };
 }
 

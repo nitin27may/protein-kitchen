@@ -79,7 +79,7 @@ test("real scheduler HTTP freezes devices, serializes dispatch, retries rejected
     const recipe = [...loadData(process.cwd()).recipes.values()].find((r) => r.kind === "recipe" && r.meal_slots.includes("dinner") && r.advance_prep.some((p) => p.lead_hours >= 4))!;
     const recipes = await h.db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes);
     planId = await persistNewPlan(h.db, {
-      setup: { personIds: [id], startDate: today, endDate: tomorrow, mealTypes: ["dinner"], cuisineBalance: 0.5, maxActiveMin: 20,
+      setup: { householdId: before!.householdId!, personIds: [id], startDate: today, endDate: tomorrow, mealTypes: ["dinner"], cuisineBalance: 0.5, maxActiveMin: 20,
         healthFocus: { nutrientDense: false, lowSugar: true, light: true }, prepStyle: "leftovers", createdAt: now.toISOString() },
       seed: 12346, slots: [{ date: tomorrow, slot: "dinner", recipeSlug: recipe.slug, servings: { [id]: 1 }, locked: false, reasons: [] }],
       routines: [], recipeIds: new Map(recipes.map((r) => [r.slug, r.id])),

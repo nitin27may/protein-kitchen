@@ -208,12 +208,14 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
   });
 
   it("freezes one batch and admits exactly one fenced device attempt across native connections", async () => {
+    await handle.db.insert(s.households).values({ id: "reminder-household", name: "Synthetic reminder household" });
     await handle.db.insert(s.people).values({
+      householdId: "reminder-household",
       id: 1, name: "Synthetic reminder cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
       activityLevel: "light", dietFlags: [], reminderTime: "21:00",
     });
     await handle.db.insert(s.authUsers).values({ id: "reminder-user", name: "Synthetic cook", email: "native-reminder@example.test", emailVerified: true });
-    await handle.db.insert(s.householdMembers).values({ userId: "reminder-user", personId: 1, role: "owner" });
+    await handle.db.insert(s.householdMembers).values({ householdId: "reminder-household", userId: "reminder-user", personId: 1, role: "owner" });
     await handle.db.insert(s.authSessions).values({
       id: "reminder-session", userId: "reminder-user", token: "native-synthetic-reminder-session",
       expiresAt: new Date(Date.now() + 3_600_000), updatedAt: new Date(),
@@ -221,7 +223,7 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     await handle.db.insert(s.pushSubscriptions).values({
       id: 1, personId: 1, endpoint: "https://push.example.test/native", p256dh: "synthetic", auth: "synthetic", createdAt: at,
     });
-    const input = { personId: 1, householdTimezone: "UTC", payload: { title: "Synthetic", body: "Synthetic", url: "/" }, now: new Date("2099-11-01T21:00:00Z") };
+    const input = { personId: 1, householdId: "reminder-household", householdTimezone: "UTC", payload: { title: "Synthetic", body: "Synthetic", url: "/" }, now: new Date("2099-11-01T21:00:00Z") };
     const batches = await Promise.all(Array.from({ length: 8 }, () => prepareReminderBatch(handle.db, input)));
     expect(new Set(batches).size).toBe(1);
     const batchId = batches[0]!;

@@ -24,32 +24,33 @@ export async function expireDeliveryAttempts(db: Db): Promise<void> {
   ));
 }
 
-async function eligible(db: Db, personId: number, now: Date): Promise<boolean> {
+async function eligible(db: Db, personId: number, now: Date, householdId: string): Promise<boolean> {
   const [member] = await db.select({ id: s.householdMembers.userId }).from(s.householdMembers)
+    .innerJoin(s.people, and(eq(s.people.id, s.householdMembers.personId), eq(s.people.householdId, s.householdMembers.householdId)))
     .innerJoin(s.authUsers, and(eq(s.authUsers.id, s.householdMembers.userId), eq(s.authUsers.emailVerified, true)))
     .innerJoin(s.authSessions, and(eq(s.authSessions.userId, s.householdMembers.userId), gt(s.authSessions.expiresAt, now)))
-    .where(eq(s.householdMembers.personId, personId)).limit(1);
+    .where(and(eq(s.householdMembers.personId, personId), eq(s.householdMembers.householdId, householdId))).limit(1);
   return member !== undefined;
 }
 
 /** Freezes one day's message and devices only after all admission prerequisites exist. */
 export async function prepareReminderBatch(db: Db, input: {
-  personId: number; householdTimezone: string; payload: ReminderMessage | null; now: Date;
+  personId: number; householdId: string; householdTimezone: string; payload: ReminderMessage | null; now: Date;
 }): Promise<string | undefined> {
   return db.transaction(async (tx) => {
     const [person] = await tx.select().from(s.people).where(eq(s.people.id, input.personId)).for("update");
-    if (!person) return undefined;
+    if (!person || person.householdId !== input.householdId) return undefined;
     const zone = person.reminderTimezone ?? input.householdTimezone;
     if (!isReminderDue(person.reminderTime, input.now, zone, false)) return undefined;
     const { date, hhmm } = localParts(input.now, zone);
     const [batch] = await tx.select().from(s.reminderBatches)
       .where(and(eq(s.reminderBatches.personId, person.id), eq(s.reminderBatches.date, date)));
-    if (batch) return batch.id;
+    if (batch) return batch.householdId === input.householdId ? batch.id : undefined;
     if (!input.payload) return undefined;
     const [legacy] = await tx.select().from(s.reminderLog)
       .where(and(eq(s.reminderLog.personId, person.id), eq(s.reminderLog.date, date)));
     const now = await reminderClock(tx);
-    if (legacy || !await eligible(tx, person.id, now)) return undefined;
+    if (legacy || !await eligible(tx, person.id, now, input.householdId)) return undefined;
     const registrations = await tx.select().from(s.pushSubscriptions).where(eq(s.pushSubscriptions.personId, person.id));
     if (registrations.length === 0) return undefined;
     const toMinutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
@@ -59,7 +60,7 @@ export async function prepareReminderBatch(db: Db, input: {
     const id = randomUUID();
     if (!await claimReminder(tx, { personId: person.id, date, sentAt: now.toISOString() })) return undefined;
     await tx.insert(s.reminderBatches).values({
-      id, personId: person.id, date, payload: input.payload, createdAt: now.toISOString(),
+      id, householdId: input.householdId, personId: person.id, date, payload: input.payload, createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
     });
     await tx.insert(s.reminderDeliveries).values(registrations.map((sub) => ({
@@ -100,7 +101,7 @@ export async function claimDelivery(db: Db, batchId: string, subscriptionId: num
     if (receipt.retryAt && new Date(receipt.retryAt) > now) return undefined;
     const [registration] = await tx.select().from(s.pushSubscriptions)
       .where(and(eq(s.pushSubscriptions.id, subscriptionId), eq(s.pushSubscriptions.personId, batch!.personId)));
-    if (!registration || registrationFingerprint(registration) !== receipt.fingerprint || !await eligible(tx, batch!.personId, now)) {
+    if (!registration || registrationFingerprint(registration) !== receipt.fingerprint || !batch!.householdId || !await eligible(tx, batch!.personId, now, batch!.householdId)) {
       await tx.update(s.reminderDeliveries).set({ status: "cancelled", updatedAt: now.toISOString() }).where(key);
       return undefined;
     }

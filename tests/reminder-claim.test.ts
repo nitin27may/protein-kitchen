@@ -3,7 +3,6 @@ import { claimReminder } from "../lib/reminders/claim";
 import { dispatchReminders } from "../lib/server/push";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/context";
-import { listPeople } from "../lib/server/queries";
 import { APP_TZ } from "../lib/server/time";
 import { localParts } from "../lib/reminders/due";
 import * as s from "../lib/db/schema";
@@ -11,9 +10,11 @@ import { openDb, type DbHandle } from "./helpers/db";
 
 const provider = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock("web-push", () => ({ default: { setVapidDetails: vi.fn(), sendNotification: provider.send } }));
-vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
-vi.mock("../lib/server/queries", () => ({ listPeople: vi.fn(), latestPlanId: async () => undefined, getPlanView: vi.fn() }));
-vi.mock("../lib/server/prep", () => ({ loadNight: vi.fn(), tonight: () => [{ text: "Synthetic preparation", forName: "Synthetic meal", done: false }] }));
+vi.mock("../lib/server/context", () => ({ getDb: vi.fn(), getData: vi.fn() }));
+vi.mock("../lib/reminders/context", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../lib/reminders/context")>(),
+  householdReminderTasks: async () => ["Synthetic preparation, for Synthetic meal"],
+}));
 
 const now = new Date();
 const { date, hhmm } = localParts(now, APP_TZ);
@@ -22,7 +23,7 @@ const reminder = (personId = 1, day = date) => ({ personId, date: day, sentAt: n
 const checkReminders = async (at: Date) => (await dispatchReminders(at)).sent;
 async function eligibleDevice() {
   await h.db.insert(s.authUsers).values({ id: "synthetic-user", name: "Synthetic cook", email: "reminder@example.test", emailVerified: true });
-  await h.db.insert(s.householdMembers).values({ userId: "synthetic-user", personId: 1, role: "owner" });
+  await h.db.insert(s.householdMembers).values({ householdId: "fixture", userId: "synthetic-user", personId: 1, role: "owner" });
   await h.db.insert(s.authSessions).values({
     id: "synthetic-session", token: "synthetic-reminder-session", userId: "synthetic-user",
     expiresAt: new Date(Date.now() + 3_600_000), updatedAt: new Date(),
@@ -33,12 +34,13 @@ async function eligibleDevice() {
 }
 beforeEach(async () => {
   h = await openDb();
+  await h.db.insert(s.households).values({ id: "fixture", name: "Synthetic household" });
   await h.db.insert(s.people).values({
+    householdId: "fixture",
     id: 1, name: "Synthetic cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
     activityLevel: "moderate", reminderTime: hhmm, dietFlags: [],
   });
   vi.mocked(getDb).mockResolvedValue(h.db);
-  vi.mocked(listPeople).mockResolvedValue(await h.db.select().from(s.people));
   vi.stubEnv("VAPID_PUBLIC_KEY", "synthetic-public"); vi.stubEnv("VAPID_PRIVATE_KEY", "synthetic-private");
   provider.send.mockResolvedValue({});
 });
@@ -71,7 +73,6 @@ describe("atomic daily reminder admission", () => {
     await eligibleDevice();
     const later = new Date("2099-10-24T15:30:00Z");
     await h.db.update(s.people).set({ reminderTime: "04:30", reminderTimezone: "Pacific/Auckland" }).where(eq(s.people.id, 1));
-    vi.mocked(listPeople).mockResolvedValue(await h.db.select().from(s.people));
     expect(await checkReminders(later)).toBe(1);
     expect(await h.db.select().from(s.reminderLog)).toMatchObject([{ personId: 1, date: "2099-10-25" }]);
     expect(await checkReminders(later)).toBe(0);

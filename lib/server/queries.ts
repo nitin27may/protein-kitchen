@@ -27,6 +27,9 @@ import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
 import { householdFeedback, personalFeedback, planningFeedback } from "./feedback";
+import { requireMember } from "../auth/access";
+import { resolveOnlyHouseholdAccess } from "../auth/household-access";
+import { householdPeople } from "./household-plans";
 
 export type PersonRow = typeof s.people.$inferSelect;
 
@@ -36,7 +39,9 @@ export function proteinTargetOf(p: PersonRow): number {
 }
 
 export async function listPeople(): Promise<PersonRow[]> {
-  return (await getDb()).select().from(s.people).orderBy(s.people.id);
+  const member = await requireMember();
+  const db = await getDb();
+  return householdPeople(db, await resolveOnlyHouseholdAccess(db, member.userId));
 }
 
 export async function getPerson(id: number): Promise<PersonRow | undefined> {
@@ -189,7 +194,10 @@ export async function getPlanView(planId: number, candidates?: Candidate[]): Pro
 }
 
 export async function lastSetup(): Promise<{ personIds: number[]; mealTypes: Slot[]; cuisineBalance: number; maxActiveMin: number | null; days: number; healthFocus: { nutrientDense: boolean; lowSugar: boolean; light: boolean } | null; prepStyle: "variety" | "leftovers" | "batch" | null } | undefined> {
-  const [r] = await (await getDb()).select().from(s.planSetups).orderBy(desc(s.planSetups.id)).limit(1);
+  const member = await requireMember();
+  const db = await getDb();
+  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  const [r] = await db.select().from(s.planSetups).where(eq(s.planSetups.householdId, access.householdId)).orderBy(desc(s.planSetups.id)).limit(1);
   if (!r) return undefined;
   const days = datesBetween(r.startDate, r.endDate).length;
   return { personIds: r.personIds, mealTypes: r.mealTypes as Slot[], cuisineBalance: r.cuisineBalance, maxActiveMin: r.maxActiveMin, days, healthFocus: r.healthFocus, prepStyle: r.prepStyle };

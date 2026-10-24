@@ -403,6 +403,7 @@ export const reminderLog = pgTable("reminder_log", {
 }, (t) => [primaryKey({ columns: [t.date, t.personId] })]);
 
 export const reminderBatches = pgTable("reminder_batches", {
+  householdId: householdId(),
   id: text("id").primaryKey(),
   personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
   date: isoDate("date").notNull(),

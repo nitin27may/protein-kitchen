@@ -109,6 +109,40 @@ First close the remaining ownership gap in existing guarded admission; this is n
 
 **Adoption acceptance:** guarded bootstrap claims bind one existing migrated/imported household or atomically create one; ambiguous targets refuse. Invitation/member/profile writes retain ownership, role/removal/profile-link/invitation controls reject foreign targets, and final-owner checks never count another household's owner. Profile save/delete and private profile/account/onboarding reads now use verified household scope. Account-before-membership lock order matches account management. Full pre-read-extension acceptance passed **1,794 tests / 89 files / thirty-one native checks**; the read extension passes **199 targeted tests**, resolver/household/scoped-plan/account modules at **100% coverage**, all **twenty-four browser cases**, typecheck and production build. Browser cases include real owner foreign-id read/edit/delete refusal, profile create/edit/reload/delete, account-list privacy and existing signup/device flows. Unscoped planner/shared-state/photos/export/jobs and multiple-membership keys remain unfinished; signup remains intentionally gated. Deployment extension D1-D8 is recorded above, not executed.
 
+### Household-safe reminder context plan
+
+Remove the deployment-wide latest-plan/private-query dependency from the real dispatcher. Traverse only verified, currently session-backed household/profile associations; null or mismatched ownership is ineligible. A dedicated read-only system loader selects the latest plan/setup for the recipient's household and validates all selected profiles, portions and routine snapshots before building prep with the existing shared pure helpers and library data. Scope completed-task reads by household and plan key; do not run tick migration or other human-state writes during scheduling. Do not use personal preferences/feedback to build a notification. Recheck ownership in batch admission, device claim and manual test-send eligibility. Preserve existing timezone/window, daily claim, durable receipt/retry/ambiguity semantics and no-network-in-transaction rules. Explicitly update disposable reminder/native/browser fixtures to own rows. Add two-household task isolation, corrupt-reference refusal, unowned/revoked account and provider dispatch coverage, and rerun actual scheduler browser journeys. Hosted scheduling/provider/device acceptance stays pending.
+
+Freeze the source household on each new reminder batch and require the same
+profile/membership household at admission and device claim. Add a nullable
+foreign key through a generated migration; historical batches remain null and
+cannot be sent because their message source cannot be established safely.
+Do not backfill old messages from the recipient's current household. Read each
+plan/task projection in a repeatable-read transaction so concurrent plan
+regeneration cannot mix setup, slots, portions and routine snapshots.
+
+**Regression repair within this slice:** production plan creation now requires
+owned profiles, so its wizard must load only the request household's people and
+last setup. Cover these query boundaries with two-household fixtures. Browser
+shared-plan fixtures must explicitly belong to their synthetic household, and
+the synthetic authorized member must join that same fixture household rather
+than implicitly accessing another household's imported plan. Scope prep tick
+migration and reads by the plan's household so scheduled and interactive task
+completion agree without rewriting another household's legacy ticks. Retain
+the real shared-owner/member prep and plan-generation/reload browser cases.
+
+**Acceptance:** all 1,824 tests in 92 files pass with native Postgres and all
+configured coverage gates; all 24 retained browser cases and typecheck/build
+pass. Context and delivery coverage is 100% across statements/branches/functions/
+lines. Additional prep edge cases cover scoped legacy migration, rollback on a
+foreign completion collision, owned merge, missing/unowned-plan refusal and
+task projection; prep now has a permanent 100% gate. The first full browser run
+caught the unscoped wizard/incorrectly owned fixture regressions; these were
+repaired without restoring cross-household access. Hosted schedules remain off.
+The independent D3 credential-free aggregate CI gate and immutable action pins
+are documented and tested in `plan-ci-delivery.md`; they do not enable deployment
+or change protected-branch requirements.
+
 ## Current delivery status
 
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.

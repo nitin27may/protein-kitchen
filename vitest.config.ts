@@ -15,6 +15,7 @@ export default defineConfig({
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
         "lib/server/household-account.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/server/prep.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/household-access.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-plans.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/household-migration.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
@@ -38,6 +39,7 @@ export default defineConfig({
         "lib/backup/operator.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/postgres-recovery.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/reminders/claim.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/reminders/context.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/reminders/delivery.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/reminders/transport.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/scheduler.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

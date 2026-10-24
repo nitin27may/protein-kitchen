@@ -3,9 +3,8 @@ import webpush from "web-push";
 import * as s from "@/lib/db/schema";
 import { buildReminder, isReminderDue, localParts } from "@/lib/reminders/due";
 import { claimDelivery, deliveryFailure, expireDeliveryAttempts, finishDelivery, prepareReminderBatch, reminderClock, type DeliveryOutcome } from "@/lib/reminders/delivery";
-import { getDb } from "./context";
-import { loadNight, tonight } from "./prep";
-import { getPlanView, latestPlanId, listPeople } from "./queries";
+import { getData, getDb } from "./context";
+import { householdReminderTasks, reminderPeople } from "@/lib/reminders/context";
 import { APP_TZ } from "./time";
 import { sendPush } from "@/lib/reminders/transport";
 
@@ -35,6 +34,7 @@ export async function sendToPerson(personId: number, payload: { title: string; b
   if (!configure()) return result;
   const db = await getDb();
   const [member] = await db.select({ id: s.householdMembers.userId }).from(s.householdMembers)
+    .innerJoin(s.people, and(eq(s.people.id, s.householdMembers.personId), eq(s.people.householdId, s.householdMembers.householdId)))
     .innerJoin(s.authUsers, and(eq(s.authUsers.id, s.householdMembers.userId), eq(s.authUsers.emailVerified, true)))
     .innerJoin(s.authSessions, and(eq(s.authSessions.userId, s.householdMembers.userId), gt(s.authSessions.expiresAt, new Date())))
     .where(eq(s.householdMembers.personId, personId)).limit(1);
@@ -62,17 +62,21 @@ export async function dispatchReminders(at?: Date) {
   const result = { sent: 0, retry: 0, ambiguous: 0, cancelled: 0 };
   if (!vapidConfigured()) return result;
   const db = await getDb();
-  const now = at ?? await reminderClock(db);
+  const databaseNow = await reminderClock(db);
+  const now = at ?? databaseNow;
   await expireDeliveryAttempts(db);
   const { date: householdDate } = localParts(now, APP_TZ);
-  const planId = await latestPlanId();
-  const view = planId ? await getPlanView(planId) : undefined;
-  const night = view ? await loadNight(view, householdDate) : undefined;
-  for (const p of await listPeople()) {
+  const tasksByHousehold = new Map<string, string[]>();
+  for (const { person: p } of await reminderPeople(db, databaseNow)) {
     if (!isReminderDue(p.reminderTime, now, p.reminderTimezone ?? APP_TZ, false)) continue;
-    const open = tonight(night, householdDate).filter((t) => !t.done).map((t) => `${t.text}, for ${t.forName}`);
+    const householdId = p.householdId!;
+    let open = tasksByHousehold.get(householdId);
+    if (!open) {
+      open = await householdReminderTasks(db, getData(), householdId, householdDate);
+      tasksByHousehold.set(householdId, open);
+    }
     const msg = buildReminder(p.name, open);
-    const batchId = await prepareReminderBatch(db, { personId: p.id, householdTimezone: APP_TZ, payload: msg, now });
+    const batchId = await prepareReminderBatch(db, { personId: p.id, householdId, householdTimezone: APP_TZ, payload: msg, now });
     if (!batchId) continue;
     const devices = await db.select({ id: s.reminderDeliveries.subscriptionId }).from(s.reminderDeliveries)
       .where(eq(s.reminderDeliveries.batchId, batchId));

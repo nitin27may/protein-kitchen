@@ -10,6 +10,28 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest reminder isolation and CI slice:** the scheduler now selects each
+recipient's household-owned plan, validates selected profiles/portions/routines,
+and derives tasks in a read-only repeatable-read snapshot. It never uses the
+global latest plan or migrates ticks. Migration `0012` freezes source household
+on new batches; old null-owned messages remain unsendable. Admission and device
+claims recheck that ownership, alongside existing verification/session/device
+checks. Interactive prep migration/read and setup people/last-setup reads now
+respect household ownership; browser fixtures explicitly own their shared plan.
+The complete native-inclusive run passes **1,824 tests / 92 files**, and all
+**24 browser journeys**, typecheck and production build pass. New context and
+delivery modules have 100% coverage; additional prep edge cases retain a new
+100% module gate. CI actions are immutable commit-pinned, checkout credentials
+are not persisted, and a credential-free `acceptance` job requires unit/native/
+build, browser and secret-scanning success (125 result combinations covered).
+The job has not run remotely and is not yet required by branch protection.
+CLI discovery found authenticated GitHub/Vercel/Neon accounts, an existing Meal
+Planner Neon project, no matching Vercel project in the selected team and no
+repository Actions secrets/environments. No remote mutation or deployment took
+place. **Still pending:** complete request/shared-state/photo/export/job isolation,
+non-null/composite keys, code-free email membership/signup/switching and hosted
+deployment/device acceptance. Do not open signup ahead of those boundaries.
+
 **Latest ownership adoption:** existing guarded bootstrap/import claims, invitations, profile onboarding, account role/removal/last-owner rules and profile save/delete now retain/check household ownership. Profile list/detail, account administration and onboarding choices are household-scoped; invalid transitional ownership fails explicitly. A retained Chromium case proves owner-level foreign-profile read/edit/delete refusal, owned profile creation/edit/reload/delete and account-list privacy. **Acceptance:** full suite before the read extension passed 1,794 tests / 89 files / thirty-one native checks; targeted read/admission acceptance passes 199 tests with all four critical modules at 100% coverage, and all twenty-four browser cases plus typecheck/build pass. Multi-household safety is still incomplete: planner/shared-state/photo/export/job consumers and composite membership/shared keys remain. D1-D8 now records the requested CLI-driven GitHub/Vercel/Neon deployment, secrets, hosted push/device acceptance and later release; no remote setup has occurred.
 
 **Latest H1/H2 scoped-core slice implemented locally:** authoritative immutable household membership resolution, scoped profiles/plan headers/lists/atomic creation/regeneration/deletion/preferences and migration `0011`'s plan/setup and membership/invitation/profile cross-parent checks. Native Postgres proves foreign-owner refusal and membership/verification revocation serialization; PGlite upgrades reject bad owned references with full DDL rollback and explicit-repair retry. **Acceptance: 1,779 tests / 89 files / thirty-one native checks / twenty-three retained browser cases**, typecheck/database-free build and all coverage gates pass; new core modules have 100% statements/branches/functions/lines, overall statements 67.93%. **Not yet end-to-end isolation:** the APIs are not adopted by production request loaders; shared-state keys/writers, exports/jobs and nullable legacy writes remain. Next: scoped derived/shared state, then request wiring/non-null contract, then actual code-free signup/email membership and switching. Do not remove admission gates ahead of that work.

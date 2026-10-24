@@ -10,7 +10,7 @@ import { openDb, type DbHandle } from "./helpers/db";
 let h: DbHandle;
 const now = new Date("2099-10-24T21:00:00.000Z");
 const payload = { title: "Synthetic reminder", body: "Synthetic prep", url: "/" };
-const input = () => ({ personId: 1, householdTimezone: "UTC", payload, now });
+const input = () => ({ personId: 1, householdId: "fixture", householdTimezone: "UTC", payload, now });
 const key = (batchId: string, subscriptionId = 1) =>
   and(eq(s.reminderDeliveries.batchId, batchId), eq(s.reminderDeliveries.subscriptionId, subscriptionId));
 async function device(id = 1) {
@@ -28,12 +28,14 @@ async function allowRetry(batchId: string) {
 }
 beforeEach(async () => {
   h = await openDb();
+  await h.db.insert(s.households).values({ id: "fixture", name: "Synthetic household" });
   await h.db.insert(s.people).values({
+    householdId: "fixture",
     id: 1, name: "Synthetic cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
     activityLevel: "light", dietFlags: [], reminderTime: "21:00",
   });
   await h.db.insert(s.authUsers).values({ id: "user", name: "Synthetic cook", email: "receipt@example.test", emailVerified: true });
-  await h.db.insert(s.householdMembers).values({ userId: "user", personId: 1, role: "owner" });
+  await h.db.insert(s.householdMembers).values({ householdId: "fixture", userId: "user", personId: 1, role: "owner" });
   await h.db.insert(s.authSessions).values({
     id: "session", token: "synthetic-receipt-session", userId: "user",
     expiresAt: new Date(Date.now() + 3_600_000), updatedAt: new Date(),
@@ -64,10 +66,24 @@ describe("durable daily reminder batches", () => {
     await device();
     expect(await batch()).toBeTruthy();
   });
-  it.each(["unverified", "expired", "revoked"])("does not admit an %s identity", async (change) => {
+  it("refuses a stale source household and never reassigns an existing frozen batch", async () => {
+    expect(await prepareReminderBatch(h.db, { ...input(), householdId: "foreign" })).toBeUndefined();
+    expect(await h.db.select().from(s.reminderLog)).toEqual([]);
+    const id = await batch();
+    expect((await h.db.select().from(s.reminderBatches))[0]!.householdId).toBe("fixture");
+    await h.db.insert(s.households).values({ id: "foreign", name: "Other household" });
+    await h.db.update(s.householdMembers).set({ personId: null });
+    await h.db.update(s.people).set({ householdId: "foreign" });
+    await h.db.update(s.householdMembers).set({ householdId: "foreign", personId: 1 });
+    expect(await prepareReminderBatch(h.db, { ...input(), householdId: "foreign" })).toBeUndefined();
+    expect(await claimDelivery(h.db, id, 1)).toBeUndefined();
+    expect(await receipt(id)).toMatchObject({ status: "cancelled", attempts: 0 });
+  });
+  it.each(["unverified", "expired", "revoked", "unowned"])("does not admit an %s identity", async (change) => {
     if (change === "unverified") await h.db.update(s.authUsers).set({ emailVerified: false });
     if (change === "expired") await h.db.update(s.authSessions).set({ expiresAt: new Date(0) });
     if (change === "revoked") await h.db.delete(s.householdMembers);
+    if (change === "unowned") await h.db.update(s.householdMembers).set({ householdId: null });
     expect(await prepareReminderBatch(h.db, input())).toBeUndefined();
     expect(await h.db.select().from(s.reminderLog)).toEqual([]);
   });
@@ -132,7 +148,7 @@ describe("fenced device attempts and explicit outcomes", () => {
     expect(await receipt(id)).toMatchObject({ status: "cancelled", attempts: 3 });
     expect(await receipt(id, 2)).toMatchObject({ status: "accepted", attempts: 1 });
   });
-  it.each(["expired-window", "limit", "removed", "replacement", "owner-change", "revoked", "session-expired", "unverified"])(
+  it.each(["expired-window", "limit", "removed", "replacement", "owner-change", "revoked", "session-expired", "unverified", "unowned", "legacy-batch"])(
     "cancels a pending device on %s", async (change) => {
       const id = await batch();
       if (change === "expired-window") await h.db.update(s.reminderBatches).set({ expiresAt: "2000-01-01T00:00:00Z" });
@@ -146,6 +162,8 @@ describe("fenced device attempts and explicit outcomes", () => {
       if (change === "revoked") await h.db.delete(s.householdMembers);
       if (change === "session-expired") await h.db.update(s.authSessions).set({ expiresAt: new Date(0) });
       if (change === "unverified") await h.db.update(s.authUsers).set({ emailVerified: false });
+      if (change === "unowned") await h.db.update(s.householdMembers).set({ householdId: null });
+      if (change === "legacy-batch") await h.db.update(s.reminderBatches).set({ householdId: null });
       expect(await claimDelivery(h.db, id, 1)).toBeUndefined();
       expect(await receipt(id)).toMatchObject({ status: "cancelled", attempts: change === "limit" ? 3 : 0 });
     },
