@@ -7,6 +7,7 @@ import { getDb } from "./context";
 import { loadNight, tonight } from "./prep";
 import { getPlanView, latestPlanId, listPeople } from "./queries";
 import { APP_TZ } from "./time";
+import { sendPush } from "@/lib/reminders/transport";
 
 export function vapidConfigured(): boolean {
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -41,7 +42,7 @@ export async function sendToPerson(personId: number, payload: { title: string; b
   const subs = await db.select().from(s.pushSubscriptions).where(eq(s.pushSubscriptions.personId, personId));
   for (const sub of subs) {
     try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL: 60 * 60 * 6 });
+      await sendPush(sub, payload);
       result.sent++;
     } catch (e) {
       const status = (e as { statusCode?: number }).statusCode;
@@ -57,8 +58,9 @@ export async function sendToPerson(personId: number, payload: { title: string; b
 }
 
 /** Scheduled sends use frozen device receipts; manual test pushes remain separate. */
-export async function checkReminders(at?: Date): Promise<number> {
-  if (!vapidConfigured()) return 0;
+export async function dispatchReminders(at?: Date) {
+  const result = { sent: 0, retry: 0, ambiguous: 0, cancelled: 0 };
+  if (!vapidConfigured()) return result;
   const db = await getDb();
   const now = at ?? await reminderClock(db);
   await expireDeliveryAttempts(db);
@@ -66,7 +68,6 @@ export async function checkReminders(at?: Date): Promise<number> {
   const planId = await latestPlanId();
   const view = planId ? await getPlanView(planId) : undefined;
   const night = view ? await loadNight(view, householdDate) : undefined;
-  let sent = 0;
   for (const p of await listPeople()) {
     if (!isReminderDue(p.reminderTime, now, p.reminderTimezone ?? APP_TZ, false)) continue;
     const open = tonight(night, householdDate).filter((t) => !t.done).map((t) => `${t.text}, for ${t.forName}`);
@@ -76,19 +77,19 @@ export async function checkReminders(at?: Date): Promise<number> {
     const devices = await db.select({ id: s.reminderDeliveries.subscriptionId }).from(s.reminderDeliveries)
       .where(eq(s.reminderDeliveries.batchId, batchId));
     for (const device of devices) {
-      if (!configure()) return sent;
+      if (!configure()) throw new Error("Reminder provider configuration changed during scheduling.");
       const attempt = await claimDelivery(db, batchId, device.id);
       if (!attempt) continue;
       let outcome: DeliveryOutcome = "accepted";
       try {
-        const sub = attempt.registration;
-        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify(attempt.payload), { TTL: 60 * 60 * 6, timeout: 10_000 });
+        await sendPush(attempt.registration, attempt.payload);
       } catch (error) {
         outcome = deliveryFailure(error);
       }
-      if (await finishDelivery(db, attempt, outcome) && outcome === "accepted") sent++;
+      if (await finishDelivery(db, attempt, outcome) && outcome === "accepted") result.sent++;
     }
+    const outcomes = await db.select({ status: s.reminderDeliveries.status }).from(s.reminderDeliveries).where(eq(s.reminderDeliveries.batchId, batchId));
+    for (const { status } of outcomes) if (status === "retry" || status === "ambiguous" || status === "cancelled") result[status]++;
   }
-  return sent;
+  return result;
 }

@@ -52,6 +52,18 @@ describe("application authorization inventory", () => {
           expect(node.body?.statements[1]?.getText()).toContain('auth !== "authorized"');
           return;
         }
+        if (file === "app/api/reminders/route.ts") {
+          expect(node.name?.getText()).toBe("POST");
+          const initial = node.body!.statements.slice(0, 4).map((statement) => statement.getText());
+          expect(initial[0]).toBe("const secret = process.env.REMINDER_SCHEDULER_SECRET;");
+          expect(initial[1]).toContain("const reused =");
+          expect(initial[2]).toContain("const auth = authorizeScheduler(");
+          expect(initial[2]).toContain('process.env.REMINDER_SCHEDULER_ENABLED === "true" && !reused');
+          expect(initial[2]).toContain('process.env.VERCEL_ENV === "preview"');
+          expect(initial[3]).toContain('auth !== "authorized"');
+          expect(initial.join("\n")).not.toContain("await");
+          return;
+        }
         expect(firstCall(node)).toBe("routeAccess");
       });
     }

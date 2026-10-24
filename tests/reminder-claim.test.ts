@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { claimReminder } from "../lib/reminders/claim";
-import { checkReminders } from "../lib/server/push";
+import { dispatchReminders } from "../lib/server/push";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/context";
 import { listPeople } from "../lib/server/queries";
@@ -19,6 +19,7 @@ const now = new Date();
 const { date, hhmm } = localParts(now, APP_TZ);
 let h: DbHandle;
 const reminder = (personId = 1, day = date) => ({ personId, date: day, sentAt: now.toISOString() });
+const checkReminders = async (at: Date) => (await dispatchReminders(at)).sent;
 async function eligibleDevice() {
   await h.db.insert(s.authUsers).values({ id: "synthetic-user", name: "Synthetic cook", email: "reminder@example.test", emailVerified: true });
   await h.db.insert(s.householdMembers).values({ userId: "synthetic-user", personId: 1, role: "owner" });

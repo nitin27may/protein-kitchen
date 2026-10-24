@@ -112,7 +112,9 @@ Set in `.env.local` (git-ignored). Never commit it.
 |---|---|
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web push keys. Generate with `pnpm dlx web-push generate-vapid-keys` |
 | `VAPID_SUBJECT` | A `mailto:` contact you own. The example value is a placeholder, change it |
-| `APP_TZ` | Time zone for plans and reminders. Default `America/Toronto` |
+| `REMINDER_SCHEDULER_ENABLED` | Explicit `true` enables the reminder HTTP scheduler; default off, always off in preview |
+| `REMINDER_SCHEDULER_SECRET` | Distinct random 32-128-character URL-safe bearer credential; server/scheduler only |
+| `APP_TZ` | Shared plan time zone and fallback reminder clock; each profile may choose its own IANA reminder timezone. Default `America/Toronto` |
 | `DATABASE_URL` | Pooled application Postgres connection; mandatory, with no SQLite fallback |
 | `DATABASE_ENV` | Explicit database environment; must match `NODE_ENV` or `VERCEL_ENV` |
 | `DATABASE_NONPRODUCTION_HOST` | Exact remote non-production endpoint host; additionally checked against live Neon metadata |
@@ -125,7 +127,9 @@ Set in `.env.local` (git-ignored). Never commit it.
 | `POSTGRES_E2E_URL` | Disposable loopback-only `protein_kitchen_e2e` database; browser setup clears its application tables |
 | `DB_PATH` | Legacy SQLite source backup only; not used by the application |
 
-Reminders run on a 1-minute timer started in `instrumentation.ts`, and only when both VAPID keys are set. On iPhone, install the app to the Home Screen first, otherwise push is not available.
+There is no in-process reminder timer. After explicit provider/schedule approval, an external scheduler sends an empty **POST `/api/reminders`** with `Authorization: Bearer <REMINDER_SCHEDULER_SECRET>`, no query or payload, once per minute within the relevant cooks' local reminder windows. Both VAPID keys and explicit scheduler enablement are required; no cron is provisioned by the repository. Select timezone-aware windows rather than polling all day on a scale-to-zero database. HTTP 503 includes safe aggregate retry/ambiguous counts (or a fixed configuration/failure message), not task/device contents. A successful send is provider acceptance, not proof a phone displayed it.
+
+Daily batches freeze the message and registered devices. Accepted devices never resend; explicitly rejected 429/503 attempts retry after a minute, at most three attempts within the original window. Timeouts, process interruption and other uncertain outcomes become **ambiguous** and are not automatically retried; do not delete receipts or manually resend to bypass that safeguard. Existing daily claims remain suppressed. No tasks/devices means no day claim, allowing later additions within the window. On iPhone, install the app to the Home Screen first; real Android/iPhone delivery is still an owner/device acceptance check.
 
 ## Data
 

@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { authorizeScheduler } from "../server/scheduler";
 import { githubStateConfiguration } from "./github";
 import { stateTargetKey } from "./run";
 import { selectedStateClasses } from "./snapshot";
@@ -17,11 +17,5 @@ export function stateSyncConfiguration(env: Environment) {
 }
 
 export function schedulerAuthorized(request: Request, env: Environment): "authorized" | "disabled" | "unauthorized" {
-  const secret = env.STATE_SYNC_SCHEDULER_SECRET;
-  if (env.VERCEL_ENV === "preview" || !secret || !/^[a-zA-Z0-9_-]{32,128}$/.test(secret)) return "disabled";
-  const received = request.headers.get("authorization");
-  const expected = `Bearer ${secret}`;
-  if (!received || Buffer.byteLength(received) !== Buffer.byteLength(expected) ||
-      !timingSafeEqual(Buffer.from(received), Buffer.from(expected))) return "unauthorized";
-  return "authorized";
+  return authorizeScheduler(request, env.STATE_SYNC_SCHEDULER_SECRET, env.VERCEL_ENV === "preview");
 }
