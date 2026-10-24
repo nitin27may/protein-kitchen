@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { ACTIVITY_LEVELS, SEXES } from "./index";
 
+export const ReminderTimezone = z.string().trim().max(100).refine((zone) => {
+  try { new Intl.DateTimeFormat("en", { timeZone: zone }); return true; }
+  catch { return false; }
+}, "Use a valid IANA time zone, such as America/Toronto");
+
 export const PersonInput = z.object({
   id: z.number().int().positive().optional(),
   name: z.string().trim().min(1, "Enter a name").max(60),
@@ -13,6 +18,7 @@ export const PersonInput = z.object({
   proteinValue: z.number({ invalid_type_error: "Enter a protein target", required_error: "Enter a protein target" }).positive("Enter a protein target"),
   kcalTarget: z.number().min(1000, "Calories look too low").max(6000, "Calories look too high").nullable(),
   reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM").nullable(),
+  reminderTimezone: ReminderTimezone.nullable().optional(),
 }).refine((v) => v.proteinMode !== "per_kg" || (v.proteinValue >= 0.6 && v.proteinValue <= 3), {
   message: "Grams per kg should be between 0.6 and 3", path: ["proteinValue"],
 }).refine((v) => v.proteinMode !== "fixed" || (v.proteinValue >= 30 && v.proteinValue <= 400), {
@@ -27,6 +33,7 @@ export function personRow(v: PersonInputData) {
     activityLevel: v.activityLevel,
     proteinTargetG: v.proteinMode === "fixed" ? v.proteinValue : null,
     proteinGPerKg: v.proteinMode === "per_kg" ? v.proteinValue : null,
-    kcalTarget: v.kcalTarget, reminderTime: v.reminderTime, dietFlags: [] as string[],
+    kcalTarget: v.kcalTarget, reminderTime: v.reminderTime,
+    reminderTimezone: v.reminderTimezone ?? null, dietFlags: [] as string[],
   };
 }

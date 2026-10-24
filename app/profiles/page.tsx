@@ -33,7 +33,7 @@ export default async function ProfilesPage() {
                   <div><dt className="text-sm text-muted">Protein a day</dt><dd className="font-display text-2xl font-bold tabular-nums">{proteinTargetOf(p)} g</dd></div>
                   <div><dt className="text-sm text-muted">Calories</dt><dd className="font-display text-2xl font-bold tabular-nums">{p.kcalTarget ?? "--"}</dd></div>
                 </dl>
-                <p className="mt-2 text-sm text-muted">{p.reminderTime ? `Prep reminder at ${p.reminderTime}` : "No prep reminder"}</p>
+                <p className="mt-2 text-sm text-muted">{p.reminderTime ? `Prep reminder at ${p.reminderTime} (${p.reminderTimezone || "household time"})` : "No prep reminder"}</p>
               </Link>
             </li>
           ))}

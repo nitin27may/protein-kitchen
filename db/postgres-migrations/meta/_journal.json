@@ -57,6 +57,13 @@
       "when": 1792830476269,
       "tag": "0007_crazy_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792835102489,
+      "tag": "0008_conscious_vivisector",
+      "breakpoints": true
     }
   ]
 }

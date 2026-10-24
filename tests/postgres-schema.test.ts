@@ -11,7 +11,8 @@ import * as pg from "../lib/db/postgres/schema";
 import * as sqlite from "../lib/db/sqlite-schema";
 
 type PostgresRows = { [K in keyof typeof sqlite]: K extends "syncState"
-  ? Omit<(typeof pg)[K]["$inferSelect"], "revision" | "exportedRevision"> : (typeof pg)[K]["$inferSelect"] };
+  ? Omit<(typeof pg)[K]["$inferSelect"], "revision" | "exportedRevision">
+  : K extends "people" ? Omit<(typeof pg)[K]["$inferSelect"], "reminderTimezone"> : (typeof pg)[K]["$inferSelect"] };
 type SQLiteRows = { [K in keyof typeof sqlite]: (typeof sqlite)[K]["$inferSelect"] };
 
 describe("Postgres baseline parity", () => {
@@ -31,7 +32,11 @@ describe("Postgres baseline parity", () => {
         name: c.name, notNull: c.notNull, primary: c.primary, unique: c.isUnique,
         enum: c.enumValues, default: c.default,
       })).sort((a, b) => a.name.localeCompare(b.name));
-      expect(columns(target).filter((c) => name !== "syncState" || !["revision", "exported_revision"].includes(c.name)), name).toEqual(columns(source));
+      expect(columns(target).filter((c) => (name !== "syncState" || !["revision", "exported_revision"].includes(c.name)) &&
+        (name !== "people" || c.name !== "reminder_timezone")), name).toEqual(columns(source));
+      if (name === "people") {
+        expect(columns(target).find((c) => c.name === "reminder_timezone")).toMatchObject({ notNull: false, default: undefined });
+      }
       if (name === "syncState") {
         expect(columns(target).filter((c) => ["revision", "exported_revision"].includes(c.name))).toEqual([
           { name: "exported_revision", notNull: true, primary: false, unique: false, enum: undefined, default: 0 },
@@ -78,6 +83,20 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("adds timezone without changing an existing profile or its legacy reminder claim", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 8)) for (const statement of migration.sql) await old.exec(statement);
+      await old.query("insert into people(id, name, sex, birth_date, height_cm, weight_kg, activity_level, diet_flags, reminder_time) values (1, 'Synthetic cook', 'other', '2000-01-01', 170, 70, 'light', '[]', '21:00')");
+      await old.query("insert into reminder_log(date, person_id, sent_at) values ('2026-10-24', 1, $1)", [now]);
+      const before = (await old.query<Record<string, unknown>>("select * from people")).rows[0];
+      const claims = (await old.query("select * from reminder_log")).rows;
+      for (const migration of migrations.slice(8)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from people")).rows).toEqual([{ ...before, reminder_timezone: null }]);
+      expect((await old.query("select * from reminder_log")).rows).toEqual(claims);
+    } finally { await old.close(); }
+  });
   it("upgrades existing bootstrap provenance without reopening admission or changing its timestamp", async () => {
     const old = new PGlite();
     try {
@@ -101,7 +120,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(8);
+    expect(journal.rows).toHaveLength(9);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

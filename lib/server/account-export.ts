@@ -11,7 +11,8 @@ export async function readAccountExport(db: Db, member: Pick<MemberAccess, "user
       profile: {
         name: s.people.name, sex: s.people.sex, birthDate: s.people.birthDate, heightCm: s.people.heightCm,
         weightKg: s.people.weightKg, activityLevel: s.people.activityLevel, proteinTargetG: s.people.proteinTargetG,
-        proteinGPerKg: s.people.proteinGPerKg, kcalTarget: s.people.kcalTarget, reminderTime: s.people.reminderTime, dietFlags: s.people.dietFlags,
+        proteinGPerKg: s.people.proteinGPerKg, kcalTarget: s.people.kcalTarget, reminderTime: s.people.reminderTime,
+        reminderTimezone: s.people.reminderTimezone, dietFlags: s.people.dietFlags,
       },
     }).from(s.householdMembers).innerJoin(s.authUsers, eq(s.authUsers.id, s.householdMembers.userId))
       .innerJoin(s.people, eq(s.people.id, s.householdMembers.personId))

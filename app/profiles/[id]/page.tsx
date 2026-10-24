@@ -37,6 +37,7 @@ export default async function EditProfile({ params }: { params: Promise<{ id: st
           proteinValue: p.proteinTargetG ?? p.proteinGPerKg ?? 1.2,
           kcalTarget: p.kcalTarget ?? "",
           reminderTime: p.reminderTime ?? "",
+          reminderTimezone: p.reminderTimezone ?? "",
         }}
       />
     </>

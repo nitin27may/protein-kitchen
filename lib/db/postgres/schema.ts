@@ -220,6 +220,7 @@ export const people = pgTable("people", {
   proteinGPerKg: real("protein_g_per_kg"),
   kcalTarget: real("kcal_target"),
   reminderTime: text("reminder_time"),
+  reminderTimezone: text("reminder_timezone"),
   dietFlags: json<string[]>("diet_flags").notNull(),
 });
 

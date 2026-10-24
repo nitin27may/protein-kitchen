@@ -90,6 +90,7 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       const foreignAttempt = await page.request.post(`/profiles/${personId}`, {
         headers, data: JSON.stringify([{ ...profile, id: foreign!.id, name: "Must never be saved" }]),
       });
+
       expect(await foreignAttempt.text()).toContain("only change your own profile");
       expect(await handle.db.select({ name: people.name }).from(people).where(eq(people.id, foreign!.id))).toEqual([{ name: foreign!.name }]);
       await handle.db.delete(householdMembers).where(eq(householdMembers.userId, account!.userId));
@@ -107,6 +108,42 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       await handle.db.insert(householdMembers).values({ userId: account!.userId, personId, role: "owner" })
         .onConflictDoUpdate({ target: householdMembers.userId, set: { role: "owner", personId } });
       expect(await handle.db.select().from(householdMembers).where(and(eq(householdMembers.userId, account!.userId), eq(householdMembers.personId, personId)))).toHaveLength(1);
+    }
+  } finally { await handle.close(); }
+});
+
+test("a cook can validate, save, reload and privately export their reminder timezone", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  try {
+    const [account] = await handle.db.select({ personId: householdMembers.personId }).from(householdMembers)
+      .innerJoin(authUsers, eq(authUsers.id, householdMembers.userId)).where(eq(authUsers.email, "authorized-browser-fixture@example.test"));
+    const personId = account!.personId!;
+    const [before] = await handle.db.select().from(people).where(eq(people.id, personId));
+    try {
+      await page.goto(`/profiles/${personId}`);
+      await page.getByLabel("Prep reminder time (optional)", { exact: true }).fill("21:00");
+      const timezone = page.getByLabel("Reminder time zone (optional)", { exact: true });
+      await timezone.fill("Invalid/Timezone");
+      await page.getByRole("button", { name: "Save changes", exact: true }).click();
+      await expect(timezone).toHaveAttribute("aria-invalid", "true");
+      expect((await handle.db.select().from(people).where(eq(people.id, personId)))[0]!.reminderTimezone).toBe(before!.reminderTimezone);
+      await timezone.fill("Asia/Kolkata");
+      await page.getByRole("button", { name: "Save changes", exact: true }).click();
+      await expect(page).toHaveURL(/\/profiles$/);
+      await page.goto(`/profiles/${personId}`);
+      await expect(timezone).toHaveValue("Asia/Kolkata");
+      const download = await page.request.get("/api/account/export");
+      expect(download.status()).toBe(200);
+      expect(await download.json()).toMatchObject({ profile: { reminderTime: "21:00", reminderTimezone: "Asia/Kolkata" } });
+      await page.screenshot({ path: "test-results/reminder-timezone-phone.png", fullPage: true });
+      await timezone.fill("");
+      await page.getByRole("button", { name: "Save changes", exact: true }).click();
+      await expect(page).toHaveURL(/\/profiles$/);
+      await page.goto(`/profiles/${personId}`);
+      await expect(timezone).toHaveValue("");
+      expect((await handle.db.select().from(people).where(eq(people.id, personId)))[0]!.reminderTimezone).toBeNull();
+    } finally {
+      await handle.db.update(people).set({ reminderTime: before!.reminderTime, reminderTimezone: before!.reminderTimezone }).where(eq(people.id, personId));
     }
   } finally { await handle.close(); }
 });

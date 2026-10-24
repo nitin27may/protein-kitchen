@@ -29,7 +29,7 @@ beforeEach(async () => {
   const people = await h.db.insert(s.people).values(["First", "Second"].map((name, index) => ({
     name: `Synthetic ${name} private profile`, sex: "other" as const, birthDate: index ? "1999-06-15" : "2000-01-01",
     heightCm: 170 + index, weightKg: 70 + index, activityLevel: "light" as const, dietFlags: ["vegetarian"],
-    proteinTargetG: 95 + index, kcalTarget: 2000 + index, reminderTime: "21:00",
+    proteinTargetG: 95 + index, kcalTarget: 2000 + index, reminderTime: "21:00", reminderTimezone: index ? null : "Asia/Kolkata",
   }))).returning();
   first = people[0]!.id; second = people[1]!.id;
   await h.db.insert(s.authUsers).values(["first", "second"].map((key) => ({
@@ -79,7 +79,7 @@ describe("allowlisted personal account snapshot", () => {
     expect(result.account).toEqual({ name: "Synthetic first cook", email: "first@example.test", emailVerified: true, role: "owner" });
     expect(result.profile).toEqual({
       name: "Synthetic First private profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
-      activityLevel: "light", dietFlags: ["vegetarian"], proteinTargetG: 95, proteinGPerKg: null, kcalTarget: 2000, reminderTime: "21:00",
+      activityLevel: "light", dietFlags: ["vegetarian"], proteinTargetG: 95, proteinGPerKg: null, kcalTarget: 2000, reminderTime: "21:00", reminderTimezone: "Asia/Kolkata",
     });
     expect(result.preferences).toEqual([
       { kind: "like", ingredient: ingredient!.slug, recipe: null }, { kind: "pin", ingredient: null, recipe: recipe!.slug },

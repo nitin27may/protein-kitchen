@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { claimReminder } from "../lib/reminders/claim";
 import { checkReminders } from "../lib/server/push";
+import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/context";
 import { listPeople } from "../lib/server/queries";
 import { APP_TZ } from "../lib/server/time";
@@ -53,6 +54,15 @@ describe("atomic daily reminder admission", () => {
     await expect(claimReminder(h.db, reminder(999))).rejects.toThrow();
     expect(await h.db.select().from(s.reminderLog)).toEqual([]);
     expect(await claimReminder(h.db, reminder())).toBe(true);
+  });
+  it("claims the cook's local day when its timezone differs from the household", async () => {
+    const later = new Date("2026-10-24T15:30:00Z");
+    await h.db.update(s.people).set({ reminderTime: "04:30", reminderTimezone: "Pacific/Auckland" }).where(eq(s.people.id, 1));
+    vi.mocked(listPeople).mockResolvedValue(await h.db.select().from(s.people));
+    expect(await checkReminders(later)).toBe(0);
+    expect(await h.db.select().from(s.reminderLog)).toEqual([{ personId: 1, date: "2026-10-25", sentAt: later.toISOString() }]);
+    expect(await checkReminders(later)).toBe(0);
+    expect(await h.db.select().from(s.reminderLog)).toHaveLength(1);
   });
   it("lets only the winning actual dispatcher reach the synthetic push provider", async () => {
     await h.db.insert(s.authUsers).values({ id: "synthetic-user", name: "Synthetic cook", email: "reminder@example.test", emailVerified: true });

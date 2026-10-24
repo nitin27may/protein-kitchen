@@ -60,17 +60,19 @@ export async function sendToPerson(personId: number, payload: { title: string; b
 export async function checkReminders(now: Date = new Date()): Promise<number> {
   if (!vapidConfigured()) return 0;
   const db = await getDb();
-  const { date } = localParts(now, APP_TZ);
+  const { date: householdDate } = localParts(now, APP_TZ);
   const planId = await latestPlanId();
   const view = planId ? await getPlanView(planId) : undefined;
-  const night = view ? await loadNight(view, date) : undefined;
+  const night = view ? await loadNight(view, householdDate) : undefined;
   let sent = 0;
   for (const p of await listPeople()) {
+    const timezone = p.reminderTimezone ?? APP_TZ;
+    const { date } = localParts(now, timezone);
     const already = (await db.select().from(s.reminderLog).where(eq(s.reminderLog.personId, p.id))).some((r) => r.date === date);
-    if (!isReminderDue(p.reminderTime, now, APP_TZ, already)) continue;
+    if (!isReminderDue(p.reminderTime, now, timezone, already)) continue;
     // Mark first so a slow send or a restart can never cause a second message.
     if (!await claimReminder(db, { date, personId: p.id, sentAt: now.toISOString() })) continue;
-    const open = tonight(night, date).filter((t) => !t.done).map((t) => `${t.text}, for ${t.forName}`);
+    const open = tonight(night, householdDate).filter((t) => !t.done).map((t) => `${t.text}, for ${t.forName}`);
     const msg = buildReminder(p.name, open);
     if (!msg) continue;
     const r = await sendToPerson(p.id, msg);

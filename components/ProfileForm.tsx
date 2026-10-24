@@ -21,6 +21,7 @@ export interface ProfileInitial {
   proteinValue: number | "";
   kcalTarget: number | "";
   reminderTime: string;
+  reminderTimezone?: string;
 }
 
 const ACTIVITY: { value: ProfileInitial["activityLevel"]; label: string; hint: string }[] = [
@@ -82,6 +83,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
         proteinValue: v.proteinValue === "" ? Number.NaN : v.proteinValue,
         kcalTarget: v.kcalTarget === "" ? null : v.kcalTarget,
         reminderTime: v.reminderTime === "" ? null : v.reminderTime,
+        reminderTimezone: v.reminderTimezone?.trim() || null,
       }).catch(() => ({ ok: false as const, error: "The profile could not be saved. Check your connection and try again.", fields: undefined }));
       if (!res.ok) {
         setError(res.error);
@@ -178,6 +180,13 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           <Field label="Prep reminder time (optional)" htmlFor="reminder" hint="Reminders are per person. On iPhone they need the app added to the home screen.">
             <Input id="reminder" type="time" value={v.reminderTime} onChange={(e) => set("reminderTime", e.target.value)} className="sm:w-44" />
           </Field>
+          <div className="mt-4">
+            <Field label="Reminder time zone (optional)" htmlFor="reminder-timezone" error={fields.reminderTimezone}
+              hint="Leave blank to use the household time zone. Use an IANA name, such as America/Toronto or Asia/Kolkata. Meal-plan dates still follow the household time zone.">
+              <Input id="reminder-timezone" value={v.reminderTimezone ?? ""} onChange={(e) => set("reminderTimezone", e.target.value)}
+                placeholder="Household time zone" aria-invalid={!!fields.reminderTimezone} autoCapitalize="none" spellCheck={false} />
+            </Field>
+          </div>
           {v.id && deviceReminders ? <div className="mt-4"><ReminderSettings personId={v.id} personName={v.name || "this person"} publicKey={vapidPublicKey} hasTime={initial.reminderTime !== ""} /></div> : null}
         </SectionCard>
 
@@ -222,7 +231,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           </div>
           <dl className="mt-4 space-y-2 border-t border-line pt-4 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-muted">Calories</dt><dd className="font-medium tabular-nums">{v.kcalTarget === "" ? "Not set" : `${v.kcalTarget} kcal`}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-muted">Reminder</dt><dd className="font-medium tabular-nums">{v.reminderTime || "Off"}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-muted">Reminder</dt><dd className="font-medium tabular-nums">{v.reminderTime ? `${v.reminderTime} (${v.reminderTimezone?.trim() || "household time"})` : "Off"}</dd></div>
           </dl>
           <Button type="submit" size="lg" className="mt-5 w-full" loading={pending}>{pending ? "Saving" : saveLabel}</Button>
         </div>
