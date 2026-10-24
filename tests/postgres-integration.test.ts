@@ -37,6 +37,7 @@ import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
+import { resolveSessionHouseholdAccess, selectSessionHousehold } from "../lib/auth/household-session";
 import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
 import { writeLink } from "../lib/human/links";
 import { approveCandidate, writeUploadedPhoto, type PhotoWriteScope } from "../lib/human/photos";
@@ -90,6 +91,47 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(await handle.db.select().from(s.savedViews)).toHaveLength(2);
     expect((await store.list()).sort()).toEqual(uids.slice(1).flatMap((uid) => Object.values(photoKeys(uid))).sort());
     expect(await handle.db.select().from(s.householdMembers)).toMatchObject([{ userId: "owner", personId: null }]);
+  });
+
+  it("locks session selection throughout a verified mutation and refuses stale capabilities after switching", async () => {
+    await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    await handle.db.insert(s.authUsers).values({ id: "cook", name: "Synthetic cook", email: "cook@example.test", emailVerified: true });
+    const [person] = await handle.db.insert(s.people).values({
+      householdId: "a", name: "Synthetic profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    await handle.db.insert(s.householdMembers).values([
+      { householdId: "a", userId: "cook", role: "owner", personId: person!.id },
+      { householdId: "b", userId: "cook", role: "member" },
+    ]);
+    await handle.db.insert(s.authSessions).values({
+      id: "session", userId: "cook", token: "synthetic-session", updatedAt: new Date(), expiresAt: new Date(Date.now() + 60_000),
+    });
+    const identity = { userId: "cook", sessionId: "session" };
+    await selectSessionHousehold(handle.db, identity, "a");
+    const access = await resolveSessionHouseholdAccess(handle.db, identity);
+    const contender = await handle.pool.connect();
+    try {
+      await mutateHouseholdState(handle.db, access, async () => {
+        for (const statement of [
+          "update auth_sessions set active_household_id = 'b', household_selection_version = household_selection_version + 1 where id = 'session'",
+          "delete from auth_sessions where id = 'session'",
+        ]) {
+          await contender.query("begin");
+          try {
+            await contender.query("set local lock_timeout = '150ms'");
+            await expect(contender.query(statement)).rejects.toMatchObject({ code: "55P03" });
+          } finally { await contender.query("rollback"); }
+        }
+      });
+      await selectSessionHousehold(handle.db, identity, "b");
+      let called = false;
+      await expect(mutateHouseholdState(handle.db, access, async () => { called = true; })).rejects.toThrow("session changed");
+      expect(called).toBe(false);
+      expect(await resolveSessionHouseholdAccess(handle.db, identity)).toMatchObject({
+        householdId: "b", personId: null, session: { selectionVersion: 2 },
+      });
+    } finally { contender.release(); }
   });
 
   it("permits concurrent memberships in distinct households but rejects duplicate account membership per namespace", async () => {

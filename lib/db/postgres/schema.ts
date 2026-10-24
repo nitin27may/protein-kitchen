@@ -19,6 +19,8 @@ export const authUsers = pgTable("auth_users", {
 
 export const authSessions = pgTable("auth_sessions", {
   id: text("id").primaryKey(),
+  activeHouseholdId: text("active_household_id").references(() => households.id, { onDelete: "set null" }),
+  householdSelectionVersion: integer("household_selection_version").default(0).notNull(),
   expiresAt: authTime("expires_at").notNull(),
   token: text("token").notNull().unique(),
   createdAt: authTime("created_at").defaultNow().notNull(),
@@ -26,7 +28,10 @@ export const authSessions = pgTable("auth_sessions", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   userId: text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
-}, (t) => [index("auth_sessions_user_idx").on(t.userId)]);
+}, (t) => [
+  index("auth_sessions_user_idx").on(t.userId),
+  check("auth_sessions_selection_version_check", sql`${t.householdSelectionVersion} >= 0`),
+]);
 
 export const authAccounts = pgTable("auth_accounts", {
   id: text("id").primaryKey(),

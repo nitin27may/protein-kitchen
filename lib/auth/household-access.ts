@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { authUsers, householdMembers, households, people } from "../db/schema";
+import { authSessions, authUsers, householdMembers, households, people } from "../db/schema";
 import { HouseholdAccessError } from "./household";
 
 const verifiedHousehold = Symbol("verified-household");
@@ -11,6 +11,7 @@ export interface HouseholdAccess {
   readonly userId: string;
   readonly role: "owner" | "member";
   readonly personId: number | null;
+  readonly session?: Readonly<{ id: string; householdId: string | null; selectionVersion: number }>;
 }
 
 /** userId must come from the authenticated server session, never a client-submitted account id. */
@@ -40,10 +41,20 @@ export async function resolveHouseholdAccess(db: Db, userId: string, householdId
 export async function refreshHouseholdAccess(db: Db, access: HouseholdAccess): Promise<HouseholdAccess> {
   if (access[verifiedHousehold] !== true) throw new HouseholdAccessError("Resolve household membership before continuing.");
   const current = await resolveHouseholdAccess(db, access.userId, access.householdId);
+  if (access.session) {
+    const [session] = await db.select().from(authSessions).where(and(
+      eq(authSessions.id, access.session.id), eq(authSessions.userId, access.userId), gt(authSessions.expiresAt, sql`now()`),
+    )).for("share");
+    if (!session || session.activeHouseholdId !== access.session.householdId ||
+        session.householdSelectionVersion !== access.session.selectionVersion) {
+      throw new HouseholdAccessError("Your household session changed. Reload before continuing.");
+    }
+    if (session.activeHouseholdId === null) await resolveOnlyHouseholdAccess(db, access.userId);
+  }
   if (current.role !== access.role || current.personId !== access.personId) {
     throw new HouseholdAccessError("Your household access changed. Reload before continuing.");
   }
-  return current;
+  return access.session ? Object.freeze({ ...current, session: access.session }) : current;
 }
 
 export function requireHouseholdProfile(access: HouseholdAccess) {

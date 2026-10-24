@@ -10,6 +10,20 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest session-selection foundation:** migration `0018` adds internal session
+household preference and version, preserving provider fields and existing null/
+zero behavior. Transactional list/select/resolve services verify the account,
+exact session/expiry and current membership; they never join/move a profile.
+Bound capabilities refresh the same selection/version inside mutations and
+reject expiration, revocation, A-B-A switching and newly ambiguous default
+selection. **Acceptance: 1,923 tests / 95 files, all 31 retained browser journeys,
+types/build and critical gates pass**, including permanent 100% session/resolver
+gates; overall statements 72.58%. Native contention verifies session selection
+cannot change during a scoped mutation. This is a backend foundation only: no
+selection action/UI or current-request adoption is exposed yet. Complete that
+coordinated slice before plural/email-first admission; operator contracts and
+deployment are also still open. No remote operation or secrets changed.
+
 **Latest membership foundation:** migration `0017` preserves existing membership
 rows and replaces user-only identity with null-safe household/user uniqueness;
 profile uniqueness and ownership foreign keys remain. Management writes change

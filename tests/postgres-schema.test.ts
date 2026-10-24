@@ -118,6 +118,29 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("preserves provider sessions while adding internal nullable selection and nonnegative versions", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 18)) for (const statement of migration.sql) await old.exec(statement);
+      await old.exec("insert into auth_users(id,name,email,email_verified) values ('cook','Synthetic','cook@example.test',true)");
+      await old.query("insert into auth_sessions(id,user_id,token,expires_at,updated_at) values ('session','cook','synthetic-token',$1,$2)", ["2099-01-01T00:00:00Z", now]);
+      const before = (await old.query("select * from auth_sessions")).rows[0];
+      for (const migration of migrations.slice(18)) for (const statement of migration.sql) await old.exec(statement);
+      const [session] = (await old.query<{ active_household_id: string | null; household_selection_version: number } & Record<string, unknown>>("select * from auth_sessions")).rows;
+      const { active_household_id, household_selection_version, ...provider } = session!;
+      expect(provider).toEqual(before);
+      expect(active_household_id).toBeNull();
+      expect(household_selection_version).toBe(0);
+      await expect(old.exec("update auth_sessions set household_selection_version = -1")).rejects.toThrow();
+      await expect(old.exec("update auth_sessions set active_household_id = 'missing'")).rejects.toThrow();
+      await old.exec("insert into households(id,name) values ('a','First')");
+      await old.exec("update auth_sessions set active_household_id = 'a', household_selection_version = 4");
+      await old.exec("delete from households where id = 'a'");
+      expect((await old.query("select active_household_id,household_selection_version from auth_sessions")).rows)
+        .toEqual([{ active_household_id: null, household_selection_version: 4 }]);
+    } finally { await old.close(); }
+  });
   it("preserves memberships while replacing user-only identity with null-safe household uniqueness", async () => {
     const old = new PGlite();
     try {
@@ -280,7 +303,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(18);
+    expect(journal.rows).toHaveLength(19);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

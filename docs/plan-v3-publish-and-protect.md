@@ -324,6 +324,55 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H1/H2 slice: session selection storage and verified capability
+
+Dependencies: composite membership identity is accepted locally. Before wiring a
+switcher, add an internal nullable active-household preference to each Better Auth
+session and a nonnegative selection version. Existing sessions retain null/zero;
+do not change tokens, expiry, provider identity, memberships or profile links.
+Manage both columns through Drizzle; the active household foreign key clears on
+household deletion. The Better Auth adapter need not expose these server-only
+columns or accept them in login/signup input.
+
+Implement transactional services taking only identity obtained from a verified
+provider session (user and session ids). Recheck the database account, exact
+session ownership and database-clock expiry; lock account before session before
+membership. List only current owned memberships. Resolve an explicit stored
+selection only if membership still exists; never silently switch after revocation.
+Null selection may use the existing exactly-one-membership compatibility rule.
+Selecting an available household may lead to incomplete profile onboarding, but
+never creates/moves a profile or joins a household. Only a changed selection
+increments its version; never alter another session's preference.
+
+Bind resolved household capabilities to session id, selected preference and
+version. Refresh inside existing mutation/export transactions must recheck that
+session and reject expiration, revocation, switching (including A-B-A), and an
+ambiguous formerly-single membership before invoking any callback. Independent
+operator/test capabilities without a session retain their explicit scope.
+
+Acceptance: actual migration preserves preexisting session bytes plus null/zero
+defaults and enforces preference/version constraints. Backend coverage includes
+two sessions of one account, completed/incomplete memberships, no-membership
+and stale selection, unverified/foreign/deleted/expired session, idempotent switch,
+switch-away-and-back, mutation rollback and injected selection-update failure.
+Native tests exercise selection-vs-mutation locking. Run existing auth/browser
+journeys to verify provider compatibility, strict coverage, types and build.
+This bounded foundation intentionally exposes no switch action/UI and changes
+no current request consumer/admission; the next slice wires the selector and
+all private request surfaces together. No remote operations or secrets changes.
+
+Acceptance complete locally: migration `0018` adds server-only session preference
+and version without changing provider fields. Transactional list/select/resolve
+services recheck verified identity, exact session/expiry and membership; refreshed
+capabilities retain their session binding and reject stale selection, including
+A-B-A, expiration/deletion and newly ambiguous default selection. Existing
+explicit operator capabilities remain compatible. All **1,923 tests / 95 files**,
+**31 retained browser journeys**, types and production build pass; the new session
+service and existing resolver retain permanent 100% gates, overall statements
+72.58%. Native mutations hold the session selection lock through commit and
+refuse old capabilities after a switch. No selector HTTP action/UI or private
+request adoption is claimed; those remain the next coordinated slice.
+
 ### H1/H2 slice: plural membership identities and fail-closed compatibility
 
 Dependencies: scoped private consumers, reset/export/sync boundaries and owned
