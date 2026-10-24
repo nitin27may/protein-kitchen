@@ -10,7 +10,7 @@ test("anonymous pages, server components, photo bytes and exports never disclose
   try {
     const page = await anonymous.newPage();
     expect(await anonymous.cookies()).toEqual([]);
-    for (const url of ["/", "/profiles", "/recipes", "/groceries", "/photos/review", `/plan/${process.env.E2E_PREP_PLAN_ID}/prep`]) {
+    for (const url of ["/profiles", "/groceries", "/photos/review", `/plan/${process.env.E2E_PREP_PLAN_ID}/prep`]) {
       await page.goto(`http://127.0.0.1:3112${url}`);
       await expect(page).toHaveURL(/\/sign-in$/);
       await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();

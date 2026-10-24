@@ -1,4 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { PublicIngredient } from "@/components/PublicLibrary";
 import type { Metadata } from "next";
 import { IngredientTile } from "@/components/IngredientTile";
 import Link from "next/link";
@@ -32,11 +34,12 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 export default async function IngredientPage({ params }: { params: Promise<{ slug: string }> }) {
-  const member = await requirePageMember();
   const { slug } = await params;
   const data = getData();
   const ing = data.ingredients.get(slug);
   if (!ing) notFound();
+  if (!await optionalPageMember()) return <PublicIngredient data={data} slug={slug} />;
+  const member = await requirePageMember();
 
   const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
   const photoIdx = await photoIndex(await getDb());

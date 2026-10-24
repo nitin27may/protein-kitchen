@@ -1,6 +1,6 @@
 # Protein Kitchen
 
-A personal meal planner for a lacto-vegetarian household (dairy yes, eggs no, no animal rennet). It builds 7-day, 14-day or custom-range plans with per-person portions, a grocery list, a meal prep guide, step-by-step cook mode and push reminders. Runs on Next.js and Postgres. Deployment and authentication are not yet implemented; keep it private.
+A meal planner for a lacto-vegetarian household (dairy yes, eggs no, no animal rennet). It builds 7-day, 14-day or custom-range plans with per-person portions, a grocery list, a meal prep guide, step-by-step cook mode and push reminders. Runs on Next.js and Postgres. Anonymous visitors can browse the recipe/ingredient library; household features require a verified account and membership. Public deployment and independent self-service households remain pending; keep this development instance private.
 
 `PLAN.md` holds the product intent. `CLAUDE.md` is the rulebook for adding data.
 
@@ -21,12 +21,13 @@ pnpm dev                    # http://localhost:3000
 
 CLI commands do not automatically load `.env.local`. Use a trusted environment loader or export the required variables. Application traffic uses `DATABASE_URL`; migration and seed use the direct `DATABASE_URL_UNPOOLED`. For remote non-production connections the exact host must match `DATABASE_NONPRODUCTION_HOST` (set it separately for pooled application and direct CLI hosts), and live Neon branch verification must pass before a database pool is created.
 
-Requests never migrate or seed. Startup checks a content fingerprint and refuses an absent/outdated library, including changes that leave row counts unchanged. Run `pnpm seed` after editing data. Existing `db/app.db` files are untouched legacy sources; household-data import is a later step, not an automatic first-run operation.
+Requests never migrate or seed. Database-backed requests check a content fingerprint and refuse an absent/outdated library, including changes that leave row counts unchanged. Anonymous library browsing uses `/data` only and does not require database/auth/mail configuration. Run `pnpm seed` after editing data. Existing `db/app.db` files are untouched legacy sources; household-data import is a later step, not an automatic first-run operation.
 
-First run: open Profiles, add everyone who eats, then create a plan.
+For household features, configure authentication and finish verified membership/profile onboarding before creating a plan. The current signup/onboarding still uses invitation/bootstrap grants; replacing those with email-first self-service households is planned in `docs/plan-v3-publish-and-protect.md`, not enabled by public browsing.
 
 ## Features
 
+- **Public library:** anonymous home, recipe/component methods and ingredient nutrition/source details, searchable without sign-in. Public top navigation replaces the private sidebar/bottom bar. Household photos, ratings, saved choices, profiles and plans are not published.
 - **Profiles:** one per person, with their own targets, portions and reminders.
 - **Plan generator:** deterministic and seeded. No repeats within 3 days, weeknights capped at 20 active minutes, swap any meal.
 - **Cooking style:** Variety, Cook once and eat twice (default), or Batch cook.

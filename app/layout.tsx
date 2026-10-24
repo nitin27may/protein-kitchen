@@ -5,6 +5,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { Sidebar } from "@/components/Sidebar";
 import { RegisterSW } from "@/components/RegisterSW";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PublicNavigation } from "@/components/PublicNavigation";
+import { optionalPageMember } from "@/lib/auth/public-access";
 import "./globals.css";
 
 const body = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--nf-body", display: "swap" });
@@ -25,7 +27,8 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const member = await optionalPageMember();
   return (
     <html lang="en" suppressHydrationWarning className={`${body.variable} ${display.variable}`}>
       <head>
@@ -36,7 +39,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-control focus:bg-surface focus:p-3">
           Skip to content
         </a>
-        <div className="lg:flex">
+        {!member ? <PublicNavigation /> : null}
+        {member ? <div className="lg:flex">
           <Sidebar />
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
@@ -59,8 +63,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </main>
           </div>
-        </div>
-        <BottomNav />
+        </div> : <main id="main" className="mx-auto max-w-[88rem]">{children}</main>}
+        {member ? <BottomNav /> : null}
         <RegisterSW />
       </body>
     </html>

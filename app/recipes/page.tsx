@@ -1,4 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { PublicCatalog } from "@/components/PublicLibrary";
 import type { Metadata } from "next";
 import { RecipesClient } from "@/components/RecipesClient";
 import type { RecipeCardData } from "@/components/RecipesClient";
@@ -14,7 +16,11 @@ import { photoIndex } from "@/lib/server/photo-index";
 export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
 
-export default async function RecipesPage() {
+export default async function RecipesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  if (!await optionalPageMember()) {
+    const { q } = await searchParams;
+    return <PublicCatalog data={getData()} kind="recipes" query={q} />;
+  }
   const member = await requirePageMember();
   const data = getData();
   const fb = await feedbackMap(member.personId);

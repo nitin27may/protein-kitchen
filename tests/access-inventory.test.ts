@@ -7,6 +7,7 @@ const files = readdirSync("app", { recursive: true, withFileTypes: true })
   .filter((entry) => entry.isFile()).map((entry) => path.join(entry.parentPath, entry.name).replaceAll("\\", "/"));
 const publicPages = new Set(["app/sign-in/page.tsx", "app/sign-up/page.tsx", "app/verify-email/page.tsx", "app/reset-password/page.tsx"]);
 const admissionPages = new Set(["app/onboarding/page.tsx"]);
+const libraryPages = new Set(["app/page.tsx", "app/recipes/page.tsx", "app/recipes/[slug]/page.tsx", "app/ingredients/page.tsx", "app/ingredients/[slug]/page.tsx"]);
 const source = (file: string) => ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const exported = (node: ts.FunctionDeclaration) => node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
 function firstCall(node: ts.FunctionDeclaration) {
@@ -25,10 +26,34 @@ describe("application authorization inventory", () => {
       const page = source(file).statements.find((node): node is ts.FunctionDeclaration =>
         ts.isFunctionDeclaration(node) && !!exported(node) && !!node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword));
       expect(page, "Use an explicitly guarded page loader; update this inventory for a reviewed alternative.").toBeDefined();
-      expect(firstCall(page!)).toBe("requirePageMember");
+      if (libraryPages.has(file)) {
+        const statements = page!.body!.statements;
+        const guard = statements.findIndex((statement) => statement.getText().includes("= await requirePageMember();") || statement.getText() === "await requirePageMember();");
+        expect(guard, "Private loaders must retain an explicit membership guard after the public branch.").toBeGreaterThan(0);
+        const calls: string[] = [];
+        const visit = (node: ts.Node) => {
+          if (ts.isCallExpression(node)) calls.push(node.expression.getText());
+          ts.forEachChild(node, visit);
+        };
+        for (const statement of statements.slice(0, guard)) visit(statement);
+        expect(calls).toContain("optionalPageMember");
+        for (const call of calls) expect(["optionalPageMember", "getData", "data.recipes.get", "data.ingredients.get", "notFound"]).toContain(call);
+        expect(statements.slice(0, guard).some((statement) => statement.getText().includes("return <Public"))).toBe(true);
+      } else {
+        expect(firstCall(page!)).toBe("requirePageMember");
+      }
       expect(readFileSync(file, "utf8")).toMatch(/export const dynamic = ["']force-dynamic["']/);
     });
   }
+  it("public library rendering cannot import database, household actions or private projections", () => {
+    const imports = source("components/PublicLibrary.tsx").statements.filter(ts.isImportDeclaration);
+    const allowed = new Set(["next/link", "./Markdown", "./ui", "@/lib/data/load", "@/lib/data/rules", "@/lib/nutrition/macros", "@/lib/recipes/storage", "@/lib/schemas"]);
+    for (const entry of imports) {
+      expect(ts.isStringLiteral(entry.moduleSpecifier)).toBe(true);
+      expect(allowed.has((entry.moduleSpecifier as ts.StringLiteral).text)).toBe(true);
+    }
+    expect(readFileSync("components/PublicLibrary.tsx", "utf8")).not.toMatch(/getDb|photoIndex|feedbackMap|setRecipeFeedback|getRecipeLinks|listPeople|listPlans/);
+  });
   for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts")) {
     const statements = source(file).statements;
     it(`${file} uses explicit, reviewable HTTP handler declarations`, () => {

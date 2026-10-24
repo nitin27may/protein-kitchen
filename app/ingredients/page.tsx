@@ -1,4 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { PublicCatalog } from "@/components/PublicLibrary";
 import type { Metadata } from "next";
 import { IngredientsClient } from "@/components/IngredientsClient";
 import type { IngredientCard } from "@/components/IngredientsClient";
@@ -12,7 +14,11 @@ import { photoIndex } from "@/lib/server/photo-index";
 export const metadata: Metadata = { title: "Ingredients" };
 export const dynamic = "force-dynamic";
 
-export default async function IngredientsPage() {
+export default async function IngredientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  if (!await optionalPageMember()) {
+    const { q } = await searchParams;
+    return <PublicCatalog data={getData()} kind="ingredients" query={q} />;
+  }
   await requirePageMember();
   const data = getData();
   const photos = await photoIndex(await getDb());

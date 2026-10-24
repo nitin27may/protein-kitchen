@@ -1,4 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { PublicRecipe } from "@/components/PublicLibrary";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RecipeDetail } from "@/components/RecipeDetail";
@@ -27,12 +29,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function RecipePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ plan?: string }> }) {
-  const member = await requirePageMember();
   const { slug } = await params;
   const { plan } = await searchParams;
   const data = getData();
   const r = data.recipes.get(slug);
   if (!r) notFound();
+  if (!await optionalPageMember()) {
+    if (r.kind === "routine") notFound();
+    return <PublicRecipe data={data} slug={slug} />;
+  }
+  const member = await requirePageMember();
   const m = perServing(slug, data.recipes, data.ingredients);
   const fb = (await feedbackMap(member.personId)).get(slug);
   const history = (await feedbackMap()).get(slug);
