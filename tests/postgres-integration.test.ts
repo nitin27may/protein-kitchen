@@ -34,6 +34,7 @@ import { openPrivateStateRepository } from "../lib/sync/github";
 import { fixtureConfiguration as syncConfig, fixtureTime, githubFixture } from "./helpers/github-state";
 import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
+import { publishEncryptedVault } from "../lib/backup/vault";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -530,6 +531,18 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       const artifact = path.join(outputRoot, name!);
       const index = JSON.parse(await readFile(path.join(artifact, "index.json"), "utf8"));
       expect(JSON.stringify(index)).not.toMatch(/PRIVATE_|photos\/|AGE-SECRET/);
+      const vault = githubFixture();
+      vault.reset();
+      await vault.start();
+      try {
+        const open = () => openPrivateStateRepository(syncConfig, vault.fetch, () => fixtureTime);
+        const published = await publishEncryptedVault(artifact, true, open);
+        expect(published).toEqual({ id: index.id, changed: true, commit: vault.head });
+        expect(await publishEncryptedVault(artifact, true, open)).toEqual({ ...published, changed: false });
+        const entries = vault.trees.get(vault.commits.get(vault.head)!.tree.sha)!;
+        expect(entries.filter((entry) => entry.path.startsWith(`protein-kitchen/vault/${index.id}/`))).toHaveLength(index.files.length + 1);
+        expect(JSON.stringify(vault.requests)).not.toMatch(/PRIVATE_|AGE-SECRET/);
+      } finally { await vault.close(); }
       const decrypt = (file: string, key = identity) => exec(age, ["--decrypt", "--identity", key, path.join(artifact, file)], { encoding: "buffer", maxBuffer: 16 * 1024 * 1024 });
       const manifest = JSON.parse((await decrypt("manifest.json.age")).stdout.toString());
       const recoveredStore = createMemoryStore();

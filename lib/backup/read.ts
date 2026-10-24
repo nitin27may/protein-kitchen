@@ -14,7 +14,7 @@ const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const file = z.string().regex(new RegExp(`^(?:database\\.dump|manifest\\.json|${uuid})\\.age$`));
 const key = z.string().regex(new RegExp(`^(?:database\\.dump|photos/${uuid}/(?:master|thumb)\\.webp)$`));
 const receipt = z.object({ file, sha256: z.string().regex(/^[0-9a-f]{64}$/), size: z.number().int().positive().max(65 * MiB) }).strict();
-const indexSchema = z.object({
+export const encryptedBackupIndex = z.object({
   format: z.literal("protein-kitchen-encrypted-backup"), version: z.literal(1), id: z.string().uuid(),
   created_at: z.string().datetime(), files: z.array(receipt).min(2).max(5002),
 }).strict();
@@ -60,7 +60,7 @@ export async function recoveryTool(command: string, args: string[], input: Uint8
   } catch { throw new RecoveryError("tool-failed"); }
 }
 
-async function boundedFile(file: string, limit: number) {
+export async function readBackupFile(file: string, limit: number) {
   const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const info = await handle.stat();
@@ -75,18 +75,23 @@ async function boundedFile(file: string, limit: number) {
   } finally { await handle.close(); }
 }
 
+export async function readBackupIndex(root: string) {
+  const index = encryptedBackupIndex.parse(JSON.parse((await readBackupFile(path.join(root, "index.json"), MiB)).toString()));
+  const names = new Map(index.files.map((entry) => [entry.file, entry]));
+  if (names.size !== index.files.length || !names.has("manifest.json.age") || !names.has("database.dump.age") ||
+      index.files.reduce((size, entry) => size + entry.size, 0) > 256 * MiB) throw new RecoveryError("artifact-invalid");
+  return { index, names };
+}
+
 export async function readEncryptedBackup(directory: string, identity: string, trusted: boolean, age = "age") {
   if (trusted !== true) throw new RecoveryError("artifact-invalid");
   try {
     const root = path.resolve(directory), identityPath = path.resolve(identity);
     const keyInfo = await lstat(identityPath), rootInfo = await lstat(root);
     if (!rootInfo.isDirectory() || !keyInfo.isFile() || (keyInfo.mode & 0o077) !== 0) throw new RecoveryError("artifact-invalid");
-    const index = indexSchema.parse(JSON.parse((await boundedFile(path.join(root, "index.json"), MiB)).toString()));
-    const names = new Map(index.files.map((entry) => [entry.file, entry]));
-    if (names.size !== index.files.length || !names.has("manifest.json.age") || !names.has("database.dump.age") ||
-        index.files.reduce((size, entry) => size + entry.size, 0) > 256 * MiB) throw new RecoveryError("artifact-invalid");
+    const { index, names } = await readBackupIndex(root);
     async function decrypt(item: z.infer<typeof receipt>, limit: number) {
-      const bytes = await boundedFile(path.join(root, item.file), 65 * MiB);
+      const bytes = await readBackupFile(path.join(root, item.file), 65 * MiB);
       if (bytes.length !== item.size || digest(bytes) !== item.sha256) throw new RecoveryError("artifact-invalid");
       try { return await recoveryTool(age, ["--decrypt", "--identity", identityPath], bytes, limit); }
       catch { throw new RecoveryError("decryption-failed"); }

@@ -26,6 +26,7 @@ export default defineConfig({
         "lib/backup/create.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/backup/process.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/backup/read.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/backup/vault.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/postgres-recovery.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/reminders/claim.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/reminders/delivery.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

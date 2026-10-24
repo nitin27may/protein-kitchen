@@ -90,6 +90,12 @@ Use synthetic data only for now. Remote rehearsals require `SQLITE_IMPORT_NEON_B
 
 The source is never migrated or modified. An entirely empty source is refused; use the guarded seed for a new library instead. Top-level JSON null, unsafe JSON integers, malformed JSON/booleans/dates and unrepresentable values are refused rather than silently coerced. Digests cover database rows only: photo **metadata** is preserved, but photo bytes are not copied or verified. No new photo approval or human decision is created. Protect reports and source copies as private migration artifacts. This is not yet the production migration or backup/restore procedure.
 
+### Encrypted vault library (20C1)
+
+`lib/backup/vault.ts` implements append-only publication of an explicitly trusted local encrypted backup through the pinned private GitHub App transport. Before target access it checks the bounded index, file allowlist, checksums, sizes and binary age framing; only canonical non-sensitive metadata and listed ciphertext are published. Framing is not proof of encryption, sender identity or recoverability: the source must be a trusted locally generated artifact. Identical artifact-id retries are no-ops; divergent contents are conflicts. Existing artifacts/unrelated files are preserved, branch updates never force, and ambiguous updates are reconciled before reporting success.
+
+This is a tested library, not an enabled off-machine backup service. No vault CLI, real target, schedule or automatic retention/deletion is enabled. Deleting a Git tree entry would not erase its encrypted history; no expiry guarantee is made. The guarded runner, fetch-to-isolated-restore drill, approved off-machine acceptance and pre-reset failure gate remain pending; Settings reset stays blocked. See [the detailed stage plan](docs/plan-v3-publish-and-protect.md).
+
 ### Repeatable browser tests
 
 Create a disposable local database named exactly `protein_kitchen_e2e`, then supply `POSTGRES_E2E_URL` explicitly:
