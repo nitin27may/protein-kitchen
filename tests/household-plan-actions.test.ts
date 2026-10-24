@@ -13,6 +13,7 @@ import {
   addManualItem, deletePlan, enableShake, getSwapOptions, markPlanStep, regeneratePlan, removeManualItem,
   setGroceryChecked, setManualChecked, setPartMode, setPortion, setPrepDone, swapSlot, toggleLock, setPersonRoutine, setHabitDone,
   saveDefaultView, clearDefaultView,
+  setRecipeFeedback,
 } from "../app/actions";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -139,6 +140,34 @@ it("saves updates and clears only the caller's household defaults with stable id
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
   expect((await saveDefaultView("recipes", "q=blocked")).ok).toBe(false);
   expect((await clearDefaultView("ingredients")).ok).toBe(false);
+});
+
+it("keeps same-recipe feedback independent across households and refuses stale accounts", async () => {
+  expect(await setRecipeFeedback("falafel-bowl", { rating: 5, notes: "First household", banned: false })).toEqual({ ok: true });
+  const [first] = await h.db.select().from(s.recipeFeedback);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect(await setRecipeFeedback("falafel-bowl", { rating: 1, notes: "Second household", banned: true })).toEqual({ ok: true });
+  expect(await h.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, "a"))).toEqual([first]);
+  expect(await h.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, "b")))
+    .toMatchObject([{ notes: "Second household", banned: true, status: "tested" }]);
+  expect(await setRecipeFeedback("falafel-bowl", { tested: false, notes: "Updated second household" })).toEqual({ ok: true });
+  expect(await h.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, "b")))
+    .toMatchObject([{ status: "draft", notes: "Updated second household" }]);
+  expect((await setRecipeFeedback("missing", { favourite: true })).ok).toBe(false);
+  expect((await setRecipeFeedback("falafel-bowl", { rating: 6 })).ok).toBe(false);
+  await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "b"));
+  expect((await setRecipeFeedback("falafel-bowl", { favourite: true })).ok).toBe(false);
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
+  expect((await setRecipeFeedback("falafel-bowl", { favourite: true })).ok).toBe(false);
+  expect(await h.db.select().from(s.personRecipeFeedback)).toMatchObject([{ personId: 1, rating: 5 }, { personId: 2, rating: 1 }]);
+});
+
+it("rolls personal and household feedback back together when shared sync marking fails", async () => {
+  await h.db.execute(sql`alter table sync_state add constraint synthetic_feedback_sync_failure check (data_class <> 'recipe-feedback')`);
+  await expect(setRecipeFeedback("falafel-bowl", { rating: 5, notes: "Must roll back" })).rejects.toThrow("sync_state");
+  expect(await h.db.select().from(s.personRecipeFeedback)).toEqual([]);
+  expect(await h.db.select().from(s.recipeFeedback)).toEqual([]);
+  expect(await h.db.select().from(s.syncState)).toEqual([]);
 });
 
 it("rolls saved defaults and deletion back when sync marking fails", async () => {

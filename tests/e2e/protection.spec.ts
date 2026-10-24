@@ -3,7 +3,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipes, plans, planSetups, planSlots, savedViews } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipes, plans, planSetups, planSlots, savedViews } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
 
@@ -269,14 +269,21 @@ test("anonymous pages, server components, photo bytes and exports never disclose
 
 test("captured feedback actions cannot select another person's rating, even for an owner", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = `foreign-feedback-${randomUUID()}`;
   try {
     const [member] = await handle.db.select({ personId: householdMembers.personId }).from(householdMembers)
       .innerJoin(authUsers, eq(authUsers.id, householdMembers.userId)).where(eq(authUsers.email, "authorized-browser-fixture@example.test"));
     const personId = member!.personId!;
     const [foreign] = await handle.db.select({ id: people.id }).from(people).where(ne(people.id, personId)).limit(1);
     const [recipe] = await handle.db.select({ id: recipes.id }).from(recipes).where(eq(recipes.slug, "tofu-burrito-bowl"));
+    await handle.db.insert(households).values({ id: householdId, name: "Unrelated feedback household" });
+    await handle.db.insert(recipeFeedback).values({
+      householdId, recipeId: recipe!.id, notes: "Foreign private method note", banned: true, status: "draft",
+    });
+    const foreignHistory = await handle.db.select().from(recipeFeedback).where(eq(recipeFeedback.householdId, householdId));
     const before = await handle.db.select().from(personRecipeFeedback).where(eq(personRecipeFeedback.personId, foreign!.id));
     await page.goto("/recipes/tofu-burrito-bowl");
+    await expect(page.getByText("Foreign private method note", { exact: true })).toHaveCount(0);
     const captured = page.waitForRequest((request) => request.method() === "POST" && request.headers()["next-action"] !== undefined);
     await page.getByRole("button", { name: "Favourite", exact: true }).click();
     const request = await captured;
@@ -296,7 +303,14 @@ test("captured feedback actions cannot select another person's rating, even for 
     expect(await handle.db.select().from(personRecipeFeedback).where(and(eq(personRecipeFeedback.personId, personId), eq(personRecipeFeedback.recipeId, recipe!.id))))
       .toMatchObject([{ rating: 3 }]);
     expect(await handle.db.select().from(personRecipeFeedback).where(eq(personRecipeFeedback.personId, foreign!.id))).toEqual(before);
-  } finally { await handle.close(); }
+    expect(await handle.db.select().from(recipeFeedback).where(eq(recipeFeedback.householdId, householdId))).toEqual(foreignHistory);
+    await page.reload();
+    await expect(page.getByText("Foreign private method note", { exact: true })).toHaveCount(0);
+  } finally {
+    await handle.db.delete(recipeFeedback).where(eq(recipeFeedback.householdId, householdId));
+    await handle.db.delete(households).where(eq(households.id, householdId));
+    await handle.close();
+  }
 });
 
 test("captured Server Actions cannot edit another profile or survive revoked household membership", async ({ page }) => {

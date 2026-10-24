@@ -1,0 +1,2 @@
+ALTER TABLE "recipe_feedback" DROP CONSTRAINT "recipe_feedback_pkey";--> statement-breakpoint
+ALTER TABLE "recipe_feedback" ADD CONSTRAINT "recipe_feedback_household_recipe_uq" UNIQUE NULLS NOT DISTINCT("household_id","recipe_id");

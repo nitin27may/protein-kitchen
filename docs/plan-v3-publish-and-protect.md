@@ -277,6 +277,53 @@ separate household's private default. Unowned rows are neither adopted nor
 changed by requests; operator import/export and sync-marker ownership remain
 pending. No remote changes occurred.
 
+### Next H2 slice: household recipe feedback and candidate filtering
+
+Dependency: recipe feedback still has a recipe-only primary key. Replace that
+key with a unique household/recipe key that treats null ownership as one legacy
+namespace; preserve every row, uid and reference in a generated migration.
+Personal feedback remains keyed by profile/recipe. Scope shared read/updates and
+candidate filters to the verified request household and validate selected
+profiles before reading their personal choices. Never apply another household's
+hidden/tested state or ratings to a plan.
+
+Wire the real feedback action to an owned-profile transaction using its
+authoritative linked profile, and keep personal choices plus shared tested/notes
+changes and sync marking atomic through lib/human. Serialize shared feedback
+changes on the household row, retaining stable uid and update semantics.
+Legacy human writer/operator calls address the null-owned namespace explicitly;
+operator multi-household export/import/rename support remains gated and must not
+silently flatten duplicate household records.
+
+Acceptance: migration preservation/replay and same-recipe independent household
+rows, scoped personal/history/candidate payloads, foreign selected-profile and
+stale-member refusal, valid rating/hide/tested changes and rollback. Add native
+concurrent same-household feedback changes and a real-browser same-recipe action
+case proving the other household's feedback stays unchanged. Preserve existing
+rating/testing semantics and human round-trip tests. Run targeted tests, full
+native coverage, browser acceptance, types/build before committing. No signup,
+cloud migration, secret or deployment changes.
+
+**Feedback acceptance:** migration `0013` preserves existing feedback and replaces
+the recipe-only primary key with `UNIQUE NULLS NOT DISTINCT(household_id,
+recipe_id)`, retaining a single legacy null namespace. Drizzle generated a
+placeholder for the old constraint name; its baseline name was verified against
+native Postgres and recorded explicitly in the migration. Seed does not invent
+null-owned duplicates for already-owned feedback.
+
+All 1,848 tests / 93 files pass, including native concurrent partial feedback
+changes and independent same-recipe household rows. All 27 saved browser
+journeys, types and production build pass. Feedback projection and personal
+writer modules retain 100% statements/branches/functions/lines; shared human
+writer coverage is 98.66% lines, overall statements 70.99%. Request cases prove
+foreign selected profiles cannot influence candidates or personal/history
+payloads; actual actions revalidate profile ownership and commit personal/shared
+changes atomically, including rollback on sync failure. Browser replay preserves
+another household's same-recipe history and never renders its private note.
+Unscoped duplicate-history reads, operator exports/imports and renames fail
+explicitly rather than flattening household rows. Multi-household operator
+formats and scoped sync remain pending; no hosted migration or admission change.
+
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.
 
 The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity with explicit additive Postgres-only fields; the schema now has 48 tables including households, library versioning, eight identity/rate-limit tables, separate personal recipe feedback and four operational sync/reminder tables. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists. Existing SQLite files were not touched or imported.

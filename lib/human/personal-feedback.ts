@@ -24,7 +24,7 @@ function peopleByKey(people: Pick<typeof s.people.$inferSelect, "id" | "name" | 
 }
 
 /** Personal choices and their household tested/notes changes commit as one operation. */
-export async function writePersonalRecipeFeedback(db: Db, personId: number, recipeId: number, input: FeedbackPatch) {
+export async function writePersonalRecipeFeedback(db: Db, personId: number, recipeId: number, input: FeedbackPatch, householdId?: string) {
   const patch = FeedbackInput.parse(input);
   await withTx(db, async (tx) => {
     if (patch.favourite !== undefined || patch.rating !== undefined) {
@@ -42,7 +42,7 @@ export async function writePersonalRecipeFeedback(db: Db, personId: number, reci
       banned: patch.banned, notes: patch.notes,
       tested: patch.tested ?? (patch.rating !== undefined && patch.rating !== null ? true : undefined),
     };
-    if (Object.values(shared).some((value) => value !== undefined)) await writeRecipeFeedback(tx, recipeId, shared);
+    if (Object.values(shared).some((value) => value !== undefined)) await writeRecipeFeedback(tx, recipeId, shared, householdId);
   });
 }
 

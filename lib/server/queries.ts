@@ -107,11 +107,16 @@ export async function toPersonTarget(p: PersonRow): Promise<PersonTarget> {
 
 export async function feedbackMap(personId?: number): Promise<Map<string, Feedback>> {
   const db = await getDb();
-  return personId === undefined ? householdFeedback(db) : personalFeedback(db, personId);
+  const access = await requestHousehold(db);
+  if (personId !== undefined) await selectedPeople(db, [personId], access.householdId);
+  return personId === undefined ? householdFeedback(db, access.householdId) : personalFeedback(db, personId, access.householdId);
 }
 
 export async function getCandidates(personIds: readonly number[] = []): Promise<Candidate[]> {
-  return buildCandidates(getData(), await planningFeedback(await getDb(), personIds));
+  const db = await getDb();
+  const access = await requestHousehold(db);
+  if (personIds.length) await selectedPeople(db, personIds, access.householdId);
+  return buildCandidates(getData(), await planningFeedback(db, personIds, access.householdId));
 }
 
 export async function recipeIds(): Promise<{ bySlug: Map<string, number>; byId: Map<number, string> }> {

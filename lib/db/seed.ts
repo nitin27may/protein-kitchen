@@ -109,7 +109,10 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
     await applyRenames(tx, data.renames);
 
     // Feedback rows exist for every recipe but are never overwritten.
-    for (const id of seededIds) await tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing();
+    const feedbackIds = new Set((await tx.select({ recipeId: s.recipeFeedback.recipeId }).from(s.recipeFeedback)).map((row) => row.recipeId));
+    for (const id of seededIds) {
+      if (!feedbackIds.has(id)) await tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing();
+    }
 
     // Children are derived, so clear and rebuild.
     for (const table of [s.recipeItems, s.recipeSteps, s.recipeAdvancePrep, s.recipeMacros, s.recipeAnchors] as const) {

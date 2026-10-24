@@ -136,6 +136,24 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await changeHouseholdDefaultView(handle.db, a, "recipes", null);
       expect(await defaultViewQuery(handle.db, "recipes", "native-a")).toBeNull();
       expect(await defaultViewQuery(handle.db, "recipes", "native-b")).toBe("q=foreign");
+      const [feedbackRecipe] = await handle.db.insert(s.recipes).values({
+        slug: "native-feedback", name: "Native feedback fixture", kind: "recipe", family: "test",
+        mealSlots: ["dinner"], cuisine: "test", isIndian: false, servings: 1, prepMin: 0, activeMin: 0,
+        totalMin: 0, equipment: [], tags: [], fridgeDays: 1,
+      }).returning({ id: s.recipes.id });
+      await Promise.all([{ favourite: true }, { rating: 5 }, { notes: "First household" }].map((patch) =>
+        mutateHouseholdPerson(handle.db, a, profiles[0]!.id, async (tx) => {
+          await tx.select().from(s.households).where(eq(s.households.id, a.householdId)).for("update");
+          await writePersonalRecipeFeedback(tx, profiles[0]!.id, feedbackRecipe!.id, patch, a.householdId);
+        })));
+      await mutateHouseholdPerson(handle.db, b, profiles[1]!.id, (tx) =>
+        writePersonalRecipeFeedback(tx, profiles[1]!.id, feedbackRecipe!.id, { rating: 1, banned: true }, b.householdId));
+      expect(await handle.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, a.householdId)))
+        .toMatchObject([{ status: "tested", banned: false, notes: "First household" }]);
+      expect(await handle.db.select().from(s.personRecipeFeedback).where(eq(s.personRecipeFeedback.personId, profiles[0]!.id)))
+        .toMatchObject([{ favourite: true, rating: 5 }]);
+      expect(await handle.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, b.householdId)))
+        .toMatchObject([{ status: "tested", banned: true }]);
       await mutateHouseholdPerson(handle.db, a, profiles[0]!.id, async () => {
         for (const statement of [
           "delete from household_members where user_id = 'native-a'",

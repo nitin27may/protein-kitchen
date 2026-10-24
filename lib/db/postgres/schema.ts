@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, doublePrecision as real, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, check, doublePrecision as real, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { bool, isoDate, isoTimestamp, json } from "./columns";
 
 const id = () => integer("id").primaryKey().generatedByDefaultAsIdentity();
@@ -246,7 +246,7 @@ export const people = pgTable("people", {
 
 export const recipeFeedback = pgTable("recipe_feedback", {
   householdId: householdId(),
-  recipeId: integer("recipe_id").primaryKey().references(() => recipes.id, { onDelete: "cascade" }),
+  recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
   status: text("status", { enum: ["draft", "tested"] }).notNull().default("draft"),
   rating: integer("rating"),
   favourite: bool("favourite").notNull().default(false),
@@ -257,7 +257,10 @@ export const recipeFeedback = pgTable("recipe_feedback", {
   createdAt: isoTimestamp("created_at"),
   updatedAt: isoTimestamp("updated_at"),
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
-}, (t) => [uniqueIndex("recipe_feedback_uid_uq").on(t.uid), index("recipe_feedback_household_idx").on(t.householdId)]);
+}, (t) => [
+  unique("recipe_feedback_household_recipe_uq").on(t.householdId, t.recipeId).nullsNotDistinct(),
+  uniqueIndex("recipe_feedback_uid_uq").on(t.uid), index("recipe_feedback_household_idx").on(t.householdId),
+]);
 
 export const personRecipeFeedback = pgTable("person_recipe_feedback", {
   personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),

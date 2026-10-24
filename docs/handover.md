@@ -10,6 +10,22 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest household recipe feedback:** migration `0013` replaces recipe-only
+identity with null-safe household/recipe uniqueness without changing existing
+rows. Requests scope shared history, personal feedback and planning candidates
+to verified household profiles. The feedback action holds membership/profile
+and household locks through the human writer, preserving personal/shared
+atomicity. Same-recipe choices in another household no longer collide or affect
+candidate filtering. Seed preserves existing owned rows instead of adding null
+duplicates. **Acceptance: 1,848 tests / 93 files, all 27 browser journeys,
+typecheck and production build pass**; feedback projections/personal writer stay
+at 100%, shared human writer has 98.66% line coverage, overall statements 70.99%.
+The browser checks another household's note/history remain private and unchanged.
+Legacy operator duplicate-history export/import/rename paths explicitly refuse
+ambiguous household data; scoped operator formats/sync still need implementation.
+Migration generated an old-primary-key placeholder, replaced with the baseline
+constraint name verified on native Postgres. No remote migration or deployment.
+
 **Latest household saved views:** request saved/default reads now filter by
 verified household. Saving and clearing refresh membership, require a linked
 profile and serialize on the household row; human writers persist ownership,

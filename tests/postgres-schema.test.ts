@@ -30,7 +30,7 @@ describe("Postgres baseline parity", () => {
       const target = pgConfig(pg[name]);
       expect(target.name, name).toBe(source.name);
       const columns = (config: typeof source | typeof target) => config.columns.map((c) => ({
-        name: c.name, notNull: c.notNull, primary: c.primary, unique: c.isUnique,
+        name: c.name, notNull: c.notNull, primary: name === "recipeFeedback" && c.name === "recipe_id" ? false : c.primary, unique: c.isUnique,
         enum: c.enumValues, default: c.default,
       })).sort((a, b) => a.name.localeCompare(b.name));
       expect(columns(target).filter((c) => (name !== "syncState" || !["revision", "exported_revision"].includes(c.name)) &&
@@ -71,7 +71,12 @@ describe("Postgres baseline parity", () => {
       const uniqueConstraints = (config: typeof source | typeof target) => config.uniqueConstraints.map((key) => ({
         columns: key.columns.map((c) => c.name),
       }));
-      expect(uniqueConstraints(target), name).toEqual(uniqueConstraints(source));
+      expect(uniqueConstraints(target).filter((key) => name !== "recipeFeedback" || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
+      if (name === "recipeFeedback") {
+        expect(target.uniqueConstraints).toMatchObject([{
+          name: "recipe_feedback_household_recipe_uq", nullsNotDistinct: true,
+        }]);
+      }
       expect(target.checks.map((c) => c.name).sort(), name).toEqual(name === "syncState" ? ["sync_state_revision_valid"] : source.checks.map((c) => c.name).sort());
     }
   });
@@ -93,6 +98,24 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("preserves feedback bytes and replaces recipe-only identity with null-safe household identity", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 13)) for (const statement of migration.sql) await old.exec(statement);
+      await old.exec("insert into households(id,name) values ('a','First'),('b','Second')");
+      await old.exec("insert into recipes(id,slug,name,kind,family,meal_slots,cuisine,is_indian,servings,prep_min,active_min,total_min,equipment,tags,fridge_days) values (1,'fixture','Fixture','recipe','test','[]','test',false,1,0,0,0,'[]','[]',1)");
+      await old.query("insert into recipe_feedback(household_id,recipe_id,notes,uid,created_at,updated_at) values ('a',1,'Preserve exactly','stable-uid',$1,$1)", [now]);
+      const before = (await old.query("select * from recipe_feedback")).rows;
+      for (const migration of migrations.slice(13)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from recipe_feedback")).rows).toEqual(before);
+      await old.exec("insert into recipe_feedback(household_id,recipe_id,notes) values ('b',1,'Independent'),(null,1,'Legacy')");
+      for (const householdId of ["a", "b", null]) {
+        await expect(old.query("insert into recipe_feedback(household_id,recipe_id) values ($1,1)", [householdId])).rejects.toThrow();
+      }
+      expect((await old.query("select * from recipe_feedback")).rows).toHaveLength(3);
+    } finally { await old.close(); }
+  });
   it("leaves pre-ownership reminder batches unclaimed and preserves their frozen messages", async () => {
     const old = new PGlite();
     try {
@@ -149,7 +172,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(13);
+    expect(journal.rows).toHaveLength(14);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

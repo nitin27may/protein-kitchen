@@ -35,7 +35,7 @@ import { changeHouseholdDefaultView, VIEW_LISTS } from "@/lib/server/saved-views
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, slotBelongsToPlan } from "@/lib/server/plan-access";
-import { resolveOnlyHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
+import { requireHouseholdProfile, resolveOnlyHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
 import { HouseholdAccessError } from "@/lib/auth/household";
 import {
   deleteHouseholdPerson, householdPeople, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
@@ -384,11 +384,21 @@ export async function setRecipeFeedback(
   if (denied) return denied;
   const parsed = FeedbackInput.safeParse(patch);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check your recipe feedback.");
-  const member = await requireMember();
+  const context = await householdContext();
+  if (!context.ok) return context;
   const id = (await recipeIds()).bySlug.get(slug);
   if (id === undefined) return fail("Recipe not found");
-  // The write path for human-owned data lives in lib/human; this action only validates and refreshes.
-  await writePersonalRecipeFeedback(await getDb(), member.personId, id, parsed.data);
+  const { db, access } = context;
+  try {
+    const personId = requireHouseholdProfile(access);
+    await mutateHouseholdPerson(db, access, personId, async (tx) => {
+      await tx.select({ id: s.households.id }).from(s.households).where(eq(s.households.id, access.householdId)).for("update");
+      await writePersonalRecipeFeedback(tx, personId, id, parsed.data, access.householdId);
+    });
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
   refresh();
   return { ok: true };
 }

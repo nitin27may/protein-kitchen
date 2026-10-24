@@ -41,6 +41,33 @@ beforeEach(async () => {
 });
 
 describe("personal feedback and historical household preservation", () => {
+  it("keeps same-recipe household history separate and refuses ambiguous legacy operators before overwriting rows", async () => {
+    await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    await h.db.update(s.people).set({ householdId: "a" }).where(eq(s.people.id, first));
+    await h.db.update(s.people).set({ householdId: "b" }).where(eq(s.people.id, second));
+    await writePersonalRecipeFeedback(h.db, first, recipe, { rating: 5, notes: "First private note" }, "a");
+    await writePersonalRecipeFeedback(h.db, second, recipe, { rating: 1, banned: true }, "b");
+    const before = await h.db.select().from(s.recipeFeedback);
+    expect(before).toHaveLength(3);
+    expect((await householdFeedback(h.db, "a")).get("feedback-bowl")).toMatchObject({ tested: true, banned: false });
+    expect((await personalFeedback(h.db, first, "a")).get("feedback-bowl")).toMatchObject({ rating: 5, banned: false });
+    expect((await planningFeedback(h.db, [first, second], "a")).get("feedback-bowl")).toMatchObject({ rating: 5, banned: false });
+    expect((await planningFeedback(h.db, [first, second], "b")).get("feedback-bowl")).toMatchObject({ rating: 1, banned: true });
+    await expect(householdFeedback(h.db)).rejects.toThrow("explicit household scope");
+    await expect(feedbackClass.exportFiles(h.db)).rejects.toThrow("explicit household scope");
+    await expect(feedbackClass.moveRecipe!(h.db, recipe, 999)).rejects.toThrow("explicit household scope");
+    const [legacy] = before.filter((row) => row.householdId === null);
+    const file = JSON.stringify({
+      slug: "feedback-bowl", uid: legacy!.uid, status: "tested", rating: 4, favourite: true,
+      banned: false, notes: "Must not import", tested_at: legacy!.testedAt,
+      created_at: legacy!.createdAt, updated_at: legacy!.updatedAt,
+    });
+    await expect(feedbackClass.importFiles(h.db, { "feedback/feedback-bowl.json": file }, {
+      resolveRecipeId: async () => recipe,
+    })).rejects.toThrow("explicit household scope");
+    expect(await h.db.select().from(s.recipeFeedback)).toEqual(before);
+  });
+
   it("keeps two cooks' choices separate and never attributes earlier household ratings", async () => {
     expect((await personalFeedback(h.db, first)).get("feedback-bowl")).toMatchObject({ rating: null, favourite: false, tested: true });
     const [history] = await h.db.select().from(s.recipeFeedback);

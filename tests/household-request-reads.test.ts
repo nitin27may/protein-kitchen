@@ -4,6 +4,7 @@ import * as s from "../lib/db/schema";
 import { loadData } from "../lib/data/load";
 import { getRoutineCatalog } from "../lib/routines/catalog";
 import { writePersonRoutine } from "../lib/human/routines";
+import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { requireMember } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
 import {
@@ -11,6 +12,7 @@ import {
   lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans,
   getPerson, getPrefs, getPersonRoutines, getTodayRoutines, getHabitsFor,
   getSavedViews, getDefaultViewQuery,
+  feedbackMap, getCandidates,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
@@ -89,6 +91,22 @@ it("reads only household saved views and never adopts an unowned legacy default"
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
   await expect(getSavedViews("recipes")).rejects.toThrow("Select an available household");
   await expect(getDefaultViewQuery("recipes")).rejects.toThrow("Select an available household");
+});
+
+it("scopes historical/personal feedback and candidate filtering to the selected household profiles", async () => {
+  const [stored] = await h.db.select().from(s.recipes).where(eq(s.recipes.slug, recipe.slug));
+  await writePersonalRecipeFeedback(h.db, 1, stored!.id, { rating: 5, banned: false }, "a");
+  await writePersonalRecipeFeedback(h.db, 2, stored!.id, { rating: 1, banned: true }, "b");
+  expect((await feedbackMap()).get(recipe.slug)).toMatchObject({ banned: false, tested: true });
+  expect((await feedbackMap(1)).get(recipe.slug)).toMatchObject({ rating: 5, banned: false });
+  await expect(feedbackMap(2)).rejects.toThrow("profiles outside");
+  await expect(getCandidates([1, 2])).rejects.toThrow("profiles outside");
+  await expect(getCandidates([999])).rejects.toThrow("profiles outside");
+  expect((await getCandidates([1])).find((c) => c.slug === recipe.slug)).toMatchObject({ banned: false, rating: 5 });
+  expect((await getCandidates()).find((c) => c.slug === recipe.slug)).toMatchObject({ banned: false });
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect((await feedbackMap(2)).get(recipe.slug)).toMatchObject({ rating: 1, banned: true });
+  expect((await getCandidates([2])).find((c) => c.slug === recipe.slug)).toMatchObject({ banned: true, rating: 1 });
 });
 
 it("scopes profile preferences, routines and daily habits without foreign empty-success projections", async () => {
