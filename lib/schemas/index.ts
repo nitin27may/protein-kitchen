@@ -241,6 +241,9 @@ export const PlanSetupSchema = z
     cuisine_balance: z.number().min(0).max(1),
     max_active_min: z.number().positive().optional(),
     pinned_recipes: z.array(slug),
+    /** Weekday to finish shopping by and weekday to batch cook on (ISO 1 = Monday ... 7 = Sunday). Optional. */
+    shopping_day: z.number().int().min(1).max(7).nullable().optional(),
+    prep_day: z.number().int().min(1).max(7).nullable().optional(),
   })
   .strict()
   .superRefine((s, ctx) => {

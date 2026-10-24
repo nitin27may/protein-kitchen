@@ -71,7 +71,7 @@ interface Ctx {
   totalPlanned: number;
 }
 
-function eligible(c: Candidate, slot: Slot, date: string, input: PlanInput): boolean {
+export function eligible(c: Candidate, slot: Slot, date: string, input: PlanInput): boolean {
   if (c.banned) return false;
   // Sides and breads go with a meal; they are not planned as a meal on their own.
   if (c.family === "sides" || c.family === "breads") return false;

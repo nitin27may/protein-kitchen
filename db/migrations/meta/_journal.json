@@ -71,6 +71,13 @@
       "when": 1792799755337,
       "tag": "0009_brave_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792800418600,
+      "tag": "0010_minor_nuke",
+      "breakpoints": true
     }
   ]
 }

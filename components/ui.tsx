@@ -351,3 +351,55 @@ export function FilterSection({ title, hint, options, onToggle, showFirst = 6 }:
     </fieldset>
   );
 }
+
+// ---------- Guided flows ----------
+
+/**
+ * Progress through a short sequence. Wide screens show every step by name; phones show 'Step 2 of 5: Meals' and a bar.
+ * Earlier steps get a check, the current one has aria-current. Any step can be opened: nothing is saved by moving about.
+ */
+export function Stepper({ steps, current, onSelect, label }: { steps: { id: string; label: string }[]; current: string; onSelect?: (id: string) => void; label: string }) {
+  const index = Math.max(0, steps.findIndex((s) => s.id === current));
+  const active = steps[index];
+  return (
+    <nav aria-label={label}>
+      <p className="text-sm font-semibold lg:hidden">
+        Step {index + 1} of {steps.length}: <span className="font-normal text-muted">{active?.label}</span>
+      </p>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface2 lg:hidden" aria-hidden="true">
+        <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
+      </div>
+      <ol className="hidden items-center gap-2 lg:flex">
+        {steps.map((s, i) => {
+          const done = i < index;
+          const on = i === index;
+          return (
+            <li key={s.id} className="flex flex-1 items-center gap-2 last:flex-none">
+              <button type="button" aria-current={on ? "step" : undefined} onClick={() => onSelect?.(s.id)}
+                className={`flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold transition-colors hover:bg-surface2 ${on ? "text-primary" : done ? "text-fg" : "text-muted"}`}>
+                <span className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums ${on ? "border-primary bg-primary text-primaryfg" : done ? "border-primary bg-primarysoft text-primary" : "border-strong bg-surface"}`}>
+                  {done ? <CheckIcon className="size-4" /> : i + 1}
+                </span>
+                {s.label}
+              </button>
+              {i < steps.length - 1 ? <span className={`h-px flex-1 ${done ? "bg-primary" : "bg-line"}`} aria-hidden="true" /> : null}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+/** Back, Next and the like. Fixed to the bottom on phones so it stays in reach; an ordinary row on wide screens. */
+export function StickyActionBar({ children, note }: { children: ReactNode; note?: ReactNode }) {
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-4 pt-3 backdrop-blur lg:static lg:z-auto lg:mt-6 lg:border-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+    >
+      {note ? <div className="mb-2 text-sm">{note}</div> : null}
+      <div className="flex items-center gap-2">{children}</div>
+    </div>
+  );
+}

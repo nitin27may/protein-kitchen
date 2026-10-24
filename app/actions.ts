@@ -11,6 +11,8 @@ import type { LinkInput } from "@/lib/links/types";
 import { addLinkChecked, moveLinkChecked, removeLinkChecked, updateLinkChecked } from "@/lib/server/link-actions";
 import type { PartMode } from "@/lib/parts/mode";
 import { datesBetween } from "@/lib/planner/dates";
+import { computeFeasibility } from "@/lib/planner/feasibility";
+import type { FeasibilityInput, FeasibilityResult, PlanStep } from "@/lib/planner/feasibility-types";
 import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
 import type { IsoWeekday, TimeOfDay } from "@/lib/routines/types";
 import { planRoutineRowsFor, savePersonRoutine } from "@/lib/server/routine-state";
@@ -22,6 +24,8 @@ import { getData, getDb, getSqlite } from "@/lib/server/context";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
+import { insertPlanSetup } from "@/lib/server/plan-setup";
+import { writePlanStep } from "@/lib/server/plan-progress";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 
@@ -119,6 +123,9 @@ const CreatePlanInput = z.object({
   healthFocus: z.object({ nutrientDense: z.boolean(), lowSugar: z.boolean(), light: z.boolean() }).default({ nutrientDense: true, lowSugar: true, light: true }),
   prepStyle: z.enum(["variety", "leftovers", "batch"]).default("leftovers"),
   prefs: z.record(z.string(), z.object({ liked: z.array(z.string()), avoided: z.array(z.string()) })),
+  /** ISO weekdays (1 = Monday ... 7 = Sunday): when to finish shopping and when to batch cook. Optional. */
+  shoppingDay: z.number().int().min(1, "Choose a day from Monday to Sunday").max(7, "Choose a day from Monday to Sunday").nullable().optional(),
+  prepDay: z.number().int().min(1, "Choose a day from Monday to Sunday").max(7, "Choose a day from Monday to Sunday").nullable().optional(),
 });
 
 export type CreatePlanData = z.input<typeof CreatePlanInput>;
@@ -160,6 +167,8 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
     cuisine_balance: v.cuisineBalance,
     max_active_min: v.maxActiveMin ?? undefined,
     pinned_recipes: v.pinned,
+    shopping_day: v.shoppingDay ?? null,
+    prep_day: v.prepDay ?? null,
   });
   if (!setupCheck.success) return fail(setupCheck.error.issues[0]?.message ?? "Check the dates");
 
@@ -185,18 +194,53 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   // Routine choices of the people in the plan are copied into the plan, so its groceries and prep stay stable if a choice changes later.
   const routineRows = await planRoutineRowsFor(db, v.personIds, v.startDate, v.endDate, 0);
   const planId = await withTx(db, (tx) => {
-    const setup = tx
-      .insert(s.planSetups)
-      .values({ personIds: v.personIds, startDate: v.startDate, endDate: v.endDate, mealTypes: v.mealTypes, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, createdAt: now })
-      .returning({ id: s.planSetups.id })
-      .get();
-    const created = tx.insert(s.plans).values({ setupId: setup.id, seed, createdAt: now }).returning({ id: s.plans.id }).get();
+    const setupId = insertPlanSetup(tx, { personIds: v.personIds, startDate: v.startDate, endDate: v.endDate, mealTypes: v.mealTypes, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, shoppingDay: v.shoppingDay ?? null, prepDay: v.prepDay ?? null, createdAt: now });
+    const created = tx.insert(s.plans).values({ setupId, seed, createdAt: now }).returning({ id: s.plans.id }).get();
     for (const row of routineRows) tx.insert(s.planRoutines).values({ ...row, planId: created.id }).run();
     return created.id;
   });
   await persistSlots(planId, plan.slots);
   refresh(planId);
   return { ok: true, planId, gaps: plan.warnings.filter((w) => w.type === "protein_gap").length };
+}
+
+/**
+ * What the Review step shows: how many recipes pass the choices so far and whether each person's protein target can be
+ * reached. Reads only; nothing is saved, including the likes and avoids in `prefs`.
+ */
+export async function previewFeasibility(input: FeasibilityInput): Promise<Result<{ result: FeasibilityResult }>> {
+  const parsed = CreatePlanInput.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the plan setup");
+  const v = parsed.data;
+  const setupCheck = PlanSetupSchema.safeParse({
+    person_ids: v.personIds.map(String),
+    start_date: v.startDate,
+    end_date: v.endDate,
+    meal_types: v.mealTypes,
+    cuisine_balance: v.cuisineBalance,
+    max_active_min: v.maxActiveMin ?? undefined,
+    pinned_recipes: v.pinned,
+  });
+  if (!setupCheck.success) return fail(setupCheck.error.issues[0]?.message ?? "Check the dates");
+
+  const db = await getDb();
+  const people = await db.select().from(s.people).where(inArray(s.people.id, v.personIds));
+  if (people.length !== v.personIds.length) return fail("One of the selected profiles no longer exists");
+  // The choices on screen win over what is saved, so the preview follows them before anything is stored.
+  const targets = (await Promise.all(people.map(toPersonTarget))).map((t) => {
+    const pref = v.prefs[t.id];
+    return pref ? { ...t, liked: new Set(pref.liked.filter((l) => !pref.avoided.includes(l))), avoided: new Set(pref.avoided) } : t;
+  });
+  const result = computeFeasibility({ ...v, mealTypes: v.mealTypes as FeasibilityInput["mealTypes"] }, await getCandidates(), targets);
+  return { ok: true, result };
+}
+
+/** Marks one of the three after-plan steps (reviewed, shopping, prep) done. Doing it again changes nothing. */
+export async function markPlanStep(planId: number, step: PlanStep): Promise<Result> {
+  const written = await writePlanStep(await getDb(), planId, step);
+  if (!written.ok) return fail(written.error);
+  refresh(planId);
+  return { ok: true };
 }
 
 // ---------- Plan editing ----------

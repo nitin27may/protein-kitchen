@@ -3,7 +3,9 @@ import * as s from "@/lib/db/schema";
 import { buildCandidates } from "@/lib/planner/candidates";
 import type { Feedback } from "@/lib/planner/candidates";
 import { datesBetween } from "@/lib/planner/dates";
+import type { PlanMilestones } from "@/lib/planner/feasibility-types";
 import { summariseDays } from "@/lib/planner/generate";
+import { isIsoWeekday } from "@/lib/planner/weekdays";
 import { groceryProgressFrom } from "@/lib/plan/phase";
 import type { GroceryProgress } from "@/lib/plan/phase";
 import type { PartModes } from "@/lib/parts/mode";
@@ -11,12 +13,13 @@ import type { PlanMealRef } from "@/lib/grocery/aggregate";
 import type { RoutineInput } from "@/lib/prep/night";
 import { getRoutineCatalog, catalogByHabit } from "@/lib/routines/catalog";
 import { routineInputs, routineMealRefs } from "@/lib/routines/schedule";
-import type { PersonRoutineView, PlanRoutineView } from "@/lib/routines/types";
+import type { IsoWeekday, PersonRoutineView, PlanRoutineView } from "@/lib/routines/types";
 import type { RecipeLinkView } from "@/lib/links/types";
 import type { Candidate, DayPersonSummary, PersonTarget, PlanInput, PlannedSlot, Slot } from "@/lib/planner/types";
 import { getData, getDb } from "./context";
 import { recipeLinksFor } from "./link-view";
 import { readPartModes } from "./part-state";
+import { readPlanMilestones } from "./plan-progress";
 import { readPersonRoutines, readPlanRoutines } from "./routine-state";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
@@ -105,6 +108,9 @@ export interface PlanView {
   mealTypes: Slot[];
   cuisineBalance: number;
   maxActiveMin: number | null;
+  /** Chosen weekdays (ISO 1 to 7), or null when the plan has no preference. */
+  shoppingDay: IsoWeekday | null;
+  prepDay: IsoWeekday | null;
   people: PersonRow[];
   slots: StoredSlot[];
   days: DayPersonSummary[];
@@ -179,6 +185,8 @@ export async function getPlanView(planId: number, candidates?: Candidate[]): Pro
     mealTypes: input.mealTypes as Slot[],
     cuisineBalance: row.setup.cuisineBalance,
     maxActiveMin: row.setup.maxActiveMin,
+    shoppingDay: isIsoWeekday(row.setup.shoppingDay) ? row.setup.shoppingDay : null,
+    prepDay: isIsoWeekday(row.setup.prepDay) ? row.setup.prepDay : null,
     people,
     slots,
     days: summariseDays(slots, targets, byslug, dates),
@@ -289,4 +297,15 @@ export async function getResetCounts(): Promise<ResetCounts> {
 /** Every link saved on a recipe page, in display order, with video embeds worked out. See link-view.ts. */
 export async function getRecipeLinks(recipeSlug: string): Promise<RecipeLinkView[]> {
   return recipeLinksFor(await getDb(), recipeSlug);
+}
+
+/** Which of the three after-plan steps are done. All three keys are always present. */
+export async function getPlanMilestones(planId: number): Promise<PlanMilestones> {
+  return readPlanMilestones(await getDb(), planId);
+}
+
+/** Milestones of the newest plan, or null when there is no plan. */
+export async function latestPlanMilestones(): Promise<{ planId: number; milestones: PlanMilestones } | null> {
+  const planId = await latestPlanId();
+  return planId === undefined ? null : { planId, milestones: await getPlanMilestones(planId) };
 }

@@ -9,7 +9,7 @@ import { planRoutineRows } from "@/lib/routines/view";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { getData } from "@/lib/server/context";
 import { getPlanExport } from "@/lib/server/export";
-import { getCandidates, getPlanRoutines, getPlanView, proteinTargetOf } from "@/lib/server/queries";
+import { getCandidates, getPlanMilestones, getPlanRoutines, getPlanView, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
 
 export const metadata: Metadata = { title: "Your plan" };
@@ -65,6 +65,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       slots={slots}
       sheet={sheet}
       routines={routineRows}
+      milestones={await getPlanMilestones(planId)}
       allRecipes={candidates.map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name))}
     />
   );

@@ -6,7 +6,9 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { deletePlan, enableShake, getSwapOptions, regeneratePlan, setPortion, swapSlot, toggleLock } from "@/app/actions";
 import type { SwapOption } from "@/app/actions";
 import { RecipeThumb } from "@/components/RecipeThumb";
+import { announcePlanStep, NextSteps } from "@/components/plan/NextSteps";
 import { PlanRoutinesCard } from "@/components/routines/PlanRoutinesCard";
+import type { PlanMilestones } from "@/lib/planner/feasibility-types";
 import type { PlanRoutineRow } from "@/lib/routines/view";
 import { Sheet } from "@/components/Sheet";
 import { CheckIcon, SlidersIcon } from "@/components/icons";
@@ -53,6 +55,8 @@ export interface PlanProps {
   sheet: PlanExport;
   /** Routines this plan was made with, ready to show. */
   routines: PlanRoutineRow[];
+  /** Which of the three after-plan steps are done. */
+  milestones: PlanMilestones;
 }
 
 const SheetView = dynamic(() => import("./SheetView").then((m) => m.SheetView), { ssr: false, loading: () => <p className="px-4 pt-4 text-sm text-muted">Loading the spreadsheet...</p> });
@@ -83,13 +87,15 @@ export function PlanClient(p: PlanProps) {
     tabsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
   }, [day]);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>, success?: string) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>, success?: string, reviewed = false) {
     setMessage(null);
     start(async () => {
       const res = await fn();
       if (!res.ok) setMessage({ tone: "bad", text: res.error ?? "Something went wrong" });
       else {
         if (success) setMessage({ tone: "ok", text: success });
+        // A swap or a lock means the person is looking through the plan: count the review step as done.
+        if (reviewed) announcePlanStep(p.planId, "reviewed");
         router.refresh();
       }
     });
@@ -152,6 +158,7 @@ export function PlanClient(p: PlanProps) {
 
   return (
     <div className="pb-6">
+      <NextSteps planId={p.planId} milestones={p.milestones} />
       {/* Date strip */}
       <div ref={tabsRef} role="tablist" aria-label="Days" className="sticky top-14 z-10 flex gap-1.5 overflow-x-auto border-b border-line bg-bg/95 px-3 py-2 backdrop-blur lg:top-0 lg:px-4">
         {p.dates.map((d, i) => {
@@ -268,7 +275,7 @@ export function PlanClient(p: PlanProps) {
                 <div className="flex gap-2 border-t border-line p-2">
                   <Button variant="secondary" size="sm" className="flex-1" disabled={s.locked} onClick={() => openSwap(s)}>Swap</Button>
                   <Button variant="secondary" size="sm" className="flex-1" onClick={() => setPortionFor(s)}><SlidersIcon className="size-4" />Portions</Button>
-                  <Button variant="secondary" size="sm" className={`flex-1 ${s.locked ? "border-primary bg-primarysoft text-primary" : ""}`} aria-pressed={s.locked} disabled={pending} onClick={() => run(() => toggleLock(p.planId, s.id, !s.locked))}>
+                  <Button variant="secondary" size="sm" className={`flex-1 ${s.locked ? "border-primary bg-primarysoft text-primary" : ""}`} aria-pressed={s.locked} disabled={pending} onClick={() => run(() => toggleLock(p.planId, s.id, !s.locked), undefined, true)}>
                     {s.locked ? <CheckIcon className="size-4" /> : null}{s.locked ? "Locked" : "Lock"}
                   </Button>
                 </div>
@@ -295,7 +302,7 @@ export function PlanClient(p: PlanProps) {
                     <li key={o.slug} className="rounded-card border border-strong p-3">
                       <p className="text-base font-semibold">{o.name}</p>
                       <p className="text-sm text-muted tabular-nums">{o.proteinG} g protein · {o.kcal} kcal · {o.reason}</p>
-                      <Button className="mt-2 w-full" disabled={pending} onClick={() => run(async () => { const r = await swapSlot(p.planId, swapFor.id, o.slug); if (r.ok) setSwapFor(null); return r; }, `Swapped to ${o.name}.`)}>Pick this</Button>
+                      <Button className="mt-2 w-full" disabled={pending} onClick={() => run(async () => { const r = await swapSlot(p.planId, swapFor.id, o.slug); if (r.ok) setSwapFor(null); return r; }, `Swapped to ${o.name}.`, true)}>Pick this</Button>
                     </li>
                   ))}
                 </ul>
@@ -317,7 +324,7 @@ export function PlanClient(p: PlanProps) {
                 <ul className="mt-1 divide-y divide-line">
                   {allForSlot.map((r) => (
                     <li key={r.slug}>
-                      <button type="button" disabled={pending} onClick={() => run(async () => { const res = await swapSlot(p.planId, swapFor.id, r.slug); if (res.ok) setSwapFor(null); return res; }, `Swapped to ${r.name}.`)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
+                      <button type="button" disabled={pending} onClick={() => run(async () => { const res = await swapSlot(p.planId, swapFor.id, r.slug); if (res.ok) setSwapFor(null); return res; }, `Swapped to ${r.name}.`, true)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
                         <span className="font-medium">{r.name}</span>
                         <span className="shrink-0 text-sm text-muted tabular-nums">{Math.round(r.proteinG)} g · {r.activeMin} min</span>
                       </button>

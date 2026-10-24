@@ -211,6 +211,10 @@ export const planSetups = sqliteTable("plan_setups", {
   healthFocus: json<{ nutrientDense: boolean; lowSugar: boolean; light: boolean }>("health_focus"),
   /** variety, leftovers or batch. Null on plans made before this existed, which behave as variety. */
   prepStyle: text("prep_style", { enum: ["variety", "leftovers", "batch"] }),
+  /** Weekday to finish shopping by (ISO 1 = Monday ... 7 = Sunday). Null: the day before the first need. */
+  shoppingDay: integer("shopping_day"),
+  /** Weekday for batch cooking (ISO 1 to 7). Null: cook the day before the first meal that needs it. */
+  prepDay: integer("prep_day"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -323,6 +327,22 @@ export const planPartState = sqliteTable(
     updatedAt: isoTimestamp("updated_at").notNull(),
   },
   (t) => [primaryKey({ columns: [t.planId, t.componentSlug] }), check("plan_part_state_mode_ck", sql`${t.mode} in ('make', 'buy', 'have')`)],
+);
+
+/**
+ * The three things to do after a plan is made (see PLAN_STEPS in lib/planner/feasibility-types.ts): review it, shop,
+ * prep. One row per step done. Plan state: deleted with the plan, cleared by the plans reset, not exported.
+ */
+export const planProgress = sqliteTable(
+  "plan_progress",
+  {
+    planId: integer("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    step: text("step").notNull(),
+    doneAt: isoTimestamp("done_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.step] }), check("plan_progress_step_ck", sql`${t.step} in ('reviewed', 'shopping', 'prep')`)],
 );
 
 export const groceryManual = sqliteTable("grocery_manual", {

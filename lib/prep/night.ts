@@ -1,6 +1,7 @@
 import type { PartModes } from "../parts/mode";
 import { addDays } from "../planner/dates";
 import { ROUTINE_NIGHT_MIN_LEAD_H } from "../routines/schedule";
+import type { IsoWeekday } from "../routines/types";
 import type { Recipe } from "../schemas";
 import { buildPrepGuide } from "./session";
 import type { MealRef, PrepGuide } from "./session";
@@ -54,6 +55,8 @@ export interface NightInput {
   routines?: readonly RoutineInput[];
   /** The plan's part modes; parts that are bought or already made produce no tasks. */
   partModes?: PartModes;
+  /** Batch cooking weekday, already filtered with `effectivePrepDay`. */
+  prepDay?: IsoWeekday | null;
 }
 
 export const nightKey = (planId: number, dueDate: string, source: TaskSource, slug: string, index: number): string => `night:${planId}:${dueDate}:${source}:${slug}:${index}`;
@@ -64,7 +67,7 @@ export interface NightResult {
 }
 
 export function buildNight(input: NightInput): NightResult {
-  const guide = buildPrepGuide(input.meals, input.recipes, { earliest: input.earliest, partModes: input.partModes });
+  const guide = buildPrepGuide(input.meals, input.recipes, { earliest: input.earliest, partModes: input.partModes, prepDay: input.prepDay });
   const byKey = new Map<string, NightTask & { grams: number | null; instruction: string; cooks: number }>();
 
   for (const e of guide.events) {

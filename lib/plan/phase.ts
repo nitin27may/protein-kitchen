@@ -2,6 +2,8 @@ import { buildGroceryList } from "../grocery/aggregate";
 import type { PartModes } from "../parts/mode";
 import type { Ingredient, Recipe } from "../schemas";
 import { addDays } from "../planner/dates";
+import { lastWeekdayOnOrBefore } from "../planner/weekdays";
+import type { IsoWeekday } from "../routines/types";
 
 /**
  * Pure logic behind the Today screen: which phase the plan is in, what part of the day it is, which panels go where,
@@ -102,12 +104,14 @@ export function firstOpenTask<T extends NightLike>(tasks: readonly T[]): T | und
 
 /**
  * The day to finish shopping: the day before the first thing that needs ingredients, which is the first night-before
- * task or the first cooking day. Never earlier than today.
+ * task or the first cooking day. Never earlier than today. With a chosen shopping day, the last such weekday on or
+ * before that day (still never earlier than today).
  */
-export function shopByDate(today: string, startDate: string, firstTaskDue?: string | null): string {
+export function shopByDate(today: string, startDate: string, firstTaskDue?: string | null, shoppingDay?: IsoWeekday | null): string {
   const needed = firstTaskDue && firstTaskDue < startDate ? firstTaskDue : startDate;
   const by = addDays(needed, -1);
-  return by < today ? today : by;
+  const target = shoppingDay ? lastWeekdayOnOrBefore(by, shoppingDay) : by;
+  return target < today ? today : target;
 }
 
 /**

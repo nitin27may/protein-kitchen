@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SetupForm } from "@/components/SetupForm";
 import type { SetupProps } from "@/components/SetupForm";
+import { getRoutineCatalog } from "@/lib/routines/catalog";
+import type { PersonRoutineView } from "@/lib/routines/types";
 import { PageTitle } from "@/components/ui";
 import { addDays, nextMonday } from "@/lib/planner/dates";
 import { displayName } from "@/lib/schemas";
 import { getData } from "@/lib/server/context";
-import { getCandidates, getPrefs, lastSetup, listPeople, proteinTargetOf } from "@/lib/server/queries";
+import { getCandidates, getPersonRoutines, getPrefs, lastSetup, listPeople, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
 
 export const metadata: Metadata = { title: "New plan" };
@@ -34,7 +36,8 @@ const ANCHORS: { slug: string; label: string }[] = [
   { slug: "edamame-prepared", label: "Edamame" },
 ];
 
-export default async function NewPlanPage() {
+export default async function NewPlanPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+  const { step } = await searchParams;
   const people = await listPeople();
   if (people.length === 0) redirect("/profiles/new?next=/plan/new");
   const data = getData();
@@ -59,6 +62,8 @@ export default async function NewPlanPage() {
     const pr = await getPrefs(p.id);
     prefs[p.id] = { liked: pr.liked, avoided: pr.avoided };
   }
+  const chosenRoutines: Record<number, PersonRoutineView[]> = {};
+  for (const p of people) chosenRoutines[p.id] = await getPersonRoutines(p.id);
   const validIds = new Set(people.map((p) => p.id));
   const personIds = (last?.personIds.filter((id) => validIds.has(id)) ?? []).length ? last!.personIds.filter((id) => validIds.has(id)) : [people[0]!.id];
 
@@ -67,6 +72,9 @@ export default async function NewPlanPage() {
     ingredients,
     anchors: ANCHORS.filter((a) => data.ingredients.has(a.slug)),
     recipes: (await getCandidates()).map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name)),
+    hasLastPlan: !!last,
+    initialStep: step ?? null,
+    routines: { catalog: getRoutineCatalog(data), chosen: chosenRoutines },
     initial: {
       personIds,
       length,
@@ -83,7 +91,7 @@ export default async function NewPlanPage() {
 
   return (
     <>
-      <PageTitle title="New plan" sub="Choose the basics. The rest is remembered for next time." />
+      <PageTitle title="New plan" sub="Five short steps. Your last choices are remembered, so a repeat week takes a minute." />
       <SetupForm {...props} />
     </>
   );

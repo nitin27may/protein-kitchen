@@ -57,6 +57,7 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
 }
 
 function clearPlans(tx: Tx) {
+  tx.delete(s.planProgress).run();
   tx.delete(s.planPartState).run();
   tx.delete(s.planRoutines).run();
   tx.delete(s.planSlotPortions).run();

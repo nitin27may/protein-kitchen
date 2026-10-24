@@ -1,5 +1,7 @@
 import type { Recipe } from "../schemas";
 import { addDays } from "../planner/dates";
+import { lastWeekdayOnOrBefore } from "../planner/weekdays";
+import type { IsoWeekday } from "../routines/types";
 import type { PartModes } from "../parts/mode";
 import { partIsMade, resolverFor } from "../parts/resolve";
 
@@ -79,6 +81,17 @@ interface Options {
   earliest: string;
   /** The plan's part modes. A part marked "have", or "buy" with a ready-made alternative, is not cooked, so it gets no cook event and no night-before tasks. */
   partModes?: PartModes;
+  /**
+   * The weekday to batch cook on (ISO 1 to 7). A batch is cooked on the last such day on or before the day before its
+   * first meal, as long as the food still keeps until then. Unset: cook the day before, as always. Use
+   * `effectivePrepDay` so it only applies to the leftovers and batch cooking styles.
+   */
+  prepDay?: IsoWeekday | null;
+}
+
+/** The prep day only matters when the plan cooks ahead. Variety plans (and plans from before cooking styles) ignore it. */
+export function effectivePrepDay(prepDay: IsoWeekday | null | undefined, prepStyle: "variety" | "leftovers" | "batch" | null | undefined): IsoWeekday | null {
+  return prepDay && (prepStyle === "leftovers" || prepStyle === "batch") ? prepDay : null;
 }
 
 const diffDays = (a: string, b: string): number => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
@@ -154,7 +167,12 @@ export function buildPrepGuide(meals: readonly MealRef[], recipes: ReadonlyMap<s
         // Reuse an existing prep day when it still keeps the food fresh; otherwise cook the day before.
         const reuse = [...sessionDates].filter((s) => s <= d.date && diffDays(s, d.date) <= r.fridge_days && s >= opts.earliest).sort().pop();
         const dayBefore = addDays(d.date, -1);
-        const cook = reuse ?? (dayBefore < opts.earliest ? opts.earliest : dayBefore);
+        let cook = reuse ?? (dayBefore < opts.earliest ? opts.earliest : dayBefore);
+        if (!reuse && opts.prepDay) {
+          // Cook on the chosen weekday when it is not too early for the food to keep and not before cooking is possible.
+          const onPrepDay = lastWeekdayOnOrBefore(dayBefore, opts.prepDay);
+          if (onPrepDay >= opts.earliest && diffDays(onPrepDay, d.date) <= r.fridge_days) cook = onPrepDay;
+        }
         current = { cook, items: [d] };
         groups.push(current);
       }
