@@ -48,6 +48,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       unit: data.recipes.get(s.recipeSlug)?.serving_unit ?? null,
     };
   });
+  // Each recipe's make-ahead work is done once, however many slots use it. Parts set to Have or Buy are not subtracted.
+  const makeAheadWeekMin = [...new Set(view.slots.map((s) => s.recipeSlug))].reduce((sum, slug) => sum + (byslug.get(slug)?.makeAheadMin ?? 0), 0);
   const routineRows = planRoutineRows(await getPlanRoutines(planId), getRoutineCatalog(data));
   const sheet = await getPlanExport(planId);
   if (!sheet) notFound();
@@ -63,6 +65,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       people={view.people.map((p) => ({ id: p.id, name: p.name, target: proteinTargetOf(p) }))}
       days={view.days.map((d) => ({ date: d.date, personId: Number(d.personId), proteinG: d.proteinG, kcal: d.kcal }))}
       slots={slots}
+      makeAheadWeekMin={makeAheadWeekMin}
       sheet={sheet}
       routines={routineRows}
       milestones={await getPlanMilestones(planId)}

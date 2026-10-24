@@ -6,7 +6,7 @@ import { displayName } from "@/lib/schemas";
 import { isLight, isLowSugar, qualityPerServing } from "@/lib/nutrition/quality";
 import { storageAdvice } from "@/lib/recipes/storage";
 import { expandRecipe } from "@/lib/grocery/aggregate";
-import { makeAheadMin } from "@/lib/data/rules";
+import { effectiveActiveMin, makeAheadMin } from "@/lib/data/rules";
 import { collectLinks, flattenParts } from "@/lib/recipes/linkview";
 import { partsOf, usedIn } from "@/lib/recipes/parts";
 import { anchorIngredients, perServing } from "@/lib/nutrition/macros";
@@ -94,7 +94,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
     equipment: r.equipment,
     cuisine: r.cuisine.replace(/-/g, " "),
     macros: { protein: m.protein_g, kcal: m.kcal, carbs: m.carbs_g, fat: m.fat_g, fibre: m.fibre_g },
-    tags: autoTags(r, m),
+    tags: autoTags(r, m, effectiveActiveMin(r, data.recipes)),
     anchors: anchorIngredients(slug, data.recipes, data.ingredients).map((a) => dn(a)),
     items,
     advancePrep: r.advance_prep.map((a) => ({ text: `${a.instruction}${a.grams ? ` (${a.grams} g)` : ""}, about ${a.lead_hours} hours ahead` })),

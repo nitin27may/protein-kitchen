@@ -28,7 +28,7 @@ export default async function RecipesPage() {
       kcal: c.perServing.kcal,
       activeMin: c.activeMin,
       isIndian: c.isIndian,
-      tags: autoTags(r, c.perServing),
+      tags: autoTags(r, c.perServing, c.activeMin),
       lowSugar: c.lowSugar,
       light: c.light,
       dense: c.nutrientDense,

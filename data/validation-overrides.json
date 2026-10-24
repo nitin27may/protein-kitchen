@@ -17,6 +17,9 @@
     "drumstick-leaves": "IFCT energy uses its own factors for leafy vegetables",
     "colocasia-leaves": "IFCT energy uses its own factors for leafy vegetables"
   },
+  "kcal_per_serving_ok": {
+    "kheera-raita": "A light cucumber and yogurt side, eaten with a main"
+  },
   "dry_without_cooked_yield": {
     "atta-whole-wheat": "flour",
     "maida-white-flour": "flour",

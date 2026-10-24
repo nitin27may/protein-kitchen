@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import type { DataSet } from "../data/load";
+import { effectiveActiveMin } from "../data/rules";
 import { anchorIngredients, perServing, proteinByIngredient } from "../nutrition/macros";
 import type { RecipeTotals } from "../nutrition/macros";
 import { autoTags } from "../nutrition/tags";
@@ -177,7 +178,7 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
           carbsG: m.carbs_g,
           fatG: m.fat_g,
           fibreG: m.fibre_g,
-          autoTags: r.kind === "recipe" ? autoTags(r, m) : [],
+          autoTags: r.kind === "recipe" ? autoTags(r, m, effectiveActiveMin(r, data.recipes)) : [],
         })
         .run();
 

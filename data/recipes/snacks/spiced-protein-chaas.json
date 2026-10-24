@@ -38,12 +38,16 @@
     {
       "ingredient": "ginger",
       "grams": 3
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 200
     }
   ],
   "advance_prep": [],
   "steps": [
     {
-      "text": "Blend the yogurt with 200 ml cold water, mint, toasted cumin, ginger and salt until frothy. Water is not counted.",
+      "text": "Blend the yogurt with 200 ml cold water, mint, toasted cumin, ginger and salt until frothy.",
       "cue": "The chaas is smooth and frothy with no ginger pieces."
     },
     {

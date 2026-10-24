@@ -9,6 +9,8 @@ export interface Candidate {
   mealSlots: readonly string[];
   isIndian: boolean;
   activeMin: number;
+  /** Hands-on minutes that can be done days earlier (parts that keep two days or more). Shown, never used to pick recipes. */
+  makeAheadMin: number;
   perServing: Macros;
   /** Ingredients supplying at least 20 percent of the protein. */
   anchors: readonly string[];

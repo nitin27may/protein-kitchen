@@ -184,7 +184,9 @@ export function stepsRepeatingParts(recipe: Recipe, recipes: RecipeIndex, thresh
   for (const sub of parts(recipe, recipes)) {
     recipe.steps.forEach((st, i) => {
       sub.steps.forEach((ps, j) => {
-        const overlap = stepOverlap(st.text, ps.text);
+        // A copied tip counts as a repeat too: the bowl once carried the bake step's tip word for word.
+        const tipOverlap = st.tip && ps.tip ? stepOverlap(st.tip, ps.tip) : 0;
+        const overlap = Math.max(stepOverlap(st.text, ps.text), tipOverlap);
         if (overlap >= threshold) out.push({ step: i, part: sub.slug, partStep: j, overlap });
       });
     });

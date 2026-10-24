@@ -125,6 +125,11 @@ describe("recipeTotals and perServing", () => {
 });
 
 describe("autoTags", () => {
+  it("uses the effective hands-on time when given, so parts made fresh stop a meal being quick", () => {
+    expect(autoTags({ meal_slots: ["dinner"], active_min: 10 }, macros)).toContain("quick");
+    expect(autoTags({ meal_slots: ["dinner"], active_min: 10 }, macros, 30)).not.toContain("quick");
+  });
+
   const macros = { kcal: 400, protein_g: 32, carbs_g: 20, fat_g: 10, fibre_g: 9 };
   it("tags a high-protein dinner", () => {
     expect(autoTags({ meal_slots: ["dinner"], active_min: 25 }, macros)).toEqual(["high-protein", "protein-dense", "high-fibre"]);

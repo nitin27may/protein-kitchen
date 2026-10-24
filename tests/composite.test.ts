@@ -243,6 +243,27 @@ describe("steps that repeat a part", () => {
     expect(hits.some((h) => h.part === "baked-falafel" && h.step === 0)).toBe(true);
     for (const rec of data.recipes.values()) expect(stepsRepeatingParts(rec, data.recipes), rec.slug).toEqual([]);
   });
+
+  it("flags a tip copied word for word from a part's step", () => {
+    const bake = data.recipes.get("baked-falafel")!.steps.find((s) => s.tip && s.tip.includes("Space them out"))!;
+    const bowl = r("falafel-bowl");
+    const copied = { ...bowl, steps: [{ text: "Warm the patties through.", tip: bake.tip }, ...bowl.steps.slice(1)] };
+    expect(stepsRepeatingParts(copied, data.recipes).some((h) => h.step === 0 && h.part === "baked-falafel")).toBe(true);
+  });
+});
+
+describe("data fixes", () => {
+  it("counts the water in the four recipes that used to leave it out", () => {
+    for (const slug of ["besan-oat-muffins", "spinach-cottage-cheese-bake", "cottage-oat-pancakes", "spiced-protein-chaas"]) {
+      expect(r(slug).items.some((i) => "ingredient" in i && i.ingredient === "water-tap"), slug).toBe(true);
+      expect(r(slug).steps.some((s) => /not counted/i.test(s.text)), slug).toBe(false);
+    }
+  });
+
+  it("keeps the kheera-raita calorie override and the falafel rename", () => {
+    expect(data.overrides.kcal_per_serving_ok["kheera-raita"]).toBeTruthy();
+    expect(data.renames["baked-falafel-mix"]).toBe("baked-falafel");
+  });
 });
 
 describe("loader folder rules", () => {

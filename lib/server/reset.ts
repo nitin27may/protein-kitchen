@@ -29,6 +29,8 @@ export interface ResetCounts {
   routineChoices: number;
   /** What plans copied from those choices. They go with the plans. */
   planRoutines: number;
+  /** Next-steps ticks (review, shop, prep) saved on plans. They go with the plans. */
+  planSteps: number;
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
@@ -53,6 +55,7 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
     links: await count(db, s.recipeLinks),
     routineChoices: await count(db, s.personRoutines),
     planRoutines: await count(db, s.planRoutines),
+    planSteps: await count(db, s.planProgress),
   };
 }
 

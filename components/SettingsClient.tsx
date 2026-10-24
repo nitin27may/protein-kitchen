@@ -18,7 +18,7 @@ interface Option {
 }
 
 const OPTIONS: Option[] = [
-  { scope: "plans", title: "Plans", clears: "All meal plans, their grocery ticks and manual items, and prep ticks.", keeps: "Profiles, ratings and favourites.", count: (c) => `${c.plans} saved`, typed: false },
+  { scope: "plans", title: "Plans", clears: "All meal plans, their grocery ticks and manual items, prep ticks and next-step ticks.", keeps: "Profiles, ratings and favourites.", count: (c) => `${c.plans} saved, ${c.planSteps} next-step ticks`, typed: false },
   { scope: "groceries", title: "Grocery lists", clears: "Ticked items, items you added by hand and the pantry (what you have at home).", keeps: "Plans, profiles and ratings.", count: (c) => `${c.groceryItems} entries`, typed: false },
   { scope: "progress", title: "Daily habits and prep ticks", clears: "Habit check-offs, night-before prep ticks and reminder history.", keeps: "Plans, profiles and ratings.", count: (c) => `${c.progressTicks} ticks`, typed: false },
   { scope: "ratings", title: "Ratings and favourites", clears: "Star ratings, favourites, banned recipes, notes, and the tested flag. Every recipe goes back to draft.", keeps: "Plans, profiles and the recipes themselves.", count: (c) => `${c.ratings} recipes`, typed: false },

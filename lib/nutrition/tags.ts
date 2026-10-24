@@ -10,12 +10,15 @@ const HIGH_PROTEIN_THRESHOLD: Record<string, number> = {
   dinner: 25,
 };
 
-/** Tags the validator applies. Authors never write these by hand. */
-export function autoTags(recipe: Pick<Recipe, "meal_slots" | "active_min">, perServing: Macros): AutoTag[] {
+/**
+ * Tags the validator applies. Authors never write these by hand. `activeMin` is the hands-on time on the day (see
+ * `effectiveActiveMin`), so a meal that needs parts made fresh is not tagged quick; it defaults to the recipe's own time.
+ */
+export function autoTags(recipe: Pick<Recipe, "meal_slots" | "active_min">, perServing: Macros, activeMin: number = recipe.active_min): AutoTag[] {
   const tags: AutoTag[] = [];
   const primary = recipe.meal_slots[0] ?? "dinner";
   if (perServing.protein_g >= (HIGH_PROTEIN_THRESHOLD[primary] ?? 25)) tags.push("high-protein");
-  if (recipe.active_min <= 15) tags.push("quick");
+  if (activeMin <= 15) tags.push("quick");
   if (perServing.kcal > 0 && (perServing.protein_g / perServing.kcal) * 100 >= 8) tags.push("protein-dense");
   if (perServing.fibre_g >= 8) tags.push("high-fibre");
   return tags;

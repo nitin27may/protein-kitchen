@@ -133,8 +133,8 @@ for (const [slug, recipe] of data.recipes) {
     if (recipe.kind === "recipe") {
       // Snacks and shakes may be light on purpose, so their floor is lower than a meal's.
       const floor = recipe.meal_slots.every((s) => s === "snack" || s === "shake") ? 50 : 150;
-      if (m.kcal < floor || m.kcal > 900) warnings.push(`${file}: ${m.kcal.toFixed(0)} kcal per serving looks implausible`);
-      const tags = autoTags(recipe, m);
+      if ((m.kcal < floor || m.kcal > 900) && !data.overrides.kcal_per_serving_ok[slug]) warnings.push(`${file}: ${m.kcal.toFixed(0)} kcal per serving looks implausible`);
+      const tags = autoTags(recipe, m, effectiveActiveMin(recipe, data.recipes));
       const q = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
       qualities.set(slug, { q, slot: recipe.meal_slots[0] ?? "dinner" });
       rows.push([

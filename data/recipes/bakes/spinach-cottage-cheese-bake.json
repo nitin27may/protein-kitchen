@@ -61,12 +61,16 @@
     {
       "ingredient": "oil-olive",
       "grams": 10
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 60
     }
   ],
   "advance_prep": [],
   "steps": [
     {
-      "text": "Make a flax mix: 20 g ground flaxseed with 60 ml water, rest 5 minutes. Water is not counted.",
+      "text": "Make a flax mix: 20 g ground flaxseed with 60 ml water, rest 5 minutes.",
       "technique": "bake-without-eggs",
       "timer_sec": 300
     },

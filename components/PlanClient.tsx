@@ -43,7 +43,12 @@ export interface PlanSlotView {
   unit: ServingUnit | null;
 }
 
+/** Above this many make-ahead minutes in a week the plan says so. */
+const MAKE_AHEAD_WEEK_WARN_MIN = 90;
+
 export interface PlanProps {
+  /** Hands-on minutes of make-ahead parts across the week; 0 hides the line. */
+  makeAheadWeekMin: number;
   planId: number;
   dates: { iso: string; short: string; long: string; dayNum: string }[];
   startIndex: number;
@@ -159,6 +164,11 @@ export function PlanClient(p: PlanProps) {
   return (
     <div className="pb-6">
       <NextSteps planId={p.planId} milestones={p.milestones} />
+      {p.makeAheadWeekMin > 0 ? (
+        <p className={`px-4 pt-2 text-sm ${p.makeAheadWeekMin > MAKE_AHEAD_WEEK_WARN_MIN ? "font-semibold text-warn" : "text-muted"}`}>
+          Make-ahead work this week: about {p.makeAheadWeekMin} min, done on your prep day{p.makeAheadWeekMin > MAKE_AHEAD_WEEK_WARN_MIN ? ". That is a lot for one session; swap a meal or buy a part." : "."}
+        </p>
+      ) : null}
       {/* Date strip */}
       <div ref={tabsRef} role="tablist" aria-label="Days" className="sticky top-14 z-10 flex gap-1.5 overflow-x-auto border-b border-line bg-bg/95 px-3 py-2 backdrop-blur lg:top-0 lg:px-4">
         {p.dates.map((d, i) => {

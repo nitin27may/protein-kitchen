@@ -55,11 +55,11 @@
   "advance_prep": [],
   "steps": [
     {
-      "text": "Make the baked falafel in advance, or reheat patties you already have in a 180°C oven for 8 minutes.",
+      "text": "Reheat the baked falafel on a tray in a 180°C oven for 8 minutes. If you have not made it yet, bake it first (see the falafel part).",
       "technique": "oven-basics",
       "timer_sec": 480,
       "cue": "The patties are hot through with crisp edges.",
-      "tip": "Space them out on the tray so they crisp instead of steaming."
+      "tip": "Use the oven, not the microwave, which turns the crust soft."
     },
     {
       "text": "Warm the pita in a dry pan for 30 seconds a side.",

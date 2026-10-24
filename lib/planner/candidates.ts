@@ -1,5 +1,5 @@
 import type { DataSet } from "../data/load";
-import { effectiveActiveMin } from "../data/rules";
+import { effectiveActiveMin, makeAheadMin } from "../data/rules";
 import { anchorIngredients, perServing, proteinByIngredient } from "../nutrition/macros";
 import type { RecipeTotals } from "../nutrition/macros";
 import { isLight, isLowSugar, nutrientDenseSet, qualityPerServing } from "../nutrition/quality";
@@ -38,6 +38,7 @@ export function buildCandidates(data: DataSet, feedback: ReadonlyMap<string, Fee
       isIndian: r.is_indian,
       // Hands-on time on the day: parts that must be made fresh count, make-ahead parts do not.
       activeMin: effectiveActiveMin(r, data.recipes),
+      makeAheadMin: makeAheadMin(r, data.recipes),
       perServing: perServing(r.slug, data.recipes, data.ingredients, memo),
       anchors: anchorIngredients(r.slug, data.recipes, data.ingredients),
       ingredients: ingredientsOf(r.slug, data),

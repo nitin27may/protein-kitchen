@@ -26,6 +26,7 @@ export interface DataSet {
   habits: Habit[];
   overrides: {
     kcal_check_skip: Record<string, string>;
+    kcal_per_serving_ok: Record<string, string>;
     dry_without_cooked_yield: Record<string, string>;
     /** Most grams of one seed, spice or nut a routine may use per serving: `default`, with per-ingredient `items`. */
     routine_item_max_g: { default: number; items: Record<string, number> };
@@ -37,6 +38,7 @@ export interface DataSet {
 
 const OverridesSchema = z.object({
   kcal_check_skip: z.record(z.string(), z.string()),
+  kcal_per_serving_ok: z.record(z.string(), z.string()).default({}),
   dry_without_cooked_yield: z.record(z.string(), z.string()),
   routine_item_max_g: z.object({ default: z.number().positive(), items: z.record(z.string(), z.number().positive()) }).default({ default: 6, items: {} }),
 });
@@ -166,7 +168,7 @@ export function loadData(root: string): DataSet {
     else if (raw !== undefined) for (const err of parsed.error.issues) issues.push({ file: rel(habitsPath), message: `${err.path.join(".")}: ${err.message}` });
   }
 
-  let overrides = { kcal_check_skip: {}, dry_without_cooked_yield: {}, routine_item_max_g: { default: 6, items: {} } } as DataSet["overrides"];
+  let overrides = { kcal_check_skip: {}, kcal_per_serving_ok: {}, dry_without_cooked_yield: {}, routine_item_max_g: { default: 6, items: {} } } as DataSet["overrides"];
   const ovPath = path.join(dataDir, "validation-overrides.json");
   if (fs.existsSync(ovPath)) {
     const raw = readJson(ovPath, issues);

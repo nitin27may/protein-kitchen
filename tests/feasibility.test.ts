@@ -34,6 +34,7 @@ function cand(slug: string, slot: string, proteinG: number, over: Partial<Candid
     mealSlots: [slot],
     isIndian: true,
     activeMin: 10,
+    makeAheadMin: 0,
     perServing: { kcal: proteinG * 10, protein_g: proteinG, carbs_g: 20, fat_g: 5, fibre_g: 3 },
     anchors: [],
     ingredients: new Set(["x"]),
