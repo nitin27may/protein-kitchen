@@ -61,7 +61,7 @@ export function PrefChip({ name, state, onClick }: { name: string; state: PrefSt
 function TriState({ name, value, onChange }: { name: string; value: PrefState; onChange: (v: PrefState) => void }) {
   const btn = (v: PrefState, label: string, icon: React.ReactNode, on: string) => (
     <button type="button" role="radio" aria-checked={value === v} aria-label={`${label} ${name}`} onClick={() => onChange(v)}
-      className={`flex min-h-10 flex-1 items-center justify-center gap-1 rounded-[0.5rem] px-1 text-xs font-semibold transition-colors lg:min-h-8 ${value === v ? on : "text-muted hover:text-fg"}`}>
+      className={`flex min-h-11 flex-1 items-center justify-center gap-1 rounded-[0.5rem] px-1 text-xs font-semibold transition-colors lg:min-h-8 ${value === v ? on : "text-muted hover:text-fg"}`}>
       {icon}
       <span className="hidden sm:inline">{label}</span><span className="sr-only sm:hidden">{label}</span>
     </button>

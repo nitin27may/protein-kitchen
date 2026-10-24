@@ -232,7 +232,7 @@ export function RecipeDetail(p: DetailProps) {
                   </div>
                   {it.parts ? (
                     <details className="ml-12 text-sm text-muted">
-                      <summary className="min-h-9 cursor-pointer py-1">Made from</summary>
+                      <summary className="flex min-h-11 cursor-pointer items-center py-1">Made from</summary>
                       <ul className="pb-1">
                         {it.parts.map((pt) => <li key={pt.name} className="flex justify-between gap-3"><span>{pt.name}</span><span className="tabular-nums">{fmtGrams(pt.grams * factor)}</span></li>)}
                       </ul>

@@ -70,7 +70,10 @@ Design system and page redesigns; ingredient photos and notes; Settings reset; u
 
 ## 6. What remains, with intent
 
-### Step 10: photos (own photos first)
+### Step 10: photos (built; two things left to you)
+Built on 2026-10-23, see `docs/plan-step-10-11.md` and the Photos section of `CLAUDE.md`. Left: review the candidates at `/photos/review` (until you approve, recipes show a plain card and ingredients an aisle tile), and try an upload from a real iPhone. If `data/photo-candidates.json` is thin, run `pnpm photos:candidates` (slow: Wikimedia throttles, about two hours for everything; it is incremental). The text below is the original intent.
+
+### Step 10 original intent
 Intent: homemade fusion dishes need real pictures, and a third of automatic Wikipedia matches were wrong, so a human approves everything.
 - Upload a photo on any recipe or when ticking "Cooked and tested". The phone resizes it, the server converts to WebP and strips EXIF and GPS.
 - Storage sits behind a `BlobStore` interface: local `uploads/` now, Neon bucket with signed links later (step 18).
@@ -78,7 +81,10 @@ Intent: homemade fusion dishes need real pictures, and a third of automatic Wiki
 - Ingredients without a photo get an aisle tile with an icon. A recipe collage appears only with 3 or more ingredient photos. The falafel bowl currently shows an odd romaine hero.
 - Human-owned: uploads and approvals go through `lib/human/`, with exporter and round-trip test. `uploads/` joins `pnpm backup` and the Settings reset ("Everything" only).
 
-### Step 11: data debts
+### Step 11: data debts (mostly done)
+Done 2026-10-23: water in four recipes, kheera-raita override, falafel step wording, tags use effective time, make-ahead total shown, reset count, phone-width audit (390 px, no overflow, small targets fixed), nutrition source review (see `docs/nutrient-targets.md`). Still open: the falafel soaked weight (you measure 150 g dry chickpeas soaked 12 hours, drained, weighed), skyr, ultrafiltered milk, nutritional yeast and roasted chana (need labels or an IFCT lookup), CNF values for `water-tap` and `hummus-commercial` when CNF is back, the Dependabot PRs. The original list follows.
+
+### Step 11 original list
 - Move `water-tap` and `hummus-commercial` from USDA to CNF when the service is reachable.
 - Falafel mix counts chickpeas dry although they are soaked; portions are overstated by about a third. Needs a measured soaked weight from the owner.
 - Four recipes still say "water is not counted" (`besan-oat-muffins`, `spinach-cottage-cheese-bake`, `cottage-oat-pancakes`, `spiced-protein-chaas`): add `water-tap` grams.
@@ -120,6 +126,8 @@ Full plan in `docs/plan-v3-publish-and-protect.md`. In order:
 - The agent never writes human-owned data.
 
 ## 8. Known problems and gotchas
+- **Migration journal edit (2026-10-23).** The first draft of migration 0011 (photo tables) was applied to the real `db/app.db` by a running dev server before it was regenerated. The journal entry for 0011 keeps its original timestamp so that database skips it, and 0012 recreates the `photo_decisions_candidate_uq` index per subject. Never regenerate a migration that may already have run; add a new one.
+- A broad `pkill -f next-server` kills your own dev server. Kill by port or pid.
 - The owner once reported "UI is not working"; it could not be reproduced (all migrations present, pages 200). Likely a `.next` clash with a build; the separate build dir is the mitigation. If it returns, ask for the exact screen and the terminal error.
 - Port 3100 holds an old stale copy of the app; ignore it.
 - CNF and USDA APIs are sometimes unreachable; see the data-sources memory note before sourcing.

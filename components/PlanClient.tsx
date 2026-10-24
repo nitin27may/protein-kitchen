@@ -260,7 +260,7 @@ export function PlanClient(p: PlanProps) {
                   <RecipeThumb image={s.image} thumbs={s.thumbs} label={SLOT_LABEL[s.slot] ?? s.slot} className="aspect-[4/3] w-24 shrink-0 rounded-control md:aspect-[16/9] md:w-full md:rounded-none" />
                   <div className="min-w-0 flex-1 md:px-4 md:pb-3">
                     <p className="text-sm font-semibold text-primary">{SLOT_LABEL[s.slot]}</p>
-                    <Link href={`/recipes/${s.recipeSlug}?plan=${p.planId}`} className="block text-lg font-semibold leading-snug hover:underline">{s.recipeName}</Link>
+                    <Link href={`/recipes/${s.recipeSlug}?plan=${p.planId}`} className="flex min-h-11 items-center text-lg font-semibold leading-snug hover:underline">{s.recipeName}</Link>
                     <MacroLine protein={s.proteinG} kcal={s.kcal} minutes={s.activeMin} />
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {s.leftover ? <Pill tone="warn">Leftover, no cooking</Pill> : null}

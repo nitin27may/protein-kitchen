@@ -24,7 +24,7 @@ export function SnackNow({ snacks }: { snacks: Record<"0" | "5" | "10", SnackVie
             {snacks[bucket].length === 0 ? <li className="rounded-card border border-dashed border-line p-4 text-center text-muted">No snack of 10 g protein or more fits that time yet.</li> : null}
             {snacks[bucket].map((s) => (
               <li key={s.slug} className="rounded-card border border-strong p-3">
-                <Link href={`/recipes/${s.slug}`} className="text-base font-semibold hover:underline">{s.name}</Link>
+                <Link href={`/recipes/${s.slug}`} className="inline-flex min-h-11 items-center text-base font-semibold hover:underline">{s.name}</Link>
                 <MacroLine protein={s.proteinG} kcal={s.kcal} minutes={s.minutes} />
                 <Pill tone={s.needsCooking ? "warn" : "ok"}>{s.needsCooking ? "Needs cooking" : "No cooking"}</Pill>
               </li>

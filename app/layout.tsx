@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
               <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
-                <Link href="/" className="whitespace-nowrap text-lg font-bold text-primary">
+                <Link href="/" className="inline-flex min-h-11 items-center whitespace-nowrap text-lg font-bold text-primary">
                   Protein Kitchen
                 </Link>
                 <div className="flex items-center">

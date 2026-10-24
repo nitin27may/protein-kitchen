@@ -55,7 +55,7 @@ export default async function CreditsPage() {
   return (
     <>
       <PageTitle title="Photo credits" sub="Photos you approved from Wikimedia Commons and Openverse. Your own photos are not listed." />
-      <p className="px-4 pb-4 text-sm lg:px-2"><Link href="/photos/review" className="font-semibold text-primary underline">Review more photos</Link></p>
+      <p className="px-4 pb-4 text-sm lg:px-2"><Link href="/photos/review" className="inline-flex min-h-11 items-center font-semibold text-primary underline">Review more photos</Link></p>
       {section(`Recipes (${recipes.length})`, recipes)}
       {section(`Ingredients (${ingredients.length})`, ingredients)}
     </>

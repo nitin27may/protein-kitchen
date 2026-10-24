@@ -38,7 +38,7 @@ export function MorningRoutines({ date, personId, items, chosenCount, defaultOpe
   if (chosenCount === 0) {
     return (
       <p className="rounded-card border border-dashed border-line px-4 py-3 text-sm text-muted">
-        No daily routine yet. <Link href={`/profiles/${personId}#daily-routine`} className="font-semibold text-primary underline-offset-2 hover:underline">Add a morning routine</Link>
+        No daily routine yet. <Link href={`/profiles/${personId}#daily-routine`} className="inline-flex min-h-11 items-center font-semibold text-primary underline-offset-2 hover:underline">Add a morning routine</Link>
       </p>
     );
   }

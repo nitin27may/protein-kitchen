@@ -149,7 +149,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, c
         const on = o.value === value;
         return (
           <button key={o.value} type="button" role="radio" aria-checked={on} onClick={() => onChange(o.value)}
-            className={`min-h-10 flex-1 whitespace-nowrap rounded-[0.5rem] px-4 text-sm font-semibold transition-colors lg:min-h-8 ${on ? "bg-surface text-primary shadow-sm ring-1 ring-primary/40" : "text-muted hover:text-fg"}`}>
+            className={`min-h-11 flex-1 whitespace-nowrap rounded-[0.5rem] px-4 text-sm font-semibold transition-colors lg:min-h-8 ${on ? "bg-surface text-primary shadow-sm ring-1 ring-primary/40" : "text-muted hover:text-fg"}`}>
             {o.label}
           </button>
         );

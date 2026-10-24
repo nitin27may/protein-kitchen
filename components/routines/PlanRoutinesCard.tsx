@@ -13,7 +13,7 @@ export function PlanRoutinesCard({ rows, people }: { rows: PlanRoutineRow[]; peo
       <Card>
         <h2 className="text-base font-semibold">Routines in this plan</h2>
         <p className="mt-1 text-sm text-muted">
-          No daily routines in this plan. <Link href={link(firstId)} className="font-semibold text-primary underline-offset-2 hover:underline">Add them on a profile.</Link>
+          No daily routines in this plan. <Link href={link(firstId)} className="inline-flex min-h-11 items-center font-semibold text-primary underline-offset-2 hover:underline">Add them on a profile.</Link>
         </p>
       </Card>
     );

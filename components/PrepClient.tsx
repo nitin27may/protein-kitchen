@@ -177,7 +177,7 @@ export function PrepClient(p: PrepProps) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primarysoft text-sm font-bold text-primary" aria-hidden="true">{i + 1}</span>
-                      <Link href={`/recipes/${e.slug}`} className={`text-lg font-semibold leading-snug hover:underline ${e.done ? "text-muted line-through" : ""}`}>{e.name}</Link>
+                      <Link href={`/recipes/${e.slug}`} className={`inline-flex min-h-11 items-center text-lg font-semibold leading-snug hover:underline ${e.done ? "text-muted line-through" : ""}`}>{e.name}</Link>
                       {e.startFirst ? <Pill tone="warn">Start first</Pill> : null}
                       {e.kind === "component" ? <Pill>Sauce or dressing</Pill> : null}
                     </div>
@@ -239,7 +239,7 @@ export function PrepClient(p: PrepProps) {
                   <li key={`${m.slot}-${m.recipeSlug}`} className="flex items-start justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-primary">{SLOT_LABEL[m.slot] ?? m.slot}</p>
-                      <Link href={`/recipes/${m.recipeSlug}`} className="text-base font-medium hover:underline">{m.name}</Link>
+                      <Link href={`/recipes/${m.recipeSlug}`} className="inline-flex min-h-11 items-center text-base font-medium hover:underline">{m.name}</Link>
                       <p className="text-sm text-muted">{m.note}</p>
                     </div>
                     <Pill tone={m.mode === "batch" ? "ok" : "info"}>{m.mode === "batch" ? "Reheat" : `Cook · ${m.activeMin} min`}</Pill>

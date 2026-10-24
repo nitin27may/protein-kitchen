@@ -31,7 +31,7 @@ export function WhoStep({ draft, setDraft, people, problems }: StepProps) {
         {peopleProblem ? <p className="mt-2 text-sm text-bad" role="alert">{peopleProblem.message}</p> : null}
         <ul className="mt-3 space-y-1 text-sm text-muted">
           {selected.map((p) => (
-            <li key={p.id}><strong className="text-fg">{p.name}</strong>: {p.proteinTarget} g protein{p.kcalTarget ? `, ${p.kcalTarget} kcal` : ""} a day. <a className="font-semibold text-primary underline-offset-2 hover:underline" href={`/profiles/${p.id}`}>Edit</a></li>
+            <li key={p.id}><strong className="text-fg">{p.name}</strong>: {p.proteinTarget} g protein{p.kcalTarget ? `, ${p.kcalTarget} kcal` : ""} a day. <a className="inline-flex min-h-11 items-center px-1 font-semibold text-primary underline-offset-2 hover:underline" href={`/profiles/${p.id}`}>Edit</a></li>
           ))}
         </ul>
       </SectionCard>

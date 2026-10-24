@@ -285,6 +285,21 @@
       }
     ],
     "bhindi-chana-masala": [],
+    "broccoli-paneer-bites": [
+      {
+        "key": "commons:File:Pan-frying bites of tempeh.jpg",
+        "provider": "commons",
+        "title": "Pan-frying bites of tempeh",
+        "author": "SaltySemanticSchmuck",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Pan-frying_bites_of_tempeh.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Pan-frying_bites_of_tempeh.jpg/1280px-Pan-frying_bites_of_tempeh.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2048,
+        "height": 2025
+      }
+    ],
+    "chaat-paneer-cubes": [],
     "chana-dal-cheela": [
       {
         "key": "commons:File:Crested serpent-eagle (Spilornis cheela spilogaster).jpg",
@@ -333,6 +348,155 @@
         "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Crested_serpent_eagle_-_%28Spilornis_cheela%29_1.jpg/1280px-Crested_serpent_eagle_-_%28Spilornis_cheela%29_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
         "width": 5472,
         "height": 3648
+      }
+    ],
+    "chana-kachumber-cup": [
+      {
+        "key": "commons:File:A small cup of coffee.JPG",
+        "provider": "commons",
+        "title": "A small cup of coffee",
+        "author": "Julius Schorzman",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:A_small_cup_of_coffee.JPG",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/A_small_cup_of_coffee.JPG/1280px-A_small_cup_of_coffee.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 1600,
+        "height": 1200
+      },
+      {
+        "key": "commons:File:Cup 3.jpg",
+        "provider": "commons",
+        "title": "Cup 3",
+        "author": "User1779637",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cup_3.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Cup_3.jpg/1280px-Cup_3.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3000,
+        "height": 4000
+      },
+      {
+        "key": "commons:File:Cup 2.jpg",
+        "provider": "commons",
+        "title": "Cup 2",
+        "author": "User1779637",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cup_2.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Cup_2.jpg/1280px-Cup_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3000,
+        "height": 4000
+      },
+      {
+        "key": "commons:File:Cup with handles MET 69425.jpg",
+        "provider": "commons",
+        "title": "Cup with handles MET 69425",
+        "author": "Unknown author",
+        "licence": "CC0",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cup_with_handles_MET_69425.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Cup_with_handles_MET_69425.jpg/1280px-Cup_with_handles_MET_69425.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 1960,
+        "height": 1484
+      },
+      {
+        "key": "commons:File:This is a duck cup.jpg",
+        "provider": "commons",
+        "title": "This is a duck cup",
+        "author": "Fuzzywuzzy123",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:This_is_a_duck_cup.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/This_is_a_duck_cup.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 960,
+        "height": 1280
+      },
+      {
+        "key": "commons:File:2026.05.31 Vintage Neman Glass Cup with Stripes, Fleamarket in Minsk, Belarus.jpg",
+        "provider": "commons",
+        "title": "2026.05.31 Vintage Neman Glass Cup with Stripes, Fleamarket in Minsk, Belarus",
+        "author": "Agbarto",
+        "licence": "CC0",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:2026.05.31_Vintage_Neman_Glass_Cup_with_Stripes,_Fleamarket_in_Minsk,_Belarus.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/2026.05.31_Vintage_Neman_Glass_Cup_with_Stripes%2C_Fleamarket_in_Minsk%2C_Belarus.jpg/1280px-2026.05.31_Vintage_Neman_Glass_Cup_with_Stripes%2C_Fleamarket_in_Minsk%2C_Belarus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 1307,
+        "height": 1303
+      }
+    ],
+    "chickpea-tabbouleh": [],
+    "chili-lemon-edamame": [
+      {
+        "key": "commons:File:Edamame in a tray.jpg",
+        "provider": "commons",
+        "title": "Edamame in a tray",
+        "author": "Jiafei Slay Queen",
+        "licence": "CC0",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Edamame_in_a_tray.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Edamame_in_a_tray.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 1239,
+        "height": 929
+      },
+      {
+        "key": "commons:File:Shelled edamame beans.jpg",
+        "provider": "commons",
+        "title": "Shelled edamame beans",
+        "author": "Fumikas Sagisavas",
+        "licence": "CC0",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Shelled_edamame_beans.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Shelled_edamame_beans.jpg/1280px-Shelled_edamame_beans.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3000,
+        "height": 3000
+      },
+      {
+        "key": "commons:File:Edamame on a bamboo bowl by yomi955.jpg",
+        "provider": "commons",
+        "title": "Edamame on a bamboo bowl by yomi955",
+        "author": "yomi955",
+        "licence": "CC BY 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Edamame_on_a_bamboo_bowl_by_yomi955.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/87/Edamame_on_a_bamboo_bowl_by_yomi955.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 800,
+        "height": 600
+      },
+      {
+        "key": "commons:File:Edamame Sun Drying, August 2014.jpg",
+        "provider": "commons",
+        "title": "Edamame Sun Drying, August 2014",
+        "author": "Tail furry",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Edamame_Sun_Drying,_August_2014.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Edamame_Sun_Drying%2C_August_2014.jpg/1280px-Edamame_Sun_Drying%2C_August_2014.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3264,
+        "height": 2448
+      },
+      {
+        "key": "commons:File:Edamame by jark.jpg",
+        "provider": "commons",
+        "title": "Edamame by jark",
+        "author": "jark",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Edamame_by_jark.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Edamame_by_jark.jpg/1280px-Edamame_by_jark.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 1600,
+        "height": 1200
+      },
+      {
+        "key": "commons:File:Liat Portal for Foodie Disorder - Edamame with Walnuts.jpg",
+        "provider": "commons",
+        "title": "Liat Portal for Foodie Disorder - Edamame with Walnuts",
+        "author": "HaJunkiyada",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Edamame_with_Walnuts.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Liat_Portal_for_Foodie_Disorder_-_Edamame_with_Walnuts.jpg/1280px-Liat_Portal_for_Foodie_Disorder_-_Edamame_with_Walnuts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3024,
+        "height": 4032
       }
     ],
     "chole-masala": [
@@ -407,6 +571,80 @@
         "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Chole_puri_halwa.jpg/1280px-Chole_puri_halwa.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
         "width": 3583,
         "height": 3456
+      }
+    ],
+    "clear-moong-soup-shot": [
+      {
+        "key": "commons:File:Asparagus soup (spargelsuppe).jpg",
+        "provider": "commons",
+        "title": "Asparagus soup (spargelsuppe)",
+        "author": "Petar Milošević",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Asparagus_soup_(spargelsuppe).jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Asparagus_soup_%28spargelsuppe%29.jpg/1280px-Asparagus_soup_%28spargelsuppe%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4472,
+        "height": 3168
+      },
+      {
+        "key": "commons:File:Vegetable beef barley soup.jpg",
+        "provider": "commons",
+        "title": "Vegetable beef barley soup",
+        "author": "Photographer: Peggy Greb, Original uploader: Fredrik",
+        "licence": "Public domain",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Vegetable_beef_barley_soup.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Vegetable_beef_barley_soup.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 982,
+        "height": 733
+      },
+      {
+        "key": "commons:File:Okra soup, melon soup and catfish stew.jpg",
+        "provider": "commons",
+        "title": "Okra soup, melon soup and catfish stew",
+        "author": "Joan Onanyo",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Okra_soup,_melon_soup_and_catfish_stew.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/34/Okra_soup%2C_melon_soup_and_catfish_stew.jpg/1280px-Okra_soup%2C_melon_soup_and_catfish_stew.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3024,
+        "height": 4032
+      },
+      {
+        "key": "commons:File:Okro soup 1.jpg",
+        "provider": "commons",
+        "title": "Okro soup 1",
+        "author": "Isaac Gyamfi Essumeng",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Okro_soup_1.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Okro_soup_1.jpg/1280px-Okro_soup_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3750,
+        "height": 2500
+      },
+      {
+        "key": "commons:File:Veg Soup 1.jpg",
+        "provider": "commons",
+        "title": "Veg Soup 1",
+        "author": "Gaurav Dhwaj Khadka",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Veg_Soup_1.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a9/Veg_Soup_1.jpg/1280px-Veg_Soup_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3024,
+        "height": 4032
+      },
+      {
+        "key": "commons:File:Atelier Crenn - Course 6 Charred Onion Soup, Comte, Truffle.jpg",
+        "provider": "commons",
+        "title": "Atelier Crenn - Course 6 Charred Onion Soup, Comte, Truffle",
+        "author": "City Foodsters",
+        "licence": "CC BY 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Atelier_Crenn_-_Course_6_Charred_Onion_Soup,_Comte,_Truffle.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/Atelier_Crenn_-_Course_6_Charred_Onion_Soup%2C_Comte%2C_Truffle.jpg/1280px-Atelier_Crenn_-_Course_6_Charred_Onion_Soup%2C_Comte%2C_Truffle.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3626,
+        "height": 2417
       }
     ],
     "cottage-oat-pancakes": [
@@ -706,6 +944,81 @@
       }
     ],
     "falafel-pita-wrap": [],
+    "greek-lentil-salad": [],
+    "kheera-raita": [
+      {
+        "key": "commons:File:Cucumber-raita.jpg",
+        "provider": "commons",
+        "title": "Cucumber-raita",
+        "author": "Sonia Goyal",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cucumber-raita.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/78/Cucumber-raita.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "key": "commons:File:Cucumber raita Vikings Luxury Dinner Buffet 26 January 2025 PhilippinesE.jpg",
+        "provider": "commons",
+        "title": "Cucumber raita Vikings Luxury Dinner Buffet 26 January 2025 PhilippinesE",
+        "author": "Unknown author",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cucumber_raita_Vikings_Luxury_Dinner_Buffet_26_January_2025_PhilippinesE.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7c/Cucumber_raita_Vikings_Luxury_Dinner_Buffet_26_January_2025_PhilippinesE.jpg/1280px-Cucumber_raita_Vikings_Luxury_Dinner_Buffet_26_January_2025_PhilippinesE.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3523,
+        "height": 3072
+      },
+      {
+        "key": "commons:File:Cucumber and Tomato Raita.jpg",
+        "provider": "commons",
+        "title": "Cucumber and Tomato Raita",
+        "author": "Kskhh",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cucumber_and_Tomato_Raita.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Cucumber_and_Tomato_Raita.jpg/1280px-Cucumber_and_Tomato_Raita.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3024,
+        "height": 4032
+      },
+      {
+        "key": "commons:File:Cucumber Raita.JPG",
+        "provider": "commons",
+        "title": "Cucumber Raita",
+        "author": "Zeel Patel",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Cucumber_Raita.JPG",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Cucumber_Raita.JPG/1280px-Cucumber_Raita.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4608,
+        "height": 3456
+      },
+      {
+        "key": "commons:File:Vegetable Pakoras Cucumber raita Vikings Luxury Dinner Buffet 26 January 2025 Philippines1.jpg",
+        "provider": "commons",
+        "title": "Vegetable Pakoras Cucumber raita Vikings Luxury Dinner Buffet 26 January 2025 Philippines1",
+        "author": "Valenzuela400",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Vegetable_Pakoras_Cucumber_raita_Vikings_Luxury_Dinner_Buffet_26_January_2025_Philippines1.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Vegetable_Pakoras_Cucumber_raita_Vikings_Luxury_Dinner_Buffet_26_January_2025_Philippines1.jpg/1280px-Vegetable_Pakoras_Cucumber_raita_Vikings_Luxury_Dinner_Buffet_26_January_2025_Philippines1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3908,
+        "height": 2643
+      },
+      {
+        "key": "commons:File:Corn Biryani with Cucumber Raita.jpg",
+        "provider": "commons",
+        "title": "Corn Biryani with Cucumber Raita",
+        "author": "Shrutica",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Corn_Biryani_with_Cucumber_Raita.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/96/Corn_Biryani_with_Cucumber_Raita.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 960,
+        "height": 610
+      }
+    ],
     "lauki-chana-dal-yogurt": [
       {
         "key": "commons:File:Yogurt fruit bowl.jpg",
@@ -780,6 +1093,80 @@
         "height": 1920
       }
     ],
+    "lentil-walnut-arugula-salad": [
+      {
+        "key": "commons:File:Candle salad.JPG",
+        "provider": "commons",
+        "title": "Candle salad",
+        "author": "Rachel.ehmke",
+        "licence": "Public domain",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Candle_salad.JPG",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/47/Candle_salad.JPG/1280px-Candle_salad.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 1536,
+        "height": 2048
+      },
+      {
+        "key": "commons:File:Halloween candle salad course.png",
+        "provider": "commons",
+        "title": "Halloween candle salad course",
+        "author": "Liberty magazine",
+        "licence": "Public domain",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Halloween_candle_salad_course.png",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e9/Halloween_candle_salad_course.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 1182,
+        "height": 739
+      },
+      {
+        "key": "commons:File:Candle salad in 1926.png",
+        "provider": "commons",
+        "title": "Candle salad in 1926",
+        "author": "Liberty magazine",
+        "licence": "Public domain",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Candle_salad_in_1926.png",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/34/Candle_salad_in_1926.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 959,
+        "height": 821
+      },
+      {
+        "key": "commons:File:Liat Portal for Foodie Disorder - Israeli avocado salad dinner.jpg",
+        "provider": "commons",
+        "title": "Liat Portal for Foodie Disorder - Israeli avocado salad dinner",
+        "author": "HaJunkiyada",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Israeli_avocado_salad_dinner.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f1/Liat_Portal_for_Foodie_Disorder_-_Israeli_avocado_salad_dinner.jpg/1280px-Liat_Portal_for_Foodie_Disorder_-_Israeli_avocado_salad_dinner.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2448,
+        "height": 3264
+      },
+      {
+        "key": "commons:File:Candle salads.jpg",
+        "provider": "commons",
+        "title": "Candle salads",
+        "author": "Judielaine",
+        "licence": "Public domain",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Candle_salads.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Candle_salads.jpg/1280px-Candle_salads.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 3264,
+        "height": 1952
+      },
+      {
+        "key": "commons:File:Lime jello salad.jpg",
+        "provider": "commons",
+        "title": "Lime jello salad",
+        "author": "Jengod",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Lime_jello_salad.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Lime_jello_salad.jpg/1280px-Lime_jello_salad.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4284,
+        "height": 5712
+      }
+    ],
     "lentil-yogurt-bowl": [
       {
         "key": "commons:File:Yoghurt in bowl 011715.jpg",
@@ -828,6 +1215,80 @@
         "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Strawberry_m%C3%BCsli_in_a_bowl.jpg/1280px-Strawberry_m%C3%BCsli_in_a_bowl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
         "width": 4608,
         "height": 3456
+      }
+    ],
+    "masoor-palak-dal-yogurt": [
+      {
+        "key": "commons:File:Yogurt fruit bowl.jpg",
+        "provider": "commons",
+        "title": "Yogurt fruit bowl",
+        "author": "Jumbocombo0811",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Yogurt_fruit_bowl.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Yogurt_fruit_bowl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 1125,
+        "height": 2000
+      },
+      {
+        "key": "commons:File:Yogurt made from EM rice wash.jpg",
+        "provider": "commons",
+        "title": "Yogurt made from EM rice wash",
+        "author": "Zenyrgarden",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Yogurt_made_from_EM_rice_wash.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/Yogurt_made_from_EM_rice_wash.jpg/1280px-Yogurt_made_from_EM_rice_wash.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2448,
+        "height": 3264
+      },
+      {
+        "key": "commons:File:Iraqi Sheep Yogurt-Mosul.jpg",
+        "provider": "commons",
+        "title": "Iraqi Sheep Yogurt-Mosul",
+        "author": "Abdulsalam Al Dabbagh",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Iraqi_Sheep_Yogurt-Mosul.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Iraqi_Sheep_Yogurt-Mosul.jpg/1280px-Iraqi_Sheep_Yogurt-Mosul.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4000,
+        "height": 2252
+      },
+      {
+        "key": "commons:File:Yekaterinburg yogurt 2024-07 1719870319.jpg",
+        "provider": "commons",
+        "title": "Yekaterinburg yogurt 2024-07 1719870319",
+        "author": "Artyom Svetlov",
+        "licence": "CC BY 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Yekaterinburg_yogurt_2024-07_1719870319.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fc/Yekaterinburg_yogurt_2024-07_1719870319.jpg/1280px-Yekaterinburg_yogurt_2024-07_1719870319.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2256,
+        "height": 4032
+      },
+      {
+        "key": "commons:File:Yogurt vainilla soja.jpg",
+        "provider": "commons",
+        "title": "Yogurt vainilla soja",
+        "author": "Urci dream",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Yogurt_vainilla_soja.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Yogurt_vainilla_soja.jpg/1280px-Yogurt_vainilla_soja.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4160,
+        "height": 3120
+      },
+      {
+        "key": "commons:File:Yogurt in box.jpg",
+        "provider": "commons",
+        "title": "Yogurt in box",
+        "author": "SD hehua",
+        "licence": "CC BY 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Yogurt_in_box.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Yogurt_in_box.jpg/1280px-Yogurt_in_box.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2560,
+        "height": 1920
       }
     ],
     "matar-paneer": [
@@ -904,7 +1365,58 @@
         "height": 3000
       }
     ],
+    "mediterranean-chickpea-salad": [],
     "mediterranean-hummus-bowl": [],
+    "moong-khichdi": [
+      {
+        "key": "commons:File:MoongDal Khichdi.jpg",
+        "provider": "commons",
+        "title": "MoongDal Khichdi",
+        "author": "Mrudit161187",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:MoongDal_Khichdi.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/MoongDal_Khichdi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "key": "commons:File:Spicy Khichdi.JPG",
+        "provider": "commons",
+        "title": "Spicy Khichdi",
+        "author": "Seena.ge",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Spicy_Khichdi.JPG",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/79/Spicy_Khichdi.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 1024,
+        "height": 702
+      },
+      {
+        "key": "commons:File:Khichdi Kitchiri Khichri comfort food India.jpg",
+        "provider": "commons",
+        "title": "Khichdi Kitchiri Khichri comfort food India",
+        "author": "Francis Bijl",
+        "licence": "CC BY 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Khichdi_Kitchiri_Khichri_comfort_food_India.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Khichdi_Kitchiri_Khichri_comfort_food_India.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 600,
+        "height": 800
+      },
+      {
+        "key": "commons:File:Dal khichdi.jpg",
+        "provider": "commons",
+        "title": "Dal khichdi",
+        "author": "Sauravdipu",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Dal_khichdi.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/db/Dal_khichdi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 960,
+        "height": 541
+      }
+    ],
     "overnight-oats-yogurt": [
       {
         "key": "commons:File:Protein overnight oats.jpg",
@@ -1750,6 +2262,7 @@
         "height": 1080
       }
     ],
+    "three-bean-salad": [],
     "tofu-bhurji": [
       {
         "key": "commons:File:Spicy egg bhurji @ the eggfactory.jpg",
@@ -1973,6 +2486,154 @@
         "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a9/Raffi_kojian-pita-103035037.jpg/1280px-Raffi_kojian-pita-103035037.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
         "width": 3072,
         "height": 4096
+      }
+    ],
+    "whey-banana-shake": [
+      {
+        "key": "commons:File:Peanut Butter milk shake.jpg",
+        "provider": "commons",
+        "title": "Peanut Butter milk shake",
+        "author": "Peter M.",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Peanut_Butter_milk_shake.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Peanut_Butter_milk_shake.jpg/1280px-Peanut_Butter_milk_shake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2724,
+        "height": 3639
+      },
+      {
+        "key": "commons:File:Idli, Sambhar, Chutney and Mango Shake.jpg",
+        "provider": "commons",
+        "title": "Idli, Sambhar, Chutney and Mango Shake",
+        "author": "Shalem Pravas Valaparla",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Idli,_Sambhar,_Chutney_and_Mango_Shake.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Idli%2C_Sambhar%2C_Chutney_and_Mango_Shake.jpg/1280px-Idli%2C_Sambhar%2C_Chutney_and_Mango_Shake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4320,
+        "height": 2432
+      },
+      {
+        "key": "commons:File:Walter Johnson and Calvin Coolidge shake hands FINAL.jpg",
+        "provider": "commons",
+        "title": "Walter Johnson and Calvin Coolidge shake hands FINAL",
+        "author": "National Photo Company Collection",
+        "licence": "Public domain",
+        "licence_url": null,
+        "source_url": "https://commons.wikimedia.org/wiki/File:Walter_Johnson_and_Calvin_Coolidge_shake_hands_FINAL.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/44/Walter_Johnson_and_Calvin_Coolidge_shake_hands_FINAL.jpg/1280px-Walter_Johnson_and_Calvin_Coolidge_shake_hands_FINAL.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4549,
+        "height": 1873
+      },
+      {
+        "key": "commons:File:Shake Shack NYC.jpg",
+        "provider": "commons",
+        "title": "Shake Shack NYC",
+        "author": "Nielsoncaetanosalmeron",
+        "licence": "CC BY 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Shake_Shack_NYC.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Shake_Shack_NYC.jpg/1280px-Shake_Shack_NYC.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4032,
+        "height": 3024
+      },
+      {
+        "key": "commons:File:Shake Shack in Kyoto 01.jpg",
+        "provider": "commons",
+        "title": "Shake Shack in Kyoto 01",
+        "author": "Kanesue",
+        "licence": "CC BY 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Shake_Shack_in_Kyoto_01.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Shake_Shack_in_Kyoto_01.jpg/1280px-Shake_Shack_in_Kyoto_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4032,
+        "height": 3024
+      },
+      {
+        "key": "commons:File:Shake Shack NYC 1700 Broadway.jpg",
+        "provider": "commons",
+        "title": "Shake Shack NYC 1700 Broadway",
+        "author": "Nielsoncaetanosalmeron",
+        "licence": "CC BY 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Shake_Shack_NYC_1700_Broadway.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Shake_Shack_NYC_1700_Broadway.jpg/1280px-Shake_Shack_NYC_1700_Broadway.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 6000,
+        "height": 4000
+      }
+    ],
+    "white-bean-kale-salad": [
+      {
+        "key": "commons:File:Warm Black Bean Salad with Kale and Tomatoes.jpg",
+        "provider": "commons",
+        "title": "Warm Black Bean Salad with Kale and Tomatoes",
+        "author": "Sharon Chen",
+        "licence": "CC BY 3.0",
+        "licence_url": "https://creativecommons.org/licenses/by/3.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Warm_Black_Bean_Salad_with_Kale_and_Tomatoes.jpg",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/16/Warm_Black_Bean_Salad_with_Kale_and_Tomatoes.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "key": "commons:File:Kalette, beans, pecorino, Brussel sprouts, grapes salad at QAG Cafe, Brisbane, 2020.jpg",
+        "provider": "commons",
+        "title": "Kalette, beans, pecorino, Brussel sprouts, grapes salad at QAG Cafe, Brisbane, 2020",
+        "author": "Kgbo",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Kalette,_beans,_pecorino,_Brussel_sprouts,_grapes_salad_at_QAG_Cafe,_Brisbane,_2020.jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Kalette%2C_beans%2C_pecorino%2C_Brussel_sprouts%2C_grapes_salad_at_QAG_Cafe%2C_Brisbane%2C_2020.jpg/1280px-Kalette%2C_beans%2C_pecorino%2C_Brussel_sprouts%2C_grapes_salad_at_QAG_Cafe%2C_Brisbane%2C_2020.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 4032,
+        "height": 3024
+      },
+      {
+        "key": "commons:File:Chicken Apple Salad with Tuscan Kale Salad (8410357038).jpg",
+        "provider": "commons",
+        "title": "Chicken Apple Salad with Tuscan Kale Salad (8410357038)",
+        "author": "Cajsa Lilliehook from Portland",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Chicken_Apple_Salad_with_Tuscan_Kale_Salad_(8410357038).jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c7/Chicken_Apple_Salad_with_Tuscan_Kale_Salad_%288410357038%29.jpg/1280px-Chicken_Apple_Salad_with_Tuscan_Kale_Salad_%288410357038%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2557,
+        "height": 1698
+      },
+      {
+        "key": "commons:File:Kale & ChickPea Salad (8425128977).jpg",
+        "provider": "commons",
+        "title": "Kale & ChickPea Salad (8425128977)",
+        "author": "Cajsa Lilliehook from Portland",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Kale_%26_ChickPea_Salad_(8425128977).jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Kale_%26_ChickPea_Salad_%288425128977%29.jpg/1280px-Kale_%26_ChickPea_Salad_%288425128977%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2592,
+        "height": 1944
+      },
+      {
+        "key": "commons:File:Kale, Rutabaga & Fennel Salad (9078609941).jpg",
+        "provider": "commons",
+        "title": "Kale, Rutabaga & Fennel Salad (9078609941)",
+        "author": "Cajsa Lilliehook from Portland",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Kale,_Rutabaga_%26_Fennel_Salad_(9078609941).jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Kale%2C_Rutabaga_%26_Fennel_Salad_%289078609941%29.jpg/1280px-Kale%2C_Rutabaga_%26_Fennel_Salad_%289078609941%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2577,
+        "height": 1601
+      },
+      {
+        "key": "commons:File:Kale & Grapefruit Salad with Toasted Almonds and Parmesan (8421983361).jpg",
+        "provider": "commons",
+        "title": "Kale & Grapefruit Salad with Toasted Almonds and Parmesan (8421983361)",
+        "author": "Cajsa Lilliehook from Portland",
+        "licence": "CC BY-SA 2.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Kale_%26_Grapefruit_Salad_with_Toasted_Almonds_and_Parmesan_(8421983361).jpg",
+        "image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c4/Kale_%26_Grapefruit_Salad_with_Toasted_Almonds_and_Parmesan_%288421983361%29.jpg/1280px-Kale_%26_Grapefruit_Salad_with_Toasted_Almonds_and_Parmesan_%288421983361%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "width": 2592,
+        "height": 1944
       }
     ],
     "white-bean-zucchini-skillet": [],
