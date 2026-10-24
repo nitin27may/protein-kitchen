@@ -12,6 +12,7 @@ import { seedDatabase } from "../lib/db/seed";
 import { exportHumanData } from "../lib/human/export";
 import { writeRecipeFeedback } from "../lib/human/feedback";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
+import { readAccountExport } from "../lib/server/account-export";
 import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persistence";
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
@@ -79,6 +80,25 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     ]);
     expect(await handle.db.select().from(s.recipeFeedback)).toMatchObject([{ rating: 4, favourite: true, status: "tested" }]);
     expect(await handle.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "personal-recipe-feedback"))).toHaveLength(1);
+  });
+
+  it("reads a session-bound personal account export using a native read-only snapshot", async () => {
+    const profiles = await handle.db.insert(s.people).values(["first", "second"].map((name) => ({
+      name: `Synthetic ${name} profile`, sex: "other" as const, birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light" as const, dietFlags: [],
+    }))).returning();
+    await handle.db.insert(s.authUsers).values(["first", "second"].map((id) => ({
+      id, name: `Synthetic ${id} cook`, email: `${id}@example.test`, emailVerified: true,
+    })));
+    await handle.db.insert(s.householdMembers).values(profiles.map((person, index) => ({
+      userId: index ? "second" : "first", personId: person.id, role: "member" as const,
+    })));
+    const account = await readAccountExport(handle.db, { userId: "first", personId: profiles[0]!.id });
+    expect(account).toMatchObject({
+      account: { email: "first@example.test" }, profile: { name: "Synthetic first profile" }, feedback: [], preferences: [], routines: [],
+    });
+    expect(JSON.stringify(account)).not.toContain("Synthetic second");
+    expect(await readAccountExport(handle.db, { userId: "first", personId: profiles[1]!.id })).toBeUndefined();
   });
 
   it("serializes competing bootstrap claims across real pool connections", async () => {

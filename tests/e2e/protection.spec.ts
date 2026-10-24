@@ -16,6 +16,7 @@ test("anonymous pages, server components, photo bytes and exports never disclose
       await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
     }
     for (const url of [
+      "/api/account/export",
       `/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=pdf`,
       `/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=xlsx`,
       "/photos/00000000-0000-4000-8000-000000000001/thumb",
@@ -51,6 +52,9 @@ test("captured feedback actions cannot select another person's rating, even for 
       headers, data: JSON.stringify(["tofu-burrito-bowl", { rating: 1, personId: foreign!.id }]),
     });
     expect(await forged.text()).toContain("Unrecognized key");
+    const injectedDownload = await page.request.get(`/api/account/export?personId=${foreign!.id}`);
+    expect(injectedDownload.status()).toBe(400);
+    expect(injectedDownload.headers()["cache-control"]).toContain("no-store");
     const extraArgument = await page.request.post("/recipes/tofu-burrito-bowl", {
       headers, data: JSON.stringify(["tofu-burrito-bowl", { rating: 3 }, foreign!.id]),
     });
@@ -94,6 +98,9 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       const exportResult = await page.request.get(`/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=pdf`);
       expect(exportResult.status()).toBe(403);
       expect(exportResult.headers()["cache-control"]).toContain("no-store");
+      const revokedDownload = await page.request.get("/api/account/export");
+      expect(revokedDownload.status()).toBe(403);
+      expect(revokedDownload.headers()["cache-control"]).toContain("no-store");
       await page.goto("/groceries");
       await expect(page).toHaveURL(/\/onboarding/);
     } finally {

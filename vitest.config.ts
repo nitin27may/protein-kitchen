@@ -33,6 +33,8 @@ export default defineConfig({
         "lib/auth/response.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/personal-feedback.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/feedback.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/server/account-export.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "app/api/account/export/route.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/db/sqlite-snapshot.ts": { statements: 95, branches: 95, functions: 100, lines: 100 },
         "lib/human/sqlite-restore.ts": { statements: 95, branches: 95, functions: 100, lines: 100 },
         "lib/db/postgres/import-target.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

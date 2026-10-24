@@ -54,6 +54,20 @@ async function saveFeedback(page: Page, change: () => Promise<void>) {
   expect(response.status()).toBe(200);
   await expect(page.getByRole("button", { name: "Favourite", exact: true })).toBeEnabled();
 }
+async function downloadAccount(page: Page) {
+  const incoming = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download my account", exact: true }).click();
+  const download = await incoming;
+  expect(download.suggestedFilename()).toBe("protein-kitchen-account.json");
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const text = await readFile(path!, "utf8");
+  const value = z.object({
+    format: z.literal("protein-kitchen-account"), version: z.literal(1),
+    account: z.object({ email: z.string() }), profile: z.object({ name: z.string(), proteinTargetG: z.number().nullable() }),
+  }).parse(JSON.parse(text));
+  return { value, text };
+}
 
 test("owner and invited cook finish UI onboarding, keep separate profiles and share plan, shopping and prep", async ({ page, browser }) => {
   test.setTimeout(120_000);
@@ -105,6 +119,30 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await second.goto("/account");
     await expect(second.getByRole("link", { name: "Profile: Synthetic import fixture" })).toBeVisible();
     await expect(second.getByRole("heading", { name: "Invite another cook" })).toHaveCount(0);
+    await page.route("**/api/account/export", (route) => route.abort("failed"));
+    await page.getByRole("button", { name: "Download my account", exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("Check your connection");
+    await page.unroute("**/api/account/export");
+    await page.route("**/api/account/export", (route) => route.fulfill({ status: 503, contentType: "application/json", body: '{"ok":false}' }));
+    await page.getByRole("button", { name: "Download my account", exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("could not be downloaded");
+    await page.unroute("**/api/account/export");
+    await page.route("**/api/account/export", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Unavailable</h1>" }));
+    await page.getByRole("button", { name: "Download my account", exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("did not return an account file");
+    await page.unroute("**/api/account/export");
+    const ownFile = await downloadAccount(page);
+    expect(ownFile.value.account.email).toBe(owner);
+    expect(ownFile.value.profile).toEqual({ name: "Synthetic owner targets", proteinTargetG: 95 });
+    expect(ownFile.text).not.toContain(cook);
+    expect(ownFile.text).not.toContain("Synthetic import fixture");
+    const otherFile = await downloadAccount(second);
+    expect(otherFile.value.account.email).toBe(cook);
+    expect(otherFile.value.profile.name).toBe("Synthetic import fixture");
+    expect(otherFile.text).not.toContain(owner);
+    expect(otherFile.text).not.toContain("Synthetic owner targets");
+    expect(otherFile.text).not.toContain("synthetic-browser-bootstrap-key");
+    expect(ownFile.text).not.toContain(replacementGrant);
     await second.goto("/profiles");
     await expect(second.getByRole("link", { name: "Add person", exact: true })).toHaveCount(0);
     await expect(second.getByRole("main")).not.toContainText("Synthetic owner targets");
@@ -223,6 +261,9 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await second.goto("/groceries");
     await expect(second).toHaveURL(/\/sign-in$/);
     expect((await other.request.get(`http://127.0.0.1:3112/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=pdf`)).status()).toBe(401);
+    const removedDownload = await other.request.get("http://127.0.0.1:3112/api/account/export");
+    expect(removedDownload.status()).toBe(401);
+    expect(removedDownload.headers()["cache-control"]).toContain("no-store");
     await page.goto(plan);
     await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(title);
     await page.goto("/groceries");

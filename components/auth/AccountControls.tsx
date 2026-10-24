@@ -32,6 +32,25 @@ export function AccountControls({ owner, profiles, invitations, members, current
       await authRequest("/sign-out", {});
       setToken(""); window.location.replace("/sign-in");
     })}>Sign out</Button>
+    <section className="space-y-3">
+      <h2 className="text-xl font-semibold">Download your account</h2>
+      <p className="text-sm text-muted">Includes your account details, private meal profile, preferences, routines, ratings and favourites. Keep the file private. This is not a backup of the household's shared plans or photos.</p>
+      <Button variant="secondary" loading={pending} onClick={() => void run(async () => {
+        const response = await fetch("/api/account/export", { cache: "no-store" }).catch(() => {
+          throw new Error("Your account download failed. Check your connection and try again.");
+        });
+        if (!response.ok) throw new Error("Your account could not be downloaded. Try again, or sign in again if your session has expired.");
+        if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("The server did not return an account file. Try again.");
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement("a");
+        try {
+          link.href = url; link.download = "protein-kitchen-account.json";
+          document.body.append(link); link.click();
+        } finally {
+          link.remove(); setTimeout(() => URL.revokeObjectURL(url), 0);
+        }
+      })}>Download my account</Button>
+    </section>
     {owner ? <section className="space-y-4">
       <h2 className="text-xl font-semibold">Household cooks</h2>
       <p className="text-sm text-muted">Owners manage access and private profiles. Removing a cook signs them out but keeps their meal profile and the household's shared plans, shopping and prep.</p>
