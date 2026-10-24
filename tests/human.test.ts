@@ -9,6 +9,7 @@ import { clearSavedView, exportHumanData, importHumanData, registerExporter, wri
 import type { HumanDataClass } from "../lib/human";
 import { feedbackClass } from "../lib/human/feedback";
 import { savedViewsClass } from "../lib/human/saved-views";
+import { photosClass } from "../lib/human/photos";
 
 const migrations = path.resolve(__dirname, "..", "db", "migrations");
 let a: DbHandle;
@@ -253,6 +254,75 @@ describe("export and import", () => {
 });
 
 describe("applyRenames", () => {
+  it("preserves feedback conflicts, link ordering, covers and personal feedback independently in each household", async () => {
+    const oldId = await addRecipe(a, "old");
+    const newId = await addRecipe(a, "new");
+    await a.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const at = "2026-10-23T12:00:00.000Z";
+    for (const householdId of [null, "a", "b"]) {
+      const key = householdId ?? "legacy";
+      if (householdId === null) {
+        await a.db.update(s.recipeFeedback).set({ rating: 3, uid: `${key}-feedback`, createdAt: at, updatedAt: at }).where(eq(s.recipeFeedback.recipeId, oldId));
+      } else {
+        await a.db.insert(s.recipeFeedback).values({ householdId, recipeId: oldId, rating: 3, uid: `${key}-feedback`, createdAt: at, updatedAt: at });
+        if (householdId === "a") await a.db.insert(s.recipeFeedback).values({ householdId, recipeId: newId, rating: 5, uid: "target-feedback", createdAt: at, updatedAt: at });
+      }
+      const [person] = await a.db.insert(s.people).values({
+        householdId, name: key, sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+      }).returning({ id: s.people.id });
+      await a.db.insert(s.personRecipeFeedback).values({ personId: person!.id, recipeId: oldId, rating: 3, uid: `${key}-personal`, createdAt: at, updatedAt: at });
+      if (householdId === "a") await a.db.insert(s.personRecipeFeedback).values({ personId: person!.id, recipeId: newId, rating: 5, uid: "target-personal", createdAt: at, updatedAt: at });
+      await a.db.insert(s.recipeLinks).values({ householdId, recipeId: oldId, uid: `${key}-link`, kind: "recipe", url: "https://example.test", title: key, position: 10, createdAt: at, updatedAt: at, createdByPersonId: person!.id });
+      await a.db.insert(s.photos).values({ householdId, recipeId: oldId, uid: `${key}-photo`, origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, isCover: true, position: 10, createdAt: at, updatedAt: at, createdByPersonId: person!.id });
+      if (householdId === "a") {
+        await a.db.insert(s.recipeLinks).values({ householdId, recipeId: newId, uid: "target-link", kind: "recipe", url: "https://example.test", title: key, position: 6, createdAt: at, updatedAt: at });
+        await a.db.insert(s.photos).values({ householdId, recipeId: newId, uid: "target-photo", origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, isCover: true, position: 6, createdAt: at, updatedAt: at });
+      }
+    }
+    const originalLinks = await a.db.select().from(s.recipeLinks);
+    const originalPhotos = await a.db.select().from(s.photos);
+    expect(await applyRenames(a.db, { old: "new" })).toEqual({ moved: ["old"] });
+    const feedback = await a.db.select().from(s.recipeFeedback);
+    expect(feedback.find((row) => row.uid === "a-feedback")).toMatchObject({ recipeId: oldId, householdId: "a", rating: 3 });
+    for (const key of ["legacy", "b"]) expect(feedback.find((row) => row.uid === `${key}-feedback`)).toMatchObject({ recipeId: newId, rating: 3, createdAt: at });
+    expect(feedback.find((row) => row.uid === "target-feedback")).toMatchObject({ recipeId: newId, householdId: "a", rating: 5 });
+    for (const before of originalLinks) {
+      const [after] = await a.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, before.id));
+      expect(after).toEqual({ ...before, recipeId: newId, position: before.uid === "target-link" ? 6 : before.householdId === "a" ? 7 : 0, updatedAt: expect.any(String) });
+    }
+    for (const before of originalPhotos) {
+      const [after] = await a.db.select().from(s.photos).where(eq(s.photos.id, before.id));
+      expect(after).toEqual({ ...before, recipeId: newId, position: before.uid === "target-photo" ? 6 : before.householdId === "a" ? 7 : 0, isCover: before.uid !== "a-photo", updatedAt: expect.any(String) });
+    }
+    const personal = await a.db.select().from(s.personRecipeFeedback);
+    expect(personal.find((row) => row.uid === "a-personal")).toMatchObject({ recipeId: oldId, rating: 3 });
+    for (const key of ["legacy", "b"]) expect(personal.find((row) => row.uid === `${key}-personal`)).toMatchObject({ recipeId: newId, rating: 3, createdAt: at });
+    const revisions = await a.db.select().from(s.syncState);
+    for (const householdId of [null, "a", "b"]) {
+      const changed = revisions.filter((row) => row.householdId === householdId).map((row) => row.dataClass).sort();
+      expect(changed).toEqual(householdId === "a" ? ["photos", "recipe-links"] : ["personal-recipe-feedback", "photos", "recipe-feedback", "recipe-links"]);
+    }
+    expect(await applyRenames(a.db, { old: "new" })).toEqual({ moved: [] });
+    expect(await a.db.select().from(s.syncState)).toEqual(revisions);
+  });
+
+  it("rolls back earlier class moves and earlier in-place renames when a later class fails", async () => {
+    const oldId = await addRecipe(a, "old");
+    await addRecipe(a, "new");
+    await addRecipe(a, "in-place");
+    await writeRecipeFeedback(a.db, oldId, { rating: 4 });
+    const before = await a.db.select().from(s.recipeFeedback);
+    const revisions = await a.db.select().from(s.syncState);
+    const failure = vi.spyOn(photosClass, "moveRecipe").mockRejectedValueOnce(new Error("synthetic later class failure"));
+    try {
+      await expect(applyRenames(a.db, { "in-place": "renamed", old: "new" })).rejects.toThrow("synthetic later class failure");
+      expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+      expect(await a.db.select().from(s.syncState)).toEqual(revisions);
+      expect(await a.db.select().from(s.recipes).where(eq(s.recipes.slug, "in-place"))).toHaveLength(1);
+      expect(await a.db.select().from(s.recipes).where(eq(s.recipes.slug, "renamed"))).toEqual([]);
+    } finally { failure.mockRestore(); }
+  });
+
   async function plan(h: DbHandle, recipeId: number) {
     const [person] = await h.db.insert(s.people).values({ name: "T", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", dietFlags: [] }).returning({ id: s.people.id });
     const [setup] = await h.db.insert(s.planSetups).values({ personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["lunch"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id });

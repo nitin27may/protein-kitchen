@@ -121,17 +121,20 @@ export const personalFeedbackClass: HumanDataClass = {
   },
   async moveRecipe(db, fromRecipeId, toRecipeId) {
     return withTx(db, async (tx) => {
-      const rows = await tx.select().from(s.personRecipeFeedback).where(eq(s.personRecipeFeedback.recipeId, fromRecipeId));
+      const rows = await tx.select({ feedback: s.personRecipeFeedback, householdId: s.people.householdId }).from(s.personRecipeFeedback)
+        .innerJoin(s.people, eq(s.people.id, s.personRecipeFeedback.personId)).where(eq(s.personRecipeFeedback.recipeId, fromRecipeId));
       let moved = false;
-      for (const row of rows) {
+      const changedHouseholds = new Set<string | null>();
+      for (const { feedback: row, householdId } of rows) {
         const [existing] = await tx.select({ id: s.personRecipeFeedback.personId }).from(s.personRecipeFeedback)
           .where(and(eq(s.personRecipeFeedback.recipeId, toRecipeId), eq(s.personRecipeFeedback.personId, row.personId)));
         if (existing) continue;
         await tx.update(s.personRecipeFeedback).set({ recipeId: toRecipeId, updatedAt: nowIso() })
           .where(and(eq(s.personRecipeFeedback.recipeId, fromRecipeId), eq(s.personRecipeFeedback.personId, row.personId)));
         moved = true;
+        changedHouseholds.add(householdId);
       }
-      if (moved) await markChanged(tx, PERSONAL_FEEDBACK_CLASS, nowIso());
+      for (const householdId of changedHouseholds) await markChanged(tx, PERSONAL_FEEDBACK_CLASS, nowIso(), householdId ?? undefined);
       return moved;
     });
   },

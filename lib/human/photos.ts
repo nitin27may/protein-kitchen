@@ -315,19 +315,22 @@ export const photosClass: HumanDataClass = {
 
   /** A slug rename: moves the photos to the new recipe row. The cover of the new row stays the cover unless it had none. */
   async moveRecipe(db, fromRecipeId, toRecipeId) {
-    const moving = await db.select().from(s.photos).where(eq(s.photos.recipeId, fromRecipeId)).orderBy(asc(s.photos.position), asc(s.photos.id));
-    if (moving.length === 0) return false;
-    const [top] = await db.select({ m: max(s.photos.position) }).from(s.photos).where(eq(s.photos.recipeId, toRecipeId));
-    const hasCover = !!(await db.select({ id: s.photos.id }).from(s.photos).where(and(eq(s.photos.recipeId, toRecipeId), eq(s.photos.isCover, true))))[0];
-    const start = top?.m === null || top?.m === undefined ? 0 : Number(top.m) + 1;
-    const at = nowIso();
-    await withTx(db, async (tx) => {
-      for (const [i, p] of moving.entries()) {
-        await tx.update(s.photos).set({ recipeId: toRecipeId, position: start + i, isCover: hasCover ? false : p.isCover, updatedAt: at }).where(eq(s.photos.id, p.id));
+    return withTx(db, async (tx) => {
+      const moving = await tx.select().from(s.photos).where(eq(s.photos.recipeId, fromRecipeId)).orderBy(asc(s.photos.position), asc(s.photos.id));
+      for (const householdId of new Set(moving.map((row) => row.householdId))) {
+        const rows = moving.filter((row) => row.householdId === householdId);
+        const target = and(eq(s.photos.recipeId, toRecipeId), owned(householdId ?? undefined));
+        const [top] = await tx.select({ m: max(s.photos.position) }).from(s.photos).where(target);
+        const hasCover = !!(await tx.select({ id: s.photos.id }).from(s.photos).where(and(target, eq(s.photos.isCover, true))))[0];
+        const start = top?.m === null || top?.m === undefined ? 0 : Number(top.m) + 1;
+        const at = nowIso();
+        for (const [i, p] of rows.entries()) {
+          await tx.update(s.photos).set({ recipeId: toRecipeId, position: start + i, isCover: hasCover ? false : p.isCover, updatedAt: at }).where(eq(s.photos.id, p.id));
+        }
+        await markChanged(tx, PHOTOS_CLASS, at, householdId ?? undefined);
       }
-      await markChanged(tx, PHOTOS_CLASS, at);
+      return moving.length > 0;
     });
-    return true;
   },
 };
 

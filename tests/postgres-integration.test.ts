@@ -9,6 +9,7 @@ import { openPostgres } from "../lib/db/postgres/client";
 import * as s from "../lib/db/schema";
 import { withTx } from "../lib/db/tx";
 import { loadData } from "../lib/data/load";
+import { applyRenames } from "../lib/db/renames";
 import { seedDatabase } from "../lib/db/seed";
 import { exportHumanData } from "../lib/human/export";
 import { importHumanData } from "../lib/human/import";
@@ -62,6 +63,39 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it("rolls back operator recipe renames across household human classes on native Postgres", async () => {
+    await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const recipes = await handle.db.insert(s.recipes).values(["old", "new"].map((slug) => ({
+      slug, name: slug, kind: "recipe" as const, family: "test", mealSlots: ["dinner"], cuisine: "test",
+      isIndian: false, servings: 1, prepMin: 1, activeMin: 1, totalMin: 1, equipment: [], tags: [], fridgeDays: 2,
+    }))).returning({ id: s.recipes.id });
+    const from = recipes[0]!.id, to = recipes[1]!.id;
+    for (const householdId of ["a", "b"]) {
+      await writeRecipeFeedback(handle.db, from, { rating: 4 }, householdId);
+      await handle.db.insert(s.recipeLinks).values({
+        householdId, recipeId: from, uid: randomUUID(), kind: "recipe", url: "https://example.test", title: "Synthetic",
+        createdAt: at, updatedAt: at,
+      });
+    }
+    const feedback = await handle.db.select().from(s.recipeFeedback);
+    const links = await handle.db.select().from(s.recipeLinks);
+    const revisions = await handle.db.select().from(s.syncState);
+    await handle.pool.query(`create function fail_rename() returns trigger language plpgsql as $$ begin raise exception 'synthetic rename failure'; end $$;
+      create trigger fail_rename before update on recipe_links for each row execute function fail_rename()`);
+    try {
+      await expect(applyRenames(handle.db, { old: "new" })).rejects.toThrow();
+      expect(await handle.db.select().from(s.recipeFeedback)).toEqual(feedback);
+      expect(await handle.db.select().from(s.recipeLinks)).toEqual(links);
+      expect(await handle.db.select().from(s.syncState)).toEqual(revisions);
+    } finally {
+      await handle.pool.query("drop trigger fail_rename on recipe_links; drop function fail_rename()");
+    }
+    expect(await applyRenames(handle.db, { old: "new" })).toEqual({ moved: ["old"] });
+    expect(await handle.db.select().from(s.recipeFeedback)).toHaveLength(2);
+    expect((await handle.db.select().from(s.recipeFeedback)).every((row) => row.recipeId === to)).toBe(true);
+    expect(await applyRenames(handle.db, { old: "new" })).toEqual({ moved: [] });
+  });
 
   it.each(["export", "import"] as const)("holds the household catalogue lock throughout legacy %s class work", async (operation) => {
     const contender = await handle.pool.connect();

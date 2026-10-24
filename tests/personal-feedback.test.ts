@@ -55,7 +55,7 @@ describe("personal feedback and historical household preservation", () => {
     expect((await planningFeedback(h.db, [first, second], "b")).get("feedback-bowl")).toMatchObject({ rating: 1, banned: true });
     await expect(householdFeedback(h.db)).rejects.toThrow("explicit household scope");
     await expect(feedbackClass.exportFiles(h.db)).rejects.toThrow("explicit household scope");
-    await expect(feedbackClass.moveRecipe!(h.db, recipe, 999)).rejects.toThrow("explicit household scope");
+    await expect(feedbackClass.moveRecipe!(h.db, recipe, 999)).rejects.toThrow();
     const [legacy] = before.filter((row) => row.householdId === null);
     const file = JSON.stringify({
       slug: "feedback-bowl", uid: legacy!.uid, status: "tested", rating: 4, favourite: true,

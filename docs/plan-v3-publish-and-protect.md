@@ -337,6 +337,46 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: household-preserving operator recipe renames
+
+**Local acceptance:** shared feedback moves only to a target in the same
+household; human target choices remain unchanged. Links and photos append using
+that household's positions and cover state. Personal conflicts remain per person.
+Every moved class updates the actual household revision, including null legacy
+rows. The entire operator rename map is transactional, so a later class failure
+also restores earlier in-place slug changes. Two-household-plus-legacy tests
+check exact row identity, creators, creation timestamps, cover/order conflicts,
+owned revisions and idempotence; native trigger failure proves cross-class
+rollback. All **1,939 tests / 95 files**, **33 retained browser journeys**,
+types/build and existing critical gates pass; overall statements **72.58%**.
+No human choices were edited outside synthetic fixtures, and no remote seed,
+migration or deployment ran. Null-ownership contraction and code-free admission
+remain pending.
+
+Before admission, complete the library seed's operator rename path without
+granting household owners global library authority. The public slug is global,
+but human feedback conflict decisions, link/photo ordering and photo-cover
+decisions must remain per household, including the explicit null legacy
+namespace. A target's feedback/cover in one household must never suppress or
+overwrite another household's source. Preserve uid/creator/created timestamps,
+existing target human choices, photo bytes and plan recipe references.
+
+Use the existing human classes rather than another rename engine. Group shared
+class moves by their stored household, and mark each changed household revision
+in the same transaction. Personal feedback keeps per-person conflict semantics;
+derive its revision namespace from the person's stored household. Make the
+complete applyRenames operation transactional so a later class failure rolls
+back earlier class changes and slug/deletion changes. Keep current seed's
+transaction nesting and historical unclaimed round trips compatible.
+
+Acceptance: two households plus null legacy namespace, same source/target
+recipes, mixed touched/untouched target feedback, independent link positions and
+photo covers, per-person conflicts and exact owned revisions. Add whole-operation
+failure injection/idempotence and native transactional rollback. Existing native
+seed and all retained public/private browser journeys must remain green alongside
+full coverage, types and build. No data-file edit, remote seed/migration,
+household write endpoint or manual human decision is part of this stage.
+
 ### H2 slice: fail-closed legacy human-bundle boundary
 
 **Local acceptance:** legacy export now refuses multiple households before

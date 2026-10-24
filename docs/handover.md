@@ -10,6 +10,15 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest operator recipe renames:** feedback conflicts, link/photo ordering and
+cover handling stay per household, including the null legacy namespace.
+Personal choices remain per person; moved classes mark their actual household
+revision. The complete rename map rolls back if any class fails.
+**Acceptance: 1,939 tests / 95 files, 33 browser journeys, types/build and
+critical gates pass**, overall statements 72.58%; native failure injection verifies
+rollback. Remaining prerequisites include null-ownership contraction and
+code-free email-first admission. No remote seed, migration or deployment ran.
+
 **Latest legacy human-bundle boundary:** unscoped v1/v2 human exports refuse
 multiple households; legacy imports require an unclaimed operator staging target.
 Catalogue locking prevents concurrent household creation racing the check.

@@ -6,6 +6,7 @@ import { registerBuiltinClasses } from "../human/builtin";
 import { registeredClasses } from "../human/registry";
 import type { Db } from "./client";
 import * as s from "./schema";
+import { withTx } from "./tx";
 
 const slug = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "use a lowercase slug");
 
@@ -36,46 +37,48 @@ export function loadRenames(root: string = process.cwd()): Renames {
  * Idempotent. Returns the old slugs whose human data moved.
  */
 export async function applyRenames(db: Db, renames: Record<string, string>): Promise<{ moved: string[] }> {
-  registerBuiltinClasses();
-  const moved: string[] = [];
-  for (const [oldSlug, newSlug] of Object.entries(renames)) {
-    const oldRow = (await db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, oldSlug)))[0];
-    if (!oldRow) continue;
-    const newRow = (await db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, newSlug)))[0];
+  return withTx(db, async (tx) => {
+    registerBuiltinClasses();
+    const moved: string[] = [];
+    for (const [oldSlug, newSlug] of Object.entries(renames)) {
+      const oldRow = (await tx.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, oldSlug)))[0];
+      if (!oldRow) continue;
+      const newRow = (await tx.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, newSlug)))[0];
 
-    if (!newRow) {
-      await db.update(s.recipes).set({ slug: newSlug }).where(eq(s.recipes.id, oldRow.id));
-      moved.push(oldSlug);
-      continue;
+      if (!newRow) {
+        await tx.update(s.recipes).set({ slug: newSlug }).where(eq(s.recipes.id, oldRow.id));
+        moved.push(oldSlug);
+        continue;
+      }
+
+      let any = false;
+      for (const cls of registeredClasses()) {
+        if (cls.moveRecipe && (await cls.moveRecipe(tx, oldRow.id, newRow.id))) any = true;
+      }
+      if (any) moved.push(oldSlug);
+
+      // Never delete a recipe that still holds someone's ratings, links or photos (for example when the new
+      // recipe already had its own and nothing could be moved).
+      let holdsData = false;
+      for (const cls of registeredClasses()) {
+        if (cls.hasRecipeData && (await cls.hasRecipeData(tx, oldRow.id))) holdsData = true;
+      }
+      if (holdsData) continue;
+
+      const used = (
+        await tx
+          .select({ n: sql<number>`count(*)` })
+          .from(s.planSlots)
+          .where(eq(s.planSlots.recipeId, oldRow.id))
+      )[0]?.n ?? 0;
+      const usedAsPart = (
+        await tx
+          .select({ n: sql<number>`count(*)` })
+          .from(s.recipeItems)
+          .where(eq(s.recipeItems.componentId, oldRow.id))
+      )[0]?.n ?? 0;
+      if (Number(used) === 0 && Number(usedAsPart) === 0) await tx.delete(s.recipes).where(eq(s.recipes.id, oldRow.id));
     }
-
-    let any = false;
-    for (const cls of registeredClasses()) {
-      if (cls.moveRecipe && (await cls.moveRecipe(db, oldRow.id, newRow.id))) any = true;
-    }
-    if (any) moved.push(oldSlug);
-
-    // Never delete a recipe that still holds someone's ratings, links or photos (for example when the new
-    // recipe already had its own and nothing could be moved).
-    let holdsData = false;
-    for (const cls of registeredClasses()) {
-      if (cls.hasRecipeData && (await cls.hasRecipeData(db, oldRow.id))) holdsData = true;
-    }
-    if (holdsData) continue;
-
-    const used = (
-      await db
-        .select({ n: sql<number>`count(*)` })
-        .from(s.planSlots)
-        .where(eq(s.planSlots.recipeId, oldRow.id))
-    )[0]?.n ?? 0;
-    const usedAsPart = (
-      await db
-        .select({ n: sql<number>`count(*)` })
-        .from(s.recipeItems)
-        .where(eq(s.recipeItems.componentId, oldRow.id))
-    )[0]?.n ?? 0;
-    if (Number(used) === 0 && Number(usedAsPart) === 0) await db.delete(s.recipes).where(eq(s.recipes.id, oldRow.id));
-  }
-  return { moved };
+    return { moved };
+  });
 }

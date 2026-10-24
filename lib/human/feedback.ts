@@ -136,24 +136,25 @@ export const feedbackClass: HumanDataClass = {
 
   /** A slug rename: moves the human fields to the new recipe row unless that row already has its own. */
   async moveRecipe(db, fromRecipeId, toRecipeId) {
-    const sources = await db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, fromRecipeId));
-    const targets = await db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, toRecipeId));
-    if (sources.length > 1 || targets.length > 1) throw new Error("Recipe feedback rename requires an explicit household scope before renaming multiple households.");
-    const from = sources[0];
-    if (!from || !isTouched(from)) return false;
-    const to = targets[0];
-    if (to && to.householdId !== from.householdId) throw new Error("Recipe feedback rename cannot move data between households.");
-    if (to && isTouched(to)) return false;
-    const at = nowIso();
-    const uid = from.uid ?? newUid();
-    await withTx(db, async (tx) => {
-      // The uid is unique, so release it on the old row before the new row takes it.
-      await tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null, uid: null, updatedAt: at }).where(and(eq(s.recipeFeedback.recipeId, fromRecipeId), owned(from.householdId)));
-      const values = { status: from.status, rating: from.rating, favourite: from.favourite, banned: from.banned, notes: from.notes, testedAt: from.testedAt, uid, createdAt: from.createdAt ?? at, updatedAt: at, createdByPersonId: from.createdByPersonId };
-      if (to) await tx.update(s.recipeFeedback).set(values).where(and(eq(s.recipeFeedback.recipeId, toRecipeId), owned(to.householdId)));
-      else await tx.insert(s.recipeFeedback).values({ householdId: from.householdId, recipeId: toRecipeId, ...values });
-      await markChanged(tx, FEEDBACK_CLASS, at);
+    return withTx(db, async (tx) => {
+      const sources = await tx.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, fromRecipeId));
+      const targets = await tx.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, toRecipeId));
+      let moved = false;
+      for (const from of sources) {
+        if (!isTouched(from)) continue;
+        const to = targets.find((row) => row.householdId === from.householdId);
+        if (to && isTouched(to)) continue;
+        const at = nowIso();
+        const uid = from.uid ?? newUid();
+        // The uid is unique, so release it on the old row before the new row takes it.
+        await tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null, uid: null, updatedAt: at }).where(and(eq(s.recipeFeedback.recipeId, fromRecipeId), owned(from.householdId)));
+        const values = { status: from.status, rating: from.rating, favourite: from.favourite, banned: from.banned, notes: from.notes, testedAt: from.testedAt, uid, createdAt: from.createdAt ?? at, updatedAt: at, createdByPersonId: from.createdByPersonId };
+        if (to) await tx.update(s.recipeFeedback).set(values).where(and(eq(s.recipeFeedback.recipeId, toRecipeId), owned(to.householdId)));
+        else await tx.insert(s.recipeFeedback).values({ householdId: from.householdId, recipeId: toRecipeId, ...values });
+        await markChanged(tx, FEEDBACK_CLASS, at, from.householdId ?? undefined);
+        moved = true;
+      }
+      return moved;
     });
-    return true;
   },
 };
