@@ -28,9 +28,11 @@ export function ctx(): Ctx {
 
 /** Requests never migrate or seed; release tooling must prepare the exact library version. */
 function ready(c: Ctx): Promise<void> {
-  const handle = c.handle ??= openDb();
   if (!c.ready) {
-    c.ready = verifyLibraryVersion(handle.db, c.data).catch((e) => {
+    c.ready = (async () => {
+      const handle = c.handle ??= await openDb();
+      await verifyLibraryVersion(handle.db, c.data);
+    })().catch((e) => {
       c.ready = undefined;
       throw e;
     });

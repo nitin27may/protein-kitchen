@@ -11,7 +11,7 @@ import { checkPhotos } from "../lib/photos/check";
  */
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const store = createFsStore(process.env.UPLOADS_DIR ?? path.join(root, "uploads"));
-const handle = openDb();
+const handle = await openDb();
 
 const report = await checkPhotos(handle.db, store);
 console.log(`${report.orphans.length} orphan file(s), ${report.missing.length} photo(s) with missing files`);

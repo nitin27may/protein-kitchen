@@ -13,9 +13,13 @@ pnpm seed       # guarded dev/test Postgres library seed (DATABASE_URL_UNPOOLED;
 pnpm test       # Vitest: nutrition maths, conversions, generator
 pnpm backup     # legacy SQLite only: explicit DB_PATH, DATABASE_URL must be unset
 pnpm db:migrate:postgres  # explicit direct dev/test connection; never runs at request/build time
+pnpm db:verify:postgres runtime  # metadata-only configuration/branch preflight; also accepts migration
+pnpm db:import:sqlite /absolute/path/to/source-copy.db  # verified local-only legacy import into an empty target
 ```
 
 Database tests use disposable PGlite fixtures. Native TCP tests additionally require `POSTGRES_TEST_URL` pointing to a loopback-only `protein_kitchen_test` database. Existing SQLite files are import/rollback sources, never the application fallback. Settings reset stays blocked until Postgres backup/restore is verified.
+
+Remote non-production runtime/migration/seed must pass live Neon project/branch/endpoint verification before opening a pool; an asserted host alone is insufficient. Supply explicit `NEON_PROJECT_ID`, `NEON_DEVELOPMENT_BRANCH_ID`, `NEON_PRODUCTION_BRANCH_ID` and a server-only `NEON_API_KEY`. Local loopback tests need none of these. No credential files are automatically loaded or rewritten by CLI commands. See README for the gate and local-only import procedure.
 
 ## Golden rules for data
 

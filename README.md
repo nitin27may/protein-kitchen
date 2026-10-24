@@ -19,7 +19,7 @@ pnpm seed
 pnpm dev                    # http://localhost:3000
 ```
 
-CLI commands do not automatically load `.env.local`. Use a trusted environment loader or export the required variables. Application traffic uses `DATABASE_URL`; migration and seed use the direct `DATABASE_URL_UNPOOLED`. For remote dev/test connections the exact host must match `DATABASE_NONPRODUCTION_HOST` (set it separately for pooled application and direct CLI hosts).
+CLI commands do not automatically load `.env.local`. Use a trusted environment loader or export the required variables. Application traffic uses `DATABASE_URL`; migration and seed use the direct `DATABASE_URL_UNPOOLED`. For remote non-production connections the exact host must match `DATABASE_NONPRODUCTION_HOST` (set it separately for pooled application and direct CLI hosts), and live Neon branch verification must pass before a database pool is created.
 
 Requests never migrate or seed. Startup checks a content fingerprint and refuses an absent/outdated library, including changes that leave row counts unchanged. Run `pnpm seed` after editing data. Existing `db/app.db` files are untouched legacy sources; household-data import is a later step, not an automatic first-run operation.
 
@@ -56,23 +56,30 @@ First run: open Profiles, add everyone who eats, then create a plan.
 | `pnpm db:generate` | Generate application Postgres migrations (same config as the explicit Postgres command) |
 | `pnpm db:generate:postgres` | Generate application Postgres migrations without connecting to a database |
 | `pnpm db:migrate:postgres` | Apply Postgres migrations to an explicitly configured development/test database only |
+| `pnpm db:verify:postgres runtime` / `migration` | Verify runtime or direct CLI configuration and live remote branch mapping without opening Postgres or changing credentials |
 | `pnpm db:import:sqlite /absolute/path/to/source-copy.db` | Read-only legacy snapshot, atomic import and checksum verification into an empty loopback dev/test Postgres database |
 
 ## CI and deployment
 
 The [GitHub Actions workflow](https://github.com/nitin27may/protein-kitchen/actions/workflows/ci.yml) runs on every branch push and pull request, and supports **Run workflow** for a branch already on GitHub. It checks types, validates data, runs tests with coverage against isolated PGlite fixtures and a disposable native Postgres 17 service, builds without database access, and scans for secrets. Test results and coverage reports are available as `test-results` and `coverage` artifacts for 14 days. Local, unpushed changes do not start a GitHub run.
 
-Coverage includes untested application files rather than reporting only imported modules. Atomic plan persistence has a 100% statement/branch/function/line gate. SQLite snapshot/restore requires at least 95% statement/branch coverage and 100% line/function coverage; the import-target guard requires 100% across all four metrics. These are not claims of 100% app-wide coverage. Native TCP tests run when `POSTGRES_TEST_URL` names a loopback-only database called `protein_kitchen_test`; they migrate and clear that disposable database. Never point them at household data. UI interaction and real-device checks remain separate from unit coverage.
+Coverage includes untested application files rather than reporting only imported modules. Atomic plan persistence, live branch verification, verified pool creation, application readiness and the import-target guard have 100% statement/branch/function/line gates. SQLite snapshot/restore requires at least 95% statement/branch coverage and 100% line/function coverage. These are not claims of 100% app-wide coverage. Native TCP tests run when `POSTGRES_TEST_URL` names a loopback-only database called `protein_kitchen_test`; they migrate and clear that disposable database. Never point them at household data. UI interaction and real-device checks remain separate from unit coverage.
 
 Neon and Vercel deployment are not implemented yet. Follow [the roadmap](docs/roadmap.md) and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). The Postgres app still has no login or authorization and must not be exposed publicly. Safe cloud database selection/import, authentication, authorization, cloud photo storage and recoverable backups precede the Vercel cutover. Settings reset is deliberately blocked until the Postgres backup/restore prerequisite is complete.
 
 The application schema lives in `lib/db/postgres/`, re-exported by `lib/db/schema.ts`, with Drizzle history in `db/postgres-migrations/`; never apply the SQLite migration history to Postgres. Tests check parity of the 33 legacy tables with `lib/db/sqlite-schema.ts`; the additional `library_state` table records the seeded content version. Login and household tables will be added with the identity implementation.
 
-For a **reviewed, isolated dev/test database**, supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification. Do not point it at an existing production endpoint and label it development: the host allowlist is an explicit operator assertion, not an API lookup of the Neon branch.
+For a **reviewed, isolated dev/test database**, supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification.
+
+Remote non-production application startup, migration and seed additionally require `NEON_PROJECT_ID`, `NEON_DEVELOPMENT_BRANCH_ID`, `NEON_PRODUCTION_BRANCH_ID` and a server-only `NEON_API_KEY` with access to the project's metadata. The API key is used only for read-only GETs to the fixed Neon control-plane origin, with timeouts, no redirects and no response-body logging. Never expose it through `NEXT_PUBLIC_` or provide it to client components; use the least-privileged key supported by your account. Existing CLI OAuth login is not read by the application.
+
+The live check rejects the production id, default/primary/protected branches, production/main names, non-ready branches, mismatched project/branch ids and unknown/read-only endpoints. Both the exact direct host and its derived pooler host must map to one read-write endpoint of the configured branch. API errors, missing metadata and unavailable credentials fail closed before pool creation. Remote non-Neon development targets are intentionally blocked until another provider-verification mechanism exists. Local loopback targets do not require Neon credentials; production remains outside this development-only control-plane check.
+
+Application readiness shares one in-flight verification and pool across concurrent requests and retries after failure. A successful branch verification lasts for that process's pool lifetime, not each request; restart the process after changing branch identity/endpoint configuration. It does not authorize public exposure or replace database permissions. `pnpm db:verify:postgres runtime` or `migration` performs the same preflight without opening Postgres. Neither command writes `.env.local` or `.neon`. Creating the isolated development branch and the actual cloud rehearsal still need approval.
 
 ### Local SQLite import rehearsal
 
-Use synthetic data only for now. The importer refuses **all remote hosts**, even a host labelled development; API-verified Neon branch selection and final household cutover approval are still pending. It requires the explicit direct `DATABASE_URL_UNPOOLED` and `DATABASE_ENV=development|test`; it does not load local credentials.
+Use synthetic data only for now. The importer refuses **all remote hosts**, even a host labelled development; an approved isolated Neon branch/rehearsal and final household cutover approval are still pending. The new runtime/migration metadata guard does not by itself enable remote imports. The importer requires the explicit direct `DATABASE_URL_UNPOOLED` and `DATABASE_ENV=development|test`; it does not load local credentials.
 
 1. Prepare a private copy of the source database using the legacy backup procedure, never a file-only copy of a live WAL database. The source must have the current legacy SQLite schema. Missing/unknown tables or columns are errors; if necessary migrate another private copy, not the original.
 2. Create a fresh disposable local Postgres database and apply `pnpm db:migrate:postgres`. **Do not seed first**: all application tables, including `library_state`, must be empty. The command never truncates or overwrites an existing destination.
@@ -93,8 +100,12 @@ Set in `.env.local` (git-ignored). Never commit it.
 | `APP_TZ` | Time zone for plans and reminders. Default `America/Toronto` |
 | `DATABASE_URL` | Pooled application Postgres connection; mandatory, with no SQLite fallback |
 | `DATABASE_ENV` | Explicit database environment; must match `NODE_ENV` or `VERCEL_ENV` |
-| `DATABASE_NONPRODUCTION_HOST` | Reviewed exact remote dev/test endpoint host; not automatic Neon branch verification |
+| `DATABASE_NONPRODUCTION_HOST` | Exact remote non-production endpoint host; additionally checked against live Neon metadata |
 | `DATABASE_URL_UNPOOLED` | Direct dev/test connection for explicit migrations and seed |
+| `NEON_PROJECT_ID` | Explicit project id for remote non-production metadata verification |
+| `NEON_DEVELOPMENT_BRANCH_ID` | Explicit non-default, non-primary, unprotected development branch id |
+| `NEON_PRODUCTION_BRANCH_ID` | Production branch id that non-production traffic must never select |
+| `NEON_API_KEY` | Server-only credential for live read-only Neon metadata verification; never exposed to the browser |
 | `DB_PATH` | Legacy SQLite source backup only; not used by the application |
 
 Reminders run on a 1-minute timer started in `instrumentation.ts`, and only when both VAPID keys are set. On iPhone, install the app to the Home Screen first, otherwise push is not available.

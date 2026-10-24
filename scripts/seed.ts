@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadData } from "../lib/data/load";
-import { openPostgres } from "../lib/db/postgres/client";
+import { openVerifiedPostgres } from "../lib/db/postgres/verified-client";
 import { postgresMigrationTarget } from "../lib/db/postgres/migration-target";
 import { seedDatabase } from "../lib/db/seed";
 
@@ -14,7 +14,7 @@ if (data.issues.length) {
   process.exit(1);
 }
 
-const handle = openPostgres(target);
+const handle = await openVerifiedPostgres(target);
 let report;
 try {
   report = await seedDatabase(handle.db, data);
