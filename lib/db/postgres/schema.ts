@@ -81,7 +81,7 @@ export const households = pgTable("households", {
   updatedAt: authTime("updated_at").defaultNow().notNull(),
 }, (t) => [check("households_name_check", sql`length(trim(${t.name})) between 1 and 100`)]);
 
-// Nullable only during the ownership expansion; admission remains closed until scoped writers replace it.
+// Null ownership is quarantined operator staging, never adopted by self-service household creation.
 const householdId = () => text("household_id").references(() => households.id, { onDelete: "restrict" });
 
 export const householdMembers = pgTable("household_members", {

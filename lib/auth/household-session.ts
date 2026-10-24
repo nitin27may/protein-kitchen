@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, gt, sql } from "drizzle-orm";
+import { z } from "zod";
 import type { Db } from "../db/client";
 import { authSessions, authUsers, householdMembers, households } from "../db/schema";
 import { withTx, type Tx } from "../db/tx";
@@ -11,9 +13,9 @@ export interface SessionIdentity {
   sessionId: string;
 }
 
-async function checkedSession(tx: Tx, identity: SessionIdentity, lock: "share" | "update") {
+async function checkedSession(tx: Tx, identity: SessionIdentity, lock: "share" | "update", userLock: "share" | "update" = "share") {
   const [user] = await tx.select({ id: authUsers.id }).from(authUsers)
-    .where(and(eq(authUsers.id, identity.userId), eq(authUsers.emailVerified, true))).for("share");
+    .where(and(eq(authUsers.id, identity.userId), eq(authUsers.emailVerified, true))).for(userLock);
   if (!user) throw new HouseholdAccessError("This household is not available to your verified account.");
   const [session] = await tx.select().from(authSessions).where(and(
     eq(authSessions.id, identity.sessionId), eq(authSessions.userId, identity.userId), gt(authSessions.expiresAt, sql`now()`),
@@ -64,6 +66,27 @@ export async function selectSessionHousehold(db: Db, identity: SessionIdentity, 
         updatedAt: new Date(),
       }).where(eq(authSessions.id, session.id));
     }
+
     return { householdId: access.householdId, profileComplete: access.personId !== null };
+  });
+}
+
+/** Admission primitive only: quarantined legacy data is never adopted by a new household. */
+export async function createSessionHousehold(db: Db, identity: SessionIdentity, name: string) {
+  const householdName = z.string().trim().min(1, "Enter a household name.").max(100, "Use at most 100 characters.").parse(name);
+  return withTx(db, async (tx) => {
+    const session = await checkedSession(tx, identity, "update", "update");
+    const [existing] = await tx.select({ userId: householdMembers.userId }).from(householdMembers)
+      .where(eq(householdMembers.userId, identity.userId)).limit(1);
+    if (existing) throw new HouseholdAccessError("Your account already has a household membership. Choose an available household to continue.");
+    const householdId = randomUUID();
+    await tx.insert(households).values({ id: householdId, name: householdName });
+    await tx.insert(householdMembers).values({ householdId, userId: identity.userId, role: "owner" });
+    await tx.update(authSessions).set({
+      activeHouseholdId: householdId,
+      householdSelectionVersion: sql`${authSessions.householdSelectionVersion} + 1`,
+      updatedAt: new Date(),
+    }).where(eq(authSessions.id, session.id));
+    return { householdId, profileComplete: false as const };
   });
 }

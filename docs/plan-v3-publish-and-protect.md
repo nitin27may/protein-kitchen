@@ -337,6 +337,51 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H1/H3 foundation: isolated household creation and legacy quarantine
+
+**Local acceptance:** a new server-only session primitive validates the name,
+locks the verified account before the live exact session, refuses every existing
+membership and atomically creates an empty household/owner membership/selection.
+Null legacy rows remain quarantined; no profile, plan, photo, feedback, bootstrap
+or other-session row is adopted or changed. Unit tests cover invalid identity,
+names, existing/quarantined/plural membership, failed writes and selected-profile
+completion. Native twelve-way creation across different sessions of one account
+produces exactly one household, leaves losing sessions unchanged and permits a
+separate account's independent household. All **1,949 tests / 95 files**,
+**33 retained browser journeys**, types/build and existing critical gates pass;
+session service remains **100%** on all metrics; overall statements **72.61%**.
+No public action/UI exposes creation and signup remains gated pending the
+email-link/association stage.
+
+Decision: retain nullable ownership as an explicit operator-staging/quarantine
+namespace, not as an implicit first user's household. Existing verified request
+resolvers exclude it; legacy binding remains an exclusive empty-target operator
+import operation. Do not rewrite historical/null human rows or use "first
+household" adoption during self-service creation. A future physical NOT NULL
+contraction would require migrating operator staging/import contracts first.
+
+Implement the transactional creation primitive before exposing admission. It
+takes an exact server-derived provider SessionIdentity and a validated household
+name, locks/rechecks the verified account and live database-clock session, and
+serializes creations for the same account across sessions. Refuse any existing
+membership (including quarantined/null); create a fresh household with only that
+account's owner membership and select it in that session with a monotonic version.
+Do not create/move a profile, claim bootstrap state, copy shared human data,
+touch other sessions or implicitly accept pending associations. Profile setup
+continues through the already selected-household writer. Other accounts may
+independently create their own household. Signup and invitation gates remain
+unchanged and this primitive has no action/UI until the email-admission stage.
+
+Acceptance: missing/unverified/wrong-owner/expired/deleted sessions, invalid names,
+existing/null/multiple memberships, exact source-row and other-session
+preservation, atomic rollback on membership/session-write failure, successful
+profile completion in the fresh selected household and no adoption of quarantined
+people/plans/feedback/photos. Native concurrent attempts from multiple sessions
+of one account produce exactly one household; independent accounts remain
+isolated. Preserve permanent 100% session-service gates. Run focused tests before
+full/native coverage, retained browser compatibility, types and build. No remote
+database operation, open signup, cloud credential or deployment is authorized.
+
 ### H2 slice: household-preserving operator recipe renames
 
 **Local acceptance:** shared feedback moves only to a target in the same

@@ -39,7 +39,7 @@ import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
-import { resolveSessionHouseholdAccess, selectSessionHousehold } from "../lib/auth/household-session";
+import { createSessionHousehold, resolveSessionHouseholdAccess, selectSessionHousehold } from "../lib/auth/household-session";
 import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
 import { writeLink } from "../lib/human/links";
 import { approveCandidate, writeUploadedPhoto, type PhotoWriteScope } from "../lib/human/photos";
@@ -63,6 +63,38 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it("serializes household creation across one account's sessions without adopting legacy rows or blocking independent accounts", async () => {
+    await handle.db.insert(s.authUsers).values(["cook", "other"].map((id) => ({
+      id, name: "Synthetic", email: `${id}@example.test`, emailVerified: true,
+    })));
+    const ids = Array.from({ length: 12 }, (_, i) => `session-${i}`);
+    await handle.db.insert(s.authSessions).values([...ids, "other"].map((id) => ({
+      id, userId: id === "other" ? "other" : "cook", token: `synthetic-${id}`,
+      updatedAt: new Date(), expiresAt: new Date(Date.now() + 60_000),
+    })));
+    const [quarantined] = await handle.db.insert(s.people).values({
+      name: "Unclaimed synthetic profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning();
+    const results = await Promise.allSettled(ids.map((sessionId) =>
+      createSessionHousehold(handle.db, { userId: "cook", sessionId }, "New shared home")));
+    const success = results.filter((result) => result.status === "fulfilled");
+    expect(success).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(11);
+    for (const result of results) if (result.status === "rejected") expect(result.reason.message).toContain("already has");
+    const [household] = await handle.db.select().from(s.households);
+    expect(await handle.db.select().from(s.householdMembers)).toMatchObject([
+      { householdId: household!.id, userId: "cook", role: "owner", personId: null },
+    ]);
+    const sessions = await handle.db.select().from(s.authSessions).where(eq(s.authSessions.userId, "cook"));
+    expect(sessions.filter((session) => session.activeHouseholdId === household!.id)).toHaveLength(1);
+    expect(sessions.filter((session) => session.householdSelectionVersion === 0)).toHaveLength(11);
+    const independent = await createSessionHousehold(handle.db, { userId: "other", sessionId: "other" }, "Other home");
+    expect(independent.householdId).not.toBe(household!.id);
+    expect(await handle.db.select().from(s.households)).toHaveLength(2);
+    expect(await handle.db.select().from(s.people)).toEqual([quarantined]);
+    expect(await handle.db.select().from(s.householdBootstrap)).toEqual([]);
+  });
 
   it("rolls back operator recipe renames across household human classes on native Postgres", async () => {
     await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);

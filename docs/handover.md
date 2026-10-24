@@ -10,6 +10,17 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest creation/quarantine foundation:** session-verified household creation is
+implemented as an unexposed server primitive. It creates an empty household and
+owner membership atomically, selects only that session, and refuses any existing
+membership. Null-owned data stays quarantined for operator staging; signup never
+claims it. Native twelve-way same-account creation yields one household and
+preserves other sessions. **Acceptance: 1,949 tests / 95 files, 33 browser journeys,
+types/build and critical gates pass**, session service 100%, overall statements
+72.61%. Email-link/code-free signup, association acceptance and creation UI are
+next; admission remains gated. Physical NOT NULL contraction is not applied
+because the supported legacy staging/import format still uses explicit nulls.
+
 **Latest operator recipe renames:** feedback conflicts, link/photo ordering and
 cover handling stay per household, including the null legacy namespace.
 Personal choices remain per person; moved classes mark their actual household
