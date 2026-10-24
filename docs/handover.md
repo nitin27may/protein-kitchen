@@ -10,6 +10,21 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest household sync:** migration `0015` preserves existing markers and
+replaces class-only identity with null-safe household/class uniqueness. Shared
+human writers mark their household atomically; snapshots, status and receipts
+select the same namespace. Runtime configuration requires a server-only
+`STATE_SYNC_HOUSEHOLD_ID`, binds it into target/job identity, and refuses foreign
+job adoption. Owner Settings/actions resolve verified membership; the scheduler
+uses its separate credential and the same pin. Unscoped snapshots now select
+only null-owned legacy rows. Whole-instance backup compares all households'
+photo revisions. **Acceptance: 1,869 tests / 93 files, all 29 retained browser
+journeys, types and build pass**, with existing 100% sync/backup gates intact
+and 72.07% overall statements. Retained browser checks foreign-owner action and
+Settings denial; synthetic signed publication excludes foreign data.
+No live target or credentials changed. Operator import/reset/recovery and
+remaining schema/admission/deployment still need completion.
+
 **Latest shared export foundation:** an explicit household context now filters
 feedback, links, saved views, photos/decisions and photo blob references before
 serialization or legacy uid/timestamp stamping. Unsupported scoped classes fail

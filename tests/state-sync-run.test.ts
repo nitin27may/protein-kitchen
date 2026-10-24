@@ -12,6 +12,7 @@ import { reconcileState } from "../lib/sync/publish";
 import { readStateSyncStatus } from "../lib/sync/snapshot";
 import { fixtureConfiguration as config, fixtureTime, githubFixture } from "./helpers/github-state";
 import { openDb, type DbHandle } from "./helpers/db";
+import { resolveHouseholdAccess } from "../lib/auth/household-access";
 
 const fixture = githubFixture();
 const targetKey = stateTargetKey(config);
@@ -30,6 +31,51 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("persisted private-state run coordination", () => {
+  it("publishes and acknowledges only the pinned household, persists ownership and refuses target adoption", async () => {
+    await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    for (const householdId of ["a", "b", undefined]) {
+      await writeSavedView(h.db, { householdId, list: "recipes", query: `only-${householdId}-sentinel` });
+    }
+    const key = stateTargetKey(config, "a");
+    const id = randomUUID();
+    const scopedRun = () => runStateSync(h.db, key, ["saved-views"], { repository, store }, id, { householdId: "a" });
+    expect(await scopedRun()).toMatchObject({ state: "success" });
+    expect(await job()).toMatchObject({ householdId: "a", acknowledged: { "saved-views": 1 } });
+    const commit = fixture.commits.get(fixture.head)!;
+    const files = fixture.trees.get(commit.tree.sha)!.filter((entry) => entry.path.startsWith("protein-kitchen/saved-views/"));
+    expect(files).toHaveLength(1);
+    expect(fixture.blobs.get(files[0]!.sha)!.toString()).toContain("only-a-sentinel");
+    expect(await readStateSyncStatus(h.db, ["saved-views"], "a")).toMatchObject([{ pending: false }]);
+    expect(await readStateSyncStatus(h.db, ["saved-views"], "b")).toMatchObject([{ pending: true }]);
+    expect(await readStateSyncStatus(h.db, ["saved-views"])).toMatchObject([{ pending: true }]);
+    expect(await readStateRunStatus(h.db, key, "a")).toMatchObject({ status: "success" });
+    expect(await readStateRunStatus(h.db, key, "b")).toMatchObject({ status: "idle" });
+    expect(await readStateRunStatus(h.db, key)).toMatchObject({ status: "idle" });
+    fixture.requests.length = 0;
+    expect(await scopedRun()).toEqual({ state: "success", replayed: true });
+    await expect(runStateSync(h.db, key, ["saved-views"], { repository, store }, randomUUID(), { householdId: "b" })).rejects.toThrow("different household");
+    await expect(runStateSync(h.db, key, ["saved-views"], { repository, store })).rejects.toThrow("different household");
+    expect(fixture.requests).toEqual([]);
+  });
+
+  it("rechecks interactive owner membership and refuses missing household configuration before transport", async () => {
+    await expect(runStateSync(h.db, targetKey, ["saved-views"], { repository, store }, randomUUID(), { householdId: "missing" })).rejects.toThrow("unavailable");
+    await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    await h.db.insert(s.people).values({ id: 1, householdId: "a", name: "Fixture", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [] });
+    await h.db.insert(s.authUsers).values({ id: "owner", name: "Fixture", email: "fixture@example.test", emailVerified: true });
+    await h.db.insert(s.householdMembers).values({ householdId: "a", userId: "owner", personId: 1, role: "member" });
+    const member = await resolveHouseholdAccess(h.db, "owner", "a");
+    await expect(runStateSync(h.db, targetKey, ["saved-views"], { repository, store }, randomUUID(), { householdId: "a", access: member })).rejects.toThrow("owner access");
+    await h.db.update(s.householdMembers).set({ role: "owner" });
+    const owner = await resolveHouseholdAccess(h.db, "owner", "a");
+    await expect(runStateSync(h.db, targetKey, ["saved-views"], { repository, store }, randomUUID(), { householdId: "b", access: owner })).rejects.toThrow("owner access");
+    expect(await runStateSync(h.db, targetKey, ["saved-views"], { repository, store }, randomUUID(), { householdId: "a", access: owner })).toMatchObject({ state: "success" });
+    await h.db.delete(s.householdMembers);
+    const calls = fixture.requests.length;
+    await expect(runStateSync(h.db, targetKey, ["saved-views"], { repository, store }, randomUUID(), { householdId: "a", access: owner })).rejects.toThrow("not available");
+    expect(fixture.requests).toHaveLength(calls);
+  });
+
   it("records authoritative success, target receipts and a checkpoint, then replays without any remote work", async () => {
     const request = randomUUID();
     expect(await readStateRunStatus(h.db, targetKey)).toMatchObject({ status: "idle", active: false, lastSuccessAt: null });

@@ -19,8 +19,9 @@ export interface EncryptedBackupOptions {
 async function photoReceipt(db: Db) {
   return db.transaction(async (tx) => {
     const photos = await tx.select({ uid: s.photos.uid, sha256: s.photos.sha256 }).from(s.photos).orderBy(s.photos.uid);
-    const [marker] = await tx.select({ revision: s.syncState.revision }).from(s.syncState).where(eq(s.syncState.dataClass, "photos"));
-    return { photos, revision: marker?.revision ?? 0 };
+    const markers = await tx.select({ householdId: s.syncState.householdId, revision: s.syncState.revision })
+      .from(s.syncState).where(eq(s.syncState.dataClass, "photos"));
+    return { photos, revision: JSON.stringify(markers.sort((a, b) => (a.householdId ?? "").localeCompare(b.householdId ?? ""))) };
   }, { isolationLevel: "repeatable read", accessMode: "read only" });
 }
 

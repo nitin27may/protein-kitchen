@@ -29,7 +29,7 @@ export async function exportHumanData(db: Db, dataClasses?: readonly string[], s
     if (!cls) throw new Error(`Unknown human data class "${name}".`);
     return cls;
   }).sort((a, b) => a.name < b.name ? -1 : 1) : all;
-  if (scope && (!scope.householdId || !dataClasses || selected.some((cls) => !cls.householdScoped))) {
+  if (scope && (scope.householdId === "" || !dataClasses || selected.some((cls) => !cls.householdScoped))) {
     throw new Error("Household exports require an explicit household and supported shared data classes.");
   }
   const files: Record<string, string> = {};

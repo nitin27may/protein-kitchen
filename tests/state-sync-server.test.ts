@@ -10,14 +10,18 @@ import * as configuration from "../lib/sync/config";
 import { createMemoryStore } from "../lib/blob/memory";
 import { fixtureConfiguration as config } from "./helpers/github-state";
 import { openDb } from "./helpers/db";
+import * as s from "../lib/db/schema";
+import { requireMember } from "../lib/auth/access";
+import { eq } from "drizzle-orm";
 
+vi.mock("../lib/auth/access", () => ({ requireMember: vi.fn() }));
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
 vi.mock("../lib/blob", () => ({ getBlobStore: vi.fn() }));
 vi.mock("../lib/sync/github", async (actual) => ({ ...await actual<typeof import("../lib/sync/github")>(), openPrivateStateRepository: vi.fn() }));
 vi.mock("../lib/sync/run", async (actual) => ({ ...await actual<typeof import("../lib/sync/run")>(), runStateSync: vi.fn(), readStateRunStatus: vi.fn() }));
 vi.mock("../lib/sync/snapshot", async (actual) => ({ ...await actual<typeof import("../lib/sync/snapshot")>(), readStateSyncStatus: vi.fn() }));
 const env = {
-  STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views",
+  STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views", STATE_SYNC_HOUSEHOLD_ID: "a",
   STATE_GITHUB_APP_ID: String(config.appId), STATE_GITHUB_INSTALLATION_ID: String(config.installationId),
   STATE_GITHUB_REPOSITORY_ID: String(config.repositoryId), STATE_GITHUB_OWNER: config.owner,
   STATE_GITHUB_REPOSITORY: config.repository, STATE_GITHUB_BRANCH: config.branch, STATE_GITHUB_PRIVATE_KEY: config.privateKey,
@@ -26,7 +30,16 @@ const env = {
 };
 beforeEach(() => {
   vi.resetAllMocks(); for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "owner", role: "owner", personId: 1 });
 });
+async function householdDb() {
+  const { db } = await openDb();
+  await db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+  await db.insert(s.people).values({ id: 1, householdId: "a", name: "Fixture", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [] });
+  await db.insert(s.authUsers).values({ id: "owner", name: "Fixture", email: "fixture@example.test", emailVerified: true });
+  await db.insert(s.householdMembers).values({ householdId: "a", userId: "owner", personId: 1, role: "owner" });
+  return db;
+}
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 describe("server-only wiring and safe owner status", () => {
   it("does not disguise an unexpected configuration-loader failure as a disabled instance", async () => {
@@ -45,7 +58,7 @@ describe("server-only wiring and safe owner status", () => {
     expect(openPrivateStateRepository).not.toHaveBeenCalled();
   });
   it("captures only target-local pending status, never treating another target's acknowledgement as success", async () => {
-    vi.mocked(getDb).mockResolvedValue((await openDb()).db);
+    vi.mocked(getDb).mockResolvedValue(await householdDb());
     vi.mocked(readStateRunStatus).mockResolvedValue({ status: "success", active: false, lastAttemptAt: null, lastSuccessAt: null, errorCode: null, acknowledged: { "saved-views": 1 } });
     vi.mocked(readStateSyncStatus).mockResolvedValue([
       { dataClass: "saved-views", revision: 3, exportedRevision: 3, changedAt: null, pending: false },
@@ -57,7 +70,7 @@ describe("server-only wiring and safe owner status", () => {
     ] });
   });
   it("lazily opens the exact repository and photo store only inside the acquired run", async () => {
-    const db = (await openDb()).db;
+    const db = await householdDb();
     const store = createMemoryStore();
     await store.put("synthetic.webp", Buffer.from("synthetic"), "image/webp");
     vi.mocked(getDb).mockResolvedValue(db);
@@ -71,6 +84,10 @@ describe("server-only wiring and safe owner status", () => {
     });
     expect(await configuredStateSync("synthetic-id")).toMatchObject({ state: "success" });
     expect(openPrivateStateRepository).toHaveBeenCalledWith(config, fetch);
+    expect(runStateSync).toHaveBeenLastCalledWith(db, expect.any(String), ["saved-views"], expect.any(Object), "synthetic-id", { householdId: "a", access: undefined });
+    vi.mocked(getBlobStore).mockClear();
+    await configuredStateSync("synthetic-id", true);
+    expect(runStateSync).toHaveBeenLastCalledWith(db, expect.any(String), ["saved-views"], expect.any(Object), "synthetic-id", { householdId: "a", access: expect.objectContaining({ householdId: "a", role: "owner" }) });
   });
   it("validates the local synthetic boundary before opening the database", async () => {
     vi.stubEnv("STATE_SYNC_TEST_GITHUB_URL", "http://127.0.0.1:3456");
@@ -78,12 +95,33 @@ describe("server-only wiring and safe owner status", () => {
     await expect(configuredStateSync()).rejects.toThrow("local browser");
     expect(getDb).not.toHaveBeenCalled();
     vi.stubEnv("VERCEL", "");
-    vi.mocked(getDb).mockResolvedValue((await openDb()).db);
+    vi.mocked(getDb).mockResolvedValue(await householdDb());
     vi.mocked(runStateSync).mockImplementation(async (_db, _target, _classes, dependencies) => {
       await dependencies.repository(); return { state: "error", replayed: false };
     });
     await configuredStateSync();
     expect(openPrivateStateRepository).toHaveBeenCalledWith(config, expect.any(Function));
+  });
+  it("refuses foreign owners and stale membership before exposing status or opening transport", async () => {
+    const db = await householdDb();
+    vi.mocked(getDb).mockResolvedValue(db);
+    vi.stubEnv("STATE_SYNC_HOUSEHOLD_ID", "b");
+    expect(await stateSyncSettings()).toMatchObject({ enabled: false, reason: expect.stringContaining("this household") });
+    await expect(configuredStateSync(undefined, true)).rejects.toThrow("this household");
+    expect(readStateRunStatus).not.toHaveBeenCalled();
+    expect(readStateSyncStatus).not.toHaveBeenCalled();
+    expect(runStateSync).not.toHaveBeenCalled();
+    expect(openPrivateStateRepository).not.toHaveBeenCalled();
+    vi.stubEnv("STATE_SYNC_HOUSEHOLD_ID", "a");
+    await db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "owner"));
+    await expect(configuredStateSync(undefined, true)).rejects.toThrow("this household");
+    await db.delete(s.householdMembers);
+    expect(await stateSyncSettings()).toMatchObject({ enabled: false });
+  });
+  it("propagates unexpected membership infrastructure failures rather than reporting disabled configuration", async () => {
+    vi.mocked(getDb).mockResolvedValue(await householdDb());
+    vi.mocked(requireMember).mockRejectedValue(new Error("Database unavailable"));
+    await expect(stateSyncSettings()).rejects.toThrow("Database unavailable");
   });
 });
 

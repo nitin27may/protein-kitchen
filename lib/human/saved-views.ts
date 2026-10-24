@@ -35,7 +35,7 @@ export async function writeSavedView(db: Db, input: SavedViewInput): Promise<{ u
     } else {
       await tx.insert(s.savedViews).values({ householdId: input.householdId ?? null, list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null });
     }
-    await markChanged(tx, SAVED_VIEWS_CLASS, at);
+    await markChanged(tx, SAVED_VIEWS_CLASS, at, input.householdId);
   });
   return { uid };
 }
@@ -51,7 +51,7 @@ export async function clearSavedView(db: Db, list: string, householdId?: string)
   if (!existing) return;
   await withTx(db, async (tx) => {
     await tx.delete(s.savedViews).where(predicate);
-    await markChanged(tx, SAVED_VIEWS_CLASS, at);
+    await markChanged(tx, SAVED_VIEWS_CLASS, at, householdId);
   });
 }
 
@@ -73,7 +73,9 @@ export const savedViewsClass: HumanDataClass = {
   prefix: PREFIX,
 
   async exportFiles(db, scope) {
-    const rows = await db.select().from(s.savedViews).where(scope ? eq(s.savedViews.householdId, scope.householdId) : undefined);
+    const rows = await db.select().from(s.savedViews).where(scope
+      ? scope.householdId === null ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, scope.householdId)
+      : undefined);
     const files: Record<string, string> = {};
     for (const r of rows) {
       const at = nowIso();

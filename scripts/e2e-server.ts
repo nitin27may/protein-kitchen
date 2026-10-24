@@ -49,6 +49,7 @@ const env: NodeJS.ProcessEnv = {
   BETTER_AUTH_URL: "http://127.0.0.1:3112", BETTER_AUTH_SECRET: randomBytes(32).toString("base64url"),
   HOUSEHOLD_BOOTSTRAP_SECRET: "synthetic-browser-bootstrap-key-for-tests", AUTH_TEST_MAILBOX: "1", RESEND_API_KEY: "",
   BLOB_STORE: "filesystem", STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views",
+  STATE_SYNC_HOUSEHOLD_ID: "00000000-0000-4000-8000-000000000001",
   STATE_GITHUB_APP_ID: String(state.appId), STATE_GITHUB_INSTALLATION_ID: String(state.installationId),
   STATE_GITHUB_REPOSITORY_ID: String(state.repositoryId), STATE_GITHUB_OWNER: state.owner,
   STATE_GITHUB_REPOSITORY: state.repository, STATE_GITHUB_BRANCH: state.branch, STATE_GITHUB_PRIVATE_KEY: state.privateKey,

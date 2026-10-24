@@ -29,15 +29,15 @@ export const sha256 = (text: string): string => createHash("sha256").update(text
  * Marks a data class as changed since its last export. Called inside the same transaction as the write.
  * Awaited in the same Postgres transaction as the corresponding human-owned write.
  */
-export async function markChanged(tx: Tx, dataClass: string, at: string): Promise<void> {
-  await tx.insert(s.syncState).values({ dataClass, changedAt: at }).onConflictDoUpdate({
-    target: s.syncState.dataClass, set: { changedAt: at, revision: sql`${s.syncState.revision} + 1` },
+export async function markChanged(tx: Tx, dataClass: string, at: string, householdId?: string): Promise<void> {
+  await tx.insert(s.syncState).values({ householdId: householdId ?? null, dataClass, changedAt: at }).onConflictDoUpdate({
+    target: [s.syncState.householdId, s.syncState.dataClass], set: { changedAt: at, revision: sql`${s.syncState.revision} + 1` },
   });
 }
 
 /** Records a local export timestamp; it does not acknowledge a remote state-sync revision. */
 export async function markExported(db: Db, dataClasses: string[], at: string = nowIso()): Promise<void> {
   for (const dataClass of dataClasses) {
-    await db.insert(s.syncState).values({ dataClass, changedAt: at, exportedAt: at }).onConflictDoUpdate({ target: s.syncState.dataClass, set: { exportedAt: at } });
+    await db.insert(s.syncState).values({ dataClass, changedAt: at, exportedAt: at }).onConflictDoUpdate({ target: [s.syncState.householdId, s.syncState.dataClass], set: { exportedAt: at } });
   }
 }

@@ -71,6 +71,16 @@ Coverage includes untested application files rather than reporting only imported
 
 Neon and Vercel deployment are not complete. Follow [the roadmap](docs/roadmap.md) and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). Login/onboarding, household authorization, private photo adapters, state sync, encrypted recovery/vault tooling and durable reminder scheduling are implemented and verified locally. Approved live storage/state/vault/provider acceptance, protected hosting and cutover remain separate gates; do not expose the app publicly based on local success. Settings reset stays blocked until approved off-machine recovery and its pre-reset failure gate are complete.
 
+Selective private state sync requires an explicit server-only
+`STATE_SYNC_HOUSEHOLD_ID` alongside the App target and `STATE_SYNC_CLASSES`.
+Only a verified owner of that household can view its status or invoke Sync now;
+the separately authenticated scheduler uses the same pin. Other households see
+sync as unavailable, not deployment-wide status. Household revisions and receipts
+are independent. Changing the pin changes target identity and does not adopt
+old checkpoints or authorize overwriting existing remote files; reconcile the
+approved target through the conflict runbook before retrying. Leave sync disabled
+until target and content consent are approved.
+
 The application schema lives in `lib/db/postgres/`, re-exported by `lib/db/schema.ts`, with Drizzle history in `db/postgres-migrations/`; never apply the SQLite migration history to Postgres. Tests check parity of the 33 legacy tables with `lib/db/sqlite-schema.ts`, alongside additive library-readiness, identity/household, sync and reminder tables.
 
 ### Read-only protected-preview preflight

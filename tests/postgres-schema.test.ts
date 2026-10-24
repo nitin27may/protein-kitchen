@@ -30,7 +30,7 @@ describe("Postgres baseline parity", () => {
       const target = pgConfig(pg[name]);
       expect(target.name, name).toBe(source.name);
       const columns = (config: typeof source | typeof target) => config.columns.map((c) => ({
-        name: c.name, notNull: c.notNull, primary: name === "recipeFeedback" && c.name === "recipe_id" ? false : c.primary, unique: c.isUnique,
+        name: c.name, notNull: c.notNull, primary: (name === "recipeFeedback" && c.name === "recipe_id") || (name === "syncState" && c.name === "data_class") ? false : c.primary, unique: c.isUnique,
         enum: c.enumValues, default: c.default,
       })).sort((a, b) => a.name.localeCompare(b.name));
       expect(columns(target).filter((c) => (name !== "syncState" || !["revision", "exported_revision"].includes(c.name)) &&
@@ -72,7 +72,13 @@ describe("Postgres baseline parity", () => {
       const uniqueConstraints = (config: typeof source | typeof target) => config.uniqueConstraints.map((key) => ({
         columns: key.columns.map((c) => c.name),
       }));
-      expect(uniqueConstraints(target).filter((key) => !["recipeFeedback", "photoDecisions"].includes(name) || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
+      expect(uniqueConstraints(target).filter((key) => !["recipeFeedback", "photoDecisions", "syncState"].includes(name) || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
+      if (name === "syncState") {
+        expect(target.uniqueConstraints).toMatchObject([{
+          name: "sync_state_household_class_uq", nullsNotDistinct: true,
+          columns: [{ name: "household_id" }, { name: "data_class" }],
+        }]);
+      }
       if (name === "recipeFeedback") {
         expect(target.uniqueConstraints).toMatchObject([{
           name: "recipe_feedback_household_recipe_uq", nullsNotDistinct: true,
@@ -105,6 +111,26 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("preserves revision receipts and permits one class marker per household including the null namespace", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 15)) for (const statement of migration.sql) await old.exec(statement);
+      await old.exec("insert into households(id,name) values ('a','First'),('b','Second')");
+      await old.query("insert into sync_state(household_id,data_class,changed_at,exported_at,revision,exported_revision) values ('a','photos',$1,$1,7,4),(null,'saved-views',$1,null,2,0)", [now]);
+      const before = (await old.query("select * from sync_state order by data_class")).rows;
+      for (const migration of migrations.slice(15)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from sync_state order by data_class")).rows).toEqual(before);
+      for (const householdId of ["b", null]) {
+        await old.query("insert into sync_state(household_id,data_class,changed_at) values ($1,'photos',$2)", [householdId, now]);
+      }
+      for (const householdId of ["a", "b", null]) {
+        await expect(old.query("insert into sync_state(household_id,data_class,changed_at) values ($1,'photos',$2)", [householdId, now])).rejects.toThrow();
+      }
+      expect((await old.query("select * from sync_state")).rows).toHaveLength(4);
+    } finally { await old.close(); }
+  });
+
   it("preserves photo decisions and permits independent household decisions with null-safe uniqueness", async () => {
     const old = new PGlite();
     try {
@@ -198,7 +224,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(15);
+    expect(journal.rows).toHaveLength(16);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

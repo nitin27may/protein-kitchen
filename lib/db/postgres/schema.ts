@@ -446,12 +446,16 @@ export const savedViews = pgTable("saved_views", {
 
 export const syncState = pgTable("sync_state", {
   householdId: householdId(),
-  dataClass: text("data_class").primaryKey(),
+  dataClass: text("data_class").notNull(),
   changedAt: isoTimestamp("changed_at").notNull(),
   exportedAt: isoTimestamp("exported_at"),
   revision: integer("revision").notNull().default(1),
   exportedRevision: integer("exported_revision").notNull().default(0),
-}, (t) => [check("sync_state_revision_valid", sql`${t.revision} > 0 and ${t.exportedRevision} >= 0 and ${t.exportedRevision} <= ${t.revision}`), index("sync_state_household_idx").on(t.householdId)]);
+}, (t) => [
+  unique("sync_state_household_class_uq").on(t.householdId, t.dataClass).nullsNotDistinct(),
+  check("sync_state_revision_valid", sql`${t.revision} > 0 and ${t.exportedRevision} >= 0 and ${t.exportedRevision} <= ${t.revision}`),
+  index("sync_state_household_idx").on(t.householdId),
+]);
 
 // Operational coordination only: never part of human-state exporters.
 export const stateSyncJobs = pgTable("state_sync_jobs", {

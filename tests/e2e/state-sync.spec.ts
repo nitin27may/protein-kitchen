@@ -21,7 +21,7 @@ async function control(mode: "reset" | "healthy" | "failure" | "conflict") {
 }
 async function dirty() {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
-  try { await writeSavedView(handle.db, { list: "recipes", query: `synthetic-sync-${randomUUID()}` }); }
+  try { await writeSavedView(handle.db, { householdId: "00000000-0000-4000-8000-000000000001", list: "recipes", query: `synthetic-sync-${randomUUID()}` }); }
   finally { await handle.close(); }
 }
 test.beforeEach(async () => {
@@ -52,6 +52,7 @@ test("owner syncs a pending snapshot through actual GitHub HTTP and can retry a 
   await page.screenshot({ path: "test-results/private-sync-phone.png", fullPage: true });
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   try {
+    expect(await handle.db.select().from(s.stateSyncJobs)).toMatchObject([{ householdId: "00000000-0000-4000-8000-000000000001" }]);
     expect(await handle.db.select().from(s.stateSyncJobs)).toMatchObject([{ status: "success", leaseToken: null, pending: null, checkpointCommit: successful.head }]);
   } finally { await handle.close(); }
 });
@@ -98,6 +99,32 @@ test("a member cannot invoke the captured owner action and an anonymous context 
     expect(denied.status()).toBe(200);
     expect(await denied.text()).toContain("Only a household owner");
     expect(await handle.db.select().from(s.stateSyncRequests)).toEqual(before);
+    const [membership] = await handle.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, owner!.id));
+    const foreignHouseholdId = randomUUID();
+    await handle.db.insert(s.households).values({ id: foreignHouseholdId, name: "Unrelated synthetic household" });
+    const [profile] = await handle.db.insert(s.people).values({
+      householdId: foreignHouseholdId, name: "Foreign sync fixture", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    try {
+      await handle.db.update(s.householdMembers).set({ householdId: foreignHouseholdId, personId: profile!.id, role: "owner" })
+        .where(eq(s.householdMembers.userId, owner!.id));
+      await page.reload();
+      const card = page.getByRole("region", { name: "Private shared-state sync" });
+      await expect(card).toContainText("not configured for this household");
+      await expect(card.getByRole("button", { name: "Sync now", exact: true })).toHaveCount(0);
+      const foreignDenied = await page.request.post("/settings", {
+        headers: { origin: "http://127.0.0.1:3112", "next-action": captured.headers()["next-action"]!, "content-type": captured.headers()["content-type"]! },
+        data: captured.postData()!,
+      });
+      expect(await foreignDenied.text()).toContain("Sync is unavailable");
+      expect(await handle.db.select().from(s.stateSyncRequests)).toEqual(before);
+    } finally {
+      await handle.db.update(s.householdMembers).set({ householdId: membership!.householdId, personId: membership!.personId, role: "member" })
+        .where(eq(s.householdMembers.userId, owner!.id));
+      await handle.db.delete(s.people).where(eq(s.people.id, profile!.id));
+      await handle.db.delete(s.households).where(eq(s.households.id, foreignHouseholdId));
+    }
     const anonymous = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     try {
       const publicPage = await anonymous.newPage();

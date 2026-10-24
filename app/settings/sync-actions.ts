@@ -8,7 +8,7 @@ import { configuredStateSync } from "@/lib/sync/server";
 export async function syncSharedState() {
   const denied = await actionDenial("owner"); if (denied) return denied;
   try {
-    const result = await configuredStateSync();
+    const result = await configuredStateSync(undefined, true);
     revalidatePath("/settings");
     if (result.state === "success") return { ok: true as const, message: "The saved shared snapshot is synced. Any newer changes remain pending below." };
     const error = result.state === "busy" ? "A sync is already running. Refresh its status shortly." :

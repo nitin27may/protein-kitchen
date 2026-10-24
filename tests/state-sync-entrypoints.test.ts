@@ -13,7 +13,7 @@ vi.mock("../lib/sync/server", () => ({ configuredStateSync: vi.fn() }));
 const secret = "synthetic-scheduler-secret-for-tests-123";
 const uuid = "01234567-89ab-4cde-8fab-0123456789ab";
 const configEnv = {
-  STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views, recipe-links",
+  STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views, recipe-links", STATE_SYNC_HOUSEHOLD_ID: "a",
   STATE_GITHUB_APP_ID: String(config.appId), STATE_GITHUB_INSTALLATION_ID: String(config.installationId),
   STATE_GITHUB_REPOSITORY_ID: String(config.repositoryId), STATE_GITHUB_OWNER: config.owner,
   STATE_GITHUB_REPOSITORY: config.repository, STATE_GITHUB_BRANCH: config.branch, STATE_GITHUB_PRIVATE_KEY: config.privateKey,
@@ -42,6 +42,10 @@ describe("explicit configuration and scheduler authentication", () => {
     for (const override of [{ STATE_SYNC_ENABLED: "false" }, { STATE_GITHUB_REPOSITORY_ID: "" }, { VERCEL_ENV: "preview" }]) {
       expect(() => stateSyncConfiguration({ ...configEnv, ...override })).toThrow(StateSyncConfigurationError);
     }
+    for (const householdId of [undefined, "", "bad household", "../other"]) {
+      expect(() => stateSyncConfiguration({ ...configEnv, STATE_SYNC_HOUSEHOLD_ID: householdId })).toThrow(StateSyncConfigurationError);
+    }
+    expect(stateSyncConfiguration({ ...configEnv, STATE_SYNC_HOUSEHOLD_ID: "b" }).targetKey).not.toBe(stateSyncConfiguration(configEnv).targetKey);
   });
   it.each([undefined, "", "short", "a".repeat(129), "x".repeat(31), " ".repeat(40)])("disables missing or invalid scheduler credentials: %s", (value) => {
     expect(schedulerAuthorized(req(), { STATE_SYNC_SCHEDULER_SECRET: value })).toBe("disabled");
@@ -66,7 +70,7 @@ describe("owner-only action and replay-key scheduler boundary", () => {
   it.each(["success", "busy", "conflict", "error"] as const)("returns safe owner feedback and refreshes persisted %s status", async (state) => {
     vi.mocked(configuredStateSync).mockResolvedValue({ state, replayed: false });
     expect(await syncSharedState()).toMatchObject({ ok: state === "success" });
-    expect(configuredStateSync).toHaveBeenCalledWith();
+    expect(configuredStateSync).toHaveBeenCalledWith(undefined, true);
     expect(revalidatePath).toHaveBeenCalledWith("/settings");
   });
   it.each([new StateSyncConfigurationError(), new Error("PRIVATE_DATABASE_CONTENT")])("surfaces action failure without leaking internals", async (error) => {

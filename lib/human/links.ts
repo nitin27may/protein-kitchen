@@ -50,7 +50,7 @@ export async function writeLink(db: Db, recipeId: number, input: LinkRowInput, p
         createdByPersonId: personId ?? null,
       })
       .returning({ id: s.recipeLinks.id }))[0];
-    await markChanged(tx, LINKS_CLASS, at);
+    await markChanged(tx, LINKS_CLASS, at, householdId);
     return row!.id;
   });
   return { id, uid };
@@ -72,7 +72,7 @@ export async function updateLinkRow(db: Db, id: number, patch: Partial<LinkRowIn
   if (patch.startSec !== undefined) set.startSec = patch.startSec;
   await withTx(db, async (tx) => {
     await tx.update(s.recipeLinks).set(set).where(predicate);
-    await markChanged(tx, LINKS_CLASS, at);
+    await markChanged(tx, LINKS_CLASS, at, householdId);
   });
   return true;
 }
@@ -84,7 +84,7 @@ export async function deleteLinkRow(db: Db, id: number, householdId?: string): P
   const at = nowIso();
   await withTx(db, async (tx) => {
     await tx.delete(s.recipeLinks).where(predicate);
-    await markChanged(tx, LINKS_CLASS, at);
+    await markChanged(tx, LINKS_CLASS, at, householdId);
   });
   return true;
 }
@@ -104,7 +104,7 @@ export async function reorderLinks(db: Db, recipeId: number, orderedIds: number[
   const at = nowIso();
   await withTx(db, async (tx) => {
     for (const id of changed) await tx.update(s.recipeLinks).set({ position: order.indexOf(id), updatedAt: at }).where(and(eq(s.recipeLinks.id, id), owned(householdId)));
-    await markChanged(tx, LINKS_CLASS, at);
+    await markChanged(tx, LINKS_CLASS, at, householdId);
   });
 }
 
@@ -150,7 +150,7 @@ export const linksClass: HumanDataClass = {
       .select({ link: s.recipeLinks, slug: s.recipes.slug })
       .from(s.recipeLinks)
       .innerJoin(s.recipes, eq(s.recipes.id, s.recipeLinks.recipeId))
-      .where(scope ? eq(s.recipeLinks.householdId, scope.householdId) : undefined);
+      .where(scope ? owned(scope.householdId ?? undefined) : undefined);
     const bySlug = new Map<string, LinkRow[]>();
     for (const { link, slug } of rows) bySlug.set(slug, [...(bySlug.get(slug) ?? []), link]);
     const files: Record<string, string> = {};

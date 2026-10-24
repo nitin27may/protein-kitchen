@@ -12,7 +12,8 @@ export interface ImportContext {
 }
 
 export interface ExportScope {
-  householdId: string;
+  /** null selects only unassigned legacy rows; absence of scope is operator-wide. */
+  householdId: string | null;
 }
 
 /**

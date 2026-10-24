@@ -57,7 +57,7 @@ export async function writeRecipeFeedback(db: Db, recipeId: number, patch: Feedb
   await withTx(db, async (tx) => {
     if (existing) await tx.update(s.recipeFeedback).set({ ...set, ...stamps }).where(predicate);
     else await tx.insert(s.recipeFeedback).values({ householdId: householdId ?? null, recipeId, ...set, ...stamps });
-    await markChanged(tx, FEEDBACK_CLASS, at);
+    await markChanged(tx, FEEDBACK_CLASS, at, householdId);
   });
 }
 
@@ -88,7 +88,7 @@ export const feedbackClass: HumanDataClass = {
       .select({ r: s.recipeFeedback, slug: s.recipes.slug })
       .from(s.recipeFeedback)
       .innerJoin(s.recipes, eq(s.recipes.id, s.recipeFeedback.recipeId))
-      .where(scope ? eq(s.recipeFeedback.householdId, scope.householdId) : undefined);
+      .where(scope ? owned(scope.householdId) : undefined);
     const files: Record<string, string> = {};
     const touched = rows.filter(({ r }) => isTouched(r));
     if (new Set(touched.map(({ slug }) => slug)).size !== touched.length) {

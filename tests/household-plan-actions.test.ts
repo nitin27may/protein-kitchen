@@ -131,6 +131,7 @@ it("saves updates and clears only the caller's household defaults with stable id
   expect(await saveDefaultView("ingredients", "q=tofu")).toEqual({ ok: true });
   expect(await clearDefaultView("recipes")).toEqual({ ok: true });
   expect(await clearDefaultView("recipes")).toEqual({ ok: true });
+  expect(await h.db.select().from(s.syncState)).toMatchObject([{ householdId: "a", dataClass: "saved-views", revision: 4 }]);
   expect(await h.db.select().from(s.savedViews)).toMatchObject([
     { householdId: null, query: "q=legacy" }, { householdId: "b", query: "q=foreign" },
     { householdId: "a", list: "ingredients", query: "q=tofu" },
@@ -169,6 +170,8 @@ it("keeps same-recipe feedback independent across households and refuses stale a
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
   expect((await setRecipeFeedback("falafel-bowl", { favourite: true })).ok).toBe(false);
   expect(await h.db.select().from(s.personRecipeFeedback)).toMatchObject([{ personId: 1, rating: 5 }, { personId: 2, rating: 1 }]);
+  expect(await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "recipe-feedback")).orderBy(s.syncState.householdId))
+    .toMatchObject([{ householdId: "a", revision: 1 }, { householdId: "b", revision: 2 }]);
 });
 
 it("rolls personal and household feedback back together when shared sync marking fails", async () => {
@@ -205,6 +208,8 @@ it("isolates shared link creation editing ordering and deletion, including owner
   expect(await h.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, second.id))).toMatchObject([{ position: 0 }]);
   expect(await h.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, foreign.id))).toEqual([foreignRow]);
   expect(await removeLink(first.id)).toEqual({ ok: true });
+  expect(await h.db.select().from(s.syncState).orderBy(s.syncState.householdId))
+    .toMatchObject([{ householdId: "a", dataClass: "recipe-links", revision: 5 }, { householdId: "b", dataClass: "recipe-links", revision: 1 }]);
   await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "a"));
   expect((await addLink(input)).ok).toBe(false);
   expect((await removeLink(second.id)).ok).toBe(false);
@@ -249,6 +254,10 @@ it("binds actual photo upload cover delete and rejection actions to the househol
   vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
   expect(await rejectPhotoCandidate("recipe", slug, key)).toEqual({ ok: true });
   expect((await h.db.select().from(s.photoDecisions)).map((r) => [r.householdId, r.createdByPersonId])).toEqual([["a", 1], ["b", 2]]);
+  expect(await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "photos")).orderBy(s.syncState.householdId))
+    .toMatchObject([{ householdId: "a", revision: 4 }, { householdId: "b", revision: 1 }]);
+  expect(await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "photo-decisions")).orderBy(s.syncState.householdId))
+    .toMatchObject([{ householdId: "a", revision: 1 }, { householdId: "b", revision: 1 }]);
   await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "b"));
   expect((await removePhoto(foreign.uid)).ok).toBe(false);
   expect((await upload()).ok).toBe(false);

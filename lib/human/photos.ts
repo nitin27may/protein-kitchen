@@ -106,10 +106,10 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
           createdByPersonId: input.personId ?? null,
         })
         .returning({ id: s.photos.id }))[0];
-      await markChanged(tx, PHOTOS_CLASS, at);
+      await markChanged(tx, PHOTOS_CLASS, at, input.householdId);
       if (input.decision) {
         await upsertDecision(tx, input.decision.candidateKey, input.decision.kind, input.decision.slug, "approved", at, input.personId ?? null, input.householdId);
-        await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
+        await markChanged(tx, PHOTO_DECISIONS_CLASS, at, input.householdId);
       }
       return { id: row!.id, uid };
     });
@@ -174,7 +174,7 @@ export async function rejectCandidate(db: Db, input: PhotoWriteScope & { candida
   const at = nowIso();
   await commitPhoto(db, input, async (tx) => {
     await upsertDecision(tx, input.candidateKey, input.kind, input.slug, "rejected", at, input.personId ?? null, input.householdId);
-    await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
+    await markChanged(tx, PHOTO_DECISIONS_CLASS, at, input.householdId);
   });
 }
 
@@ -188,7 +188,7 @@ export async function setCoverPhoto(db: Db, uid: string, scope: PhotoWriteScope 
     const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
     await tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(and(owned(scope.householdId), siblings, eq(s.photos.isCover, true)));
     await tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, row.id));
-    await markChanged(tx, PHOTOS_CLASS, at);
+    await markChanged(tx, PHOTOS_CLASS, at, scope.householdId);
     return true;
   });
 }
@@ -208,12 +208,12 @@ export async function deletePhoto(db: Db, store: BlobStore, uid: string, scope: 
       const next = (await tx.select({ id: s.photos.id }).from(s.photos).where(and(siblings, owned(scope.householdId))).orderBy(asc(s.photos.position), asc(s.photos.id)))[0];
       if (next) await tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, next.id));
     }
-    await markChanged(tx, PHOTOS_CLASS, at);
+    await markChanged(tx, PHOTOS_CLASS, at, scope.householdId);
     if (row.candidateKey) {
       const kind = row.recipeId !== null ? "recipe" : "ingredient";
       const slug = row.recipeId !== null ? ((await tx.select({ slug: s.recipes.slug }).from(s.recipes).where(eq(s.recipes.id, row.recipeId)))[0]?.slug ?? "") : row.ingredientSlug!;
       await upsertDecision(tx, row.candidateKey, kind, slug, "rejected", at, null, scope.householdId);
-      await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
+      await markChanged(tx, PHOTO_DECISIONS_CLASS, at, scope.householdId);
     }
     return true;
   });
@@ -246,7 +246,7 @@ const PhotoFileSchema = z.object({
 const PHOTO_PREFIX = "photos/";
 
 async function photoRows(db: Db, scope?: ExportScope): Promise<{ photo: PhotoRow; subject: { kind: "recipe" | "ingredient"; slug: string } }[]> {
-  const predicate = scope ? eq(s.photos.householdId, scope.householdId) : undefined;
+  const predicate = scope ? owned(scope.householdId ?? undefined) : undefined;
   const recipePhotos = await db.select({ photo: s.photos, slug: s.recipes.slug }).from(s.photos).innerJoin(s.recipes, eq(s.recipes.id, s.photos.recipeId)).where(predicate);
   const ingredientPhotos = await db.select().from(s.photos).where(and(isNull(s.photos.recipeId), predicate));
   return [
@@ -301,7 +301,7 @@ export const photosClass: HumanDataClass = {
 
   async blobs(db, scope) {
     const refs: BlobRef[] = [];
-    for (const p of await db.select({ uid: s.photos.uid, sha256: s.photos.sha256 }).from(s.photos).where(scope ? eq(s.photos.householdId, scope.householdId) : undefined)) {
+    for (const p of await db.select({ uid: s.photos.uid, sha256: s.photos.sha256 }).from(s.photos).where(scope ? owned(scope.householdId ?? undefined) : undefined)) {
       const keys = photoKeys(p.uid);
       refs.push({ key: keys.master, sha256: p.sha256 }, { key: keys.thumb });
     }
@@ -350,7 +350,9 @@ export const photoDecisionsClass: HumanDataClass = {
 
   async exportFiles(db, scope) {
     const files: Record<string, string> = {};
-    for (const d of await db.select().from(s.photoDecisions).where(scope ? eq(s.photoDecisions.householdId, scope.householdId) : undefined)) {
+    for (const d of await db.select().from(s.photoDecisions).where(scope
+      ? scope.householdId === null ? isNull(s.photoDecisions.householdId) : eq(s.photoDecisions.householdId, scope.householdId)
+      : undefined)) {
       files[`${DECISION_PREFIX}${d.subjectKind}s/${d.subjectSlug}/${d.uid}.json`] = stableJson({
         uid: d.uid, candidate_key: d.candidateKey, subject_kind: d.subjectKind, subject_slug: d.subjectSlug, decision: d.decision, created_at: d.createdAt, updated_at: d.updatedAt,
       });

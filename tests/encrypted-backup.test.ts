@@ -94,12 +94,15 @@ describe("private local recovery artifact boundaries", () => {
     expect(await readdir(folder)).toEqual(["unrelated.keep"]);
     expect(await readFile(path.join(folder, "unrelated.keep"), "utf8")).toBe("preserve");
   });
-  it("detects a photo add-then-delete revision cycle instead of producing an inconsistent backup", async () => {
+  it.each([undefined, "a", "b"])("detects a photo add-then-delete revision cycle in namespace %s", async (householdId) => {
+    await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    await h.db.transaction((tx) => markChanged(tx, "photos", new Date().toISOString()));
+    await h.db.transaction((tx) => markChanged(tx, "photos", new Date().toISOString(), "a"));
     const setup = options();
     setup.dump = () => ({
       stream: Readable.from((async function* () {
         const at = new Date().toISOString();
-        await h.db.transaction(async (tx) => { await markChanged(tx, "photos", at); await markChanged(tx, "photos", at); });
+        await h.db.transaction(async (tx) => { await markChanged(tx, "photos", at, householdId); await markChanged(tx, "photos", at, householdId); });
         yield Buffer.from("synthetic database snapshot");
       })()), finished: Promise.resolve(), abort() {},
     });

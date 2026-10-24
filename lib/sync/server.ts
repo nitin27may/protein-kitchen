@@ -5,15 +5,31 @@ import { openPrivateStateRepository } from "./github";
 import { readStateRunStatus, runStateSync } from "./run";
 import { readStateSyncStatus } from "./snapshot";
 import { localStateTestFetch } from "./test-fetch";
+import { requireMember } from "../auth/access";
+import { resolveOnlyHouseholdAccess, requireHouseholdProfile } from "../auth/household-access";
+import { HouseholdAccessError } from "../auth/household";
+import type { Db } from "../db/client";
 
-export async function configuredStateSync(requestId?: string) {
+async function configuredOwner(db: Db, householdId: string) {
+  const member = await requireMember();
+  const access = await resolveOnlyHouseholdAccess(db, member.userId);
+  requireHouseholdProfile(access);
+  if (access.householdId !== householdId || access.role !== "owner") {
+    throw new HouseholdAccessError("Private shared-state sync is not configured for this household.");
+  }
+  return access;
+}
+
+export async function configuredStateSync(requestId?: string, interactive = false) {
   const config = stateSyncConfiguration(process.env);
   // Validate the synthetic boundary before any database/credential operation.
   const fetcher = process.env.STATE_SYNC_TEST_GITHUB_URL ? localStateTestFetch(process.env) : fetch;
-  return runStateSync(await getDb(), config.targetKey, config.classes, {
+  const db = await getDb();
+  const access = interactive ? await configuredOwner(db, config.householdId) : undefined;
+  return runStateSync(db, config.targetKey, config.classes, {
     repository: () => openPrivateStateRepository(config.github, fetcher),
     store: { get: (key) => getBlobStore().get(key) },
-  }, requestId);
+  }, requestId, { householdId: config.householdId, access });
 }
 
 export async function stateSyncSettings() {
@@ -24,7 +40,14 @@ export async function stateSyncSettings() {
     return { enabled: false as const, reason: error.message };
   }
   const db = await getDb();
-  const [run, classes] = await Promise.all([readStateRunStatus(db, config.targetKey), readStateSyncStatus(db, config.classes)]);
+  try { await configuredOwner(db, config.householdId); }
+  catch (error) {
+    if (!(error instanceof HouseholdAccessError)) throw error;
+    return { enabled: false as const, reason: error.message };
+  }
+  const [run, classes] = await Promise.all([
+    readStateRunStatus(db, config.targetKey, config.householdId), readStateSyncStatus(db, config.classes, config.householdId),
+  ]);
   return {
     enabled: true as const, run,
     classes: classes.map((item) => ({ ...item, pending: item.revision === 0 || item.revision > (run.acknowledged[item.dataClass] ?? 0) })),

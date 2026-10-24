@@ -324,6 +324,57 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: shared revision namespaces and pinned sync
+
+Scope: replace class-only sync marker identity with null-safe household/class
+uniqueness, preserving existing marker values and legacy null namespace. Shared
+feedback, links, saved views, photos and decisions mark their explicit household
+in the same transaction as the write. Personal/operator writers keep existing
+behavior until their separate operational contract is adopted. Snapshot capture,
+acknowledgement and status accept an explicit scope and filter it consistently;
+unscoped operator calls must not read or acknowledge owned markers.
+
+Dependencies: accepted scoped shared exports. No network or blob I/O under
+locks, no new request endpoint, no target reconfiguration or credential changes.
+Runtime adoption is included to preserve usable sync after changing markers:
+require a server-only STATE_SYNC_HOUSEHOLD_ID pin; bind target/job identity to
+that pin, and refuse household mismatch rather than adopt another job. The owner
+action and Settings resolve verified membership and require the pinned household;
+the scheduler uses its separate credential and server pin, never client selection.
+Snapshot admission revalidates interactive membership inside its transaction.
+Existing targets are not automatically reconciled or repointed; a changed target
+identity must refuse pre-existing unmanaged/conflicting remote contents. No
+per-household GitHub credentials or configuration UI is introduced.
+Migration must preserve revisions/timestamps/ownership without
+guessing missing ownership; new markers start pending.
+
+Acceptance: native/PGlite migration preservation and namespace uniqueness,
+independent same-class household revisions, stale acknowledgement refusal,
+foreign/null marker exclusion, shared writer rollback and exact snapshot files.
+Retain full backend coverage gates, browser flows, typecheck and build.
+Also verify foreign-owner Settings/action denial before target status, blob or
+repository access, scoped job ownership and scheduler replay, and remote content
+exclusion in the retained browser suite. Whole-instance encrypted backup must
+compare every household's photo revision rather than an arbitrary first row.
+
+Acceptance complete locally: migration `0015` preserves marker values and
+replaces the class primary key with null-safe household/class uniqueness. The
+generated primary-key placeholder was replaced with the baseline Postgres
+constraint name. Shared writers, capture/status/acknowledgement, job ownership,
+target identity, owner Settings/action and scheduler now use the same namespace.
+Legacy unscoped snapshots select only null-owned shared rows, not all households;
+explicit operator-wide human export remains separate. Whole-instance backup
+compares the complete ordered photo revision vector.
+
+All 1,869 tests / 93 files, 29 retained browser journeys, strict types and
+production build pass. Existing 100% critical sync and backup gates remain
+intact; overall statements 72.07%. Browser replay checks member and unrelated
+household-owner denial, without creating requests or exposing sync controls.
+Synthetic signed GitHub publication contains only the selected household, and
+scheduler replay retains one success. No real target, migration, credentials,
+content transfer, scheduler enablement or deployment was changed. Operator
+import/reset/recovery and remaining schema/admission work remain open.
+
 ### H2 slice: household shared export foundation
 
 Scope: add an explicit household export context to the registered shared classes

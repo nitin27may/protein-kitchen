@@ -8,6 +8,7 @@ import { savedViewsClass } from "../lib/human/saved-views";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { writePersonRoutine } from "../lib/human/routines";
 import { acknowledgeStateSnapshot, captureStateSnapshot, readStateSyncStatus, STATE_SYNC_CLASSES } from "../lib/sync/snapshot";
+import { resolveHouseholdAccess } from "../lib/auth/household-access";
 
 let h: DbHandle;
 const at = "2026-10-24T12:00:00.000Z";
@@ -121,6 +122,54 @@ describe("explicit shared-state export boundary", () => {
 });
 
 describe("revision-based acknowledgement", () => {
+  it("requires matching current owner access and a completed profile for interactive snapshots", async () => {
+    await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    await h.db.insert(s.people).values({ id: 1, householdId: "a", name: "Fixture", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [] });
+    await h.db.insert(s.authUsers).values({ id: "owner", name: "Fixture", email: "fixture@example.test", emailVerified: true });
+    await h.db.insert(s.householdMembers).values({ householdId: "a", userId: "owner", personId: 1, role: "member" });
+    const member = await resolveHouseholdAccess(h.db, "owner", "a");
+    await expect(captureStateSnapshot(h.db, ["saved-views"], "a", member)).rejects.toThrow("owner access");
+    await h.db.update(s.householdMembers).set({ role: "owner" });
+    const owner = await resolveHouseholdAccess(h.db, "owner", "a");
+    await expect(captureStateSnapshot(h.db, ["saved-views"], "b", owner)).rejects.toThrow("owner access");
+    expect(await h.db.select().from(s.syncState)).toEqual([]);
+    expect(await captureStateSnapshot(h.db, ["saved-views"], "a", owner)).toMatchObject({ revisions: { "saved-views": 1 } });
+    await h.db.update(s.householdMembers).set({ personId: null });
+    const incomplete = await resolveHouseholdAccess(h.db, "owner", "a");
+    await expect(captureStateSnapshot(h.db, ["saved-views"], "a", incomplete)).rejects.toThrow("Finish your household profile");
+    await expect(captureStateSnapshot(h.db, ["saved-views"], "a", owner)).rejects.toThrow("access changed");
+  });
+
+  it("keeps household snapshots, revisions and acknowledgements independent from foreign and legacy namespaces", async () => {
+    await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    for (const householdId of ["a", "b", undefined]) {
+      await writeSavedView(h.db, { householdId, list: "recipes", query: `fixture-${householdId}` });
+    }
+    const a = await captureStateSnapshot(h.db, ["saved-views"], "a");
+    const b = await captureStateSnapshot(h.db, ["saved-views"], "b");
+    const legacy = await captureStateSnapshot(h.db, ["saved-views"]);
+    expect(a.revisions).toEqual({ "saved-views": 1 });
+    expect(b.revisions).toEqual(a.revisions);
+    for (const [snapshot, value] of [[a, "fixture-a"], [b, "fixture-b"], [legacy, "fixture-undefined"]] as const) {
+      expect(Object.keys(snapshot.bundle.files)).toHaveLength(1);
+      expect(JSON.parse(Object.values(snapshot.bundle.files)[0]!).query).toBe(value);
+    }
+    await writeSavedView(h.db, { householdId: "a", list: "recipes", query: "newer-a" });
+    expect(await acknowledgeStateSnapshot(h.db, a.revisions, "a")).toEqual([]);
+    expect(await acknowledgeStateSnapshot(h.db, b.revisions, "b")).toEqual(["saved-views"]);
+    expect(await readStateSyncStatus(h.db, ["saved-views"], "a")).toMatchObject([{ revision: 2, exportedRevision: 0, pending: true }]);
+    expect(await readStateSyncStatus(h.db, ["saved-views"], "b")).toMatchObject([{ revision: 1, exportedRevision: 1, pending: false }]);
+    expect(await readStateSyncStatus(h.db, ["saved-views"])).toMatchObject([{ revision: 1, exportedRevision: 0, pending: true }]);
+    await acknowledgeStateSnapshot(h.db, legacy.revisions);
+    expect(await readStateSyncStatus(h.db, ["saved-views"], "a")).toMatchObject([{ pending: true }]);
+    await markExported(h.db, ["saved-views"]);
+    expect(await readStateSyncStatus(h.db, ["saved-views"], "a")).toMatchObject([{ exportedRevision: 0 }]);
+    await h.failWrite("sync_state", "update", "fail_owned_revision", "NEW.household_id = 'a'");
+    await expect(writeSavedView(h.db, { householdId: "a", list: "recipes", query: "must roll back" })).rejects.toThrow();
+    expect(await captureStateSnapshot(h.db, ["saved-views"], "a")).toMatchObject({ revisions: { "saved-views": 2 } });
+    expect((await h.db.select().from(s.savedViews).where(eq(s.savedViews.householdId, "a")))[0]!.query).toBe("newer-a");
+  });
+
   it("starts pending, acknowledges once and leaves ordinary local exports independent", async () => {
     expect(await readStateSyncStatus(h.db, ["saved-views"])).toEqual([
       { dataClass: "saved-views", revision: 0, exportedRevision: 0, changedAt: null, pending: true },

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
@@ -8,6 +8,7 @@ import type { GitHubStateConfiguration, PrivateStateRepository } from "./github"
 import { StateGitHubError } from "./github";
 import { publicationHashes, publishState, reconcileState, statePayload, StateSyncConflict } from "./publish";
 import { acknowledgeStateSnapshot, captureStateSnapshot, selectedStateClasses } from "./snapshot";
+import { refreshHouseholdAccess, requireHouseholdProfile, type HouseholdAccess } from "../auth/household-access";
 
 export type SyncResult = { state: "success" | "busy" | "error" | "conflict"; replayed: boolean };
 const pendingSchema = z.object({
@@ -16,9 +17,10 @@ const pendingSchema = z.object({
 const clock = sql`clock_timestamp()`;
 const deadline = sql`clock_timestamp() + interval '120 seconds'`;
 
-export function stateTargetKey(config: Pick<GitHubStateConfiguration, "repositoryId" | "owner" | "repository" | "branch">) {
+export function stateTargetKey(config: Pick<GitHubStateConfiguration, "repositoryId" | "owner" | "repository" | "branch">, householdId?: string) {
   return createHash("sha256").update(JSON.stringify([
     config.repositoryId, config.owner.toLowerCase(), config.repository.toLowerCase(), config.branch,
+    ...(householdId === undefined ? [] : ["household-v1", householdId]),
   ])).digest("hex");
 }
 
@@ -35,15 +37,26 @@ export async function runStateSync(
   db: Db, targetKey: string, names: readonly string[],
   dependencies: { repository(): Promise<PrivateStateRepository>; store: Pick<BlobStore, "get"> },
   requestId: string = randomUUID(),
+  scope?: { householdId: string; access?: HouseholdAccess },
 ): Promise<SyncResult> {
   const selected = selectedStateClasses(names);
   if (!/^[0-9a-f]{64}$/.test(targetKey) || !z.string().uuid().safeParse(requestId).success) throw new Error("Invalid state-sync target or request id.");
   requestId = requestId.toLowerCase();
   const leaseToken = randomUUID();
   const admission = await db.transaction(async (tx) => {
-    await tx.insert(s.stateSyncJobs).values({ targetKey }).onConflictDoNothing();
+    if (scope) {
+      const [household] = await tx.select({ id: s.households.id }).from(s.households).where(eq(s.households.id, scope.householdId));
+      if (!household) throw new Error("State-sync household is unavailable.");
+      if (scope.access) {
+        const current = await refreshHouseholdAccess(tx, scope.access);
+        requireHouseholdProfile(current);
+        if (current.householdId !== scope.householdId || current.role !== "owner") throw new Error("State-sync household owner access is required.");
+      }
+    }
+    await tx.insert(s.stateSyncJobs).values({ targetKey, householdId: scope?.householdId ?? null }).onConflictDoNothing();
     const [row] = await tx.select({ job: s.stateSyncJobs, active: sql<boolean>`${s.stateSyncJobs.leaseExpiresAt} > clock_timestamp()` })
       .from(s.stateSyncJobs).where(eq(s.stateSyncJobs.targetKey, targetKey)).for("update");
+    if (row!.job.householdId !== (scope?.householdId ?? null)) throw new Error("State-sync target belongs to a different household.");
     const [previous] = await tx.select().from(s.stateSyncRequests).where(eq(s.stateSyncRequests.id, requestId));
     if (previous && previous.targetKey !== targetKey) throw new Error("State-sync request belongs to a different target.");
     if (previous?.status === "success") return { result: { state: "success", replayed: true } as SyncResult };
@@ -75,7 +88,7 @@ export async function runStateSync(
         leaseToken: null, leaseExpiresAt: null, errorCode: null,
       }).where(leaseWhere(targetKey, leaseToken)).returning();
       if (!rows.length) throw new StateSyncLeaseLost();
-      await acknowledgeStateSnapshot(tx, revisions);
+      await acknowledgeStateSnapshot(tx, revisions, scope?.householdId);
       await tx.update(s.stateSyncRequests).set({ status: "success", completedAt: clock }).where(eq(s.stateSyncRequests.id, requestId));
     });
   }
@@ -99,7 +112,7 @@ export async function runStateSync(
       }
     }
     await renew();
-    const snapshot = await captureStateSnapshot(db, selected);
+    const snapshot = await captureStateSnapshot(db, selected, scope?.householdId, scope?.access);
     const files = await statePayload(snapshot, { ...dependencies.store, get: guard(dependencies.store.get) });
     await renew();
     const rows = await db.update(s.stateSyncJobs).set({ pending: { revisions: snapshot.revisions, files: publicationHashes(files) } })
@@ -124,12 +137,13 @@ export async function runStateSync(
   }
 }
 
-export async function readStateRunStatus(db: Db, targetKey: string) {
+export async function readStateRunStatus(db: Db, targetKey: string, householdId?: string) {
   const [row] = await db.select({
     status: s.stateSyncJobs.status, lastAttemptAt: s.stateSyncJobs.lastAttemptAt,
     lastSuccessAt: s.stateSyncJobs.lastSuccessAt, errorCode: s.stateSyncJobs.errorCode,
     acknowledged: s.stateSyncJobs.acknowledged,
     active: sql<boolean>`coalesce(${s.stateSyncJobs.leaseExpiresAt} > clock_timestamp(), false)`,
-  }).from(s.stateSyncJobs).where(eq(s.stateSyncJobs.targetKey, targetKey));
+  }).from(s.stateSyncJobs).where(and(eq(s.stateSyncJobs.targetKey, targetKey),
+    householdId === undefined ? isNull(s.stateSyncJobs.householdId) : eq(s.stateSyncJobs.householdId, householdId)));
   return row ?? { status: "idle" as const, lastAttemptAt: null, lastSuccessAt: null, errorCode: null, active: false, acknowledged: {} as Record<string, number> };
 }
