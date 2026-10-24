@@ -32,6 +32,7 @@ import { runStateSync, stateTargetKey } from "../lib/sync/run";
 import { createMemoryStore } from "../lib/blob/memory";
 import { openPrivateStateRepository } from "../lib/sync/github";
 import { fixtureConfiguration as syncConfig, fixtureTime, githubFixture } from "./helpers/github-state";
+import { claimReminder } from "../lib/reminders/claim";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -72,6 +73,22 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await tx.update(s.libraryState).set({ version: String(Number(row!.version) + 1) }).where(eq(s.libraryState.key, "counter"));
     })));
     expect(await handle.db.select().from(s.libraryState)).toMatchObject([{ key: "counter", version: "8" }]);
+  });
+
+  it("admits one reminder sender across eight concurrent native pool requests and preserves legacy daily claims", async () => {
+    const source = createSqliteSource();
+    try {
+      await restoreSqliteSnapshot(handle.db, readSqliteSnapshot(source.file));
+      const [legacy] = await handle.db.select().from(s.reminderLog);
+      expect(legacy).toBeDefined();
+      expect(await claimReminder(handle.db, legacy!)).toBe(false);
+      const reminder = { personId: 300, date: "2099-11-01", sentAt: at };
+      const results = await Promise.all(Array.from({ length: 8 }, () => claimReminder(handle.db, reminder)));
+      expect(results.filter(Boolean)).toHaveLength(1);
+      expect(await claimReminder(handle.db, { ...reminder, sentAt: "2026-11-01T22:00:00.000Z" })).toBe(false);
+      expect(await handle.db.select().from(s.reminderLog).where(eq(s.reminderLog.date, reminder.date))).toEqual([reminder]);
+      expect(await claimReminder(handle.db, { ...reminder, date: "2099-11-02" })).toBe(true);
+    } finally { source.close(); }
   });
 
   it("keeps concurrent same-timestamp writes pending across stale and racing sync acknowledgements", async () => {

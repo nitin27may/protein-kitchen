@@ -2,6 +2,7 @@ import { and, eq, gt } from "drizzle-orm";
 import webpush from "web-push";
 import * as s from "@/lib/db/schema";
 import { buildReminder, isReminderDue, localParts } from "@/lib/reminders/due";
+import { claimReminder } from "@/lib/reminders/claim";
 import { getDb } from "./context";
 import { loadNight, tonight } from "./prep";
 import { getPlanView, latestPlanId, listPeople } from "./queries";
@@ -68,7 +69,7 @@ export async function checkReminders(now: Date = new Date()): Promise<number> {
     const already = (await db.select().from(s.reminderLog).where(eq(s.reminderLog.personId, p.id))).some((r) => r.date === date);
     if (!isReminderDue(p.reminderTime, now, APP_TZ, already)) continue;
     // Mark first so a slow send or a restart can never cause a second message.
-    await db.insert(s.reminderLog).values({ date, personId: p.id, sentAt: now.toISOString() }).onConflictDoNothing();
+    if (!await claimReminder(db, { date, personId: p.id, sentAt: now.toISOString() })) continue;
     const open = tonight(night, date).filter((t) => !t.done).map((t) => `${t.text}, for ${t.forName}`);
     const msg = buildReminder(p.name, open);
     if (!msg) continue;
