@@ -14,7 +14,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 0a | Private GitHub repo `nitin27may/protein-kitchen`, `.gitignore` fixed, secret scan | Done |
 | 1 | Night-before prep tasks unified (Today, prep guide, 21:00 reminder) | Done |
 | 2 | Filters: toolbar, drawer, URL state, saved default, Recipes and Ingredients | Done |
-| 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
+| 3 | Filters on picker, pin sheet, swap sheet, groceries | Done; populated-plan phone-width audit performed |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
 | 10b | Today with routines: morning routine card with ticks and evidence, 'Add a morning routine' prompt, routine protein line, shopping day in shop-by, next-steps strip | Done |
@@ -91,6 +91,49 @@ Still pending:
 - Dependabot PRs #1–#4 remain open; they have not been rebased or merged in this pass.
 
 ## Group 2: publish and protect (starts after step 10)
+
+### Active work package: step 12, including earlier carry-forward work
+
+Work resumes at **step 12**, not step 13. The Postgres baseline in `8974a0d` is retained as prerequisite groundwork; it does not complete either step. The detailed execution checkpoints are in `plan-v3-publish-and-protect.md`; this work package determines the immediate order.
+
+| Order | Work item | Current state / completion check |
+|---|---|---|
+| 12.1 | Inventory every database caller: actions/routes, query helpers, human modules, seed/renames, reset/backup and scripts | Audit started. Record synchronous internals separately from public promise-returning interfaces; do not mistake an async facade for an async driver. |
+| 12.2 | Finish awaited query/mutation boundaries and move multi-statement persistence out of actions into testable server helpers | Public helpers mostly async. Review plan creation/regeneration, swaps, portions, groceries, prep and routines; preserve return types and errors. |
+| 12.3 | Preserve atomic multi-statement writes and human-data sync markers | `withTx` has commit/rollback tests and rejects async callbacks on SQLite. Check that plan setup, slots, portions and routine snapshots cannot be left partially saved. |
+| 12.4 | Prepare the transaction-internal conversion: `markChanged`, plan setup, seed/renames, feedback/views/links/photos/routines, prep and reset | Still synchronous. Do not add `await` inside better-sqlite3 callbacks. The actual awaited transaction implementation must land with the async driver in step 13; step 12 remains open until that coupled conversion is verified. |
+| 12.5 | Keep image/blob/network operations outside database transactions | Preserve processing/upload-before-commit and cleanup-after-failure behavior. Cover failed writes without losing approved metadata or silently succeeding. |
+| 12.6 | Isolate SQLite-only backup/reset operations and define the Postgres handoff | `VACUUM INTO` remains SQLite-specific. Keep existing SQLite backups working; the replacement and restore proof belong to step 20, and a future Postgres reset must refuse to proceed without its required backup. |
+| 12.7 | Regression and completion evidence | Targeted failures/rollbacks, human-data export/import/export equality, existing suite/typecheck/validation/build, synthetic-data browser checks for changed flows. Save a focused commit and update status without claiming Neon/Vercel is deployed. |
+
+Carry forward earlier unfinished work while completing this package:
+
+| Earlier work | Bring into this pass? | Exact boundary |
+|---|---|---|
+| Photo decision error/loading feedback, rejection regression and mobile target fixes | Yes: finish saving the already implemented changes as a separate focused commit | Scratch Reject success/failure/retry is verified; the owner's original instance failure is still unexplained, not a confirmed root-cause fix. |
+| Expanded unapproved ingredient candidates | Yes: preserve and save the existing validated batch separately from database changes | Never auto-approve. Further fetching is optional and must not hold up step 12 on provider rate limits. |
+| Picker/pin/swap and populated-plan phone-width audit | Already performed; carry its regression coverage through changed flows | Do not list this as an unperformed audit. Real-device checks remain distinct. |
+| Photo review by the owner and real iPhone upload | Track, do not mark complete | Requires human approval/device access; not a reason to stop safe local async work. |
+| CNF water/hummus records, IFCT roasted chana and direct National Academies iron/zinc verification | Separate bounded research when services are available | Preserve current sources/stand-ins; no invented values or automatic multiplier changes. External failures do not block coding. |
+| Falafel soak yield; skyr/ultrafiltered milk/nutritional yeast labels | Owner input required | Need a measured drained soak weight and actual product labels. Keep unresolved. |
+| Dependabot PRs #1-#4 | Separate maintenance queue, not part of async code | All four are still open as of this review. Inspect compatibility and CI before any merge; do not silently merge while doing step 12. |
+
+**Step-12 exit rule:** do not mark it done merely because public functions return promises or a Postgres schema exists. Every relevant consumer and transaction must be verified against the agreed async contract. Some transaction conversion necessarily crosses the step-12/13 boundary; track that dependency honestly rather than forcing unsafe async SQLite transactions. Human approvals, device checks and unavailable nutrition sources remain explicitly pending under their original steps.
+
+#### Through-step-12 closeout, 2026-10-23
+
+| Item | Verified outcome | Remaining |
+|---|---|---|
+| Earlier photo/mobile implementation | Saved in `6369e73`: decision failure/loading feedback, per-subject rejection retry test, mobile targets and unapproved ingredient candidates | Owner's original Reject failure still not reproduced; owner approvals and actual iPhone upload |
+| Plan persistence | Saved in `15ad10b`. Creation now stores setup, plan, routine snapshots, slots and portions in one transaction. Regeneration replaces meals/portions and seed atomically, keeps locks, and rolls back on failure. Missing recipes throw rather than being silently skipped. Deletion and preference replacement are also atomic. | Awaited transaction implementation still requires the async driver handoff |
+| Failure-path tests | 22 persistence cases cover injected failure at every create stage, failed delete/insert/seed updates during regeneration, foreign keys, retry, cross-plan isolation, multiple people, locked meals, absent routines, deletion and preference rollback. Thirteen human-data tests inject sync-marker failures across feedback, views, links, routines, decisions, photos and candidate approval. | TCP Postgres, concurrency across asynchronous transactions and broad browser/action coverage remain separate work |
+| Measured coverage | 40 files / 687 tests pass. `plan-persistence.ts` and `db/tx.ts` have 100% statements, branches, functions and lines in the measured suite. `pnpm test:coverage` includes untested library/action/component files; overall coverage is 56.47% statements, 45.64% branches, 48.36% functions and 57.65% lines. CI uploads reports and enforces the persistence helper's 100% gate. | Not 100% app coverage; most client/action paths still rely on browser checks |
+| Browser regression | Scratch-data plan creation and regeneration persist across reload at phone width. Ingredient Reject POST returns 200, removes one candidate and stays removed after reload at 375 and 390 px; no overflow found in those checks. An aborted Reject POST displays an error, keeps the queue unchanged and re-enables the button; retry succeeds and survives reload. | Not a root-cause reproduction of the owner's earlier instance |
+| Dependabot maintenance | Proposed action versions applied locally: setup-node v7, checkout v7, pnpm setup v6 and gitleaks v3. Verified release manifests use Node 24 on supported hosted runners. PR #4's inspected checks passed; #1-#3 have secret-job HTTP 403 reading PR commits, not evidence of leaked secrets. Local workflow already grants `pull-requests: read`. | No PR was merged or closed. New workflow must be pushed and its actual GitHub checks observed before calling this remotely complete |
+
+The remaining async work is explicit, not hidden by these closeouts: `lib/db/tx.ts` still uses a synchronous SQLite callback; `lib/human/util.ts` and human write modules, `lib/db/seed.ts`, `lib/server/plan-setup.ts`, `lib/server/plan-persistence.ts`, `lib/server/prep.ts`, `lib/server/reset.ts` and the swap transaction in `app/actions.ts` still execute synchronous transaction queries. Their async-driver conversion and database tests remain the unfinished portion of step 12 coupled to step 13. `backupBeforeReset` and `scripts/backup.ts` retain SQLite `VACUUM INTO`; Postgres backup replacement belongs to step 20 and must gate destructive Postgres reset.
+
+Owner/source blockers remain unchanged: photo approvals, iPhone upload, measured falafel soak gain, product labels, verified CNF/IFCT records and direct National Academies source verification. No household data, production database or cloud configuration was modified during this closeout.
 
 | Step | What | Size |
 |---|---|---|

@@ -16,6 +16,95 @@ Next delivery gates, in order:
 4. Wire cloud photos, state sync and encrypted backup/restore (18-20).
 5. Add environment-scoped deployment automation and cut over to Vercel with protected previews, migrations, scheduler, domain and email DNS (21). Never seed a production database from an ordinary validation workflow.
 
+## Execution plan from the current checkpoint
+
+Planning baseline: local commit `8974a0d`. The application is still SQLite-backed. Postgres has a generated baseline, pool and local tests, not a completed application adapter. Earlier photo/mobile fixes and candidate data remain uncommitted and must be preserved. Approval of this plan permits sequential implementation; it does not authorize deleting cloud services, purchasing plans, importing personal data into previews, or production cutover.
+
+Execute one checkpoint at a time. Finish implementation and its acceptance checks, save a focused commit, update `roadmap.md`, then move to the next unblocked checkpoint. Do not stop merely to announce the next item. If an external service blocks a checkpoint, continue independent local work, state the blocker precisely, and never mark the blocked checkpoint complete. Start no unattended background work unless it has a concrete bounded task or a required service.
+
+### Checkpoint 1: Complete the Postgres application port (roadmap 12-13)
+
+Start with roadmap step 12's numbered work package and carry-forward register in `roadmap.md`. Do not treat this combined checkpoint as permission to skip step 12. Finish the async-boundary/atomicity work first; only the transaction implementation that requires a new driver crosses into step 13. The existing Postgres schema is supporting groundwork, not the next active task. Earlier photo/mobile changes are saved separately, and human/device/nutrition blockers retain their original status.
+
+1. Inventory database consumers and establish Postgres test fixtures before changing runtime selection. Keep the existing SQLite migrations and source database intact for migration/rollback; do not introduce a second copy of every business operation just to support two drivers.
+2. Convert the database boundary and shared transaction types to the async Postgres contract. Port `markChanged`, human-owned feedback/views/links/photos/routines, exporters/importers and slug renames together so human writes and sync markers remain atomic. Await every database operation; no network, blob or file work inside transactions.
+3. Port content seeding, plan setup, generation/persistence, swaps, portions, prep, groceries, routine snapshots, Today queries, exports and push subscription helpers. Replace SQLite-specific SQL and synchronous `.run()`, `.get()` and `.all()` calls on query builders. Preserve return values, ordering, idempotency and existing UX.
+4. Separate destructive reset and backup: require the Postgres backup prerequisite before allowing a destructive reset. Until checkpoint 6 supplies a tested backup, reject destructive Postgres reset explicitly rather than silently skipping its backup.
+5. Wire a single reused pool into `lib/server/context.ts`, with reviewed target configuration and runtime-environment checks. Fail loudly on missing/mismatched configuration; never fall back from a failed Postgres connection to SQLite or seed during a request.
+6. Move library validation/seed to an explicit release command. A normal Next build is read-only against databases. Detect library-version mismatch explicitly; counts alone cannot detect changed content with unchanged row counts.
+
+Acceptance: existing pure/unit tests pass; database behavior tests run against PGlite; node-postgres integration tests run against a disposable PostgreSQL service in CI; human export/import/export bytes match; commit/rollback and concurrent-write cases pass; the app builds and synthetic-data browser checks cover plan creation, swap, groceries, prep, routines, review decisions and exports. No production access is needed.
+
+### Checkpoint 2: Safe Neon development and import rehearsal (roadmap 14)
+
+1. Inspect the linked Neon project's branch identities and endpoint mapping without printing connection secrets. Select or create an isolated development branch with synthetic/empty data; do not copy personal production data into an unprotected environment.
+2. Reconcile environment-variable names with the pool and migration commands. Separate pooled application traffic from direct migration/import traffic. Verify the actual branch-to-host mapping; an operator-supplied host name alone is not proof of branch identity.
+3. Implement a read-only SQLite source importer and deterministic canonical per-table checksums. Preserve ids/references and human metadata, normalize dates/booleans/JSON, order inserts by dependencies, reset identity sequences and verify counts/checksums. Keep this distinct from ordinary library seeding.
+4. Reject an unexpected nonempty destination; do not truncate it automatically. Make interrupted-import recovery explicit and rehearse it with synthetic fixtures before touching household data.
+5. Apply baseline and library seed to dev only, rehearse import twice into disposable targets, and run application smoke checks.
+
+Acceptance: dev startup against a production endpoint is refused; migrations use the direct dev endpoint; imported relationships and checksums match; the next generated id does not collide; source SQLite remains unchanged. Real household import waits for the final backup/cutover gate.
+
+### Checkpoint 3: Authentication and household identity (roadmap 15 and schema portion of 17)
+
+1. Revalidate current Better Auth capabilities, invitation hooks, email-code support and dependency compatibility before selecting managed versus self-hosted deployment. Preserve the planned invite-only requirement; do not disable existing Neon services as part of investigation.
+2. Implement the selected auth schema/configuration, sessions, verification/reset flows, password and email-code sign-in, Resend integration, and rate limits. Use a test mail transport locally; sending-domain setup can wait without blocking local implementation.
+3. Add household membership, owner/member roles and optional profile linkage. Implement a one-time, race-safe bootstrap claim; public sign-up must not grant ownership. Do not put login email on `people`.
+4. Build sign-in, code verification, password-reset and account entry screens. Use current installed Next documentation for cookies, Server Actions and `proxy.ts`.
+
+Acceptance: session expiry/revocation works; invite-only access and bootstrap races are tested; wrong/expired/reused codes are refused; email failures are visible; phone-width sign-in works. Real email delivery requires the owner's verified domain/account.
+
+### Checkpoint 4: Authorization and account UI (roadmap 16-17)
+
+1. Define an owner/member permission matrix, including profile privacy and shared plan visibility. Authorize every Server Action, route and export server-side; middleware/proxy alone is insufficient.
+2. Verify child-object membership for swaps, portions, grocery mutations and similar operations; bind push subscriptions to the session rather than a trusted request-body person id.
+3. Add invitation, role/profile-link, account export/deletion screens. Preserve at least one owner and prevent role escalation.
+4. Migrate ratings/favourites to the agreed per-person model, keeping tested/banned household-wide; version the human export format and test legacy imports.
+5. Stop caching personal responses in the service worker; clear private caches on sign-out. Add appropriate response/cache/security headers and session-bound offline mutation handling.
+
+Acceptance: anonymous, member, owner and foreign-object negative cases pass; members cannot obtain another person's private profile fields through pages, actions or exports; logout removes cached personal content. Complete an authorization review before any public deployment.
+
+### Checkpoint 5: Cloud photos and state sync (roadmap 18-19)
+
+1. Implement the private cloud `BlobStore` adapter, authenticated photo delivery and signed-URL lifetime rules. Preserve the existing metadata-stripping WebP pipeline; do not restore raw originals merely because the older recommendation below says "originals".
+2. Keep previews isolated and disable preview uploads/push by default. Test failed uploads, missing objects, deletion and database/blob consistency.
+3. Add GitHub App integration scoped to a dedicated private state repo. Export only the agreed non-health data classes using stable slugs/uids; do not send profiles, weights or plans in plaintext.
+4. Implement incremental sync, explicit conflict/error handling, retry-safe commits, "Sync now", last-success/failure status and an authenticated scheduled endpoint.
+
+Acceptance: unauthorized photo access fails; approved photo upload/display survives reload; export/import round trips remain stable; retries do not duplicate changes; synthetic sync creates the expected private-repo content. GitHub App credentials and target repository are owner-provided gates.
+
+### Checkpoint 6: Recoverable backups and reminders (roadmap 20 and part of 21)
+
+1. Implement direct-connection Postgres dump/restore tooling and age-encrypted vault backup. Use the owner's public encryption recipient; never upload or retain the owner's private decryption key.
+2. Provide a scheduler-compatible backup runner with PostgreSQL tools, explicit retention and failure reporting. Do not assume a Vercel request can safely perform a large dump.
+3. Rehearse decrypt/restore into an isolated database, verify checksums and relationships, and verify photo recovery separately. Only then enable destructive resets backed by this path.
+4. Replace `setInterval` reminders with an authenticated, retry-safe scheduler endpoint. Preserve per-person timezone/window behavior and prevent duplicate sends across concurrent invocations.
+
+Acceptance: a synthetic encrypted backup restores successfully; backup failure blocks reset; scheduler retries do not duplicate reminders; private data never appears in logs or plaintext git artifacts. Real Android/iPhone delivery remains a device check.
+
+### Checkpoint 7: GitHub Actions and protected Vercel preview (roadmap 21 preparation)
+
+1. Push approved implementation commits and observe actual CI runs; local commits alone are not GitHub-visible progress. Handle remaining UI/photo work as its own focused commit, not mixed into the database port.
+2. Extend CI with the disposable TCP Postgres service, migration/seed/import rehearsal and restore coverage. Ordinary branch validation uses synthetic local data and no production secrets.
+3. Add protected environment-scoped release jobs with least-privilege secrets, per-environment concurrency and explicit migration approval. Untrusted/fork PRs never receive cloud credentials.
+4. Configure Vercel Node/Fluid runtime and pooled database access. First deploy only to a protected preview with isolated data, a separate auth secret and outbound side effects disabled.
+5. Run release migration and library seed as a controlled step with the direct connection, not as an incidental side effect of `next build`. Require expand-compatible schema changes and a rollback procedure.
+
+Acceptance: remote CI is green; protected preview works end to end; no local SQLite/upload filesystem dependency remains; secret scopes, unauthorized access and preview isolation are checked. A failed release step must not promote a deployment.
+
+### Checkpoint 8: Production cutover and owner checks (roadmap 21 completion)
+
+1. Confirm domain, email DNS, service plans, production secrets and the owner's offline backup key. Resolve the outstanding human nutrition/data checks or explicitly document accepted limitations without inventing values.
+2. Obtain explicit cutover approval. Pause writes on the old app, take a final SQLite/uploads backup, perform the rehearsed import and verify counts/checksums before allowing writes.
+3. Apply production configuration, deploy, bootstrap the owner, invite a member and verify permissions. Exercise plan/export/photo flows, email, push, state sync, encrypted backup and a restore drill.
+4. Keep the old instance read-only for the agreed rollback window. If checks fail, stop writes and follow the rollback runbook; switching code alone cannot undo new database writes.
+
+Acceptance: production smoke checks and owner device checks pass; first scheduled sync/backup succeeds; recovery is demonstrated; `roadmap.md` records the actual deployment and remaining owner-only limitations.
+
+### Approval defaults and decision gates
+
+Defaults for implementation: retain Drizzle and node-postgres; one household per deployment; owner/member roles; invite-only access; synthetic isolated previews; private cloud photos; no plaintext health data in git; no paid upgrades or public deployment without approval. Auth-provider and storage capability assumptions from the original proposal must be rechecked against current documentation before implementation. GitHub pushes, cloud provisioning/service changes and the final personal-data import must be explicit, visible actions; destructive service changes and final cutover need separate approval.
+
 ## Why this is more than a hosting change
 
 Today there is no login, no authorisation check in any Server Action, a synchronous SQLite data layer, `VACUUM INTO` backups, and a `setInterval` reminder loop. None of that works on Vercel. Tailscale currently keeps the app off the internet; publishing removes that.
