@@ -27,6 +27,7 @@ import { MEAL_SLOTS, PlanSetupSchema } from "@/lib/schemas";
 import { PersonInput, personRow, type PersonInputData } from "@/lib/schemas/person";
 import { getData, getDb } from "@/lib/server/context";
 import { getBlobStore } from "@/lib/blob";
+import { photoWritesEnabled } from "@/lib/blob/config";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
@@ -344,6 +345,7 @@ export async function setRecipeFeedback(
 export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ uid: string }>> {
   const denied = await actionDenial();
   if (denied) return denied;
+  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   const slug = formData.get("recipe");
   const file = formData.get("photo");
   if (typeof slug !== "string" || !(file instanceof File)) return fail("Choose a photo first.");
@@ -357,6 +359,7 @@ export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ ui
 export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
+  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
   const r = await approveCandidateChecked(await getDb(), getBlobStore(), loadCandidates(process.cwd()), { kind, slug, key });
   if (!r.ok) return r;
@@ -370,6 +373,7 @@ export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug:
 export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
+  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
   const r = await rejectCandidateChecked(await getDb(), loadCandidates(process.cwd()), { kind, slug, key });
   if (!r.ok) return r;
@@ -380,6 +384,7 @@ export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: 
 export async function removePhoto(uid: string): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
+  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   const result = await removePhotoChecked(await getDb(), getBlobStore(), uid);
   if (!result.ok) return result;
   if (result.recipeSlug) refreshRecipe(result.recipeSlug);
@@ -389,6 +394,7 @@ export async function removePhoto(uid: string): Promise<Result> {
 export async function makeCoverPhoto(uid: string): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
+  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   const result = await makeCoverChecked(await getDb(), uid);
   if (!result.ok) return result;
   if (result.recipeSlug) refreshRecipe(result.recipeSlug);

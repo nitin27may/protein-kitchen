@@ -16,6 +16,9 @@ export default defineConfig({
       thresholds: {
         "lib/auth/household.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/account-deletion.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/blob/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/blob/s3.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/blob/index.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/signup.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/tokens.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

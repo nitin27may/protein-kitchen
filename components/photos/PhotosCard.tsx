@@ -17,10 +17,13 @@ export function PhotosCard({ recipeSlug, photos }: { recipeSlug: string; photos:
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
     start(async () => {
-      const r = await fn();
-      if (!r.ok) setError(r.error ?? "That did not work.");
-      setConfirm(null);
-      router.refresh();
+      try {
+        const r = await fn();
+        if (!r.ok) setError(r.error ?? "That did not work.");
+        router.refresh();
+      } catch {
+        setError("The photo change could not be saved. Check your connection and try again.");
+      } finally { setConfirm(null); }
     });
   }
 

@@ -1,5 +1,6 @@
 import { test, expect } from "./member-fixture";
 import type { Page } from "@playwright/test";
+import sharp from "sharp";
 
 async function mutation(page: Page, action: () => Promise<unknown>) {
   const response = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).origin === "http://127.0.0.1:3112");
@@ -86,4 +87,51 @@ test("photo rejection persists, and a failed request displays an error then allo
   await expect(reject).toHaveCount(count - 2);
   await page.reload();
   await expect(reject).toHaveCount(count - 2);
+});
+
+test("private photo upload, reload and deletion preserve actual WebP bytes and recover from request failures", async ({ page, browser }) => {
+  const recipe = "/recipes/tofu-burrito-bowl";
+  await page.goto(recipe);
+  const photos = page.locator('section[aria-labelledby="photos"]');
+  const file = {
+    name: "synthetic-meal.jpg", mimeType: "image/jpeg",
+    buffer: await sharp({ create: { width: 900, height: 600, channels: 3, background: "#c87828" } }).jpeg().toBuffer(),
+  };
+  await page.route("**/recipes/tofu-burrito-bowl", (route) => route.request().method() === "POST" ? route.abort("failed") : route.continue());
+  await photos.locator('input[type="file"]').setInputFiles(file);
+  await expect(photos.getByRole("alert")).toContainText("could not be uploaded");
+  await expect(photos.getByRole("button", { name: "Add a photo", exact: true })).toBeEnabled();
+  await page.unroute("**/recipes/tofu-burrito-bowl");
+  await photos.locator('input[type="file"]').setInputFiles(file);
+  await expect(photos.getByText("Your photo", { exact: false })).toBeVisible();
+  await expect(photos.getByRole("button", { name: "Add another", exact: true })).toBeEnabled();
+  await page.reload();
+  const image = photos.locator("img").first();
+  await expect(image).toBeVisible();
+  const url = await image.getAttribute("src");
+  expect(url).toMatch(/^\/photos\/[0-9a-f-]+\/thumb$/);
+  const response = await page.request.get(url!);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toBe("private, no-store");
+  const metadata = await sharp(await response.body()).metadata();
+  expect(metadata.format).toBe("webp");
+  expect(metadata.exif).toBeUndefined();
+  expect(Math.max(metadata.width!, metadata.height!)).toBeLessThanOrEqual(640);
+  const anonymous = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  try {
+    expect((await anonymous.request.get(`http://127.0.0.1:3112${url}`)).status()).toBe(401);
+  } finally { await anonymous.close(); }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: "test-results/private-photo-phone.png", fullPage: true });
+  await photos.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.route("**/recipes/tofu-burrito-bowl", (route) => route.request().method() === "POST" ? route.abort("failed") : route.continue());
+  await photos.getByRole("button", { name: "Delete photo", exact: true }).click();
+  await expect(photos.getByRole("alert")).toContainText("photo change could not be saved");
+  await expect(image).toBeVisible();
+  await page.unroute("**/recipes/tofu-burrito-bowl");
+  await photos.getByRole("button", { name: "Delete", exact: true }).click();
+  await photos.getByRole("button", { name: "Delete photo", exact: true }).click();
+  await expect(photos.getByText("No photo yet.", { exact: false })).toBeVisible();
+  await page.reload();
+  expect((await page.request.get(url!)).status()).toBe(404);
 });

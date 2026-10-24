@@ -1,7 +1,7 @@
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryStore } from "../lib/blob/memory";
 import { openDb } from "./helpers/db";
 import type { DbHandle } from "./helpers/db";
@@ -57,6 +57,28 @@ describe("writeUploadedPhoto", () => {
     // A recipe id that does not exist breaks the foreign key inside the transaction.
     await expect(writeUploadedPhoto(a.db, store, { subject: { kind: "recipe", recipeId: 9999 }, bytes: await jpeg() })).rejects.toThrow();
     expect(store.size()).toBe(0);
+  });
+  it("cleans up the master when thumbnail upload fails before the database transaction", async () => {
+    const id = await addRecipe(a, "falafel-bowl");
+    const put = store.put.bind(store);
+    vi.spyOn(store, "put").mockImplementation(async (key, bytes, type) => {
+      if (key.endsWith("/thumb.webp")) throw new Error("synthetic thumbnail upload failure");
+      await put(key, bytes, type);
+    });
+    await expect(writeUploadedPhoto(a.db, store, { subject: { kind: "recipe", recipeId: id }, bytes: await jpeg() })).rejects.toThrow("thumbnail upload failure");
+    expect(store.size()).toBe(0);
+    expect(await a.db.select().from(s.photos)).toEqual([]);
+    expect(await syncOf("photos")).toBeUndefined();
+  });
+  it("reports original and cleanup failures and attempts both object deletions", async () => {
+    const id = await addRecipe(a, "falafel-bowl");
+    vi.spyOn(store, "put").mockRejectedValue(new Error("synthetic upload failure"));
+    const remove = vi.spyOn(store, "delete").mockRejectedValue(new Error("synthetic cleanup failure"));
+    const failure = await writeUploadedPhoto(a.db, store, { subject: { kind: "recipe", recipeId: id }, bytes: await jpeg() }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect(failure instanceof AggregateError && failure.errors[0].message).toBe("synthetic upload failure");
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(await a.db.select().from(s.photos)).toEqual([]);
   });
 
   it("makes the first photo the cover, and moves cover and order with later ones", async () => {

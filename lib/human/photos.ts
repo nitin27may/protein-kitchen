@@ -34,8 +34,9 @@ async function putBoth(store: BlobStore, uid: string, master: Uint8Array, thumb:
 
 async function dropBoth(store: BlobStore, uid: string): Promise<void> {
   const keys = photoKeys(uid);
-  await store.delete(keys.master);
-  await store.delete(keys.thumb);
+  const results = await Promise.allSettled([store.delete(keys.master), store.delete(keys.thumb)]);
+  const failures = results.filter((result) => result.status === "rejected").map((result) => result.reason);
+  if (failures.length) throw new AggregateError(failures, "Photo object cleanup failed. Run photos:check.");
 }
 
 interface NewPhoto {
@@ -58,9 +59,9 @@ interface NewPhoto {
 async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{ id: number; uid: string }> {
   const processed = await processPhoto(input.bytes);
   const uid = newUid();
-  await putBoth(store, uid, processed.master, processed.thumb);
   const at = nowIso();
   try {
+    await putBoth(store, uid, processed.master, processed.thumb);
     const existing = await db.select().from(s.photos).where(subjectWhere(input.subject)).orderBy(asc(s.photos.position));
     const cover = existing.find((p) => p.isCover);
     const becomesCover = !cover || (input.origin === "upload" && cover.origin !== "upload");
@@ -100,7 +101,11 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
     });
     return { id, uid };
   } catch (e) {
-    await dropBoth(store, uid);
+    try {
+      await dropBoth(store, uid);
+    } catch (cleanup) {
+      throw new AggregateError([e, cleanup], "Photo persistence failed and its storage cleanup also failed. Run photos:check before retrying.");
+    }
     throw e;
   }
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { revalidatePath } from "next/cache";
 import { actionDenial } from "../lib/auth/access";
 import { getDb, getData } from "../lib/server/context";
@@ -12,6 +12,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(actionDenial).mockResolvedValue(denied);
 });
+afterEach(() => vi.unstubAllEnvs());
 describe("every exported legacy server action denies before reading data or producing side effects", () => {
   it.each(Object.entries(actions))("%s", async (_name, action) => {
     expect(typeof action).toBe("function");
@@ -20,5 +21,14 @@ describe("every exported legacy server action denies before reading data or prod
     expect(getDb).not.toHaveBeenCalled();
     expect(getData).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+  describe("preview photo mutation boundaries", () => {
+    it.each(["uploadRecipePhoto", "approvePhotoCandidate", "rejectPhotoCandidate", "removePhoto", "makeCoverPhoto"] as const)("%s refuses before data, image or blob work", async (name) => {
+      vi.mocked(actionDenial).mockResolvedValue(null);
+      vi.stubEnv("VERCEL_ENV", "preview");
+      expect(await Reflect.apply(actions[name], undefined, [])).toEqual({ ok: false, error: "Photo changes are disabled in preview deployments." });
+      expect(getDb).not.toHaveBeenCalled();
+      expect(getData).not.toHaveBeenCalled();
+    });
   });
 });
