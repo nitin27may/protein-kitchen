@@ -6,6 +6,8 @@ import { microsPerServing } from "../nutrition/micros";
 import { portionText, servingWeightG } from "../nutrition/portion";
 import { qualityPerServing } from "../nutrition/quality";
 import { datesBetween, formatDay } from "../planner/dates";
+import { routineMealRefs } from "../routines/schedule";
+import type { PlanRoutineView, RoutineOption } from "../routines/types";
 import type { Ingredient, MicrosFile, Recipe } from "../schemas";
 
 /** Everything the three outputs (spreadsheet grid, Excel, PDF) show. Plain data, safe to send to the client. */
@@ -129,6 +131,8 @@ export interface ExportInput {
   micros: MicrosFile;
   /** The plan's part modes. The grocery sheet leaves out parts you already have and swaps in ready-made ones you buy. */
   partModes?: PartModes;
+  /** The plan's routines: their groceries are added to the grocery sheet, per week like the meals. */
+  routines?: { choices: readonly PlanRoutineView[]; catalog: ReadonlyMap<string, Pick<RoutineOption, "recipeSlug">> };
 }
 
 const SLOT_LABEL: Record<string, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack", shake: "Shake" };
@@ -259,8 +263,9 @@ export function buildPlanExport(i: ExportInput): PlanExport {
 
   const mealRefs = (from: string, to: string) =>
     i.slots.filter((s) => s.date >= from && s.date <= to).map((s) => ({ recipeSlug: s.recipeSlug, servings: Object.values(s.servings).reduce((a, b) => a + b, 0) }));
-  const whole = buildGroceryList(mealRefs(i.startDate, i.endDate), i.recipes, i.ingredients, i.partModes);
-  const perWeek = weeks.map((w) => new Map(buildGroceryList(mealRefs(w.from, w.to), i.recipes, i.ingredients, i.partModes).lines.map((l) => [l.ingredient, l.grams])));
+  const routineRefs = (from: string, to: string) => (i.routines ? routineMealRefs(i.routines.choices, datesBetween(from, to), i.routines.catalog) : []);
+  const whole = buildGroceryList(mealRefs(i.startDate, i.endDate), i.recipes, i.ingredients, i.partModes, routineRefs(i.startDate, i.endDate));
+  const perWeek = weeks.map((w) => new Map(buildGroceryList(mealRefs(w.from, w.to), i.recipes, i.ingredients, i.partModes, routineRefs(w.from, w.to)).lines.map((l) => [l.ingredient, l.grams])));
   const grocery: GroceryRow[] = whole.lines.map((l) => {
     const ing = i.ingredients.get(l.ingredient)!;
     return {

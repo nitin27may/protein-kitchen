@@ -17,7 +17,20 @@
     "evidence_note": "Adds fibre and ALA to oats, dahi or a shake. No separate health claim is made. Never eat it dry by the spoonful: it swells.",
     "source_url": null,
     "caution": "Eat chia only mixed into liquid or soaked first.",
-    "default_on": false
+    "default_on": false,
+    "routine": {
+      "recipe": "chia-water",
+      "time_of_day": "breakfast",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
   },
   {
     "slug": "nuts-handful",
@@ -101,23 +114,118 @@
   },
   {
     "slug": "jeera-ajwain-water",
-    "title": "Jeera or ajwain water",
+    "title": "Jeera (cumin) water",
     "category": "morning_drink",
     "evidence_grade": "weak",
     "evidence_note": "A traditional digestive drink. There is little human evidence, so treat it as a preference.",
     "source_url": null,
-    "caution": null,
-    "default_on": false
+    "caution": "Keep to the small amount of seeds used in cooking.",
+    "default_on": false,
+    "routine": {
+      "recipe": "jeera-water",
+      "time_of_day": "waking",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
   },
   {
     "slug": "soaked-methi-seeds",
     "title": "Soaked fenugreek (methi) seeds or the soaking water",
     "category": "morning_drink",
     "evidence_grade": "moderate",
-    "evidence_note": "A meta-analysis of clinical trials found lower fasting glucose, 2-hour glucose and HbA1c, mostly in people with diabetes. The authors rated most of the trials as low quality, so the evidence is moderate at best.",
+    "evidence_note": "A meta-analysis of clinical trials found lower fasting glucose, 2-hour glucose and HbA1c, mostly in people with diabetes. The authors rated most of the trials as low quality, so the evidence is moderate at best. A US National Institutes of Health review also says there is not enough high-quality evidence to say whether fenugreek helps with diabetes.",
     "source_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3901758/",
-    "caution": "Anyone taking diabetes medication should ask a doctor first.",
-    "default_on": false
+    "caution": "Not safe in pregnancy above food amounts. It can lower blood sugar, so ask a doctor first if you take diabetes medicine or any regular medicine. It can cause allergic reactions and stomach upset.",
+    "default_on": false,
+    "routine": {
+      "recipe": "methi-water",
+      "time_of_day": "waking",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  },
+  {
+    "slug": "ajwain-water",
+    "title": "Ajwain (carom) water",
+    "category": "routine_drink",
+    "evidence_grade": "weak",
+    "evidence_note": "A traditional digestive drink. There is little reliable human evidence, so treat it as a preference. The nutrition figures use caraway as a stand-in because no reliable ajwain entry was found.",
+    "source_url": null,
+    "caution": "Keep to the small amount of seeds used in cooking. There is no reliable human data on larger amounts.",
+    "default_on": false,
+    "routine": {
+      "recipe": "ajwain-water",
+      "time_of_day": "waking",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  },
+  {
+    "slug": "jeera-methi-water",
+    "title": "Jeera-methi water",
+    "category": "routine_drink",
+    "evidence_grade": "weak",
+    "evidence_note": "A traditional blend of cumin and fenugreek. There is little human evidence for the cumin, and the fenugreek evidence is described under soaked fenugreek, so treat the drink as a preference.",
+    "source_url": null,
+    "caution": "Contains fenugreek, so the same care applies: not safe in pregnancy above food amounts, it can lower blood sugar so ask a doctor first if you take diabetes medicine or any regular medicine, and it can cause allergic reactions and stomach upset.",
+    "default_on": false,
+    "routine": {
+      "recipe": "jeera-methi-water",
+      "time_of_day": "waking",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  },
+  {
+    "slug": "saunf-water",
+    "title": "Saunf (fennel) water",
+    "category": "routine_drink",
+    "evidence_grade": "weak",
+    "evidence_note": "A traditional digestive drink. There is little human evidence for it, so treat it as a preference.",
+    "source_url": null,
+    "caution": "Keep to the small amount of seeds used in cooking.",
+    "default_on": false,
+    "routine": {
+      "recipe": "saunf-water",
+      "time_of_day": "waking",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
   },
   {
     "slug": "detox-drinks",
@@ -136,8 +244,19 @@
     "evidence_grade": "weak",
     "evidence_note": "A study of whole almonds found that soaking did not meaningfully lower phytate, and chopped almonds lost minerals when soaked. Soak them if you prefer the texture, not for health.",
     "source_url": "https://ourarchive.otago.ac.nz/handle/10523/7938",
-    "caution": null,
-    "default_on": false
+    "caution": "Tree-nut allergy: do not use if you are allergic to almonds or other tree nuts.",
+    "default_on": false,
+    "routine": {
+      "recipe": "soaked-almonds",
+      "time_of_day": "morning",
+      "default_days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
   },
   {
     "slug": "soak-legumes-night",

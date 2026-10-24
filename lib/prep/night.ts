@@ -1,4 +1,6 @@
 import type { PartModes } from "../parts/mode";
+import { addDays } from "../planner/dates";
+import { ROUTINE_NIGHT_MIN_LEAD_H } from "../routines/schedule";
 import type { Recipe } from "../schemas";
 import { buildPrepGuide } from "./session";
 import type { MealRef, PrepGuide } from "./session";
@@ -29,14 +31,17 @@ export interface NightTask {
 }
 
 /**
- * Extension point for PR 8 (daily routines such as soaked methi water). A routine is a small recipe scheduled on certain
- * days; its `advance_prep` becomes night-before tasks the evening before each scheduled morning. Not implemented yet:
- * `nightTasks` accepts the input so callers do not change later, and ignores it.
+ * One person's daily routine (methi water, soaked almonds) over a plan. A routine is a small recipe eaten on certain
+ * mornings; its `advance_prep` becomes a night-before task the evening before each of those mornings, when the soak is
+ * long enough to need one (see ROUTINE_NIGHT_MIN_LEAD_H). People on the same evening share one task.
  */
 export interface RoutineInput {
+  /** The habit the routine belongs to; part of the task key. */
+  habitSlug: string;
   recipeSlug: string;
   /** Mornings the routine is eaten or drunk, as ISO dates. */
   dates: string[];
+  /** Servings per morning for this person. */
   servings: number;
 }
 
@@ -90,10 +95,43 @@ export function buildNight(input: NightInput): NightResult {
     }
   }
 
-  const tasks: NightTask[] = [...byKey.values()]
-    .map(({ grams, instruction, cooks: _cooks, ...t }) => ({ ...t, text: `${instruction}${grams !== null ? ` (${grams} g)` : ""}` }))
+  const routineTasks = routineNightTasks(input);
+  const tasks: NightTask[] = [
+    ...[...byKey.values()].map(({ grams, instruction, cooks: _cooks, ...t }) => ({ ...t, text: `${instruction}${grams !== null ? ` (${grams} g)` : ""}` })),
+    ...routineTasks,
+  ]
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.text.localeCompare(b.text) || a.key.localeCompare(b.key));
   return { guide, tasks };
+}
+
+/**
+ * Night-before tasks for the plan's routines. For each scheduled morning D the task is due on the evening before D (earlier
+ * for a soak longer than a day), never earlier than `earliest`: a soak whose evening has already passed is skipped, because
+ * it cannot be done in time. Several people's servings on the same evening are added into one task. Keys are
+ * `night:{planId}:{dueDate}:routine:{habitSlug}:{index}`.
+ */
+function routineNightTasks(input: NightInput): NightTask[] {
+  const byKey = new Map<string, NightTask & { servings: number; instruction: string }>();
+  for (const r of input.routines ?? []) {
+    const recipe = input.recipes.get(r.recipeSlug);
+    if (!recipe || recipe.kind !== "routine") continue;
+    recipe.advance_prep.forEach((a, index) => {
+      if (a.lead_hours < ROUTINE_NIGHT_MIN_LEAD_H) return;
+      const extraDays = Math.max(0, Math.floor((a.lead_hours - 1) / 24));
+      for (const date of r.dates) {
+        const dueDate = addDays(date, -1 - extraDays);
+        if (dueDate < input.earliest) continue;
+        const key = nightKey(input.planId, dueDate, "routine", r.habitSlug, index);
+        const found = byKey.get(key);
+        if (found) {
+          found.servings += r.servings;
+          continue;
+        }
+        byKey.set(key, { key, dueDate, text: "", forName: recipe.name, source: "routine", slug: r.habitSlug, index, cookDate: date, coverDates: [date], servings: r.servings, instruction: a.instruction });
+      }
+    });
+  }
+  return [...byKey.values()].map(({ servings, instruction, ...t }) => ({ ...t, text: servings > 1 ? `${instruction} (${servings} servings)` : instruction }));
 }
 
 export function nightTasks(input: NightInput): NightTask[] {

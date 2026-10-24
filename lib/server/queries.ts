@@ -7,11 +7,17 @@ import { summariseDays } from "@/lib/planner/generate";
 import { groceryProgressFrom } from "@/lib/plan/phase";
 import type { GroceryProgress } from "@/lib/plan/phase";
 import type { PartModes } from "@/lib/parts/mode";
+import type { PlanMealRef } from "@/lib/grocery/aggregate";
+import type { RoutineInput } from "@/lib/prep/night";
+import { getRoutineCatalog, catalogByHabit } from "@/lib/routines/catalog";
+import { routineInputs, routineMealRefs } from "@/lib/routines/schedule";
+import type { PersonRoutineView, PlanRoutineView } from "@/lib/routines/types";
 import type { RecipeLinkView } from "@/lib/links/types";
 import type { Candidate, DayPersonSummary, PersonTarget, PlanInput, PlannedSlot, Slot } from "@/lib/planner/types";
 import { getData, getDb } from "./context";
 import { recipeLinksFor } from "./link-view";
 import { readPartModes } from "./part-state";
+import { readPersonRoutines, readPlanRoutines } from "./routine-state";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
@@ -219,11 +225,33 @@ export async function getPartModes(planId: number): Promise<PartModes> {
   return readPartModes(await getDb(), planId);
 }
 
+/** Each routine one person chose (days, time of day, servings). The profile page lists them. */
+export async function getPersonRoutines(personId: number): Promise<PersonRoutineView[]> {
+  return readPersonRoutines(await getDb(), personId);
+}
+
+/** What a plan took from its people's routine choices when it was generated. */
+export async function getPlanRoutines(planId: number): Promise<PlanRoutineView[]> {
+  return readPlanRoutines(await getDb(), planId);
+}
+
+/**
+ * A plan's routines as the two things the rest of the app consumes: grocery references (items scaled by scheduled days and
+ * people) and night-before inputs (one per person's choice). Empty when nobody chose a routine.
+ */
+export async function routineContext(view: { id: number; dates: string[] }): Promise<{ refs: PlanMealRef[]; inputs: RoutineInput[] }> {
+  const choices = await getPlanRoutines(view.id);
+  if (choices.length === 0) return { refs: [], inputs: [] };
+  const catalog = catalogByHabit(getRoutineCatalog(getData()));
+  return { refs: routineMealRefs(choices, view.dates, catalog), inputs: routineInputs(choices, view.dates, catalog) };
+}
+
 /** Items left to buy for a whole plan, counted the way the Groceries page counts them. */
 export async function groceryProgress(view: PlanView): Promise<GroceryProgress> {
   const data = getData();
   const meals = view.slots.map((sl) => ({ recipeSlug: sl.recipeSlug, servings: Object.values(sl.servings).reduce((a, b) => a + b, 0) }));
-  return groceryProgressFrom(meals, data.recipes, data.ingredients, (await groceryChecks(view.id)).checked, await getPartModes(view.id));
+  const { refs } = await routineContext(view);
+  return groceryProgressFrom(meals, data.recipes, data.ingredients, (await groceryChecks(view.id)).checked, await getPartModes(view.id), refs);
 }
 
 // ---------- Reads that pages used to do themselves ----------

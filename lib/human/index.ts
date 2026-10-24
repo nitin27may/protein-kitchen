@@ -11,3 +11,5 @@ export type { LinkRowInput } from "./links";
 export { registerExporter, registeredClasses } from "./registry";
 export type { HumanDataClass, ImportContext } from "./registry";
 export { markExported } from "./util";
+export { personKey, writePersonRoutine } from "./routines";
+export type { PersonRoutineInput } from "./routines";

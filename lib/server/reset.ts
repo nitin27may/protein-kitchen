@@ -25,6 +25,10 @@ export interface ResetCounts {
   partChoices: number;
   /** Saved recipe and video links. Only "Everything" clears them: they are yours, like ratings. */
   links: number;
+  /** Routine choices people made (methi water, soaked almonds). They are tied to a profile, so deleting profiles or "Everything" clears them. */
+  routineChoices: number;
+  /** What plans copied from those choices. They go with the plans. */
+  planRoutines: number;
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
@@ -47,11 +51,14 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
     ratings: Number(feedback?.n ?? 0),
     partChoices: await count(db, s.planPartState),
     links: await count(db, s.recipeLinks),
+    routineChoices: await count(db, s.personRoutines),
+    planRoutines: await count(db, s.planRoutines),
   };
 }
 
 function clearPlans(tx: Tx) {
   tx.delete(s.planPartState).run();
+  tx.delete(s.planRoutines).run();
   tx.delete(s.planSlotPortions).run();
   tx.delete(s.groceryState).run();
   tx.delete(s.groceryManual).run();
@@ -83,6 +90,9 @@ function clearProfiles(tx: Tx) {
   clearProgress(tx);
   tx.delete(s.pushSubscriptions).run();
   tx.delete(s.preferences).run();
+  // Routine choices belong to a profile; deleting the people deletes them (the foreign key cascades), so mark the export.
+  tx.delete(s.personRoutines).run();
+  markChanged(tx, "person-routines", nowIso());
   tx.delete(s.people).run();
 }
 

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deletePerson, savePerson } from "@/app/actions";
 import { ReminderSettings } from "@/components/ReminderSettings";
+import { RoutinePicker } from "@/components/routines/RoutinePicker";
+import type { PersonRoutineView, RoutineOption } from "@/lib/routines/types";
 import { Banner, Button, Chip, ChoiceCard, Field, Input, SectionCard, Segmented } from "@/components/ui";
 
 export interface ProfileInitial {
@@ -40,7 +42,12 @@ function feetInches(cm: number): string {
   return inch === 12 ? `${ft + 1} ft 0 in` : `${ft} ft ${inch} in`;
 }
 
-export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null }: { initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null }) {
+export interface ProfileRoutines {
+  catalog: RoutineOption[];
+  chosen: PersonRoutineView[];
+}
+
+export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null }: { initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null }) {
   const router = useRouter();
   const [v, setV] = useState<ProfileInitial>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +176,14 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           </Field>
           {v.id ? <div className="mt-4"><ReminderSettings personId={v.id} personName={v.name || "this person"} publicKey={vapidPublicKey} hasTime={initial.reminderTime !== ""} /></div> : null}
         </SectionCard>
+
+        {v.id && routines ? (
+          <div id="daily-routine" className="scroll-mt-20">
+            <SectionCard id="routines" title="Daily routine" description="Things you drink or eat on a schedule, such as methi water. Each one shows how good the evidence is. Changes save as you make them.">
+              <RoutinePicker personId={v.id} personName={v.name || "this person"} catalog={routines.catalog} chosen={routines.chosen} />
+            </SectionCard>
+          </div>
+        ) : null}
 
         {v.id ? (
           <SectionCard id="danger" title="Delete profile" description="Removes their preferences and ticks. Plans that include them must be deleted first.">

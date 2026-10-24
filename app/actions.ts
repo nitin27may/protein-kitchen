@@ -11,6 +11,9 @@ import type { LinkInput } from "@/lib/links/types";
 import { addLinkChecked, moveLinkChecked, removeLinkChecked, updateLinkChecked } from "@/lib/server/link-actions";
 import type { PartMode } from "@/lib/parts/mode";
 import { datesBetween } from "@/lib/planner/dates";
+import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
+import type { IsoWeekday, TimeOfDay } from "@/lib/routines/types";
+import { planRoutineRowsFor, savePersonRoutine } from "@/lib/server/routine-state";
 import { dueDateOfKey } from "@/lib/prep/night";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
 import type { GeneratedPlan, PlannedSlot, Slot } from "@/lib/planner/types";
@@ -179,6 +182,8 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   if (plan.slots.length === 0) return fail("No recipes match these choices. Remove an avoided ingredient or relax the time limit.");
 
   const now = new Date().toISOString();
+  // Routine choices of the people in the plan are copied into the plan, so its groceries and prep stay stable if a choice changes later.
+  const routineRows = await planRoutineRowsFor(db, v.personIds, v.startDate, v.endDate, 0);
   const planId = await withTx(db, (tx) => {
     const setup = tx
       .insert(s.planSetups)
@@ -186,6 +191,7 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
       .returning({ id: s.planSetups.id })
       .get();
     const created = tx.insert(s.plans).values({ setupId: setup.id, seed, createdAt: now }).returning({ id: s.plans.id }).get();
+    for (const row of routineRows) tx.insert(s.planRoutines).values({ ...row, planId: created.id }).run();
     return created.id;
   });
   await persistSlots(planId, plan.slots);
@@ -459,5 +465,25 @@ export async function moveLink(id: number, direction: "up" | "down"): Promise<Re
   const result = await moveLinkChecked(await getDb(), id, direction);
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
+  return { ok: true };
+}
+
+// ---------- Routines ----------
+
+/**
+ * Saves one person's choice of a daily routine (methi water, soaked almonds): on or off, which days, when in the day, how
+ * many servings. Anything not given keeps the person's earlier choice, then the routine's defaults. The choice is copied
+ * into each plan when the plan is made, so changing it affects the next plan, not one already made.
+ */
+export async function setPersonRoutine(
+  personId: number,
+  habitSlug: string,
+  patch: { active: boolean; days?: IsoWeekday[]; timeOfDay?: TimeOfDay; servings?: number },
+): Promise<Result> {
+  const catalog = catalogByHabit(getRoutineCatalog(getData()));
+  const res = await savePersonRoutine(await getDb(), catalog, personId, habitSlug, patch);
+  if (!res.ok) return fail(res.error);
+  revalidatePath(`/profiles/${personId}`);
+  revalidatePath("/profiles");
   return { ok: true };
 }

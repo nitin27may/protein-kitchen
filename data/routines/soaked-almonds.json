@@ -1,0 +1,46 @@
+{
+  "slug": "soaked-almonds",
+  "name": "Soaked almonds",
+  "kind": "routine",
+  "family": "routines",
+  "meal_slots": [],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 2,
+  "active_min": 2,
+  "total_min": 480,
+  "equipment": [
+    "bowl"
+  ],
+  "tags": [
+    "routine"
+  ],
+  "fridge_days": 0,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "almonds",
+      "grams": 10
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 100
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "almonds",
+      "grams": 10,
+      "lead_hours": 8,
+      "instruction": "Soak the almonds in water overnight."
+    }
+  ],
+  "steps": [
+    {
+      "text": "Drain the soaked almonds and eat them as they are, or chop them into oats or yogurt. Peel them if you like.",
+      "cue": "The almonds feel softer and the skins slip off when pressed."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "slug": "ajwain-water",
+  "name": "Ajwain water",
+  "kind": "routine",
+  "family": "routines",
+  "meal_slots": [],
+  "cuisine": "indian",
+  "is_indian": true,
+  "servings": 1,
+  "prep_min": 2,
+  "active_min": 2,
+  "total_min": 480,
+  "equipment": [
+    "glass"
+  ],
+  "tags": [
+    "routine"
+  ],
+  "fridge_days": 0,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "ajwain-proxy-caraway",
+      "grams": 2
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 250
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "ajwain-proxy-caraway",
+      "grams": 2,
+      "lead_hours": 8,
+      "instruction": "Soak the ajwain seeds in a glass of water overnight."
+    }
+  ],
+  "steps": [
+    {
+      "text": "Drink the water. Chew the soaked seeds if you like, or leave them in the glass.",
+      "cue": "The water smells sharply of ajwain and the seeds have sunk.",
+      "tip": "Ajwain is strong, so start with a small amount."
+    }
+  ]
+}

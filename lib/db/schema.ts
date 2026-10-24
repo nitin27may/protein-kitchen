@@ -60,7 +60,7 @@ export const recipes = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
-    kind: text("kind", { enum: ["recipe", "component"] }).notNull(),
+    kind: text("kind", { enum: ["recipe", "component", "routine"] }).notNull(),
     family: text("family").notNull(),
     mealSlots: json<string[]>("meal_slots").notNull(),
     cuisine: text("cuisine").notNull(),
@@ -436,4 +436,57 @@ export const recipeLinks = sqliteTable(
     uniqueIndex("recipe_links_uid_uq").on(t.uid),
     check("recipe_links_kind_ck", sql`${t.kind} in ('recipe', 'video', 'article')`),
   ],
+);
+
+// ---- Daily routines ----
+
+/**
+ * A person's choice of a routine (methi water, soaked almonds): which days, when in the day, how many servings.
+ * Human-owned: written only through lib/human/routines, never by the agent, and exported with the other human data.
+ * `days` is a JSON list of ISO weekdays (1 = Monday). Plain text, integer and real columns only, so the table moves to
+ * Postgres unchanged.
+ */
+export const personRoutines = sqliteTable(
+  "person_routines",
+  {
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    habitId: integer("habit_id")
+      .notNull()
+      .references(() => habits.id),
+    days: json<number[]>("days").notNull(),
+    timeOfDay: text("time_of_day").notNull(),
+    servings: real("servings").notNull(),
+    active: bool("active").notNull(),
+    uid: text("uid"),
+    createdAt: isoTimestamp("created_at"),
+    updatedAt: isoTimestamp("updated_at"),
+    createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.habitId] }), uniqueIndex("person_routines_uid_uq").on(t.uid)],
+);
+
+/**
+ * What a plan took from each person's routine choices when it was generated, so the plan's grocery list and prep stay
+ * the same if the person later changes their mind. Plan state, not human-owned feedback: it is not exported and is
+ * cleared with the plans reset.
+ */
+export const planRoutines = sqliteTable(
+  "plan_routines",
+  {
+    planId: integer("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    habitId: integer("habit_id")
+      .notNull()
+      .references(() => habits.id),
+    days: json<number[]>("days").notNull(),
+    timeOfDay: text("time_of_day").notNull(),
+    servings: real("servings").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.personId, t.habitId] })],
 );

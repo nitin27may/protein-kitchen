@@ -91,11 +91,13 @@ export function buildGroceryList(
   ingredients: ReadonlyMap<string, Ingredient>,
   /** The plan's part modes. A part marked "have" is left off the list; "buy" swaps in the ready-made ingredient. */
   partModes?: PartModes,
+  /** The plan's routines (methi water, soaked almonds) as meal references: servings across all scheduled days and people. */
+  routines: readonly PlanMealRef[] = [],
 ): GroceryList {
   const resolve = resolverFor(partModes);
   const totals = new Map<string, number>();
   const usedBy = new Map<string, Set<string>>();
-  for (const meal of meals) {
+  for (const meal of [...meals, ...routines]) {
     if (meal.servings <= 0) continue;
     for (const [slug, g] of expandRecipe(meal.recipeSlug, meal.servings, recipes, [], resolve)) {
       if (FREE_INGREDIENTS.has(slug)) continue;

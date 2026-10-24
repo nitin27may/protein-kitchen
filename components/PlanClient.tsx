@@ -6,6 +6,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { deletePlan, enableShake, getSwapOptions, regeneratePlan, setPortion, swapSlot, toggleLock } from "@/app/actions";
 import type { SwapOption } from "@/app/actions";
 import { RecipeThumb } from "@/components/RecipeThumb";
+import { PlanRoutinesCard } from "@/components/routines/PlanRoutinesCard";
+import type { PlanRoutineRow } from "@/lib/routines/view";
 import { Sheet } from "@/components/Sheet";
 import { CheckIcon, SlidersIcon } from "@/components/icons";
 import { Banner, Button, Card, LinkButton, MacroLine, Pill, ProteinBar, SearchField, Segmented, SortMenu } from "@/components/ui";
@@ -49,6 +51,8 @@ export interface PlanProps {
   slots: PlanSlotView[];
   allRecipes: { slug: string; name: string; proteinG: number; activeMin: number; slots: string[] }[];
   sheet: PlanExport;
+  /** Routines this plan was made with, ready to show. */
+  routines: PlanRoutineRow[];
 }
 
 const SheetView = dynamic(() => import("./SheetView").then((m) => m.SheetView), { ssr: false, loading: () => <p className="px-4 pt-4 text-sm text-muted">Loading the spreadsheet...</p> });
@@ -144,6 +148,8 @@ export function PlanClient(p: PlanProps) {
     </Card>
   );
 
+  const routinesCard = <PlanRoutinesCard rows={p.routines} people={p.people.map((x) => ({ id: x.id, name: x.name }))} />;
+
   return (
     <div className="pb-6">
       {/* Date strip */}
@@ -227,7 +233,7 @@ export function PlanClient(p: PlanProps) {
               </Banner>
             ) : null}
 
-            <div className="hidden lg:block">{actions}</div>
+            <div className="hidden space-y-4 lg:block">{actions}{routinesCard}</div>
           </aside>
 
           <ul className="grid content-start gap-3 md:grid-cols-2 lg:col-start-1 lg:row-start-1">
@@ -273,7 +279,7 @@ export function PlanClient(p: PlanProps) {
         </div>
       )}
 
-      <div className={`mt-6 px-4 ${view === "day" ? "lg:hidden" : "lg:max-w-md"}`}>{actions}</div>
+      <div className={`mt-6 space-y-4 px-4 ${view === "day" ? "lg:hidden" : "lg:max-w-md"}`}>{actions}{routinesCard}</div>
 
       {/* Swap sheet */}
       <Sheet open={!!swapFor} onClose={() => setSwapFor(null)} title="Swap meal">

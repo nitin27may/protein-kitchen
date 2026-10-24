@@ -1,0 +1,52 @@
+{
+  "slug": "chia-water",
+  "name": "Chia water",
+  "kind": "routine",
+  "family": "routines",
+  "meal_slots": [],
+  "cuisine": "global",
+  "is_indian": false,
+  "servings": 1,
+  "prep_min": 2,
+  "active_min": 2,
+  "total_min": 20,
+  "equipment": [
+    "glass"
+  ],
+  "tags": [
+    "routine"
+  ],
+  "fridge_days": 0,
+  "status": "draft",
+  "items": [
+    {
+      "ingredient": "chia-seeds",
+      "grams": 5
+    },
+    {
+      "ingredient": "water-tap",
+      "grams": 250
+    }
+  ],
+  "advance_prep": [
+    {
+      "kind": "soak",
+      "ingredient": "chia-seeds",
+      "grams": 5,
+      "lead_hours": 0.25,
+      "instruction": "Stir the chia seeds into a glass of water and let them soak for 15 minutes."
+    }
+  ],
+  "steps": [
+    {
+      "text": "Stir the chia seeds into a glass of water and let them soak for 15 minutes, stirring once after the first minute.",
+      "timer_sec": 900,
+      "cue": "The seeds have swelled and the water looks thick and gel-like.",
+      "tip": "Stir once early so the seeds do not clump at the bottom."
+    },
+    {
+      "text": "Drink it. Never eat chia dry.",
+      "cue": "There are no dry seeds left floating or stuck to the glass."
+    }
+  ]
+}

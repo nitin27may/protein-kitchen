@@ -1,6 +1,7 @@
 import { buildPlanExport, type PlanExport } from "@/lib/export/model";
 import { getData } from "./context";
-import { getPartModes, getPlanView, proteinTargetOf } from "./queries";
+import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
+import { getPartModes, getPlanRoutines, getPlanView, proteinTargetOf } from "./queries";
 import { todayISO } from "./time";
 
 export async function getPlanExport(planId: number): Promise<PlanExport | undefined> {
@@ -17,5 +18,6 @@ export async function getPlanExport(planId: number): Promise<PlanExport | undefi
     ingredients: data.ingredients,
     micros: data.micros,
     partModes: await getPartModes(planId),
+    routines: { choices: await getPlanRoutines(planId), catalog: catalogByHabit(getRoutineCatalog(data)) },
   });
 }

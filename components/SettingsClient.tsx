@@ -23,7 +23,7 @@ const OPTIONS: Option[] = [
   { scope: "progress", title: "Daily habits and prep ticks", clears: "Habit check-offs, night-before prep ticks and reminder history.", keeps: "Plans, profiles and ratings.", count: (c) => `${c.progressTicks} ticks`, typed: false },
   { scope: "ratings", title: "Ratings and favourites", clears: "Star ratings, favourites, banned recipes, notes, and the tested flag. Every recipe goes back to draft.", keeps: "Plans, profiles and the recipes themselves.", count: (c) => `${c.ratings} recipes`, typed: false },
   { scope: "profiles", title: "Profiles", clears: "Every person, their likes and avoids, reminder subscriptions, habit history, and all plans (plans need a person).", keeps: "Ratings and favourites.", count: (c) => `${c.profiles} people, ${c.plans} plans`, typed: true },
-  { scope: "all", title: "Everything", clears: "All of the above. The app returns to how it was on first run.", keeps: "The recipe, ingredient and technique library.", count: () => "start from zero", typed: true },
+  { scope: "all", title: "Everything", clears: "All of the above, plus your recipe links and daily routine choices. The app returns to how it was on first run.", keeps: "The recipe, ingredient and technique library.", count: () => "start from zero", typed: true },
 ];
 
 export function SettingsClient({ counts }: { counts: ResetCounts }) {

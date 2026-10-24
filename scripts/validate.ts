@@ -13,6 +13,9 @@ import {
   missingSoakDeep,
   missingTechniqueLinks,
   needsCookedYield,
+  routineHabitTextProblems,
+  routineLinkProblems,
+  routineRecipeProblems,
   stepsRepeatingParts,
   techniqueRefs,
   timesInconsistent,
@@ -62,7 +65,9 @@ for (const h of data.habits) {
   if (habitSlugs.has(h.slug)) errors.push(`data/habits.json: duplicate slug "${h.slug}"`);
   habitSlugs.add(h.slug);
   for (const p of habitProblems(h)) errors.push(`data/habits.json: ${h.slug}: ${p}`);
+  for (const p of routineHabitTextProblems(h)) errors.push(`data/habits.json: ${h.slug}: ${p}`);
 }
+for (const p of routineLinkProblems(data.habits, data.recipes)) errors.push(`data/habits.json: ${p}`);
 
 // Recipes
 const memo = new Map<string, RecipeTotals>();
@@ -114,6 +119,7 @@ for (const [slug, recipe] of data.recipes) {
   if (weeknightTooLong(recipe, data.recipes)) {
     warnings.push(`${file}: effective active time ${effectiveActiveMin(recipe, data.recipes)} min (own ${recipe.active_min} min) is above the 20 minute weeknight limit`);
   }
+  for (const p of routineRecipeProblems(recipe, data.ingredients, data.overrides.routine_item_max_g)) errors.push(`${file}: ${p}`);
   for (const i of componentStepsWithoutCue(recipe)) errors.push(`${file}: component step ${i + 1} needs a "done when" cue`);
   for (const r of stepsRepeatingParts(recipe, data.recipes)) {
     warnings.push(`${file}: step ${r.step + 1} repeats step ${r.partStep + 1} of its part "${r.part}" (${Math.round(r.overlap * 100)}% of words); point to the part instead`);
@@ -172,7 +178,7 @@ for (const row of rows) {
 const header = ["recipe", "srv", "prot g", "kcal", "carb", "fat", "fibre", "p/100kcal", "auto-tags", "anchors", "min own", "min eff", "ahead min", "free sug g", "NRF-style", "health tags"];
 const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)));
 const fmt = (r: string[]) => r.map((c, i) => c.padEnd(widths[i] ?? 0)).join("  ");
-console.log(`Ingredients: ${data.ingredients.size}  Recipes+components: ${data.recipes.size}  Techniques: ${data.techniques.size}  Habits: ${data.habits.length}\n`);
+console.log(`Ingredients: ${data.ingredients.size}  Recipes+components+routines: ${data.recipes.size}  Techniques: ${data.techniques.size}  Habits: ${data.habits.length}\n`);
 console.log(fmt(header));
 for (const r of rows.sort((a, b) => Number(b[2]) - Number(a[2]))) console.log(fmt(r));
 console.log(`Cooking steps with a "done when" cue: ${cookingWithCue} of ${cookingSteps}`);

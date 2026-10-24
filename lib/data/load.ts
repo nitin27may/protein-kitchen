@@ -24,7 +24,12 @@ export interface DataSet {
   techniques: Map<string, TechniqueDoc>;
   micros: MicrosFile;
   habits: Habit[];
-  overrides: { kcal_check_skip: Record<string, string>; dry_without_cooked_yield: Record<string, string> };
+  overrides: {
+    kcal_check_skip: Record<string, string>;
+    dry_without_cooked_yield: Record<string, string>;
+    /** Most grams of one seed, spice or nut a routine may use per serving: `default`, with per-ingredient `items`. */
+    routine_item_max_g: { default: number; items: Record<string, number> };
+  };
   /** Old slug to new slug (data/renames.json), so a rename keeps ratings, links and photos. Empty when the file is absent. */
   renames: Record<string, string>;
   issues: LoadIssue[];
@@ -33,6 +38,7 @@ export interface DataSet {
 const OverridesSchema = z.object({
   kcal_check_skip: z.record(z.string(), z.string()),
   dry_without_cooked_yield: z.record(z.string(), z.string()),
+  routine_item_max_g: z.object({ default: z.number().positive(), items: z.record(z.string(), z.number().positive()) }).default({ default: 6, items: {} }),
 });
 
 function readJson(file: string, issues: LoadIssue[]): unknown {
@@ -82,10 +88,12 @@ export function loadData(root: string): DataSet {
 
   const recipes = new Map<string, Recipe>();
   const recipeFiles = new Map<string, string>();
-  // Meals live in data/recipes, parts of meals (components) in data/components. Each is <root>/<family>/<slug>.json.
+  // Meals live in data/recipes, parts of meals (components) in data/components, routines in data/routines.
+  // Meals and parts are <root>/<family>/<slug>.json; a routine is data/routines/<slug>.json (its family is "routines").
   const recipeFilesOnDisk = [
     ...listFiles(path.join(dataDir, "recipes"), ".json").map((file) => ({ file, root: "recipes" as const })),
     ...listFiles(path.join(dataDir, "components"), ".json").map((file) => ({ file, root: "components" as const })),
+    ...listFiles(path.join(dataDir, "routines"), ".json").map((file) => ({ file, root: "routines" as const })),
   ];
   for (const { file, root: kindRoot } of recipeFilesOnDisk) {
     const raw = readJson(file, issues);
@@ -101,13 +109,22 @@ export function loadData(root: string): DataSet {
     if (path.basename(file, ".json") !== recipe.slug) {
       issues.push({ file: rel(file), message: `file name does not match slug "${recipe.slug}"` });
     }
+    if (kindRoot === "routines" && recipe.kind !== "routine") {
+      issues.push({ file: rel(file), message: `"${recipe.slug}" is a ${recipe.kind} and must not live in data/routines` });
+    }
+    if (kindRoot !== "routines" && recipe.kind === "routine") {
+      issues.push({ file: rel(file), message: `"${recipe.slug}" is a routine and must live in data/routines/, not data/${kindRoot}` });
+    }
     if (kindRoot === "components" && recipe.kind !== "component") {
       issues.push({ file: rel(file), message: `"${recipe.slug}" is a recipe and must live in data/recipes/${recipe.family}/, not data/components` });
     }
     if (kindRoot === "recipes" && recipe.kind === "component") {
       issues.push({ file: rel(file), message: `"${recipe.slug}" is a component and must live in data/components/${recipe.family}/, not data/recipes` });
     }
-    if (path.basename(path.dirname(file)) !== recipe.family) {
+    if (recipe.kind === "routine" && recipe.family !== "routines") {
+      issues.push({ file: rel(file), message: `routine "${recipe.slug}" must have family "routines"` });
+    }
+    if (kindRoot !== "routines" && path.basename(path.dirname(file)) !== recipe.family) {
       issues.push({ file: rel(file), message: `folder does not match family "${recipe.family}"` });
     }
     if (recipes.has(recipe.slug)) {
@@ -149,7 +166,7 @@ export function loadData(root: string): DataSet {
     else if (raw !== undefined) for (const err of parsed.error.issues) issues.push({ file: rel(habitsPath), message: `${err.path.join(".")}: ${err.message}` });
   }
 
-  let overrides = { kcal_check_skip: {}, dry_without_cooked_yield: {} } as DataSet["overrides"];
+  let overrides = { kcal_check_skip: {}, dry_without_cooked_yield: {}, routine_item_max_g: { default: 6, items: {} } } as DataSet["overrides"];
   const ovPath = path.join(dataDir, "validation-overrides.json");
   if (fs.existsSync(ovPath)) {
     const raw = readJson(ovPath, issues);

@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 import { PlanClient } from "@/components/PlanClient";
 import type { PlanSlotView } from "@/components/PlanClient";
 import { formatDay } from "@/lib/planner/dates";
+import { getRoutineCatalog } from "@/lib/routines/catalog";
+import { planRoutineRows } from "@/lib/routines/view";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { getData } from "@/lib/server/context";
 import { getPlanExport } from "@/lib/server/export";
-import { getCandidates, getPlanView, proteinTargetOf } from "@/lib/server/queries";
+import { getCandidates, getPlanRoutines, getPlanView, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
 
 export const metadata: Metadata = { title: "Your plan" };
@@ -46,6 +48,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       unit: data.recipes.get(s.recipeSlug)?.serving_unit ?? null,
     };
   });
+  const routineRows = planRoutineRows(await getPlanRoutines(planId), getRoutineCatalog(data));
   const sheet = await getPlanExport(planId);
   if (!sheet) notFound();
   const today = todayISO();
@@ -61,6 +64,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       days={view.days.map((d) => ({ date: d.date, personId: Number(d.personId), proteinG: d.proteinG, kcal: d.kcal }))}
       slots={slots}
       sheet={sheet}
+      routines={routineRows}
       allRecipes={candidates.map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name))}
     />
   );

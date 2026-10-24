@@ -120,7 +120,8 @@ export function groceryProgressFrom(
   ingredients: ReadonlyMap<string, Ingredient>,
   checked: ReadonlySet<string>,
   partModes?: PartModes,
+  routines?: readonly { recipeSlug: string; servings: number }[],
 ): GroceryProgress {
-  const lines = buildGroceryList(meals, recipes, ingredients, partModes).lines.filter((l) => !l.isPantryStaple);
+  const lines = buildGroceryList(meals, recipes, ingredients, partModes, routines).lines.filter((l) => !l.isPantryStaple);
   return { total: lines.length, left: lines.filter((l) => !checked.has(l.ingredient)).length };
 }

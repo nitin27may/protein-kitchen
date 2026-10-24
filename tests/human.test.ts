@@ -127,7 +127,7 @@ describe("export and import", () => {
     await addRecipe(b, "untouched-recipe");
     const report = await importHumanData(b.db, first, { renames: {} });
     expect(report.skipped).toEqual([]);
-    expect(report.imported).toEqual({ "recipe-feedback": 2, "recipe-links": 0, "saved-views": 2 });
+    expect(report.imported).toEqual({ "person-routines": 0, "recipe-feedback": 2, "recipe-links": 0, "saved-views": 2 });
 
     const second = await exportHumanData(b.db);
     expect(Object.keys(second.files)).toEqual(Object.keys(first.files));

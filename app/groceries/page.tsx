@@ -5,7 +5,7 @@ import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { buildGroceryList } from "@/lib/grocery/aggregate";
 import { addDays, formatDay } from "@/lib/planner/dates";
 import { getData } from "@/lib/server/context";
-import { getPartModes, getPlanView, groceryChecks, latestPlanId } from "@/lib/server/queries";
+import { getPartModes, getPlanView, groceryChecks, latestPlanId, routineContext } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Groceries" };
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export default async function GroceriesPage({ searchParams }: { searchParams: Pr
     .filter((s) => s.date >= from && s.date <= to)
     .map((s) => ({ recipeSlug: s.recipeSlug, servings: Object.values(s.servings).reduce((a, b) => a + b, 0) }));
 
-  const list = buildGroceryList(meals, data.recipes, data.ingredients, await getPartModes(view.id));
+  const list = buildGroceryList(meals, data.recipes, data.ingredients, await getPartModes(view.id), (await routineContext(view)).refs);
   const state = await groceryChecks(view.id);
   const lines: GroceryLineView[] = list.lines.map((l) => ({
     slug: l.ingredient,

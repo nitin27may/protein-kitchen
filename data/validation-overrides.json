@@ -37,5 +37,12 @@
     "horse-gram": "IFCT has no cooked pair; weigh dry",
     "moth-bean": "IFCT has no cooked pair; weigh dry",
     "vital-wheat-gluten": "flour, mixed into dough"
+  },
+  "routine_item_max_g": {
+    "default": 6,
+    "items": {
+      "almonds": 15,
+      "chia-seeds": 12
+    }
   }
 }

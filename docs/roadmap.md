@@ -15,6 +15,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
+| 8 | Daily routines: methi, jeera, ajwain, jeera-methi, saunf, chia water and soaked almonds; evidence-graded, 6 g cap enforced by the validator; chosen per person, snapshotted into each plan; groceries and night-before soaks follow | Done |
 | 7 | Recipe and video links on a recipe, part or step; https only, tracking stripped, YouTube and Vimeo play in a click-to-load sheet; human-owned, exported with ratings | Done |
 | 6 | Cook mode across parts: start screen with Already made toggles, steps ordered by hands-off time with a 'While X rests: make Y' hint, a timer tray whose timers keep their end time (survive step changes and reloads) | Done |
 | 5 | Parts of a meal: timeline, per-part cards, Make / Buy / Have saved per plan, groceries and prep respect it, "Used in" on part pages | Done |
@@ -49,7 +50,7 @@ Done when: starting a 25 minute bake, moving to the hummus step and back keeps t
 Scope: add a link (recipe page, video, article) to any recipe, part or step; stored in the database, edited from a small sheet, never written by the agent. Only https links, no credentials in the URL, tracking parameters removed, your own title. YouTube and Vimeo play in a sheet inside cook mode; everything else opens normally. Added to the exporter from step 3.
 Done when: a link survives a re-seed and an export and import round trip.
 
-### Step 7. Daily routines (8)
+### Step 7. Daily routines (8) (done)
 Scope: a new kind of small recipe for things like methi water, ajwain water, jeera-methi water and chia water, linked from the habits list with the evidence grade, caution and the night-before soak. You pick them per person with days and time of day. Their ingredients join the grocery list (spices shown under "Check pantry" with the amount), their soak becomes a night-before task, their macros show as a separate line in the day. Overnight oats stays a breakfast recipe.
 Evidence and safety: grades shown honestly, cautions (pregnancy, diabetes medicine, allergies), no doses, a culinary-amount cap enforced by the validator.
 Data to add: look for a proper ajwain entry (IFCT 2017); until found, ajwain stays a labelled caraway stand-in.

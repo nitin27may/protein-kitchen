@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TIMES_OF_DAY } from "../routines/types";
 
 export const STATES = ["dry", "cooked", "raw", "ready"] as const;
 export const SOURCES = ["CNF", "USDA", "IFCT"] as const;
@@ -125,9 +126,11 @@ export const RecipeSchema = z
   .object({
     slug,
     name: z.string().min(1),
-    kind: z.enum(["recipe", "component"]),
+    /** A routine is a small scheduled recipe such as methi water (see CLAUDE.md "Routines"). It is never planned as a meal. */
+    kind: z.enum(["recipe", "component", "routine"]),
     family: slug,
-    meal_slots: z.array(z.enum(MEAL_SLOTS)).min(1),
+    /** Meals and parts name at least one slot; a routine is not a meal and has none. */
+    meal_slots: z.array(z.enum(MEAL_SLOTS)),
     cuisine: z.string().min(1),
     is_indian: z.boolean(),
     servings: z.number().positive(),
@@ -156,7 +159,11 @@ export const RecipeSchema = z
       .optional(),
     image_credit: z.string().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((r, ctx) => {
+    if (r.kind === "routine" && r.meal_slots.length > 0) ctx.addIssue({ code: "custom", message: "a routine is not a meal: meal_slots must be empty", path: ["meal_slots"] });
+    if (r.kind !== "routine" && r.meal_slots.length === 0) ctx.addIssue({ code: "custom", message: "choose at least one meal slot", path: ["meal_slots"] });
+  });
 
 export const TechniqueFrontMatterSchema = z
   .object({
@@ -169,12 +176,21 @@ export const HabitSchema = z
   .object({
     slug,
     title: z.string().min(1),
-    category: z.enum(["morning_drink", "daily_basic", "evening_prep_generic"]),
+    category: z.enum(["morning_drink", "daily_basic", "evening_prep_generic", "routine_drink"]),
     evidence_grade: z.enum(EVIDENCE_GRADES),
     evidence_note: z.string().min(1),
     source_url: z.string().nullable(),
     caution: z.string().nullable(),
     default_on: z.boolean(),
+    /** Makes the habit a choosable routine: the routine recipe to make, when in the day, and the usual days (1 = Monday). */
+    routine: z
+      .object({
+        recipe: slug,
+        time_of_day: z.enum(TIMES_OF_DAY),
+        default_days: z.array(z.number().int().min(1).max(7)).min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

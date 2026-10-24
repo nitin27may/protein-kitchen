@@ -64,6 +64,13 @@
       "when": 1792798782641,
       "tag": "0008_ancient_justin_hammer",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792799755337,
+      "tag": "0009_brave_violations",
+      "breakpoints": true
     }
   ]
 }
