@@ -6,7 +6,7 @@ import { refreshHouseholdAccess, requireHouseholdProfile, resolveHouseholdAccess
 import {
   deleteHouseholdPlan, householdPeople, householdPerson, householdPlan, householdPlans,
   deleteHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
-  mutateHouseholdPlan, mutateHouseholdPerson,
+  mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState,
 } from "../lib/server/household-plans";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { householdAccount } from "../lib/server/household-account";
@@ -89,6 +89,19 @@ it("refreshes and locks profile ownership, enforces member self edits and rolls 
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
   await expect(mutateHouseholdPerson(h.db, member, member.personId!, write)).rejects.toThrow("not available");
   expect(called).toBe(2);
+});
+
+it("refreshes shared household state access before callbacks and keeps failures atomic", async () => {
+  expect(await mutateHouseholdState(h.db, a, async () => "saved")).toBe("saved");
+  await expect(mutateHouseholdState(h.db, a, async (tx) => {
+    await tx.insert(s.savedViews).values({ householdId: "a", list: "recipes", name: "Must roll back", query: "" });
+    throw new Error("Synthetic shared-state failure");
+  })).rejects.toThrow("Synthetic shared-state failure");
+  expect(await h.db.select().from(s.savedViews)).toEqual([]);
+  const pending = await resolveHouseholdAccess(h.db, "pending", "a");
+  await expect(mutateHouseholdState(h.db, pending, async () => "never")).rejects.toThrow("Finish");
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  await expect(mutateHouseholdState(h.db, a, async () => "never")).rejects.toThrow("not available");
 });
 
 it("refreshes and locks plan ownership before any shared-state callback and rolls failures back", async () => {

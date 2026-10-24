@@ -324,6 +324,40 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: shared recipe links
+
+Scope: isolate recipe/part/step links on request reads and every add/edit/delete/
+move action. Keep URLs, normalization, stable uid, creator and recipe consistency
+validation unchanged. Introduce one reusable verified household-state transaction
+using the saved-default serialization pattern, and reuse it for saved defaults
+and link mutations. Require a linked profile, refresh membership in the write
+transaction and lock the household before allocating positions or reordering.
+Pass explicit household ownership through the existing checked action service and
+lib/human writers; all selectors, sibling positions and updates must use the same
+namespace. Legacy operator calls address null-owned links rather than all tenants.
+
+Acceptance complete locally: 1,853 tests / 93 files, all 28 retained browser
+journeys, strict types and production build pass. Native concurrent additions
+have distinct positions. Tests cover independent same-URL links, legacy/foreign
+refusal, per-household limits, uid/creator preservation, stale membership and
+database-triggered rollback of add/edit/delete/reorder plus sync markers. Browser
+add/edit/reload/order/delete and captured foreign-id replays pass. A long recipe
+technique-button label caused horizontal overflow and mobile dialog hit-target
+drift; wrapping it resolves the actual browser failure and a saved viewport
+assertion guards it. Overall statements 71.31%; existing critical gates pass.
+Operator link exports/imports, tenant sync and photo ownership remain separate
+pending work. No admission, remote resources, secrets or deployment changed.
+No schema or remote changes are needed; tenant-aware export/import remains a
+separate pending slice.
+
+Acceptance: backend real-action add/update/move/delete and foreign-id refusal
+even for owners; independent same-recipe household ordering, stable uid/creator,
+stale membership and sync-failure rollback. Preserve existing URL/part/step
+validation and human round trips. Native concurrent creates must allocate distinct
+positions. Browser capture/replay must refuse foreign link edits/deletes/reorder
+and show valid add/edit/reload/remove behavior. Run targeted coverage, full native
+regression, retained browser journeys, types and build before committing.
+
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.
 
 The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity with explicit additive Postgres-only fields; the schema now has 48 tables including households, library versioning, eight identity/rate-limit tables, separate personal recipe feedback and four operational sync/reminder tables. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists. Existing SQLite files were not touched or imported.

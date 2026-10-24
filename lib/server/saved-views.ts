@@ -2,8 +2,8 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
 import { clearSavedView, writeSavedView } from "../human/saved-views";
-import { withTx } from "../db/tx";
-import { refreshHouseholdAccess, requireHouseholdProfile, type HouseholdAccess } from "../auth/household-access";
+import type { HouseholdAccess } from "../auth/household-access";
+import { mutateHouseholdState } from "./household-plans";
 
 export const VIEW_LISTS = ["recipes", "ingredients"] as const;
 export type ViewList = (typeof VIEW_LISTS)[number];
@@ -18,13 +18,9 @@ export async function clearDefaultView(db: Db, list: ViewList): Promise<void> {
 }
 
 export async function changeHouseholdDefaultView(db: Db, access: HouseholdAccess, list: ViewList, query: string | null): Promise<void> {
-  await withTx(db, async (tx) => {
-    await refreshHouseholdAccess(tx, access);
-    const personId = requireHouseholdProfile(access);
-    await tx.select({ id: s.households.id }).from(s.households)
-      .where(eq(s.households.id, access.householdId)).for("update");
+  await mutateHouseholdState(db, access, async (tx) => {
     if (query === null) await clearSavedView(tx, list, access.householdId);
-    else await writeSavedView(tx, { householdId: access.householdId, list, query, name: "Default", isDefault: true, createdByPersonId: personId });
+    else await writeSavedView(tx, { householdId: access.householdId, list, query, name: "Default", isDefault: true, createdByPersonId: access.personId });
   });
 }
 

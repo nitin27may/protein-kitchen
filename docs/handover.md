@@ -10,6 +10,19 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest household recipe links:** request recipe/part/step links and actual
+add/edit/move/remove actions now share verified household scope. The shared-state
+transaction refreshes membership, requires a profile and serializes position/
+limit checks on the household row; saved defaults reuse it. Human writers retain
+uid/creator and do not adopt foreign or null-owned legacy links. **Acceptance:
+1,853 tests / 93 files, all 28 retained browser journeys, types and build pass**;
+overall statements 71.31%, existing critical gates pass. Native concurrent
+additions produce distinct positions; browser replay refuses foreign update,
+reorder and delete ids. The new real mobile flow exposed a long technique-button
+label overflowing the recipe viewport and displacing dialog hit targets; wrapping
+that label fixes the flow, with a retained viewport-width assertion. Tenant-aware
+operator exports/sync and photo boundaries remain pending; signup stays gated.
+
 **Latest household recipe feedback:** migration `0013` replaces recipe-only
 identity with null-safe household/recipe uniqueness without changing existing
 rows. Requests scope shared history, personal feedback and planning candidates

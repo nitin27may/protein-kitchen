@@ -37,7 +37,8 @@ import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
-import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
+import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
+import { writeLink } from "../lib/human/links";
 import { changeHouseholdDefaultView, defaultViewQuery } from "../lib/server/saved-views";
 
 const url = process.env.POSTGRES_TEST_URL;
@@ -141,6 +142,11 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
         mealSlots: ["dinner"], cuisine: "test", isIndian: false, servings: 1, prepMin: 0, activeMin: 0,
         totalMin: 0, equipment: [], tags: [], fridgeDays: 1,
       }).returning({ id: s.recipes.id });
+      await Promise.all(Array.from({ length: 6 }, (_, i) => mutateHouseholdState(handle.db, a, (tx) =>
+        writeLink(tx, feedbackRecipe!.id, {
+          kind: "recipe", url: `https://example.com/native-${i}`, title: `Native ${i}`,
+        }, profiles[0]!.id, a.householdId))));
+      expect((await handle.db.select().from(s.recipeLinks)).map((row) => row.position).sort()).toEqual([0, 1, 2, 3, 4, 5]);
       await Promise.all([{ favourite: true }, { rating: 5 }, { notes: "First household" }].map((patch) =>
         mutateHouseholdPerson(handle.db, a, profiles[0]!.id, async (tx) => {
           await tx.select().from(s.households).where(eq(s.households.id, a.householdId)).for("update");

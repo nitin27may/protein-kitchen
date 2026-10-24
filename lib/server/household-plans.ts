@@ -132,6 +132,17 @@ export async function mutateHouseholdPerson<T>(
   });
 }
 
+export async function mutateHouseholdState<T>(
+  db: Db, access: HouseholdAccess, write: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return withTx(db, async (tx) => {
+    await refreshHouseholdAccess(tx, access);
+    requireHouseholdProfile(access);
+    await tx.select({ id: s.households.id }).from(s.households).where(eq(s.households.id, access.householdId)).for("update");
+    return write(tx);
+  });
+}
+
 export async function saveHouseholdPreferences(
   db: Db, access: HouseholdAccess, personId: number, choices: Parameters<typeof persistIngredientPreferences>[2],
 ) {

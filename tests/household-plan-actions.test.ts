@@ -14,6 +14,7 @@ import {
   setGroceryChecked, setManualChecked, setPartMode, setPortion, setPrepDone, swapSlot, toggleLock, setPersonRoutine, setHabitDone,
   saveDefaultView, clearDefaultView,
   setRecipeFeedback,
+  addLink, updateLink, moveLink, removeLink,
 } from "../app/actions";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -168,6 +169,69 @@ it("rolls personal and household feedback back together when shared sync marking
   expect(await h.db.select().from(s.personRecipeFeedback)).toEqual([]);
   expect(await h.db.select().from(s.recipeFeedback)).toEqual([]);
   expect(await h.db.select().from(s.syncState)).toEqual([]);
+});
+
+it("isolates shared link creation editing ordering and deletion, including owner-level foreign ids", async () => {
+  const input = { recipeSlug: "falafel-bowl", kind: "recipe" as const, url: "https://example.com/recipe", title: "Synthetic method" };
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  const foreign = await addLink(input);
+  expect(foreign.ok).toBe(true);
+  if (!foreign.ok) throw new Error(foreign.error);
+  const [foreignRow] = await h.db.select().from(s.recipeLinks);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "a", role: "owner", personId: 1 });
+  for (const call of [
+    () => updateLink(foreign.id, { ...input, title: "Must not change" }),
+    () => moveLink(foreign.id, "up"), () => removeLink(foreign.id),
+    () => removeLink(NaN), () => moveLink(999, "down"),
+  ]) expect((await call()).ok).toBe(false);
+  const first = await addLink(input);
+  const second = await addLink({ ...input, url: "https://example.com/other" });
+  if (!first.ok || !second.ok) throw new Error("Owned fixture creation failed");
+  const [before] = await h.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, first.id));
+  expect(before).toMatchObject({ householdId: "a", position: 0, createdByPersonId: 1 });
+  expect((await addLink(input)).ok).toBe(false);
+  expect(await updateLink(first.id, { ...input, title: "Updated own method" })).toEqual({ ok: true });
+  expect(await moveLink(second.id, "up")).toEqual({ ok: true });
+  expect(await h.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, first.id)))
+    .toMatchObject([{ uid: before!.uid, createdAt: before!.createdAt, title: "Updated own method", position: 1 }]);
+  expect(await h.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, second.id))).toMatchObject([{ position: 0 }]);
+  expect(await h.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, foreign.id))).toEqual([foreignRow]);
+  expect(await removeLink(first.id)).toEqual({ ok: true });
+  await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "a"));
+  expect((await addLink(input)).ok).toBe(false);
+  expect((await removeLink(second.id)).ok).toBe(false);
+});
+
+it("rolls link creation back with its human sync marker on database failure", async () => {
+  await h.db.execute(sql`alter table sync_state add constraint synthetic_link_sync_failure check (data_class <> 'recipe-links')`);
+  await expect(addLink({
+    recipeSlug: "falafel-bowl", kind: "recipe", url: "https://example.com/rollback", title: "Must roll back",
+  })).rejects.toThrow("sync_state");
+  expect(await h.db.select().from(s.recipeLinks)).toEqual([]);
+});
+
+it("keeps legacy links separate, limits only the current household and rolls edits removals and ordering back", async () => {
+  const [recipe] = await h.db.select().from(s.recipes).where(eq(s.recipes.slug, "falafel-bowl"));
+  const [legacy] = await h.db.insert(s.recipeLinks).values({
+    recipeId: recipe!.id, uid: "legacy-link", kind: "recipe", url: "https://example.com/legacy",
+    title: "Legacy", position: 99, createdAt: "2026-11-02", updatedAt: "2026-11-02",
+  }).returning();
+  expect((await removeLink(legacy!.id)).ok).toBe(false);
+  const input = { recipeSlug: "falafel-bowl", kind: "recipe" as const, title: "Owned", url: "https://example.com/legacy" };
+  for (let i = 0; i < 12; i++) expect((await addLink({ ...input, url: i === 0 ? input.url : `https://example.com/limit-${i}` })).ok).toBe(true);
+  expect(await addLink({ ...input, url: "https://example.com/overflow" })).toMatchObject({ ok: false, error: expect.stringContaining("up to 12") });
+  const before = await h.db.select().from(s.recipeLinks).orderBy(s.recipeLinks.id);
+  const owned = before.filter((row) => row.householdId === "a");
+  await h.db.execute(sql`delete from sync_state`);
+  await h.db.execute(sql`alter table sync_state add constraint synthetic_link_edit_failure check (data_class <> 'recipe-links')`);
+  for (const change of [
+    () => updateLink(owned[0]!.id, { ...input, title: "Must roll back" }),
+    () => removeLink(owned[0]!.id), () => moveLink(owned[1]!.id, "up"),
+  ]) {
+    await expect(change()).rejects.toThrow("sync_state");
+    expect(await h.db.select().from(s.recipeLinks).orderBy(s.recipeLinks.id)).toEqual(before);
+    expect(await h.db.select().from(s.syncState)).toEqual([]);
+  }
 });
 
 it("rolls saved defaults and deletion back when sync marking fails", async () => {

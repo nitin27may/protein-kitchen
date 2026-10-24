@@ -354,7 +354,8 @@ export async function getResetCounts(): Promise<ResetCounts> {
 
 /** Every link saved on a recipe page, in display order, with video embeds worked out. See link-view.ts. */
 export async function getRecipeLinks(recipeSlug: string): Promise<RecipeLinkView[]> {
-  return recipeLinksFor(await getDb(), recipeSlug);
+  const db = await getDb();
+  return recipeLinksFor(db, recipeSlug, (await requestHousehold(db)).householdId);
 }
 
 /** Which of the three after-plan steps are done. All three keys are always present. */

@@ -3,9 +3,77 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipes, plans, planSetups, planSlots, savedViews } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
+
+test("shared links survive editing and reload while captured actions refuse foreign household links", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = `foreign-link-${randomUUID()}`;
+  const title = `Browser method ${randomUUID()}`;
+  const path = "/recipes/tofu-burrito-bowl";
+  try {
+    await handle.db.insert(households).values({ id: householdId, name: "Synthetic link household" });
+    const [recipe] = await handle.db.select().from(recipes).where(eq(recipes.slug, "tofu-burrito-bowl"));
+    const [foreign] = await handle.db.insert(recipeLinks).values({
+      householdId, recipeId: recipe!.id, uid: randomUUID(), kind: "recipe",
+      url: "https://example.com/browser-method", title: "Foreign private method", position: 0,
+      createdAt: "2026-11-02T00:00:00Z", updatedAt: "2026-11-02T00:00:00Z",
+    }).returning();
+    await page.goto(path);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    const section = page.getByRole("region", { name: "Watch and read", exact: true });
+    await expect(section.getByText("Foreign private method", { exact: true })).toHaveCount(0);
+    for (const [suffix, url] of [["", "https://example.com/browser-method"], [" second", "https://example.com/browser-second"]]) {
+      await section.getByRole("button", { name: "Add a link", exact: true }).click();
+      const editor = page.getByRole("dialog", { name: "Add a link", exact: true });
+      await editor.getByLabel("Address (https)", { exact: true }).fill(url!);
+      await editor.getByLabel("Title, in your own words", { exact: true }).fill(title + suffix);
+      await editor.getByRole("button", { name: "Add link", exact: true }).click();
+      await expect(editor).toHaveCount(0);
+      await expect(section.getByText(title + suffix, { exact: true })).toBeVisible();
+    }
+    const replay = async (request: import("@playwright/test").Request, args: unknown[]) => {
+      const response = await page.request.post(path, {
+        headers: {
+          origin: "http://127.0.0.1:3112", "content-type": request.headers()["content-type"]!,
+          "next-action": request.headers()["next-action"]!,
+        }, data: JSON.stringify(args),
+      });
+      expect(await response.text()).toContain("That link no longer exists");
+    };
+    await section.getByRole("button", { name: `Edit link: ${title}`, exact: true }).click();
+    const editor = page.getByRole("dialog", { name: "Edit link", exact: true });
+    await editor.getByLabel("Title, in your own words", { exact: true }).fill(`${title} edited`);
+    const editing = page.waitForRequest((r) => r.method() === "POST" && r.headers()["next-action"] !== undefined);
+    await editor.getByRole("button", { name: "Save changes", exact: true }).click();
+    const edited = await editing;
+    await expect(editor).toHaveCount(0);
+    const [, patch] = z.tuple([z.number(), z.object({}).passthrough()]).parse(JSON.parse(edited.postData()!));
+    await replay(edited, [foreign!.id, patch]);
+    const moving = page.waitForRequest((r) => r.method() === "POST" && r.headers()["next-action"] !== undefined);
+    await section.getByRole("button", { name: `Move up: ${title} second`, exact: true }).click();
+    await replay(await moving, [foreign!.id, "up"]);
+    await page.reload();
+    await expect(section.getByText(`${title} edited`, { exact: true })).toBeVisible();
+    await expect(section.getByRole("button", { name: `Move up: ${title} second`, exact: true })).toBeDisabled();
+    for (const saved of [`${title} edited`, `${title} second`]) {
+      await section.getByRole("button", { name: `Remove link: ${saved}`, exact: true }).click();
+      const removing = page.waitForRequest((r) => r.method() === "POST" && r.headers()["next-action"] !== undefined);
+      await section.getByRole("group", { name: `Confirm removing ${saved}`, exact: true })
+        .getByRole("button", { name: "Yes, remove", exact: true }).click();
+      await replay(await removing, [foreign!.id]);
+      await expect(section.getByText(saved, { exact: true })).toHaveCount(0);
+    }
+    expect(await handle.db.select().from(recipeLinks).where(eq(recipeLinks.id, foreign!.id))).toEqual([foreign]);
+  } finally {
+    await handle.db.delete(recipeLinks).where(eq(recipeLinks.householdId, householdId));
+    await handle.db.delete(recipeLinks).where(eq(recipeLinks.url, "https://example.com/browser-method"));
+    await handle.db.delete(recipeLinks).where(eq(recipeLinks.url, "https://example.com/browser-second"));
+    await handle.db.delete(households).where(eq(households.id, householdId));
+    await handle.close();
+  }
+});
 
 test("saved list defaults survive reload and leave another household's view untouched", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));

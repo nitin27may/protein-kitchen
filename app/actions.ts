@@ -39,7 +39,7 @@ import { requireHouseholdProfile, resolveOnlyHouseholdAccess, type HouseholdAcce
 import { HouseholdAccessError } from "@/lib/auth/household";
 import {
   deleteHouseholdPerson, householdPeople, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
-  deleteHouseholdPlan, mutateHouseholdPlan, mutateHouseholdPerson, regenerateHouseholdPlan,
+  deleteHouseholdPlan, mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState, regenerateHouseholdPlan,
 } from "@/lib/server/household-plans";
 import type { Db } from "@/lib/db/client";
 
@@ -83,6 +83,19 @@ async function personMutation(personId: number, write: (db: Db) => Promise<Resul
   if (!context.ok) return context;
   try {
     return await mutateHouseholdPerson(context.db, context.access, personId, write);
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
+}
+
+async function householdMutation<T>(
+  write: (db: Db, access: HouseholdAccess) => Promise<Result<NoInfer<T>>>,
+): Promise<Result<T>> {
+  const context = await householdContext();
+  if (!context.ok) return context;
+  try {
+    return await mutateHouseholdState(context.db, context.access, (tx) => write(tx, context.access));
   } catch (error) {
     if (error instanceof HouseholdAccessError) return fail(error.message);
     throw error;
@@ -669,7 +682,8 @@ function refreshRecipe(slug: string) {
 export async function addLink(input: LinkInput): Promise<Result<{ id: number }>> {
   const denied = await actionDenial();
   if (denied) return denied;
-  const result = await addLinkChecked(await getDb(), getData().recipes, input);
+  const result = await householdMutation<{ id: number; recipeSlug: string }>((db, access) =>
+    addLinkChecked(db, getData().recipes, input, access.personId, access.householdId));
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
   return { ok: true, id: result.id };
@@ -678,7 +692,8 @@ export async function addLink(input: LinkInput): Promise<Result<{ id: number }>>
 export async function updateLink(id: number, input: LinkInput): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  const result = await updateLinkChecked(await getDb(), getData().recipes, id, input);
+  const result = await householdMutation<{ recipeSlug: string }>((db, access) =>
+    updateLinkChecked(db, getData().recipes, id, input, access.householdId));
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
   return { ok: true };
@@ -687,7 +702,7 @@ export async function updateLink(id: number, input: LinkInput): Promise<Result> 
 export async function removeLink(id: number): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  const result = await removeLinkChecked(await getDb(), id);
+  const result = await householdMutation<{ recipeSlug: string }>((db, access) => removeLinkChecked(db, id, access.householdId));
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
   return { ok: true };
@@ -697,7 +712,7 @@ export async function moveLink(id: number, direction: "up" | "down"): Promise<Re
   const denied = await actionDenial();
   if (denied) return denied;
   if (direction !== "up" && direction !== "down") return fail("Direction must be up or down");
-  const result = await moveLinkChecked(await getDb(), id, direction);
+  const result = await householdMutation<{ recipeSlug: string }>((db, access) => moveLinkChecked(db, id, direction, access.householdId));
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
   return { ok: true };

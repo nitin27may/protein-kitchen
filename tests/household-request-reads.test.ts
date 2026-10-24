@@ -13,6 +13,7 @@ import {
   getPerson, getPrefs, getPersonRoutines, getTodayRoutines, getHabitsFor,
   getSavedViews, getDefaultViewQuery,
   feedbackMap, getCandidates,
+  getRecipeLinks,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
@@ -91,6 +92,21 @@ it("reads only household saved views and never adopts an unowned legacy default"
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
   await expect(getSavedViews("recipes")).rejects.toThrow("Select an available household");
   await expect(getDefaultViewQuery("recipes")).rejects.toThrow("Select an available household");
+});
+
+it("returns only the request household's recipe links", async () => {
+  const [stored] = await h.db.select().from(s.recipes);
+  for (const householdId of ["a", "b", null]) {
+    await h.db.insert(s.recipeLinks).values({
+      householdId, recipeId: stored!.id, uid: `fixture-${householdId}`, kind: "recipe",
+      url: `https://example.com/${householdId}`, title: `Private ${householdId}`, position: 0,
+      createdAt: "2026-11-02T00:00:00Z", updatedAt: "2026-11-02T00:00:00Z",
+    });
+  }
+  expect((await getRecipeLinks(recipe.slug)).map((r) => r.title)).toEqual(["Private a"]);
+  expect(await getRecipeLinks("missing")).toEqual([]);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect((await getRecipeLinks(recipe.slug)).map((r) => r.title)).toEqual(["Private b"]);
 });
 
 it("scopes historical/personal feedback and candidate filtering to the selected household profiles", async () => {

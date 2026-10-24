@@ -286,7 +286,7 @@ export function RecipeDetail(p: DetailProps) {
                     {s.timerSec || s.technique ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {s.timerSec ? <Pill>{Math.round(s.timerSec / 60)} min timer</Pill> : null}
-                        {s.technique ? <Button variant="ghost" size="sm" onClick={() => setTech(s.technique)}>Technique: {s.technique.title}</Button> : null}
+                        {s.technique ? <Button variant="ghost" size="sm" className="max-w-full whitespace-normal text-left" onClick={() => setTech(s.technique)}>Technique: {s.technique.title}</Button> : null}
                       </div>
                     ) : null}
                   </div>

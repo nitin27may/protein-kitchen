@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
 import type { LinkKind, RecipeLinkView } from "../links/types";
@@ -9,12 +9,13 @@ import { parseLinkUrl } from "../links/url";
  * meal itself first), then step (the whole thing first), then the order the person set. Sorted here, not in SQL,
  * because NULL ordering differs between SQLite and Postgres. `embed` is worked out from the URL at read time.
  */
-export async function recipeLinksFor(db: Db, recipeSlug: string): Promise<RecipeLinkView[]> {
+export async function recipeLinksFor(db: Db, recipeSlug: string, householdId?: string): Promise<RecipeLinkView[]> {
   const rows = await db
     .select({ link: s.recipeLinks })
     .from(s.recipeLinks)
     .innerJoin(s.recipes, eq(s.recipes.id, s.recipeLinks.recipeId))
-    .where(eq(s.recipes.slug, recipeSlug));
+    .where(and(eq(s.recipes.slug, recipeSlug),
+      householdId === undefined ? isNull(s.recipeLinks.householdId) : eq(s.recipeLinks.householdId, householdId)));
   const text = (a: string | null, b: string | null): number => (a === b ? 0 : a === null ? -1 : b === null ? 1 : a < b ? -1 : 1);
   const num = (a: number | null, b: number | null): number => (a === b ? 0 : a === null ? -1 : b === null ? 1 : a - b);
   return rows
