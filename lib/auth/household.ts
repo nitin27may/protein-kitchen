@@ -7,6 +7,7 @@ import { authAccounts, authSessions, authUsers, authVerifications, householdBoot
 import { deletePersonalFeedbackForPerson } from "../human/personal-feedback";
 import { secretsMatch, tokenHash } from "./tokens";
 import { PersonInput, personRow, type PersonInputData } from "../schemas/person";
+import { refreshHouseholdAccess, resolveHouseholdAccess, type HouseholdAccess } from "./household-access";
 
 export class HouseholdAccessError extends Error {
   override name = "HouseholdAccessError";
@@ -33,9 +34,15 @@ async function singleMembership(tx: Tx, userId: string) {
   return memberships[0];
 }
 
-async function requireOwner(tx: Tx, userId: string) {
+async function selectedMembership(tx: Tx, userId: string, access?: HouseholdAccess) {
+  if (!access) return singleMembership(tx, userId);
+  if (access.userId !== userId) throw new HouseholdAccessError("Your household access changed. Reload before continuing.");
+  return refreshHouseholdAccess(tx, access);
+}
+
+async function requireOwner(tx: Tx, userId: string, access?: HouseholdAccess) {
   await verifiedUser(tx, userId);
-  const member = await singleMembership(tx, userId);
+  const member = await selectedMembership(tx, userId, access);
   if (member?.role !== "owner" || member.householdId === null) throw new HouseholdAccessError("Only a household owner can manage invitations and profile links.");
   return { ...member, householdId: member.householdId };
 }
@@ -57,12 +64,12 @@ async function requireAnotherOwner(tx: Tx, householdId: string, userId: string) 
   if (!other) throw new HouseholdAccessError("Keep at least one verified owner with a completed profile.");
 }
 
-export async function changeMemberRole(db: Db, actorUserId: string, targetUserId: string, role: "owner" | "member") {
+export async function changeMemberRole(db: Db, actorUserId: string, targetUserId: string, role: "owner" | "member", access?: HouseholdAccess) {
   z.string().min(1).max(128).parse(targetUserId);
   z.enum(["owner", "member"]).parse(role);
   await withTx(db, async (tx) => {
     await lockHousehold(tx);
-    const actor = await requireOwner(tx, actorUserId);
+    const actor = await requireOwner(tx, actorUserId, access);
     const [target] = await tx.select().from(householdMembers)
       .where(and(eq(householdMembers.userId, targetUserId), eq(householdMembers.householdId, actor.householdId))).for("update");
     if (!target) throw new HouseholdAccessError("That account is no longer in the household.");
@@ -80,11 +87,11 @@ export async function changeMemberRole(db: Db, actorUserId: string, targetUserId
   });
 }
 
-export async function removeHouseholdMember(db: Db, actorUserId: string, targetUserId: string) {
+export async function removeHouseholdMember(db: Db, actorUserId: string, targetUserId: string, access?: HouseholdAccess) {
   z.string().min(1).max(128).parse(targetUserId);
   await withTx(db, async (tx) => {
     await lockHousehold(tx);
-    const actor = await requireOwner(tx, actorUserId);
+    const actor = await requireOwner(tx, actorUserId, access);
     const [target] = await tx.select().from(householdMembers)
       .where(and(eq(householdMembers.userId, targetUserId), eq(householdMembers.householdId, actor.householdId))).for("update");
     if (!target) throw new HouseholdAccessError("That account is no longer in the household.");
@@ -143,13 +150,13 @@ export async function deleteOwnAccount(db: Db, input: {
   });
 }
 
-export async function createMemberProfile(db: Db, userId: string, input: PersonInputData) {
+export async function createMemberProfile(db: Db, userId: string, input: PersonInputData, access?: HouseholdAccess) {
   const v = PersonInput.parse(input);
   if (v.id !== undefined) throw new HouseholdAccessError("Onboarding cannot overwrite an existing profile.");
   return withTx(db, async (tx) => {
     await lockHousehold(tx);
     await verifiedUser(tx, userId);
-    const member = await singleMembership(tx, userId);
+    const member = await selectedMembership(tx, userId, access);
     if (!member || member.householdId === null) throw new HouseholdAccessError("Join the household before creating your profile.");
     if (member.personId !== null) throw new HouseholdAccessError("Your account already has a profile.");
     const [person] = await tx.insert(people).values({ ...personRow(v), householdId: member.householdId }).returning({ id: people.id });
@@ -183,13 +190,13 @@ export async function claimHousehold(db: Db, userId: string, submittedSecret: st
   });
 }
 
-export async function issueInvitation(db: Db, actorUserId: string, input: { email: string; personId?: number }) {
+export async function issueInvitation(db: Db, actorUserId: string, input: { email: string; personId?: number }, access?: HouseholdAccess) {
   const email = emailSchema.parse(input.email);
   if (input.personId !== undefined) z.number().int().positive().parse(input.personId);
   const token = randomBytes(32).toString("base64url");
   const invitation = await withTx(db, async (tx) => {
     await lockHousehold(tx);
-    const actor = await requireOwner(tx, actorUserId);
+    const actor = await requireOwner(tx, actorUserId, access);
     const [existing] = await tx.select({ id: householdMembers.userId }).from(householdMembers)
       .innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
       .where(sql`lower(trim(${authUsers.email})) = ${email}`);
@@ -229,8 +236,13 @@ export async function acceptInvitation(db: Db, userId: string, token: string) {
         invitation.expiresAt.getTime() <= Date.now() || invitation.email !== emailSchema.parse(user.email)) {
       throw new HouseholdAccessError("This invitation is invalid or no longer available.");
     }
-    const owner = await requireOwner(tx, invitation.invitedByUserId);
-    if (invitation.householdId !== owner.householdId) throw new HouseholdAccessError("This invitation is invalid or no longer available.");
+    if (invitation.householdId === null) throw new HouseholdAccessError("This invitation is invalid or no longer available.");
+    const issuer = await tx.select({ householdId: householdMembers.householdId }).from(householdMembers).where(and(
+      eq(householdMembers.userId, invitation.invitedByUserId), eq(householdMembers.householdId, invitation.householdId),
+    ));
+    if (!issuer.length) throw new HouseholdAccessError("This invitation is invalid or no longer available.");
+    const issuerAccess = await resolveHouseholdAccess(tx, invitation.invitedByUserId, invitation.householdId);
+    const owner = await requireOwner(tx, invitation.invitedByUserId, issuerAccess);
     const [existing] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, userId));
     if (existing) throw new HouseholdAccessError("Your account is already in the household.");
     if (invitation.personId !== null) await availableProfile(tx, owner.householdId, invitation.personId);
@@ -244,10 +256,10 @@ export async function acceptInvitation(db: Db, userId: string, token: string) {
   });
 }
 
-export async function revokeInvitation(db: Db, actorUserId: string, invitationId: string) {
+export async function revokeInvitation(db: Db, actorUserId: string, invitationId: string, access?: HouseholdAccess) {
   await withTx(db, async (tx) => {
     await lockHousehold(tx);
-    const actor = await requireOwner(tx, actorUserId);
+    const actor = await requireOwner(tx, actorUserId, access);
     const [revoked] = await tx.update(householdInvitations).set({ revokedAt: new Date() })
       .where(and(eq(householdInvitations.id, invitationId), eq(householdInvitations.householdId, actor.householdId), pending()))
       .returning({ id: householdInvitations.id });
@@ -256,11 +268,11 @@ export async function revokeInvitation(db: Db, actorUserId: string, invitationId
 }
 
 /** Existing profile links require owner approval, not a member-submitted arbitrary person id. */
-export async function assignMemberProfile(db: Db, actorUserId: string, targetUserId: string, personId: number) {
+export async function assignMemberProfile(db: Db, actorUserId: string, targetUserId: string, personId: number, access?: HouseholdAccess) {
   z.number().int().positive().parse(personId);
   return withTx(db, async (tx) => {
     await lockHousehold(tx);
-    const actor = await requireOwner(tx, actorUserId);
+    const actor = await requireOwner(tx, actorUserId, access);
     const [member] = await tx.select().from(householdMembers)
       .where(and(eq(householdMembers.userId, targetUserId), eq(householdMembers.householdId, actor.householdId))).for("update");
     if (!member) throw new HouseholdAccessError("The selected account is not in the household.");

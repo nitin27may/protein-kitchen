@@ -10,7 +10,20 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
-**Latest session-bound private requests:** the member guard resolves the exact
+**Latest household chooser and selected management:** Account offers a verified
+session-bound switcher; ambiguous onboarding shows the same chooser. Selected
+profile creation/linking, invitation management and role/removal writes revalidate
+the capability transactionally. Switching never moves profiles or merges plans.
+Explicit network/revoked-target errors support retry; successful selection replaces
+the document. Profile controls wait for hydration to preserve the first typed edit.
+**Acceptance: 1,930 tests / 95 files, 33 retained browser journeys, types/build and
+all critical gates pass**, overall statements 72.51%. Open email-first admission,
+operator/import/recovery contracts, legacy ownership contraction and deployment
+remain unfinished. Local `.env.local` now contains isolated development URLs and a
+local auth secret, is ignored/owner-readable, and still needs `NEON_API_KEY` plus
+mail configuration; no cloud key was created or schema migrated.
+
+**Earlier session-bound private requests:** the member guard resolves the exact
 provider session and current selected membership/profile. Private queries,
 actions, account/profile pages, photo bytes and interactive sync now retain that
 capability through revalidation rather than guessing a membership; trusted

@@ -23,6 +23,7 @@ export default async function Account() {
       <LinkButton href={`/profiles/${profile!.id}`} variant="secondary" className="max-w-full"><span className="min-w-0 truncate">Profile: {profile!.name}</span></LinkButton>
       <LinkButton href="/">Shared meal plan</LinkButton>
       <LinkButton href="/groceries" variant="secondary">Shared shopping list</LinkButton>
+      <LinkButton href="/households" variant="secondary">Switch household</LinkButton>
     </div>
     <AccountControls owner={owner} profiles={profiles} invitations={invitations} members={members} currentUserId={member.userId} />
   </section>;

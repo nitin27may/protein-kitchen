@@ -324,6 +324,52 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: visible selector and selected-household management
+
+**Local acceptance:** Account now links to a verified household chooser; ambiguous
+onboarding uses the same chooser. Selection is session-bound, explicitly retried
+after network/revocation errors, and replaces the document to discard old router
+state. Profile creation/linking and member management revalidate the selected
+capability in their write transaction. Invitations issued by plural-household
+owners resolve the issuer in the invitation's household, never by first match.
+The real browser journey exposed pre-hydration profile edits being discarded;
+profile controls now remain disabled until client state is ready. Retained cases
+cover that first edit, reload, incomplete-profile completion, foreign selection,
+switch-back without profile/plan changes, mobile overflow/tap targets and two
+independent provider sessions. Browser fixtures identify their actual cookie-bound
+session instead of assuming there is exactly one database session after retries.
+All **1,930 tests / 95 files**, **33 retained browser journeys**, types/build and
+critical coverage gates pass; overall statements **72.51%**. No admission, remote
+migration, deployment or release is enabled by this slice.
+
+Before widening admission, expose selection only to verified provider sessions.
+Add a dedicated household page reachable from Account, and show the same chooser
+on onboarding when multiple memberships need selection or a stored selection was
+revoked. List names only after verified session/database checks. Select through
+a validated Server Action using server-derived identity, return only the
+household/profile-completion result, and replace the document on success to
+discard the prior household's router cache. Surface transport and revoked-target
+errors explicitly with retry. Preserve each other session's selection.
+
+Onboarding resolves the selected session for incomplete profiles. Extend existing
+profile creation/link and invitation/member management functions to accept a
+verified household capability, refresh it in their existing transaction and
+reject account/scope mismatch or a stale session selection. Legacy operator
+callers remain exactly-one only. Carry selected access through the actual
+onboarding actions, including owner actions; no user can supply actor identity
+or an arbitrary profile grant. Keep final-owner and cross-household checks.
+Normal signup/second-household admission remain unchanged in this slice.
+
+Acceptance: backend real-action selector validation, anonymous/expired/foreign
+refusal and selected profile/management operations with two memberships;
+transaction/stale-selection rollback and unchanged foreign rows. Retained real
+browser chooser selects an incomplete household, creates a profile, reloads,
+switches back to original shared data, and proves a second session is unchanged;
+network failure/retry, revoked choice, mobile overflow/tap targets and captured
+foreign-id actions are covered. Run full/native coverage with critical gates,
+all browser journeys, strict types and production build before committing.
+No live database, secrets, remote deployment or destructive reset changes.
+
 ### H2 slice: session-bound private request adoption
 
 Dependencies: session selection storage/capabilities passed full local acceptance.

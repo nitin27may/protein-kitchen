@@ -8,6 +8,7 @@ import {
 } from "../lib/auth/household";
 import { openDb, type DbHandle } from "./helpers/db";
 import { exportHumanData } from "../lib/human/export";
+import { resolveHouseholdAccess } from "../lib/auth/household-access";
 
 let h: DbHandle;
 const bootstrapSecret = "synthetic-bootstrap-secret-for-tests-only";
@@ -85,6 +86,28 @@ async function additionalMembership(userId: string, role: "owner" | "member" = "
 }
 
 describe("owner role and household access management", () => {
+  it("refuses a supplied capability for another actor or a changed role before any management writes", async () => {
+    await cooks();
+    const access = await resolveHouseholdAccess(h.db, "owner", await ownerHouseholdId());
+    const before = await h.db.select().from(s.householdMembers);
+    await expect(issueInvitation(h.db, "cook", { email: "next@example.test" }, access)).rejects.toThrow("access changed");
+    await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "owner"));
+    await expect(changeMemberRole(h.db, "owner", "cook", "owner", access)).rejects.toThrow("access changed");
+    await expect(assignMemberProfile(h.db, "owner", "cook", await profile(), access)).rejects.toThrow("access changed");
+    expect(await h.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.email, "next@example.test"))).toEqual([]);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook")))
+      .toEqual(before.filter((member) => member.userId === "cook"));
+  });
+  it("accepts an invitation issued by an owner with multiple memberships without guessing the issuer household", async () => {
+    await owner();
+    const access = await resolveHouseholdAccess(h.db, "owner", await ownerHouseholdId());
+    await additionalMembership("owner");
+    await user("recipient");
+    const invitation = await issueInvitation(h.db, "owner", { email: "recipient@example.test" }, access);
+    await acceptInvitation(h.db, "recipient", invitation.token);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "recipient")))
+      .toMatchObject([{ householdId: access.householdId, role: "member" }]);
+  });
   it("refuses ambiguous actor management and profile onboarding rather than selecting a membership", async () => {
     await cooks();
     await additionalMembership("owner");

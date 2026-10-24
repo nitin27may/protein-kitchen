@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { verifiedSessionUser } from "@/lib/auth/access";
+import { verifiedSessionIdentity, verifiedSessionUser } from "@/lib/auth/access";
 import { HouseholdAccessError } from "@/lib/auth/household";
 import { AuthConfigurationError } from "@/lib/auth/config";
 import { safeAuthReturn } from "@/lib/auth/browser";
@@ -10,7 +10,8 @@ import { HouseholdEntry } from "@/components/auth/HouseholdEntry";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Banner, PageTitle } from "@/components/ui";
 import { finishProfile } from "./actions";
-import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { resolveSessionHouseholdAccess, sessionHouseholds } from "@/lib/auth/household-session";
+import { HouseholdChooser } from "@/components/auth/HouseholdChooser";
 
 export const metadata = { title: "Join your household" };
 export const dynamic = "force-dynamic";
@@ -32,9 +33,15 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
     <HouseholdEntry />
   </section>;
   let access;
-  try { access = await resolveOnlyHouseholdAccess(db, user.id); }
+  const identity = await verifiedSessionIdentity();
+  const choices = await sessionHouseholds(db, identity);
+  try { access = await resolveSessionHouseholdAccess(db, identity); }
   catch (error) {
     if (!(error instanceof HouseholdAccessError)) throw error;
+    if (choices.households.length) return <div className="mx-auto max-w-xl space-y-5 px-4 pb-28 pt-8">
+      <h1 className="text-2xl font-bold">Choose a household</h1>
+      <HouseholdChooser {...choices} />
+    </div>;
     return <div className="p-4"><Banner tone="bad">Your household ownership needs an operator migration before onboarding can continue.</Banner></div>;
   }
   if (access.personId !== null) redirect(next);

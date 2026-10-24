@@ -2,7 +2,7 @@ import { test, expect } from "./member-fixture";
 import type { Page } from "@playwright/test";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { openPostgres } from "../../lib/db/postgres/client";
 import * as s from "../../lib/db/schema";
 import { e2eTarget } from "./target";
@@ -11,6 +11,15 @@ async function mutation(page: Page, action: () => Promise<unknown>) {
   const response = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).origin === "http://127.0.0.1:3112");
   await action();
   expect((await response).status()).toBe(200);
+}
+
+async function currentSession(page: Page, db: ReturnType<typeof openPostgres>["db"]) {
+  const cookie = (await page.context().cookies()).find((value) => value.name.endsWith("session_token"));
+  expect(cookie).toBeDefined();
+  const token = decodeURIComponent(cookie!.value).split(".")[0]!;
+  const [session] = await db.select().from(s.authSessions).where(eq(s.authSessions.token, token));
+  expect(session).toBeDefined();
+  return session!;
 }
 
 test("plan generation, swap and locked regeneration survive reload", async ({ page }) => {
@@ -49,6 +58,81 @@ test("shopping progress is shared between independent browser contexts and persi
   } finally { await other.close(); }
 });
 
+test("household chooser retries failures, completes only the selected profile and switches back without merging data", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = randomUUID();
+  const name = "Synthetic second household for shared meal planning";
+  let selectedSession: typeof s.authSessions.$inferSelect | undefined;
+  try {
+    const [account] = await handle.db.select({ id: s.authUsers.id }).from(s.authUsers)
+      .where(eq(s.authUsers.email, "authorized-browser-fixture@example.test"));
+    selectedSession = await currentSession(page, handle.db);
+    const profiles = await handle.db.select().from(s.people);
+    const plans = await handle.db.select().from(s.plans);
+    await handle.db.insert(s.households).values({ id: householdId, name });
+    await handle.db.insert(s.householdMembers).values({ householdId, userId: account!.id, role: "owner" });
+    await page.goto("/groceries");
+    await expect(page).toHaveURL(/\/onboarding/);
+    await expect(page.getByRole("heading", { name: "Choose a household", exact: true })).toBeVisible();
+    const choice = page.getByRole("button", { name: `Use household: ${name}`, exact: true });
+    await expect(choice).toBeVisible();
+    const bounds = await choice.boundingBox();
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.route("**/onboarding", async (route) => {
+      if (route.request().method() === "POST") await route.abort("failed");
+      else await route.continue();
+    });
+    await choice.click();
+    await expect(page.getByRole("alert").filter({ hasText: "Check your connection" })).toBeVisible();
+    await page.unroute("**/onboarding");
+    await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
+    await choice.click();
+    await expect(page.getByRole("alert").filter({ hasText: "not available" })).toBeVisible();
+    await handle.db.insert(s.householdMembers).values({ householdId, userId: account!.id, role: "owner" });
+    const outgoing = page.waitForRequest((request) => request.method() === "POST" && !!request.headers()["next-action"]);
+    await choice.click();
+    const captured = await outgoing;
+    await expect(page.getByRole("heading", { name: "Your meal profile", exact: true })).toBeVisible();
+    await page.getByLabel("Name", { exact: true }).fill("Synthetic selected profile");
+    await page.getByLabel("Date of birth", { exact: true }).fill("2000-01-01");
+    await page.getByLabel("Height (cm)", { exact: true }).fill("170");
+    await page.getByLabel("Weight (kg)", { exact: true }).fill("70");
+    await page.getByRole("button", { name: "Save profile", exact: true }).click();
+    await expect(page).not.toHaveURL(/\/onboarding/);
+    await page.goto("/account");
+    await expect(page.getByRole("link", { name: "Profile: Synthetic selected profile", exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("link", { name: "Profile: Synthetic selected profile", exact: true })).toBeVisible();
+    const denied = await page.request.post("/onboarding", {
+      headers: {
+        origin: "http://127.0.0.1:3112", "next-action": captured.headers()["next-action"]!,
+        "content-type": captured.headers()["content-type"]!,
+      }, data: JSON.stringify(["foreign-household-selection"]),
+    });
+    expect(await denied.text()).toContain("not available");
+    await page.getByRole("link", { name: "Switch household", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Choose a household", exact: true })).toBeVisible();
+    await expect(page.getByText(`${name} (current)`, { exact: true })).toBeVisible();
+    const [original] = await handle.db.select().from(s.households).where(eq(s.households.id, "00000000-0000-4000-8000-000000000001"));
+    await page.getByRole("button", { name: `Use household: ${original!.name}`, exact: true }).click();
+    await expect(page.getByRole("link", { name: "Profile: Synthetic authorized fixture", exact: true })).toBeVisible();
+    expect(await handle.db.select().from(s.people).where(eq(s.people.householdId, householdId)))
+      .toMatchObject([{ name: "Synthetic selected profile" }]);
+    for (const profile of profiles) expect(await handle.db.select().from(s.people).where(eq(s.people.id, profile.id))).toEqual([profile]);
+    expect(await handle.db.select().from(s.plans)).toEqual(plans);
+  } finally {
+    if (selectedSession) await handle.db.update(s.authSessions).set({
+      activeHouseholdId: selectedSession.activeHouseholdId,
+      householdSelectionVersion: sql`${s.authSessions.householdSelectionVersion} + 1`,
+    }).where(eq(s.authSessions.id, selectedSession.id));
+    await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
+    await handle.db.delete(s.people).where(eq(s.people.householdId, householdId));
+    await handle.db.delete(s.households).where(eq(s.households.id, householdId));
+    await handle.close();
+  }
+});
+
 test("two real sessions of one account use separate selected households and reject captured foreign-plan actions", async ({ page, browser }) => {
   await page.goto("/groceries");
   const checkbox = page.getByRole("checkbox").first();
@@ -67,8 +151,7 @@ test("two real sessions of one account use separate selected households and reje
     const [account] = await handle.db.select({ id: s.authUsers.id }).from(s.authUsers)
       .where(eq(s.authUsers.email, "authorized-browser-fixture@example.test"));
     const sessions = await handle.db.select().from(s.authSessions).where(eq(s.authSessions.userId, account!.id));
-    expect(sessions).toHaveLength(1);
-    primary = sessions[0]!;
+    primary = await currentSession(page, handle.db);
     await handle.db.insert(s.households).values({ id: householdId, name: "Separate selected household" });
     const [profile] = await handle.db.insert(s.people).values({
       householdId, name: "Secondary selected profile", sex: "other", birthDate: "2000-01-01",
@@ -86,7 +169,7 @@ test("two real sessions of one account use separate selected households and reje
     });
     expect(login.status()).toBe(200);
     const secondSessions = (await handle.db.select().from(s.authSessions).where(eq(s.authSessions.userId, account!.id)))
-      .filter((session) => session.id !== primary!.id);
+      .filter((session) => !sessions.some((existing) => existing.id === session.id));
     expect(secondSessions).toHaveLength(1);
     secondarySessionId = secondSessions[0]!.id;
     await handle.db.update(s.authSessions).set({ activeHouseholdId: householdId, householdSelectionVersion: 1 })
@@ -164,7 +247,7 @@ test("ambiguous household membership blocks private pages, downloads and capture
     expect(await download.text()).toContain("Select an available household");
     await page.goto("/groceries");
     await expect(page).toHaveURL(/\/onboarding/);
-    await expect(page.getByRole("alert").filter({ hasText: "Your household ownership" })).toContainText("before onboarding can continue");
+    await expect(page.getByRole("heading", { name: "Choose a household", exact: true })).toBeVisible();
     await expect(page.getByRole("checkbox")).toHaveCount(0);
     await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
     await page.goto("/groceries");

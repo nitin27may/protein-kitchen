@@ -39,6 +39,12 @@ describe("application authorization inventory", () => {
         expect(calls).toContain("optionalPageMember");
         for (const call of calls) expect(["optionalPageMember", "getData", "data.recipes.get", "data.ingredients.get", "notFound"]).toContain(call);
         expect(statements.slice(0, guard).some((statement) => statement.getText().includes("return <Public"))).toBe(true);
+      } else if (file === "app/households/page.tsx") {
+        const boundary = page!.body!.statements[0];
+        expect(ts.isTryStatement(boundary!)).toBe(true);
+        if (!boundary || !ts.isTryStatement(boundary)) throw new Error("Household selection requires a verified-session error boundary.");
+        expect(boundary.tryBlock.statements[0]?.getText()).toBe("const identity = await verifiedSessionIdentity();");
+        expect(boundary.tryBlock.statements[1]?.getText()).toBe("const choices = await sessionHouseholds(await getDb(), identity);");
       } else {
         expect(firstCall(page!)).toBe("requirePageMember");
       }
@@ -106,7 +112,7 @@ describe("application authorization inventory", () => {
   });
   it("admission and account actions resolve the session inside the explicit error boundary", () => {
     const actions = source("app/onboarding/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
-    expect(actions).toHaveLength(7);
+    expect(actions).toHaveLength(8);
     const management = new Set(["changeCookRole", "removeCook"]);
     for (const action of actions) {
       const statement = action.body?.statements[0];
@@ -116,7 +122,9 @@ describe("application authorization inventory", () => {
       const task = statement.expression.arguments[0];
       expect(task && ts.isArrowFunction(task) && ts.isBlock(task.body)).toBe(true);
       if (!task || !ts.isArrowFunction(task) || !ts.isBlock(task.body)) throw new Error("Missing account action body.");
-      expect(task.body.statements[0]?.getText()).toContain(management.has(action.name!.getText()) ? "await requireMember()" : "await verifiedSessionUser()");
+      const guard = management.has(action.name!.getText()) ? "await requireMember()"
+        : action.name!.getText() === "joinHousehold" ? "await verifiedSessionUser()" : "await verifiedSessionIdentity()";
+      expect(task.body.statements[0]?.getText()).toContain(guard);
       if (management.has(action.name!.getText())) expect(task.body.statements[1]?.getText()).toBe('checkPermission(actor, "owner");');
     }
   });

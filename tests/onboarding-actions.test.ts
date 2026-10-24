@@ -1,17 +1,18 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { getTableName, sql } from "drizzle-orm";
+import { and, eq, getTableName, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireMember, verifiedSessionUser } from "../lib/auth/access";
+import { requireMember, verifiedSessionIdentity, verifiedSessionUser } from "../lib/auth/access";
 import { AuthConfigurationError } from "../lib/auth/config";
 import { claimHousehold, HouseholdAccessError } from "../lib/auth/household";
 import { getDb } from "../lib/server/context";
 import * as s from "../lib/db/schema";
-import { cancelInvitation, changeCookRole, finishProfile, inviteCook, joinHousehold, linkOwnProfile, removeCook } from "../app/onboarding/actions";
+import { cancelInvitation, changeCookRole, chooseHousehold, finishProfile, inviteCook, joinHousehold, linkOwnProfile, removeCook } from "../app/onboarding/actions";
+import { resolveSessionHouseholdAccess } from "../lib/auth/household-session";
 import { openDb, type DbHandle } from "./helpers/db";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../lib/auth/access", async (original) => ({
-  ...await original<typeof import("../lib/auth/access")>(), verifiedSessionUser: vi.fn(), requireMember: vi.fn(),
+  ...await original<typeof import("../lib/auth/access")>(), verifiedSessionUser: vi.fn(), verifiedSessionIdentity: vi.fn(), requireMember: vi.fn(),
 }));
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
 let h: DbHandle;
@@ -31,10 +32,17 @@ beforeEach(async () => {
     id: "owner", email: "owner@example.test", name: "Synthetic owner", emailVerified: true,
     createdAt: new Date(), updatedAt: new Date(),
   });
+  vi.mocked(verifiedSessionIdentity).mockImplementation(async () => {
+    const user = await verifiedSessionUser();
+    return { userId: user.id, sessionId: `${user.id}-session` };
+  });
   await h.db.insert(s.authUsers).values([
     { id: "owner", name: "Synthetic owner", email: "owner@example.test", emailVerified: true },
     { id: "cook", name: "Synthetic cook", email: "cook@example.test", emailVerified: true },
   ]);
+  await h.db.insert(s.authSessions).values(["owner", "cook"].map((id) => ({
+    id: `${id}-session`, userId: id, token: `synthetic-${id}`, expiresAt: new Date(Date.now() + 60_000), updatedAt: new Date(),
+  })));
 });
 afterEach(async () => {
   vi.unstubAllEnvs(); vi.restoreAllMocks();
@@ -85,7 +93,7 @@ it("refuses anonymous operations before database access", async () => {
   vi.mocked(requireMember).mockRejectedValue(new HouseholdAccessError("Sign in before continuing."));
   for (const action of [
     () => joinHousehold("bootstrap", secret), () => finishProfile(input), () => inviteCook("cook@example.test"),
-    () => linkOwnProfile(1), () => cancelInvitation("missing"), () => changeCookRole("cook", "owner"), () => removeCook("cook"),
+    () => linkOwnProfile(1), () => cancelInvitation("missing"), () => changeCookRole("cook", "owner"), () => removeCook("cook"), () => chooseHousehold("fixture"),
   ]) expect(await action()).toEqual({ ok: false, error: "Sign in before continuing." });
   expect(getDb).not.toHaveBeenCalled();
 });
@@ -114,6 +122,7 @@ it("returns configuration and field errors explicitly, and rethrows unexpected f
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   expect(await joinHousehold("bootstrap", secret)).toMatchObject({ ok: false, error: expect.stringContaining("not configured") });
   expect(log).toHaveBeenCalledWith("Account access requires authentication configuration.");
+  await joinHousehold("bootstrap", secret);
   expect(await finishProfile({ ...input, name: "", proteinValue: 0 })).toMatchObject({
     ok: false, fields: { name: "Enter a name", proteinValue: "Enter a protein target" },
   });
@@ -124,3 +133,63 @@ it("returns configuration and field errors explicitly, and rethrows unexpected f
   vi.mocked(verifiedSessionUser).mockRejectedValueOnce(new Error("synthetic unexpected failure"));
   await expect(finishProfile(input)).rejects.toThrow("synthetic unexpected failure");
 });
+
+  it("selects only a verified session membership, validates choices and preserves the other session", async () => {
+    await joinHousehold("bootstrap", secret);
+    const sessions = await h.db.select().from(s.authSessions);
+    expect(await chooseHousehold("fixture")).toEqual({ ok: true, householdId: "fixture", profileComplete: false });
+    expect(await chooseHousehold("foreign")).toMatchObject({ ok: false, error: expect.stringContaining("not available") });
+    expect(await chooseHousehold("")).toMatchObject({ ok: false, fields: expect.any(Object) });
+    expect(await chooseHousehold("x".repeat(129))).toMatchObject({ ok: false });
+    expect(await h.db.select().from(s.authSessions).where(eq(s.authSessions.userId, "cook"))).toEqual(sessions.filter((session) => session.userId === "cook"));
+    await h.db.update(s.authSessions).set({ expiresAt: new Date(0) }).where(eq(s.authSessions.id, "owner-session"));
+    expect(await chooseHousehold("fixture")).toMatchObject({ ok: false, error: expect.stringContaining("session has expired") });
+  });
+
+  it("creates a profile in the selected household without moving the other linked profile", async () => {
+    await joinHousehold("bootstrap", secret);
+    const original = await finishProfile(input);
+    expect(original.ok).toBe(true);
+    await h.db.insert(s.households).values({ id: "second", name: "Second" });
+    await h.db.insert(s.householdMembers).values({ userId: "owner", householdId: "second", role: "owner" });
+    expect(await chooseHousehold("second")).toMatchObject({ ok: true, profileComplete: false });
+    expect(await finishProfile({ ...input, name: "Second household profile" })).toMatchObject({ ok: true });
+    expect(await h.db.select().from(s.people).orderBy(s.people.id)).toMatchObject([
+      { householdId: "fixture", name: input.name }, { householdId: "second", name: "Second household profile" },
+    ]);
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "owner"))).toHaveLength(2);
+  });
+
+  it("scopes actual invitation, profile-link, role and removal actions to the selected household", async () => {
+    await joinHousehold("bootstrap", secret);
+    await finishProfile(input);
+    await h.db.insert(s.households).values({ id: "second", name: "Second" });
+    await h.db.insert(s.householdMembers).values({ userId: "owner", householdId: "second", role: "owner" });
+    expect(await chooseHousehold("second")).toMatchObject({ ok: true });
+    const [person] = await h.db.insert(s.people).values({
+      householdId: "second", name: "Existing selected profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    expect(await linkOwnProfile(person!.id)).toEqual({ ok: true });
+    const invited = await inviteCook("next@example.test");
+    expect(invited).toMatchObject({ ok: true });
+    const [invitation] = await h.db.select().from(s.householdInvitations);
+    expect(invitation!.householdId).toBe("second");
+    expect(await cancelInvitation(invitation!.id)).toEqual({ ok: true });
+    const [cook] = await h.db.insert(s.people).values({
+      householdId: "second", name: "Selected cook", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    await h.db.insert(s.householdMembers).values([
+      { householdId: "second", userId: "cook", personId: cook!.id, role: "member" },
+      { householdId: "fixture", userId: "cook", role: "member" },
+    ]);
+    const access = await resolveSessionHouseholdAccess(h.db, { userId: "owner", sessionId: "owner-session" });
+    vi.mocked(requireMember).mockResolvedValue({ userId: "owner", role: "owner", personId: person!.id, householdAccess: access });
+    expect(await changeCookRole("cook", "owner")).toEqual({ ok: true });
+    expect(await h.db.select().from(s.householdMembers).where(and(eq(s.householdMembers.householdId, "fixture"), eq(s.householdMembers.userId, "cook"))))
+      .toMatchObject([{ role: "member" }]);
+    expect(await removeCook("cook")).toEqual({ ok: true });
+    expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook")))
+      .toMatchObject([{ householdId: "fixture", role: "member" }]);
+  });

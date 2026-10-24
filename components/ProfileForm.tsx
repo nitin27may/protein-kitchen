@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { deletePerson, savePerson } from "@/app/actions";
 import type { Result, PersonInputData } from "@/app/actions";
 import { ReminderSettings } from "@/components/ReminderSettings";
@@ -37,6 +37,10 @@ const PRESETS = [
   { label: "Building 1.6", value: 1.6, hint: "Upper end for muscle gain" },
 ];
 
+const subscribeToHydration = () => () => {};
+const hydratedSnapshot = () => true;
+const serverSnapshot = () => false;
+
 function feetInches(cm: number): string {
   const totalIn = cm / 2.54;
   const ft = Math.floor(totalIn / 12);
@@ -54,6 +58,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
   saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>>; canDelete?: boolean; deviceReminders?: boolean;
 }) {
   const router = useRouter();
+  const hydrated = useSyncExternalStore(subscribeToHydration, hydratedSnapshot, serverSnapshot);
   const [v, setV] = useState<ProfileInitial>(initial);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -116,6 +121,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
 
   return (
     <form onSubmit={submit} className="px-4 pb-28 pt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 lg:pb-10" noValidate>
+      <fieldset disabled={!hydrated} className="contents">
       <div className="space-y-4">
         {error ? <Banner tone="bad" title="Could not save">{error}</Banner> : null}
 
@@ -241,6 +247,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
         <p className="mb-2 text-sm text-muted">{dailyProtein !== null ? <><strong className="text-fg">{dailyProtein} g</strong> protein a day</> : "Enter a protein target"}</p>
         <Button type="submit" size="lg" className="w-full" loading={pending}>{pending ? "Saving" : saveLabel}</Button>
       </div>
+      </fieldset>
     </form>
   );
 }

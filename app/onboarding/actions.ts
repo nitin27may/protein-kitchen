@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z, ZodError } from "zod";
 import type { Result } from "@/app/actions";
 import { getDb } from "@/lib/server/context";
-import { checkPermission, requireMember, verifiedSessionUser } from "@/lib/auth/access";
+import { checkPermission, requireMember, verifiedSessionIdentity, verifiedSessionUser } from "@/lib/auth/access";
 import { AuthConfigurationError } from "@/lib/auth/config";
 import { acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, HouseholdAccessError, issueInvitation, removeHouseholdMember, revokeInvitation } from "@/lib/auth/household";
 import type { PersonInputData } from "@/lib/schemas/person";
+import { memberHouseholdAccess } from "@/lib/auth/household-access";
+import { resolveSessionHouseholdAccess, selectSessionHousehold } from "@/lib/auth/household-session";
 
 async function attempt<T extends object>(task: () => Promise<T>): Promise<Result<T>> {
   try {
@@ -45,31 +47,39 @@ export async function joinHousehold(kind: "bootstrap" | "invitation", grant: str
 
 export async function finishProfile(input: PersonInputData): Promise<Result<{ id: number }>> {
   return attempt(async () => {
-    const user = await verifiedSessionUser();
-    return createMemberProfile(await getDb(), user.id, input);
+    const identity = await verifiedSessionIdentity();
+    const db = await getDb();
+    const access = await resolveSessionHouseholdAccess(db, identity);
+    return createMemberProfile(db, identity.userId, input, access);
   });
 }
 
 export async function linkOwnProfile(personId: number): Promise<Result> {
   return attempt(async () => {
-    const user = await verifiedSessionUser();
-    await assignMemberProfile(await getDb(), user.id, user.id, personId);
+    const identity = await verifiedSessionIdentity();
+    const db = await getDb();
+    const access = await resolveSessionHouseholdAccess(db, identity);
+    await assignMemberProfile(db, identity.userId, identity.userId, personId, access);
     return {};
   });
 }
 
 export async function inviteCook(email: string, personId?: number): Promise<Result<{ token: string; email: string }>> {
   return attempt(async () => {
-    const user = await verifiedSessionUser();
-    const invitation = await issueInvitation(await getDb(), user.id, { email, personId });
+    const identity = await verifiedSessionIdentity();
+    const db = await getDb();
+    const access = await resolveSessionHouseholdAccess(db, identity);
+    const invitation = await issueInvitation(db, identity.userId, { email, personId }, access);
     return { token: invitation.token, email: invitation.email };
   });
 }
 
 export async function cancelInvitation(id: string): Promise<Result> {
   return attempt(async () => {
-    const user = await verifiedSessionUser();
-    await revokeInvitation(await getDb(), user.id, id);
+    const identity = await verifiedSessionIdentity();
+    const db = await getDb();
+    const access = await resolveSessionHouseholdAccess(db, identity);
+    await revokeInvitation(db, identity.userId, id, access);
     return {};
   });
 }
@@ -78,7 +88,8 @@ export async function changeCookRole(userId: string, role: "owner" | "member"): 
   return attempt(async () => {
     const actor = await requireMember();
     checkPermission(actor, "owner");
-    await changeMemberRole(await getDb(), actor.userId, userId, role);
+    const db = await getDb();
+    await changeMemberRole(db, actor.userId, userId, role, await memberHouseholdAccess(db, actor));
     return {};
   });
 }
@@ -87,7 +98,16 @@ export async function removeCook(userId: string): Promise<Result> {
   return attempt(async () => {
     const actor = await requireMember();
     checkPermission(actor, "owner");
-    await removeHouseholdMember(await getDb(), actor.userId, userId);
+    const db = await getDb();
+    await removeHouseholdMember(db, actor.userId, userId, await memberHouseholdAccess(db, actor));
     return {};
+  });
+}
+
+export async function chooseHousehold(householdId: string): Promise<Result<{ householdId: string; profileComplete: boolean }>> {
+  return attempt(async () => {
+    const identity = await verifiedSessionIdentity();
+    const selected = z.string().trim().min(1).max(128).parse(householdId);
+    return selectSessionHousehold(await getDb(), identity, selected);
   });
 }
