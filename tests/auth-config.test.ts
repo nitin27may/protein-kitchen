@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { authConfiguration, AuthConfigurationError } from "../lib/auth/config";
-import { resendCodeSender } from "../lib/auth/mail";
+import { resendAuthSender } from "../lib/auth/mail";
 
 const configured = { BETTER_AUTH_URL: "https://kitchen.example.test", BETTER_AUTH_SECRET: "synthetic-test-session-secret-32chars" };
 describe("explicit server auth configuration", () => {
@@ -35,11 +35,11 @@ const mailEnv = { RESEND_API_KEY: "synthetic-provider-key", AUTH_EMAIL_FROM: "au
 const mail = { email: "cook@example.test", otp: "123456", type: "email-verification" as const };
 describe("explicit, awaited auth code delivery", () => {
   it.each([{}, { RESEND_API_KEY: "synthetic" }, { ...mailEnv, AUTH_EMAIL_FROM: "invalid" }])("refuses an unconfigured provider", (env) => {
-    expect(() => resendCodeSender(env)).toThrow(AuthConfigurationError);
+    expect(() => resendAuthSender(env)).toThrow(AuthConfigurationError);
   });
   it("sends a code to Resend's fixed endpoint and verifies the delivery receipt", async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ id: "synthetic-mail-id" }));
-    await resendCodeSender(mailEnv, request)(mail);
+    await resendAuthSender(mailEnv, request)(mail);
     expect(request).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
       method: "POST", redirect: "error",
       headers: { Authorization: "Bearer synthetic-provider-key", "Content-Type": "application/json" },
@@ -54,21 +54,30 @@ describe("explicit, awaited auth code delivery", () => {
   });
   it.each(["sign-in", "forget-password", "change-email"] as const)("labels the %s email appropriately", async (type) => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ id: "synthetic" }));
-    await resendCodeSender(mailEnv, request)({ ...mail, type });
+    await resendAuthSender(mailEnv, request)({ ...mail, type });
     expect(request).toHaveBeenCalledOnce();
   });
   it("rejects provider errors without returning the private provider response", async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(new Response("synthetic-private-error", { status: 403 }));
-    await expect(resendCodeSender(mailEnv, request)(mail)).rejects.toThrow("Email provider rejected");
+    await expect(resendAuthSender(mailEnv, request)(mail)).rejects.toThrow("Email provider rejected");
   });
   it.each([{}, { id: "" }, null])("rejects malformed success receipts (%j)", async (receipt) => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json(receipt));
-    await expect(resendCodeSender(mailEnv, request)(mail)).rejects.toThrow("invalid authentication delivery receipt");
+    await expect(resendAuthSender(mailEnv, request)(mail)).rejects.toThrow("invalid authentication delivery receipt");
   });
   it("propagates network and non-JSON receipt failures to the sanitized auth boundary", async () => {
     const request = vi.fn<typeof fetch>().mockRejectedValue(new Error("synthetic-network-error"));
-    await expect(resendCodeSender(mailEnv, request)(mail)).rejects.toThrow("synthetic-network-error");
+    await expect(resendAuthSender(mailEnv, request)(mail)).rejects.toThrow("synthetic-network-error");
     request.mockResolvedValue(new Response("not JSON"));
-    await expect(resendCodeSender(mailEnv, request)(mail)).rejects.toThrow();
+    await expect(resendAuthSender(mailEnv, request)(mail)).rejects.toThrow();
+  });
+  it("sends a single-use link without presenting it as a numeric code", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ id: "synthetic-link-id" }));
+    const url = "https://kitchen.example.test/api/auth/magic-link/verify?token=synthetic";
+    await resendAuthSender(mailEnv, request)({ email: mail.email, type: "sign-in-link", url });
+    expect(JSON.parse(String(request.mock.calls[0]![1]!.body))).toEqual({
+      from: mailEnv.AUTH_EMAIL_FROM, to: [mail.email], subject: "Your Protein Kitchen sign-in link",
+      text: `Sign in to Protein Kitchen:\n${url}\n\nThis link can be used once and expires in five minutes. If you did not request it, ignore this email.`,
+    });
   });
 });

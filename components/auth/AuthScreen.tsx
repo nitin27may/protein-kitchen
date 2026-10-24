@@ -6,13 +6,13 @@ import { useState } from "react";
 import { Banner, Button, Field, Input, Segmented } from "@/components/ui";
 import { authRequest, safeAuthReturn } from "@/lib/auth/browser";
 
-type Stage = "password" | "sign-up" | "verify" | "code" | "reset";
+type Stage = "password" | "sign-up" | "verify" | "code" | "reset" | "link";
 const titles: Record<Stage, string> = {
   password: "Sign in", "sign-up": "Join your household", verify: "Verify your email",
-  code: "Sign in with a code", reset: "Reset your password",
+  code: "Sign in with a code", reset: "Reset your password", link: "Sign in with an email link",
 };
 
-export function AuthScreen({ initial, next = "/" }: { initial: Stage; next?: string }) {
+export function AuthScreen({ initial, next = "/", emailLinkError = false }: { initial: Stage; next?: string; emailLinkError?: boolean }) {
   const router = useRouter();
   const [stage, setStage] = useState(initial);
   const [email, setEmail] = useState("");
@@ -23,7 +23,7 @@ export function AuthScreen({ initial, next = "/" }: { initial: Stage; next?: str
   const [kind, setKind] = useState<"invitation" | "bootstrap">("invitation");
   const [sent, setSent] = useState(initial === "verify");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(emailLinkError ? "This email link is invalid, expired or already used. Request a new link to sign in." : "");
   const [notice, setNotice] = useState("");
 
   function change(nextStage: Stage, message = "") {
@@ -50,7 +50,13 @@ export function AuthScreen({ initial, next = "/" }: { initial: Stage; next?: str
     router.refresh();
   }
   async function submit() {
-    if (stage === "sign-up") {
+    if (stage === "link") {
+      await authRequest("/sign-in/magic-link", {
+        email, callbackURL: "/onboarding", newUserCallbackURL: "/onboarding",
+        errorCallbackURL: "/sign-in?emailLinkError=1",
+      });
+      setNotice("If this account can sign in, an email link has been sent. Open it in the browser you want to sign in to. It expires in five minutes and can be used once.");
+    } else if (stage === "sign-up") {
       await authRequest("/sign-up/email", { name, email, password }, {
         [kind === "bootstrap" ? "x-household-bootstrap" : "x-household-invitation"]: grant,
       });
@@ -71,7 +77,7 @@ export function AuthScreen({ initial, next = "/" }: { initial: Stage; next?: str
 
   const needsPassword = stage === "password" || stage === "sign-up" || (stage === "reset" && sent);
   const needsCode = sent && ["verify", "code", "reset"].includes(stage);
-  const label = stage === "sign-up" ? "Create account" : stage === "password" ? "Sign in" :
+  const label = stage === "link" ? "Send email link" : stage === "sign-up" ? "Create account" : stage === "password" ? "Sign in" :
     !sent ? "Send code" : stage === "verify" ? "Verify email" : stage === "code" ? "Sign in with code" : "Update password";
   return (
     <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
@@ -110,6 +116,7 @@ export function AuthScreen({ initial, next = "/" }: { initial: Stage; next?: str
         onClick={() => void run(sendCode)}>Send a new code</Button> : null}
       <nav aria-label="Account options" className="flex flex-col items-start">
         {stage !== "password" ? <Button variant="ghost" disabled={pending} onClick={() => change("password")}>Use a password</Button> : <>
+          <Button variant="ghost" disabled={pending} onClick={() => change("link")}>Use an email link</Button>
           <Button variant="ghost" disabled={pending} onClick={() => change("code")}>Use an email code</Button>
           <Button variant="ghost" disabled={pending} onClick={() => change("reset")}>Forgot password?</Button>
           <Button variant="ghost" disabled={pending} onClick={() => change("verify")}>Verify an existing account</Button>

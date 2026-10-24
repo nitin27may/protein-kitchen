@@ -10,7 +10,22 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
-**Latest creation/quarantine foundation:** session-verified household creation is
+**Latest email-link continuation foundation:** existing accounts can request an
+emailed sign-in link from the real UI. The installed provider stores a hash,
+consumes it atomically, expires it after five minutes and creates the opening
+browser's session. Callbacks are pinned; delivery failures remove unsent tokens
+and support retry; send/verify limits persist across provider instances.
+Unknown accounts get the same send response but cannot register. A link proving
+an unverified account revokes its pre-proof credentials/sessions.
+**Acceptance: 1,963 tests / 96 files, 34 browser journeys, types/build and all
+critical gates pass**, including native concurrent consume and real
+HTTP/mailbox/cross-context link/reload/replay/retry. Overall statements 72.63%.
+Code-free signup, email association acceptance and household creation UI remain
+unfinished; signup admission is still gated. No real mail, remote schema write,
+deployment or release. Final `.env.local` consolidation remains after feature
+acceptance, as requested; missing live credentials are not synthesized.
+
+**Earlier creation/quarantine foundation:** session-verified household creation is
 implemented as an unexposed server primitive. It creates an empty household and
 owner membership atomically, selects only that session, and refuses any existing
 membership. Null-owned data stays quarantined for operator staging; signup never

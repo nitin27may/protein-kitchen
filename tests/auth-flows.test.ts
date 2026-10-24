@@ -11,7 +11,8 @@ let mailbox: AuthCodeMail[];
 const origin = "http://localhost:3112";
 const bootstrap = "synthetic-bootstrap-key-for-auth-flow-tests";
 const password = "Synthetic-password-123!";
-const options = { baseURL: origin, secret: "synthetic-auth-flow-session-secret-32chars", bootstrapSecret: bootstrap, isVercel: false };
+const options = { baseURL: origin, secret: "synthetic-auth-flow-session-secret-32chars", bootstrapSecret: bootstrap, isVercel: false,
+  sendLink: async () => {} };
 beforeAll(async () => { h = await openDb(); });
 beforeEach(() => {
   mailbox = [];

@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../lib/db/client";
 import { getDb } from "../lib/server/context";
 import { createAuth } from "../lib/auth/create";
-import { resendCodeSender } from "../lib/auth/mail";
-import { localTestCodeSender } from "../lib/auth/test-mail";
+import { resendAuthSender } from "../lib/auth/mail";
+import { localTestAuthSender } from "../lib/auth/test-mail";
 
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
 vi.mock("../lib/auth/create", () => ({ createAuth: vi.fn() }));
-vi.mock("../lib/auth/mail", () => ({ resendCodeSender: vi.fn() }));
-vi.mock("../lib/auth/test-mail", () => ({ localTestCodeSender: vi.fn() }));
+vi.mock("../lib/auth/mail", () => ({ resendAuthSender: vi.fn() }));
+vi.mock("../lib/auth/test-mail", () => ({ localTestAuthSender: vi.fn() }));
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
@@ -24,14 +24,14 @@ describe("lazy server auth initialization", () => {
     expect(getDb).not.toHaveBeenCalled();
     const db: Db = Object.create(null);
     vi.mocked(getDb).mockResolvedValue(db);
-    const sendCode = vi.fn<(mail: import("../lib/auth/create").AuthCodeMail) => Promise<void>>().mockResolvedValue();
-    vi.mocked(resendCodeSender).mockReturnValue(sendCode);
+    const sendCode = vi.fn<(mail: import("../lib/auth/create").AuthMail) => Promise<void>>().mockResolvedValue();
+    vi.mocked(resendAuthSender).mockReturnValue(sendCode);
     const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn() } };
     vi.mocked(createAuth).mockReturnValue(provider);
     expect(await getAuth()).toBe(provider);
     expect(await getAuth()).toBe(provider);
     expect(getDb).toHaveBeenCalledOnce();
-    expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode, baseURL: "https://kitchen.example.test" }));
+    expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode, sendLink: sendCode, baseURL: "https://kitchen.example.test" }));
   });
   it("does not open a pool on missing configuration and retries a failed startup", async () => {
     const { getAuth } = await import("../lib/auth/server");
@@ -39,7 +39,7 @@ describe("lazy server auth initialization", () => {
     await expect(getAuth()).rejects.toThrow("BETTER_AUTH_SECRET");
     expect(getDb).not.toHaveBeenCalled();
     vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-session-secret-for-tests-only");
-    vi.mocked(resendCodeSender).mockReturnValue(async () => {});
+    vi.mocked(resendAuthSender).mockReturnValue(async () => {});
     vi.mocked(getDb).mockRejectedValueOnce(new Error("synthetic database startup failure"));
     await expect(getAuth()).rejects.toThrow("synthetic database startup failure");
     const db: Db = Object.create(null);
@@ -54,11 +54,11 @@ describe("lazy server auth initialization", () => {
     const db: Db = Object.create(null);
     vi.mocked(getDb).mockResolvedValue(db);
     const send = async () => {};
-    vi.mocked(localTestCodeSender).mockReturnValue(send);
+    vi.mocked(localTestAuthSender).mockReturnValue(send);
     const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn() } };
     vi.mocked(createAuth).mockReturnValue(provider);
     expect(await getAuth()).toBe(provider);
-    expect(resendCodeSender).not.toHaveBeenCalled();
-    expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode: send }));
+    expect(resendAuthSender).not.toHaveBeenCalled();
+    expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode: send, sendLink: send }));
   });
 });

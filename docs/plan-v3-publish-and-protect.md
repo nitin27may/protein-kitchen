@@ -371,6 +371,20 @@ throttling. Retain browser cases and backend/provider transport tests, preserve
 critical coverage gates, then full/native suite, all browser cases, types/build.
 No live mail, credential provisioning, public signup or deployment.
 
+**Local acceptance, 2026-10-24:** implemented the existing-account continuation
+slice. Full suite: **1,963 tests / 96 files**, including forty native Postgres
+cases; all **34 retained browser journeys** pass, as do types, production build
+and unchanged critical gates. Overall coverage: statements 72.63%, branches
+62.61%, functions 62.50%, lines 73.97%. The browser opens a real synthetic
+mailbox link in a separate context, verifies session restoration/incomplete
+profile onboarding, proves the original window is still anonymous, then
+exercises replay refusal and a real resend. Native independent providers consume
+one link into exactly one session. Transport tests verify code/link content and
+private synthetic mailbox storage. Unknown accounts receive the same send
+response but cannot create an account in this slice. Fresh signup, verified
+email associations and the household-creation UI remain pending. No new
+migration, live delivery, credential provisioning or deployment occurred.
+
 ### H1/H3 foundation: isolated household creation and legacy quarantine
 
 **Local acceptance:** a new server-only session primitive validates the name,

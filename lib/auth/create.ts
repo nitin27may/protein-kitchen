@@ -1,9 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, magicLink } from "better-auth/plugins";
 import { ZodError } from "zod";
 import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
 import type { Db } from "../db/client";
@@ -18,16 +19,27 @@ export interface AuthCodeMail {
   type: "sign-in" | "email-verification" | "forget-password" | "change-email";
 }
 
+export interface AuthLinkMail {
+  email: string;
+  url: string;
+  type: "sign-in-link";
+}
+
+export type AuthMail = AuthCodeMail | AuthLinkMail;
+
 export interface AuthOptions {
   secret: string;
   baseURL: string;
   bootstrapSecret?: string;
   isVercel: boolean;
   sendCode: (mail: AuthCodeMail) => Promise<void>;
+  sendLink: (mail: AuthLinkMail) => Promise<void>;
 }
 
 export function createAuth(db: Db, options: AuthOptions) {
-  const delivery = new AsyncLocalStorage<{ failed: boolean }>();
+  const delivery = new AsyncLocalStorage<{ failed: "code" | "link" | null }>();
+  const linkCallback = "/onboarding";
+  const linkErrorCallback = "/sign-in?emailLinkError=1";
   const ipHeader = options.isVercel ? "x-vercel-forwarded-for" : "x-forwarded-for";
   const auth = betterAuth({
     appName: "Protein Kitchen",
@@ -63,12 +75,20 @@ export function createAuth(db: Db, options: AuthOptions) {
         "/email-otp/*": { window: 60, max: 5 },
         "/delete-household-account": { window: 60, max: 5 },
         "/verify-password": { window: 60, max: 5 },
+        "/magic-link/verify": { window: 60, max: 5 },
       },
     },
     hooks: {
       before: createAuthMiddleware(async (context) => {
         if (context.request?.method === "POST" && context.headers?.get("origin") !== options.baseURL) {
           throw new APIError("FORBIDDEN", { message: "Authentication requests must come from this application." });
+        }
+        if (context.path === "/sign-in/magic-link" || context.path === "/magic-link/verify") {
+          const input = context.path === "/sign-in/magic-link" ? context.body : context.query;
+          if (input?.callbackURL !== linkCallback || input?.newUserCallbackURL !== linkCallback ||
+              input?.errorCallbackURL !== linkErrorCallback) {
+            throw new APIError("BAD_REQUEST", { message: "Email links must return to this application's onboarding flow." });
+          }
         }
         if (context.path !== "/sign-up/email") return;
         if (typeof context.body?.email !== "string") throw new APIError("BAD_REQUEST", { message: "A valid signup email is required." });
@@ -92,7 +112,21 @@ export function createAuth(db: Db, options: AuthOptions) {
         return { data: user };
       } } },
     },
-    plugins: [accountDeletion(db), emailOTP({
+    plugins: [accountDeletion(db), magicLink({
+      disableSignUp: true, expiresIn: 300, storeToken: "hashed",
+      async sendMagicLink({ email, url, token }) {
+        try {
+          await options.sendLink({ email, url, type: "sign-in-link" });
+        } catch {
+          const state = delivery.getStore();
+          if (state) state.failed = "link";
+          console.error("Authentication link delivery failed.");
+          const identifier = `magic-link:${createHash("sha256").update(token).digest("base64url")}`;
+          await db.delete(schema.authVerifications).where(eq(schema.authVerifications.identifier, identifier));
+          throw new APIError("SERVICE_UNAVAILABLE", { message: "We could not send the email link. Please try again." });
+        }
+      },
+    }), emailOTP({
       disableSignUp: true, sendVerificationOnSignUp: true, overrideDefaultEmailVerification: true,
       otpLength: 6, expiresIn: 300, allowedAttempts: 3, storeOTP: "hashed", resendStrategy: "rotate",
       async sendVerificationOTP(mail) {
@@ -100,7 +134,7 @@ export function createAuth(db: Db, options: AuthOptions) {
           await options.sendCode(mail);
         } catch {
           const state = delivery.getStore();
-          if (state) state.failed = true;
+          if (state) state.failed = "code";
           console.error("Authentication code delivery failed.");
           throw new APIError("SERVICE_UNAVAILABLE", { message: "We could not send the email code. Please try again." });
         }
@@ -114,7 +148,7 @@ export function createAuth(db: Db, options: AuthOptions) {
       if (!isIP(request.headers.get(ipHeader) ?? "")) return Promise.resolve(Response.json({
         message: "A valid connecting address is required for authentication.",
       }, { status: 400, headers: { "Cache-Control": "private, no-store" } }));
-      const state = { failed: false };
+      const state: { failed: "code" | "link" | null } = { failed: null };
       return delivery.run(state, async () => {
         const path = new URL(request.url).pathname;
         const signingOut = request.method === "POST" && path === "/api/auth/sign-out";
@@ -131,7 +165,8 @@ export function createAuth(db: Db, options: AuthOptions) {
         }
         // Better Auth awaits but catches mail errors internally, even without background tasks.
         if (state.failed) return Response.json({
-          message: "We could not send the email code. Please try again.",
+          message: state.failed === "link" ? "We could not send the email link. Please try again." :
+            "We could not send the email code. Please try again.",
         }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
         if ((signingOut || resetting) && response.ok) {
           const result: unknown = await response.clone().json();

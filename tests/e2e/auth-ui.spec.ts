@@ -2,6 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { testMailPath } from "../../lib/auth/test-mail";
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { openPostgres } from "../../lib/db/postgres/client";
+import * as s from "../../lib/db/schema";
+import { e2eTarget } from "./target";
 
 const password = "Synthetic-ui-password-for-tests-123!";
 const owner = "ui-owner@example.test";
@@ -397,4 +402,59 @@ test("signup and sign-in show actionable failures and support retry without stor
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("not configured");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("an emailed link signs in only its opening browser, survives reload and rejects replay with an actionable retry", async ({ page, browser }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const id = randomUUID(), householdId = randomUUID();
+  const email = "ui-email-link@example.test";
+  const other = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "127.0.0.85" } });
+  try {
+    await handle.db.insert(s.authUsers).values({ id, email, emailVerified: true, name: "Synthetic link profile" });
+    await handle.db.insert(s.households).values({ id: householdId, name: "Synthetic email-link home" });
+    await handle.db.insert(s.householdMembers).values({ householdId, userId: id, role: "owner" });
+    await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.84" });
+    await page.goto("/sign-in");
+    await page.getByRole("button", { name: "Use an email link", exact: true }).click();
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.route("**/api/auth/sign-in/magic-link", (route) => route.abort("failed"));
+    await page.getByRole("button", { name: "Send email link", exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("Check your connection");
+    await expect(page.getByRole("button", { name: "Send email link", exact: true })).toBeEnabled();
+    await page.unroute("**/api/auth/sign-in/magic-link");
+    await page.getByRole("button", { name: "Send email link", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "an email link has been sent" })).toBeVisible();
+    const mail = z.object({ email: z.literal(email), type: z.literal("sign-in-link"), url: z.string().url() })
+      .parse(JSON.parse(await readFile(testMailPath(email, "sign-in-link"), "utf8")));
+    expect(await (await page.request.get("/api/auth/get-session")).json()).toBeNull();
+    await expect(page).toHaveURL(/\/sign-in$/);
+    const second = await other.newPage();
+    await second.goto(mail.url);
+    await expect(second).toHaveURL(/\/onboarding$/);
+    await expect(second.getByRole("heading", { name: "Your meal profile", exact: true })).toBeVisible();
+    await second.reload();
+    await expect(second.getByLabel("Name", { exact: true })).toHaveValue("Synthetic link profile");
+    expect(await (await second.request.get("/api/auth/get-session")).json()).toMatchObject({ user: { email, emailVerified: true } });
+    expect(await (await page.request.get("/api/auth/get-session")).json()).toBeNull();
+    await page.goto(mail.url);
+    await expect(page).toHaveURL(/\/sign-in\?emailLinkError=1&error=INVALID_TOKEN$/);
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("invalid, expired or already used");
+    expect(await (await page.request.get("/api/auth/get-session")).json()).toBeNull();
+    await page.getByRole("button", { name: "Use an email link", exact: true }).click();
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByRole("button", { name: "Send email link", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "an email link has been sent" })).toBeVisible();
+    const retry = z.object({ url: z.string().url() }).parse(JSON.parse(await readFile(testMailPath(email, "sign-in-link"), "utf8")));
+    expect(retry.url).not.toBe(mail.url);
+    await page.goto(retry.url);
+    await expect(page.getByRole("heading", { name: "Your meal profile", exact: true })).toBeVisible();
+    expect(await (await second.request.get("/api/auth/get-session")).json()).toMatchObject({ user: { email } });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally {
+    await other.close();
+    await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, id));
+    await handle.db.delete(s.authUsers).where(eq(s.authUsers.id, id));
+    await handle.db.delete(s.households).where(eq(s.households.id, householdId));
+    await handle.close();
+  }
 });

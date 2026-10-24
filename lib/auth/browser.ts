@@ -1,4 +1,4 @@
-type AuthPath = "/sign-up/email" | "/sign-in/email" | "/sign-in/email-otp" | "/sign-out" | "/delete-household-account" |
+type AuthPath = "/sign-up/email" | "/sign-in/email" | "/sign-in/email-otp" | "/sign-in/magic-link" | "/sign-out" | "/delete-household-account" |
   "/email-otp/send-verification-otp" | "/email-otp/verify-email" |
   "/email-otp/request-password-reset" | "/email-otp/reset-password";
 

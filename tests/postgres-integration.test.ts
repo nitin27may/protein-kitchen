@@ -24,7 +24,7 @@ import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
-import { createAuth } from "../lib/auth/create";
+import { createAuth, type AuthLinkMail } from "../lib/auth/create";
 import { createHash, randomUUID } from "node:crypto";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import sharp from "sharp";
@@ -63,6 +63,31 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it("consumes one email link atomically across independent native auth instances", async () => {
+    await handle.db.insert(s.authUsers).values({ id: "native-link", name: "Synthetic link", email: "native-link@example.test", emailVerified: true });
+    let mail: AuthLinkMail | undefined;
+    const options = {
+      secret: "synthetic-native-link-session-secret", baseURL: "http://localhost:3112", isVercel: false,
+      sendCode: async () => {}, sendLink: async (value: AuthLinkMail) => { mail = value; },
+    };
+    const instances = [createAuth(handle.db, options), createAuth(handle.db, options)];
+    const headers = { origin: options.baseURL, "content-type": "application/json", "x-forwarded-for": "127.0.0.81" };
+    const sent = await instances[0]!.handler(new Request(`${options.baseURL}/api/auth/sign-in/magic-link`, {
+      method: "POST", headers, body: JSON.stringify({
+        email: "native-link@example.test", callbackURL: "/onboarding", newUserCallbackURL: "/onboarding",
+        errorCallbackURL: "/sign-in?emailLinkError=1",
+      }),
+    }));
+    expect(sent.status).toBe(200);
+    expect(mail).toBeDefined();
+    const responses = await Promise.all(instances.map((instance) => instance.handler(new Request(mail!.url, { headers }))));
+    expect(responses.filter((response) => response.headers.get("location") === `${options.baseURL}/onboarding`)).toHaveLength(1);
+    expect(responses.filter((response) => response.headers.get("location")?.includes("error=INVALID_TOKEN"))).toHaveLength(1);
+    expect(responses.filter((response) => response.headers.getSetCookie().length > 0)).toHaveLength(1);
+    expect(await handle.db.select().from(s.authSessions)).toHaveLength(1);
+    expect(await handle.db.select().from(s.authVerifications)).toEqual([]);
+  });
 
   it("serializes household creation across one account's sessions without adopting legacy rows or blocking independent accounts", async () => {
     await handle.db.insert(s.authUsers).values(["cook", "other"].map((id) => ({
@@ -765,7 +790,7 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
   it("atomically enforces shared HTTP signup limits across concurrent auth instances", async () => {
     const options = {
       secret: "synthetic-native-auth-session-secret",
-      baseURL: "http://localhost:3112", isVercel: false, sendCode: async () => {},
+      baseURL: "http://localhost:3112", isVercel: false, sendCode: async () => {}, sendLink: async () => {},
     };
     const instances = [createAuth(handle.db, options), createAuth(handle.db, options)];
     const results = await Promise.all(Array.from({ length: 8 }, (_, index) => instances[index % 2]!.handler(new Request(

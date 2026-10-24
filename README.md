@@ -25,6 +25,14 @@ Requests never migrate or seed. Database-backed requests check a content fingerp
 
 For household features, configure authentication and finish verified membership/profile onboarding before creating a plan. The current signup/onboarding still uses invitation/bootstrap grants; replacing those with email-first self-service households is planned in `docs/plan-v3-publish-and-protect.md`, not enabled by public browsing.
 
+Existing accounts can choose **Use an email link** on Sign in. Links expire in
+five minutes, work once, and sign in the browser that opens them, not the window
+that requested them. Delivery uses the same configured auth mail provider.
+Invalid/expired/used links show an explicit retry message. Proving a previously
+unverified account by link revokes its unproven passwords and sessions; password
+reset can establish a new password afterward. This does not enable new-account
+signup or bypass household membership/profile onboarding.
+
 ## Features
 
 - **Public library:** anonymous home, recipe/component methods and ingredient nutrition/source details, searchable without sign-in. Public top navigation replaces the private sidebar/bottom bar. Household photos, ratings, saved choices, profiles and plans are not published.
