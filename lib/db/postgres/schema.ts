@@ -386,7 +386,9 @@ export const syncState = pgTable("sync_state", {
   dataClass: text("data_class").primaryKey(),
   changedAt: isoTimestamp("changed_at").notNull(),
   exportedAt: isoTimestamp("exported_at"),
-});
+  revision: integer("revision").notNull().default(1),
+  exportedRevision: integer("exported_revision").notNull().default(0),
+}, (t) => [check("sync_state_revision_valid", sql`${t.revision} > 0 and ${t.exportedRevision} >= 0 and ${t.exportedRevision} <= ${t.revision}`)]);
 
 export const recipeLinks = pgTable("recipe_links", {
   id: id(),

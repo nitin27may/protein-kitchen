@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { getTableName } from "drizzle-orm";
+import { getTableColumns, getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import * as postgres from "./schema";
@@ -16,6 +16,18 @@ export interface SqliteSnapshot {
 /** Only legacy tables participate; library_state must be set by an explicit content seed after import. */
 const legacyNames = new Set<string>(Object.values(legacy).map(getTableName));
 export const importTables = Object.values(postgres).filter((table) => legacyNames.has(getTableName(table)));
+const legacyColumns = new Map<string, ReadonlySet<string>>(Object.values(legacy).map((table) => [
+  getTableName(table), new Set(Object.values(getTableColumns(table)).map((column) => column.name)),
+]));
+
+/** New Postgres-only columns use their defaults; legacy checksums cover only the frozen source columns. */
+export function importColumns(table: (typeof importTables)[number]): PgColumn[] {
+  const source = legacyColumns.get(getTableName(table));
+  if (!source) throw new Error("SQLite import has no legacy column contract for this table.");
+  const columns = getTableConfig(table).columns.filter((column) => source.has(column.name));
+  if (columns.length !== source.size) throw new Error("Postgres target is missing a legacy import column.");
+  return columns;
+}
 
 export function digestRows(rows: readonly ImportRow[]): TableDigest {
   return { count: rows.length, sha256: sha256(rows.map(stableJson).sort().join("\u0000")) };
@@ -78,7 +90,8 @@ export function readSqliteSnapshot(file: string): SqliteSnapshot {
       }
       const result: SqliteSnapshot = { rows: {}, tables: {} };
       for (const table of importTables) {
-        const { name, columns } = getTableConfig(table);
+        const name = getTableName(table);
+        const columns = importColumns(table);
         const actualColumns = source.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[];
         if (actualColumns.length !== columns.length || actualColumns.some((c) => !columns.some((expected) => expected.name === c.name))) {
           throw new Error(`SQLite source columns do not match ${name}. Migrate a private copy first.`);

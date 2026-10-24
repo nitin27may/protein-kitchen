@@ -1,7 +1,7 @@
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, getTableName, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { openPostgres } from "../lib/db/postgres/client";
@@ -11,6 +11,9 @@ import { loadData } from "../lib/data/load";
 import { seedDatabase } from "../lib/db/seed";
 import { exportHumanData } from "../lib/human/export";
 import { writeRecipeFeedback } from "../lib/human/feedback";
+import { savedViewsClass, writeSavedView } from "../lib/human/saved-views";
+import { markChanged } from "../lib/human/util";
+import { acknowledgeStateSnapshot, captureStateSnapshot, readStateSyncStatus } from "../lib/sync/snapshot";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { readAccountExport } from "../lib/server/account-export";
 import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persistence";
@@ -59,6 +62,40 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await tx.update(s.libraryState).set({ version: String(Number(row!.version) + 1) }).where(eq(s.libraryState.key, "counter"));
     })));
     expect(await handle.db.select().from(s.libraryState)).toMatchObject([{ key: "counter", version: "8" }]);
+  });
+
+  it("keeps concurrent same-timestamp writes pending across stale and racing sync acknowledgements", async () => {
+    const first = await captureStateSnapshot(handle.db, ["saved-views"]);
+    await Promise.all(Array.from({ length: 8 }, () => withTx(handle.db, (tx) => markChanged(tx, "saved-views", at))));
+    expect(await acknowledgeStateSnapshot(handle.db, first.revisions)).toEqual([]);
+    expect(await readStateSyncStatus(handle.db, ["saved-views"])).toMatchObject([
+      { revision: 9, exportedRevision: 0, changedAt: at, pending: true },
+    ]);
+    const second = await captureStateSnapshot(handle.db, ["saved-views"]);
+    await Promise.all([
+      acknowledgeStateSnapshot(handle.db, second.revisions),
+      withTx(handle.db, (tx) => markChanged(tx, "saved-views", at)),
+    ]);
+    const [status] = await readStateSyncStatus(handle.db, ["saved-views"]);
+    expect(status).toMatchObject({ revision: 10, pending: true });
+    expect(status!.exportedRevision).toBeLessThan(10);
+  });
+
+  it("exports files and receipts from the same snapshot while another connection edits that class", async () => {
+    await writeSavedView(handle.db, { list: "recipes", query: "original" });
+    const original = savedViewsClass.exportFiles;
+    const exportSpy = vi.spyOn(savedViewsClass, "exportFiles").mockImplementationOnce(async (snapshotDb) => {
+      await writeSavedView(handle.db, { list: "recipes", query: "changed-on-another-connection" });
+      return original(snapshotDb);
+    });
+    try {
+      const snapshot = await captureStateSnapshot(handle.db, ["saved-views"]);
+      expect(Object.values(snapshot.bundle.files)).toHaveLength(1);
+      expect(Object.values(snapshot.bundle.files)[0]).toContain('"query": "original"');
+      expect(snapshot.revisions).toEqual({ "saved-views": 1 });
+      expect(await acknowledgeStateSnapshot(handle.db, snapshot.revisions)).toEqual([]);
+      expect(await readStateSyncStatus(handle.db, ["saved-views"])).toMatchObject([{ revision: 2, exportedRevision: 0, pending: true }]);
+    } finally { exportSpy.mockRestore(); }
   });
 
   it("preserves independent concurrent favourite/rating patches and another cook's feedback", async () => {

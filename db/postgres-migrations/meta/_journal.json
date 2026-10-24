@@ -43,6 +43,13 @@
       "when": 1792826026081,
       "tag": "0005_rich_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792828570270,
+      "tag": "0006_classy_skin",
+      "breakpoints": true
     }
   ]
 }

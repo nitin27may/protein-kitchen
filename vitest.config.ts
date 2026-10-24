@@ -19,6 +19,8 @@ export default defineConfig({
         "lib/blob/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/blob/s3.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/blob/index.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/sync/snapshot.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/human/export.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/signup.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/tokens.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

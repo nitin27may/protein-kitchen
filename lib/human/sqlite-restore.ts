@@ -1,7 +1,7 @@
-import { getTableColumns, getTableName, sql } from "drizzle-orm";
+import { getTableName, sql } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import type { Db } from "../db/client";
-import { digestRows, importTables } from "../db/sqlite-snapshot";
+import { digestRows, importColumns, importTables } from "../db/sqlite-snapshot";
 import type { ImportRow, SqliteSnapshot, TableDigest } from "../db/sqlite-snapshot";
 import * as s from "../db/schema";
 import { withTx } from "../db/tx";
@@ -22,15 +22,14 @@ function dependencyOrder() {
 }
 
 async function readTargetRows(db: Db, table: (typeof importTables)[number]): Promise<ImportRow[]> {
-  const columns = getTableColumns(table);
-  return (await db.select().from(table)).map((row) => Object.fromEntries(
-    Object.entries(columns).map(([key, column]) => [column.name, row[key as keyof typeof row]]),
-  ));
+  const columns = Object.fromEntries(importColumns(table).map((column) => [column.name, column]));
+  return db.select(columns).from(table);
 }
 
 /**
  * Migration-only human-data restore, not a library seed or a normal app mutation. Keeps original ids, uids,
- * timestamps and sync markers exactly as snapshotted; never invents feedback or stamps it as a new human change.
+ * legacy timestamps and sync markers exactly as snapshotted; new Postgres-only columns use their defaults.
+ * Never invents feedback or stamps it as a new human change.
  * An empty destination is mandatory. Any insert/checksum failure rolls all rows back; no truncate or overwrite.
  */
 export async function restoreSqliteSnapshot(db: Db, snapshot: SqliteSnapshot): Promise<Record<string, TableDigest>> {
@@ -60,7 +59,8 @@ export async function restoreSqliteSnapshot(db: Db, snapshot: SqliteSnapshot): P
       }
     }
     for (const table of ordered) {
-      const { name, columns } = getTableConfig(table);
+      const name = getTableName(table);
+      const columns = importColumns(table);
       for (const row of snapshot.rows[name]!) {
         const values = columns.map((column) => {
           const value = row[column.name];

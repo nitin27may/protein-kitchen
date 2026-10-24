@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { getTableColumns, getTableName } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { digestRows, importTables, normalizeImportValue, readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
+import { digestRows, importColumns, importTables, normalizeImportValue, readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 import * as s from "../lib/db/schema";
 import { openDb } from "./helpers/db";
@@ -22,6 +22,7 @@ describe("read-only SQLite snapshot", () => {
     expect(snapshot.rows.people).toMatchObject([{ id: 300, birth_date: "2000-02-29", diet_flags: ["vegetarian"] }]);
     expect(snapshot.rows.recipe_feedback).toMatchObject([{ uid: "feedback-fixture", rating: 4, favourite: true, tested_at: "2026-10-23T12:00:00.000Z" }]);
     expect(snapshot.rows.sync_state).toMatchObject([{ exported_at: "2026-10-23T00:00:00.000Z" }]);
+    expect(Object.keys(snapshot.rows.sync_state![0]!).sort()).toEqual(["changed_at", "data_class", "exported_at"]);
     expect(fs.readFileSync(source.file)).toEqual(before);
     expect(fs.statSync(source.file).mtimeMs).toBe(modified);
   });
@@ -68,6 +69,15 @@ describe("read-only SQLite snapshot", () => {
     expect(() => readSqliteSnapshot(source.file)).toThrow("source columns");
   });
 
+  it("does not accept new Postgres-only revision columns in the frozen SQLite source", () => {
+    source.sqlite.exec("ALTER TABLE sync_state ADD COLUMN revision integer NOT NULL DEFAULT 1");
+    expect(() => readSqliteSnapshot(source.file)).toThrow("source columns do not match sync_state");
+  });
+
+  it("refuses a target table without a legacy import column contract", () => {
+    expect(() => importColumns(s.authUsers)).toThrow("no legacy column contract");
+  });
+
   it("refuses broken source foreign keys", () => {
     source.sqlite.pragma("foreign_keys = OFF");
     source.sqlite.exec("UPDATE plan_slot_portions SET person_id = 9999");
@@ -91,6 +101,10 @@ describe("atomic SQLite restore", () => {
     const target = await openDb();
     const snapshot = readSqliteSnapshot(source.file);
     expect(await restoreSqliteSnapshot(target.db, snapshot)).toEqual(snapshot.tables);
+    expect(await target.db.select().from(s.syncState)).toEqual([{
+      dataClass: "recipe-feedback", changedAt: "2026-10-23T12:00:00.000Z", exportedAt: "2026-10-23T00:00:00.000Z",
+      revision: 1, exportedRevision: 0,
+    }]);
     expect(await target.db.select().from(s.libraryState)).toEqual([]);
     for (const table of importTables) {
       const columns = getTableColumns(table);

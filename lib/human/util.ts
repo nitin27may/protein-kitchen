@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
 
@@ -29,10 +30,12 @@ export const sha256 = (text: string): string => createHash("sha256").update(text
  * Awaited in the same Postgres transaction as the corresponding human-owned write.
  */
 export async function markChanged(tx: Tx, dataClass: string, at: string): Promise<void> {
-  await tx.insert(s.syncState).values({ dataClass, changedAt: at }).onConflictDoUpdate({ target: s.syncState.dataClass, set: { changedAt: at } });
+  await tx.insert(s.syncState).values({ dataClass, changedAt: at }).onConflictDoUpdate({
+    target: s.syncState.dataClass, set: { changedAt: at, revision: sql`${s.syncState.revision} + 1` },
+  });
 }
 
-/** Stamps `exported_at` for the given data classes. Called by the sync job after a successful export. */
+/** Records a local export timestamp; it does not acknowledge a remote state-sync revision. */
 export async function markExported(db: Db, dataClasses: string[], at: string = nowIso()): Promise<void> {
   for (const dataClass of dataClasses) {
     await db.insert(s.syncState).values({ dataClass, changedAt: at, exportedAt: at }).onConflictDoUpdate({ target: s.syncState.dataClass, set: { exportedAt: at } });

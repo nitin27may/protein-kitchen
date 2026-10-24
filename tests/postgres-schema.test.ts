@@ -10,7 +10,8 @@ import { getTableConfig as sqliteConfig } from "drizzle-orm/sqlite-core";
 import * as pg from "../lib/db/postgres/schema";
 import * as sqlite from "../lib/db/sqlite-schema";
 
-type PostgresRows = { [K in keyof typeof sqlite]: (typeof pg)[K]["$inferSelect"] };
+type PostgresRows = { [K in keyof typeof sqlite]: K extends "syncState"
+  ? Omit<(typeof pg)[K]["$inferSelect"], "revision" | "exportedRevision"> : (typeof pg)[K]["$inferSelect"] };
 type SQLiteRows = { [K in keyof typeof sqlite]: (typeof sqlite)[K]["$inferSelect"] };
 
 describe("Postgres baseline parity", () => {
@@ -30,7 +31,13 @@ describe("Postgres baseline parity", () => {
         name: c.name, notNull: c.notNull, primary: c.primary, unique: c.isUnique,
         enum: c.enumValues, default: c.default,
       })).sort((a, b) => a.name.localeCompare(b.name));
-      expect(columns(target), name).toEqual(columns(source));
+      expect(columns(target).filter((c) => name !== "syncState" || !["revision", "exported_revision"].includes(c.name)), name).toEqual(columns(source));
+      if (name === "syncState") {
+        expect(columns(target).filter((c) => ["revision", "exported_revision"].includes(c.name))).toEqual([
+          { name: "exported_revision", notNull: true, primary: false, unique: false, enum: undefined, default: 0 },
+          { name: "revision", notNull: true, primary: false, unique: false, enum: undefined, default: 1 },
+        ]);
+      }
       expect(target.primaryKeys.map((key) => key.columns.map((c) => c.name)), name)
         .toEqual(source.primaryKeys.map((key) => key.columns.map((c) => c.name)));
       const foreignKeys = (config: typeof source | typeof target) => config.foreignKeys.map((key) => {
@@ -50,7 +57,7 @@ describe("Postgres baseline parity", () => {
         columns: key.columns.map((c) => c.name),
       }));
       expect(uniqueConstraints(target), name).toEqual(uniqueConstraints(source));
-      expect(target.checks.map((c) => c.name).sort(), name).toEqual(source.checks.map((c) => c.name).sort());
+      expect(target.checks.map((c) => c.name).sort(), name).toEqual(name === "syncState" ? ["sync_state_revision_valid"] : source.checks.map((c) => c.name).sort());
     }
   });
 });
@@ -75,11 +82,11 @@ describe("Postgres migration on PGlite", () => {
     const old = new PGlite();
     try {
       const migrations = readMigrationFiles({ migrationsFolder });
-      for (const migration of migrations.slice(0, -1)) for (const statement of migration.sql) await old.exec(statement);
+      for (const migration of migrations.slice(0, 5)) for (const statement of migration.sql) await old.exec(statement);
       await old.query("insert into auth_users(id, name, email, email_verified) values ($1, $2, $3, true)", ["original", "Synthetic creator", "original@example.test"]);
       await old.query("insert into household_bootstrap(id, owner_user_id, created_at) values (1, $1, $2)", ["original", now]);
       await expect(old.query("delete from auth_users where id = $1", ["original"])).rejects.toThrow();
-      for (const statement of migrations.at(-1)!.sql) await old.exec(statement);
+      for (const migration of migrations.slice(5)) for (const statement of migration.sql) await old.exec(statement);
       const before = await old.query<{ id: number; owner_user_id: string | null; created_at: Date }>("select * from household_bootstrap");
       expect(before.rows).toMatchObject([{ id: 1, owner_user_id: "original", created_at: new Date(now) }]);
       await old.query("delete from auth_users where id = $1", ["original"]);
@@ -94,7 +101,23 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(6);
+    expect(journal.rows).toHaveLength(7);
+  });
+
+  it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 6)) for (const statement of migration.sql) await old.exec(statement);
+      await old.query("insert into sync_state(data_class, changed_at, exported_at) values ($1, $2, $2)", ["saved-views", now]);
+      for (const migration of migrations.slice(6)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from sync_state")).rows).toEqual([
+        { data_class: "saved-views", changed_at: new Date(now), exported_at: new Date(now), revision: 1, exported_revision: 0 },
+      ]);
+      for (const [revision, exported] of [[0, 0], [1, -1], [1, 2]]) {
+        await expect(old.query("update sync_state set revision = $1, exported_revision = $2", [revision, exported])).rejects.toThrow();
+      }
+    } finally { await old.close(); }
   });
 
   it("round-trips JSON, booleans, dates, UTC timestamps, generated ids and double precision", async () => {
