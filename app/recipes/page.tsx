@@ -6,8 +6,9 @@ import { PageTitle } from "@/components/ui";
 import { perServing } from "@/lib/nutrition/macros";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
 import { feedbackMap, getCandidates, getDefaultViewQuery } from "@/lib/server/queries";
+import { photoIndex } from "@/lib/server/photo-index";
 
 export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function RecipesPage() {
   const data = getData();
   const fb = await feedbackMap();
+  const photos = await photoIndex(await getDb());
   const cards: RecipeCardData[] = (await getCandidates()).map((c) => {
     const r = data.recipes.get(c.slug)!;
     const f = fb.get(c.slug);
@@ -32,9 +34,9 @@ export default async function RecipesPage() {
       lowSugar: c.lowSugar,
       light: c.light,
       dense: c.nutrientDense,
-      image: r.image ?? null,
+      image: photos.recipes.get(c.slug) ?? null,
       kind: "recipe" as const,
-      thumbs: recipeThumbs(c.slug, data.recipes, data.ingredients),
+      thumbs: recipeThumbs(c.slug, data.recipes, data.ingredients, photos.ingredients),
       favourite: f?.favourite ?? false,
       tested: f?.tested ?? false,
       rating: f?.rating ?? null,
@@ -62,8 +64,8 @@ export default async function RecipesPage() {
         lowSugar: false,
         light: false,
         dense: false,
-        image: r.image ?? null,
-        thumbs: recipeThumbs(r.slug, data.recipes, data.ingredients),
+        image: photos.recipes.get(r.slug) ?? null,
+        thumbs: recipeThumbs(r.slug, data.recipes, data.ingredients, photos.ingredients),
         favourite: f?.favourite ?? false,
         tested: f?.tested ?? false,
         rating: f?.rating ?? null,

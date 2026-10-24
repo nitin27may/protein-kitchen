@@ -51,8 +51,6 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
         isPantryStaple: ing.is_pantry_staple,
         containsOnionGarlic: ing.contains_onion_garlic,
         isDairy: ing.is_dairy,
-        image: ing.image ?? null,
-        imageCredit: ing.image_credit ?? null,
       };
       tx.insert(s.ingredients).values(row).onConflictDoUpdate({ target: s.ingredients.slug, set: row }).run();
     }
@@ -104,8 +102,6 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
         equipment: r.equipment,
         tags: r.tags,
         fridgeDays: r.fridge_days,
-        image: r.image ?? null,
-        imageCredit: r.image_credit ?? null,
       };
       tx.insert(s.recipes).values(row).onConflictDoUpdate({ target: s.recipes.slug, set: row }).run();
     }

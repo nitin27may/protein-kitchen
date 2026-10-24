@@ -1,5 +1,6 @@
 "use client";
 
+import { IngredientTile } from "@/components/IngredientTile";
 import { useState, useTransition } from "react";
 import { setRecipeFeedback } from "@/app/actions";
 import { Markdown } from "@/components/Markdown";
@@ -7,6 +8,9 @@ import { LinksCard } from "@/components/links/LinksCard";
 import { LinksProvider } from "@/components/links/LinksProvider";
 import { StepLinks } from "@/components/links/StepLinks";
 import { PartsSection } from "@/components/parts/PartsSection";
+import { PhotoCredit } from "@/components/photos/PhotoCredit";
+import { PhotosCard } from "@/components/photos/PhotosCard";
+import { PhotoUpload } from "@/components/photos/PhotoUpload";
 import { Sheet } from "@/components/Sheet";
 import { RecipeThumb } from "@/components/RecipeThumb";
 import { MinusIcon, PlusIcon } from "@/components/icons";
@@ -16,14 +20,17 @@ import type { PartModes } from "@/lib/parts/mode";
 import { flattenParts } from "@/lib/recipes/linkview";
 import type { OwnedLink } from "@/lib/recipes/linkview";
 import type { UsedIn } from "@/lib/recipes/parts";
+import type { PhotoView } from "@/lib/server/photo-index";
 import type { PartAdvance, PartView } from "@/lib/recipes/timeline";
 
 export interface DetailItem {
   kind: "ingredient" | "component";
   name: string;
   state?: string;
-  /** File name in public/ingredient-images. */
+  /** Cover photo URL, or null. */
   image?: string | null;
+  /** Aisle slug, for the tile shown when there is no photo. */
+  aisle?: string;
   grams: number;
   /** For components: what the portion is made of, at the base servings. */
   parts?: { name: string; state: string; grams: number }[];
@@ -69,6 +76,8 @@ export interface DetailProps {
   usedIn: UsedIn[];
   /** Saved links for this page, plus those saved on its parts' own pages. */
   links: OwnedLink[];
+  /** Your photos and approved ones for this recipe, cover first. */
+  photos: PhotoView[];
 }
 
 const fmtGrams = (g: number) => (g < 10 ? `${round1(g)} g` : `${Math.round(g)} g`);
@@ -118,7 +127,7 @@ export function RecipeDetail(p: DetailProps) {
         {/* Left: what it is and how much. Stays in view while the method scrolls. */}
         <aside className="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pb-2">
           {p.image || p.thumbs.length ? <RecipeThumb image={p.image} thumbs={p.thumbs} label="" className="hidden aspect-[4/3] w-full rounded-card lg:flex" /> : null}
-          {p.image ? <p className="-mt-2 text-xs text-muted"><a href="/credits" className="underline">Photo credit</a></p> : null}
+          {p.image ? <PhotoCredit cover={p.photos.find((x) => x.isCover)} /> : null}
 
           <div>
             <h1 className="text-3xl font-bold leading-tight">{p.name}</h1>
@@ -162,6 +171,8 @@ export function RecipeDetail(p: DetailProps) {
             </div>
           </section>
 
+          <PhotosCard recipeSlug={p.slug} photos={p.photos} />
+
           <LinksCard />
 
           {p.advancePrep.length ? (
@@ -176,6 +187,12 @@ export function RecipeDetail(p: DetailProps) {
               <Chip on={fb.favourite} onClick={() => !pending && update({ favourite: !fb.favourite }, { favourite: !fb.favourite })}>Favourite</Chip>
               <Chip on={fb.tested} onClick={() => !pending && update({ tested: !fb.tested, ...(fb.tested ? { rating: null } : {}) }, { tested: !fb.tested, ...(fb.tested ? { rating: null } : {}) })}>Cooked and tested</Chip>
             </div>
+            {fb.tested && !p.photos.some((x) => x.origin === "upload") ? (
+              <div>
+                <p className="mb-1 text-sm text-muted">Made it? A photo becomes the picture for this recipe.</p>
+                <PhotoUpload recipeSlug={p.slug} label="Add a photo of what you made" />
+              </div>
+            ) : null}
             {fb.tested ? (
               <div>
                 <p className="mb-1 text-sm font-semibold">Rating</p>
@@ -209,7 +226,7 @@ export function RecipeDetail(p: DetailProps) {
               {p.items.map((it, i) => (
                 <li key={`${it.name}-${i}`} className="border-b border-line py-2 last:border-b-0">
                   <div className="flex min-h-9 items-center gap-3">
-                    {it.image ? <img src={`/ingredient-images/${it.image}`} alt="" loading="lazy" className="size-9 shrink-0 rounded-control object-cover" /> : <span className="size-9 shrink-0 rounded-control bg-surface2" aria-hidden="true" />}
+                    {it.image ? <img src={it.image} alt="" loading="lazy" className="size-9 shrink-0 rounded-control object-cover" /> : <IngredientTile aisle={it.aisle ?? "pantry"} className="size-9 shrink-0 rounded-control" />}
                     <span className="min-w-0 flex-1">{it.name}{it.state === "dry" ? <span className="text-sm text-muted"> (dry)</span> : null}</span>
                     <span className="shrink-0 font-semibold tabular-nums">{fmtGrams(it.grams * factor)}</span>
                   </div>

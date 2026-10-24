@@ -48,9 +48,6 @@ export const IngredientSchema = z
     is_pantry_staple: z.boolean(),
     contains_onion_garlic: z.boolean(),
     is_dairy: z.boolean(),
-    /** File name inside public/ingredient-images. Filled from data/images.json, not hand-written. */
-    image: z.string().optional(),
-    image_credit: z.string().optional(),
     /** How to eat it for the most nutrition. Filled from data/ingredient-notes.json. */
     note: z.string().optional(),
   })
@@ -152,12 +149,6 @@ export const RecipeSchema = z
     favourite: z.boolean().optional(),
     banned: z.boolean().optional(),
     notes: z.string().optional(),
-    /** File name inside public/recipe-images. Optional: the UI falls back to a typographic card. */
-    image: z
-      .string()
-      .regex(/^[a-z0-9][a-z0-9-]*\.(jpg|jpeg|png|webp)$/, "image must be a file name in public/recipe-images")
-      .optional(),
-    image_credit: z.string().optional(),
   })
   .strict()
   .superRefine((r, ctx) => {

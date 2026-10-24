@@ -1,5 +1,6 @@
 "use client";
 
+import { IngredientTile } from "@/components/IngredientTile";
 import { useEffect, useMemo, useState } from "react";
 import { addManualItem, removeManualItem, setGroceryChecked, setManualChecked } from "@/app/actions";
 import { CheckIcon, PlusIcon, XIcon } from "@/components/icons";
@@ -230,7 +231,7 @@ export function GroceryClient(p: GroceryProps) {
                   <li key={l.slug}>
                     <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface2">
                       <input type="checkbox" checked={!!checked[l.slug]} onChange={(e) => tick(l.slug, e.target.checked)} className="size-6 shrink-0 accent-[var(--primary)]" />
-                      {l.image ? <img src={`/ingredient-images/${l.image}`} alt="" loading="lazy" className="size-10 shrink-0 rounded-control object-cover" /> : <span className="size-10 shrink-0 rounded-control bg-primarysoft" aria-hidden="true" />}
+                      {l.image ? <img src={l.image} alt="" loading="lazy" className="size-10 shrink-0 rounded-control object-cover" /> : <IngredientTile aisle={aisle} className="size-10 shrink-0 rounded-control" />}
                       <span className="min-w-0 flex-1">
                         <span className={`block text-base font-medium leading-snug ${checked[l.slug] ? "text-muted line-through" : ""}`}>{l.name}{l.state === "dry" ? <span className="text-sm font-normal text-muted"> (dry)</span> : null}</span>
                         <span className="block truncate text-xs text-muted">for {l.recipes.join(", ")}</span>

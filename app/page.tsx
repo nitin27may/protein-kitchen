@@ -22,7 +22,8 @@ import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
 import { routineDayTotals, withoutRoutineHabits } from "@/lib/routines/schedule";
 import { summaryLine } from "@/lib/routines/view";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
+import { photoIndex } from "@/lib/server/photo-index";
 import { loadNight } from "@/lib/server/prep";
 import { getCandidates, getHabitsFor, getPersonRoutines, getPlanView, getTodayRoutines, groceryProgress, lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
 import { localMinutes, todayISO } from "@/lib/server/time";
@@ -49,6 +50,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
 
   const person = people.find((x) => String(x.id) === p) ?? people[0]!;
   const data = getData();
+  const photos = await photoIndex(await getDb());
   const now = new Date();
   const today = todayISO(now);
   const part = dayPart(localMinutes(now));
@@ -125,8 +127,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           kcal: (c?.perServing.kcal ?? 0) * servings,
           activeMin: c?.activeMin ?? 0,
           leftover: sl.isLeftover ?? false,
-          image: data.recipes.get(sl.recipeSlug)?.image ?? null,
-          thumbs: recipeThumbs(sl.recipeSlug, data.recipes, data.ingredients),
+          image: photos.recipes.get(sl.recipeSlug) ?? null,
+          thumbs: recipeThumbs(sl.recipeSlug, data.recipes, data.ingredients, photos.ingredients),
         };
       })
       .filter((m) => m.proteinG > 0 || m.kcal > 0);

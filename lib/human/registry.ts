@@ -1,5 +1,11 @@
 import type { Db } from "../db/client";
 
+export interface BlobRef {
+  key: string;
+  /** Hex sha256 of the bytes when the row records one; a copy checks it. */
+  sha256?: string;
+}
+
 export interface ImportContext {
   /** Resolves a recipe slug to its id, following data/renames.json when the slug was renamed. */
   resolveRecipeId(slug: string): Promise<number | undefined>;
@@ -18,6 +24,8 @@ export interface HumanDataClass {
   exportFiles(db: Db): Promise<Record<string, string>>;
   /** Loads this class's files into the database. Must be idempotent. */
   importFiles(db: Db, files: Record<string, string>, ctx: ImportContext): Promise<{ imported: number; skipped: string[] }>;
+  /** Optional: the blobs (photo bytes) this class's rows point at, so a backup or restore can copy them with the files. */
+  blobs?(db: Db): Promise<BlobRef[]>;
   /** Optional: moves this class's rows from one recipe row to another (a slug rename). Returns true if it moved anything. */
   moveRecipe?(db: Db, fromRecipeId: number, toRecipeId: number): Promise<boolean>;
   /** Optional: true if this class still holds human data for the recipe. A rename never deletes a recipe that does. */

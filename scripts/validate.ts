@@ -24,6 +24,7 @@ import {
 import { anchorIngredients, CycleError, kcalDeviationOk, perServing, recipeTotals, UnknownReferenceError } from "../lib/nutrition/macros";
 import type { RecipeTotals } from "../lib/nutrition/macros";
 import { autoTags } from "../lib/nutrition/tags";
+import { loadCandidates } from "../lib/photos/candidates";
 import { isLight, isLowSugar, nutrientDenseSet, qualityPerServing } from "../lib/nutrition/quality";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -57,6 +58,20 @@ for (const slug of Object.keys(data.micros)) {
 }
 for (const slug of Object.keys(data.overrides.kcal_check_skip)) {
   if (!data.ingredients.has(slug)) warnings.push(`validation-overrides.json: kcal skip for unknown ingredient "${slug}"`);
+}
+
+// Candidate photos (data/photo-candidates.json): written by scripts/photo-candidates.ts, approved by a person in the app.
+try {
+  const candidates = loadCandidates(root);
+  for (const slug of Object.keys(candidates.recipes)) {
+    const r = data.recipes.get(slug);
+    if (!r || r.kind !== "recipe") errors.push(`data/photo-candidates.json: recipes.${slug} is not a recipe`);
+  }
+  for (const slug of Object.keys(candidates.ingredients)) {
+    if (!data.ingredients.has(slug)) errors.push(`data/photo-candidates.json: ingredients.${slug} is not an ingredient`);
+  }
+} catch (e) {
+  errors.push(`data/photo-candidates.json: ${(e as Error).message.split("\n")[0]}`);
 }
 
 // Habits
@@ -98,9 +113,6 @@ for (const [slug, recipe] of data.recipes) {
   }
   for (const prep of recipe.advance_prep) {
     if (prep.ingredient && !data.ingredients.has(prep.ingredient)) errors.push(`${file}: advance_prep references unknown ingredient "${prep.ingredient}"`);
-  }
-  if (recipe.image && !fs.existsSync(path.join(root, "public", "recipe-images", recipe.image))) {
-    errors.push(`${file}: image "${recipe.image}" is not in public/recipe-images`);
   }
   if (recipe.kind === "recipe") {
     for (const st of recipe.steps) {

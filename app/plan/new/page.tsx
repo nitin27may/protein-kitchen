@@ -7,7 +7,8 @@ import type { PersonRoutineView } from "@/lib/routines/types";
 import { PageTitle } from "@/components/ui";
 import { addDays, nextMonday } from "@/lib/planner/dates";
 import { displayName } from "@/lib/schemas";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
+import { photoIndex } from "@/lib/server/photo-index";
 import { getCandidates, getPersonRoutines, getPrefs, lastSetup, listPeople, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
 
@@ -41,6 +42,7 @@ export default async function NewPlanPage({ searchParams }: { searchParams: Prom
   const people = await listPeople();
   if (people.length === 0) redirect("/profiles/new?next=/plan/new");
   const data = getData();
+  const photos = await photoIndex(await getDb());
   const last = await lastSetup();
   const start = nextMonday(todayISO());
   const length = last ? (last.days === 14 ? "14" : last.days === 7 ? "7" : "7") : "7";
@@ -52,8 +54,9 @@ export default async function NewPlanPage({ searchParams }: { searchParams: Prom
       name: displayName(i),
       aliases: i.aliases,
       group: PICKER_AISLES[i.aisle]!,
+      aisle: i.aisle,
       density: i.per100g.kcal > 0 ? (i.per100g.protein_g / i.per100g.kcal) * 100 : 0,
-      image: i.image ?? null,
+      image: photos.ingredients.get(i.slug) ?? null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 

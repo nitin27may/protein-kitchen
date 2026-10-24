@@ -4,8 +4,9 @@ import type { GroceryLineView } from "@/components/GroceryClient";
 import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { buildGroceryList } from "@/lib/grocery/aggregate";
 import { addDays, formatDay } from "@/lib/planner/dates";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
 import { getPartModes, getPlanView, groceryChecks, latestPlanId, routineContext } from "@/lib/server/queries";
+import { photoIndex } from "@/lib/server/photo-index";
 
 export const metadata: Metadata = { title: "Groceries" };
 export const dynamic = "force-dynamic";
@@ -34,12 +35,13 @@ export default async function GroceriesPage({ searchParams }: { searchParams: Pr
 
   const list = buildGroceryList(meals, data.recipes, data.ingredients, await getPartModes(view.id), (await routineContext(view)).refs);
   const state = await groceryChecks(view.id);
+  const photos = await photoIndex(await getDb());
   const lines: GroceryLineView[] = list.lines.map((l) => ({
     slug: l.ingredient,
     name: l.name,
     state: l.state,
     aisle: l.aisle,
-    image: data.ingredients.get(l.ingredient)?.image ?? null,
+    image: photos.ingredients.get(l.ingredient) ?? null,
     needG: l.grams,
     buyG: l.buyGrams,
     packs: l.packs,

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { count as countRows, eq, isNotNull, or } from "drizzle-orm";
 import type Database from "better-sqlite3";
+import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
 import { withTx } from "../db/tx";
@@ -31,6 +32,8 @@ export interface ResetCounts {
   planRoutines: number;
   /** Next-steps ticks (review, shop, prep) saved on plans. They go with the plans. */
   planSteps: number;
+  /** Your own and approved photos, with their approvals. Only "Everything" clears them: they are yours, like ratings. */
+  photos: number;
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
@@ -56,6 +59,7 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
     routineChoices: await count(db, s.personRoutines),
     planRoutines: await count(db, s.planRoutines),
     planSteps: await count(db, s.planProgress),
+    photos: await count(db, s.photos),
   };
 }
 
@@ -104,7 +108,7 @@ function clearProfiles(tx: Tx) {
  * Deletes user data only. Recipes, ingredients, techniques and habits come from /data and are never touched.
  * Runs in one transaction, so a failure leaves everything as it was.
  */
-export async function resetData(db: Db, scope: ResetScope): Promise<void> {
+export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStore): Promise<void> {
   await withTx(db, (tx) => {
     switch (scope) {
       case "plans": return clearPlans(tx);
@@ -120,9 +124,15 @@ export async function resetData(db: Db, scope: ResetScope): Promise<void> {
         markChanged(tx, "saved-views", nowIso());
         tx.delete(s.recipeLinks).run();
         markChanged(tx, "recipe-links", nowIso());
+        tx.delete(s.photos).run();
+        markChanged(tx, "photos", nowIso());
+        tx.delete(s.photoDecisions).run();
+        markChanged(tx, "photo-decisions", nowIso());
         return;
     }
   });
+  // Photo bytes are outside the transaction. The rows are gone, so any blob left is an orphan; the backup holds a copy.
+  if (scope === "all" && photoStore) for (const key of await photoStore.list()) await photoStore.delete(key);
 }
 
 /** Copies the live database to backups/ before a reset. Returns the path, or null for an in-memory database. */
@@ -132,5 +142,8 @@ export async function backupBeforeReset(sqlite: Database.Database, root: string,
   fs.mkdirSync(dir, { recursive: true });
   const out = path.join(dir, `pre-reset-${scope}-${new Date().toISOString().replace(/[:.]/g, "-")}.db`);
   sqlite.prepare("VACUUM INTO ?").run(out);
+  // "Everything" also deletes the photo files, so keep a copy of them beside the database backup.
+  const uploads = process.env.UPLOADS_DIR ?? path.join(root, "uploads");
+  if (scope === "all" && fs.existsSync(uploads)) fs.cpSync(uploads, out.replace(/\.db$/, "-uploads"), { recursive: true });
   return out;
 }

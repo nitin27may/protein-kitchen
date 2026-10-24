@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { IngredientTile } from "@/components/IngredientTile";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecipeThumb } from "@/components/RecipeThumb";
@@ -10,8 +11,10 @@ import { targetFor } from "@/lib/nutrition/dri";
 import { MICRO_GROUPS, MICRO_LABELS } from "@/lib/nutrition/labels";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { displayName } from "@/lib/schemas";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
 import { listPeople } from "@/lib/server/queries";
+import { PhotoCredit } from "@/components/photos/PhotoCredit";
+import { photoIndex, photosOfIngredient } from "@/lib/server/photo-index";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +37,8 @@ export default async function IngredientPage({ params }: { params: Promise<{ slu
   if (!ing) notFound();
 
   const sex = (await listPeople())[0]?.sex ?? "male";
+  const photoIdx = await photoIndex(await getDb());
+  const cover = (await photosOfIngredient(await getDb(), slug)).find((x) => x.isCover);
   const micros = data.micros[slug]?.per100g ?? {};
   const p = ing.per100g;
   const e = energySplit(p.protein_g, p.carbs_g, p.fat_g);
@@ -91,13 +96,13 @@ export default async function IngredientPage({ params }: { params: Promise<{ slu
       <div className="lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <div className="aspect-[4/3] w-full overflow-hidden rounded-card bg-primarysoft">
-            {ing.image ? (
-              <img src={`/ingredient-images/${ing.image}`} alt={displayName(ing)} className="size-full object-cover" />
+            {cover ? (
+              <img src={cover.url} alt={displayName(ing)} className="size-full object-cover" />
             ) : (
-              <div className="flex size-full items-center justify-center text-sm font-semibold text-primary">{aisleLabel(ing.aisle)}</div>
+              <IngredientTile aisle={ing.aisle} name={displayName(ing)} state={ing.state} size="card" />
             )}
           </div>
-          {ing.image_credit ? <p className="mt-1 text-xs text-muted">Photo: {ing.image_credit}</p> : null}
+          {cover ? <div className="mt-1"><PhotoCredit cover={cover} /></div> : null}
 
           <div className="mt-4 rounded-card border border-line bg-surface p-4">
             <h2 className="text-lg font-semibold">Buying and diet</h2>
@@ -206,7 +211,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ slu
                 {usedIn.slice(0, 12).map(({ r, protein }) => (
                   <li key={r.slug}>
                     <Link href={`/recipes/${r.slug}`} className="flex gap-3 rounded-card border border-line bg-surface p-3 hover:bg-surface2">
-                      <RecipeThumb image={r.image ?? null} thumbs={recipeThumbs(r.slug, data.recipes, data.ingredients)} label={r.family} className="aspect-[4/3] w-24 shrink-0 rounded-control" />
+                      <RecipeThumb image={photoIdx.recipes.get(r.slug) ?? null} thumbs={recipeThumbs(r.slug, data.recipes, data.ingredients, photoIdx.ingredients)} label={r.family} className="aspect-[4/3] w-24 shrink-0 rounded-control" />
                       <div className="min-w-0">
                         <p className="font-semibold leading-snug">{r.name}</p>
                         <p className="text-sm text-muted tabular-nums"><strong className="text-fg">{Math.round(protein)} g</strong> protein per serving</p>

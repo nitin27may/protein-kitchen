@@ -76,7 +76,7 @@ Everything the app knows lives in `/data` as JSON and Markdown, validated by Zod
 
 Rules that matter: macros live only on ingredients, all quantities are grams, new recipes are `status: "draft"`, and no supplement doses appear anywhere. Run `pnpm validate` after every data change. Full rules are in `CLAUDE.md`.
 
-Photos: put your own in `public/recipe-images/` and reference them from the recipe. See that folder's README.
+Photos: add your own on a recipe page (resized on the phone, stored in `uploads/`), or approve candidates from Wikimedia Commons and Openverse at `/photos/review`. Build the candidate list with `pnpm photos:candidates`. See `CLAUDE.md`, section Photos.
 
 ## Project layout
 

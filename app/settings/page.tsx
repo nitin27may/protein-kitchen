@@ -20,6 +20,13 @@ export default async function SettingsPage() {
           </div>
           <p className="mt-1 text-sm text-muted">People, protein targets, likes and avoids, and reminders. {counts.profiles} {counts.profiles === 1 ? "person" : "people"} saved.</p>
         </Link>
+        <Link href="/photos/review" className="block rounded-card border border-line bg-surface p-4 transition-colors hover:border-primary">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-lg font-semibold">Photos</h2>
+            <span className="text-sm font-semibold text-primary">Review</span>
+          </div>
+          <p className="mt-1 text-sm text-muted">Approve or reject candidate photos for recipes and ingredients. {counts.photos} {counts.photos === 1 ? "photo" : "photos"} kept.</p>
+        </Link>
         <SettingsClient counts={counts} />
       </div>
     </>

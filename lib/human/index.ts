@@ -13,3 +13,7 @@ export type { HumanDataClass, ImportContext } from "./registry";
 export { markExported } from "./util";
 export { personKey, writePersonRoutine } from "./routines";
 export type { PersonRoutineInput } from "./routines";
+export { approveCandidate, deletePhoto, rejectCandidate, setCoverPhoto, writeUploadedPhoto } from "./photos";
+export type { PhotoCredit, PhotoSubject } from "./photos";
+export { copyHumanBlobs } from "./blobs";
+export type { BlobCopyReport } from "./blobs";

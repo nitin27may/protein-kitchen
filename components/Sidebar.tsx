@@ -55,7 +55,10 @@ export function Sidebar() {
       <div className="space-y-2 border-t border-line p-3">
         <NavLink l={settings} active={settings.match(path)} />
         <ThemeToggle variant="segmented" />
-        <Link href="/credits" className="block px-1 pt-1 text-xs text-muted underline-offset-2 hover:underline">Photo credits</Link>
+        <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
+          <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link>
+          <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link>
+        </div>
       </div>
     </aside>
   );

@@ -7,10 +7,11 @@ import { formatDay } from "@/lib/planner/dates";
 import { getRoutineCatalog } from "@/lib/routines/catalog";
 import { planRoutineRows } from "@/lib/routines/view";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
 import { getPlanExport } from "@/lib/server/export";
 import { getCandidates, getPlanMilestones, getPlanRoutines, getPlanView, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
+import { photoIndex } from "@/lib/server/photo-index";
 
 export const metadata: Metadata = { title: "Your plan" };
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   if (!view) notFound();
   const byslug = new Map(candidates.map((c) => [c.slug, c]));
   const data = getData();
+  const photos = await photoIndex(await getDb());
 
   const slots: PlanSlotView[] = view.slots.map((s) => {
     const c = byslug.get(s.recipeSlug);
@@ -38,8 +40,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       activeMin: c?.activeMin ?? 0,
       locked: s.locked,
       servings: s.servings,
-      image: data.recipes.get(s.recipeSlug)?.image ?? null,
-      thumbs: recipeThumbs(s.recipeSlug, data.recipes, data.ingredients),
+      image: photos.recipes.get(s.recipeSlug) ?? null,
+      thumbs: recipeThumbs(s.recipeSlug, data.recipes, data.ingredients, photos.ingredients),
       dense: c?.nutrientDense ?? false,
       lowSugar: c?.lowSugar ?? false,
       light: c?.light ?? false,

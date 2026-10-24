@@ -14,8 +14,9 @@ import { microsPerServing } from "@/lib/nutrition/micros";
 import { TARGETS, targetFor } from "@/lib/nutrition/dri";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData } from "@/lib/server/context";
-import { feedbackMap, getCandidates, getPartModes, getRecipeLinks, listPeople, listPlans } from "@/lib/server/queries";
+import { getData, getDb } from "@/lib/server/context";
+import { photoIndex, photosOfRecipe } from "@/lib/server/photo-index";
+import { feedbackMap, getCandidates, getPartModes, getRecipeLinks, listPeople, listPlans, recipeIds } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const m = perServing(slug, data.recipes, data.ingredients);
   const fb = (await feedbackMap()).get(slug);
   const sex = (await listPeople())[0]?.sex ?? "male";
+  const photoIdx = await photoIndex(await getDb());
   const dn = (k: string) => {
     const ing = data.ingredients.get(k);
     return ing ? displayName(ing) : k;
@@ -41,7 +43,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const items: DetailItem[] = r.items.map((it) => {
     if ("ingredient" in it) {
       const ing = data.ingredients.get(it.ingredient);
-      return { kind: "ingredient", name: ing ? displayName(ing) : it.ingredient, state: ing?.state, image: ing?.image ?? null, grams: it.grams };
+      return { kind: "ingredient", name: ing ? displayName(ing) : it.ingredient, state: ing?.state, image: photoIdx.ingredients.get(it.ingredient) ?? null, aisle: ing?.aisle, grams: it.grams };
     }
     const sub = data.recipes.get(it.component)!;
     const yieldG = sub.items.reduce((a, b) => a + b.grams, 0);
@@ -78,14 +80,19 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   ]);
   const links = collectLinks(slug, ownLinks, Object.fromEntries(partLinkEntries.map(([s, ls]) => [s, ls.filter((l) => l.partSlug === null)])));
 
+  const recipeId = (await recipeIds()).bySlug.get(slug);
+  const photos = recipeId === undefined ? [] : await photosOfRecipe(await getDb(), recipeId);
+  const cover = photos.find((x) => x.isCover);
+
   const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
   const candidate = (await getCandidates()).find((c) => c.slug === slug);
   const techniqueRefs = r.steps.map((s) => s.technique).filter((t): t is string => !!t);
   const props: DetailProps = {
     slug,
     name: r.name,
-    image: r.image ?? null,
-    thumbs: recipeThumbs(slug, data.recipes, data.ingredients),
+    image: cover?.url ?? null,
+    photos,
+    thumbs: recipeThumbs(slug, data.recipes, data.ingredients, photoIdx.ingredients),
     baseServings: r.servings,
     prepMin: r.prep_min,
     activeMin: r.active_min,

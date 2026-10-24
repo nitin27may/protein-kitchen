@@ -19,3 +19,12 @@ const db = new Database(file, { readonly: true });
 db.prepare("VACUUM INTO ?").run(out);
 db.close();
 console.log(`Backup written to ${out}`);
+
+// Photos live in uploads/ (or UPLOADS_DIR), outside the database. Copied after the database: a photo added in between
+// is only extra, while a row pointing at a missing file would be a hole.
+const uploads = process.env.UPLOADS_DIR ?? path.join(root, "uploads");
+if (fs.existsSync(uploads)) {
+  const dest = out.replace(/\.db$/, "-uploads");
+  fs.cpSync(uploads, dest, { recursive: true });
+  console.log(`Photos copied to ${dest}`);
+}

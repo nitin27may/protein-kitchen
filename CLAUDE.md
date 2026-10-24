@@ -127,6 +127,15 @@ A routine is a small thing eaten or drunk on a schedule, such as methi water or 
 - **To add one:** add the ingredients if needed (with a source), write `data/routines/<slug>.json`, add or extend the habit with its `routine` block, run `pnpm validate`. The validator rejects a routine with no habit, a habit pointing at a missing routine, two habits for one routine, an amount in the habit text, a seed over its cap, a volume unit, a missing cue, and a soak with no `advance_prep`.
 - **Ajwain** is a labelled caraway stand-in until a verifiable IFCT or USDA entry for Trachyspermum ammi is found.
 
+### Photos
+Photos are human-owned. Nothing from the library or the internet shows until a person has approved it.
+
+- **Your own photo:** uploaded on the recipe page (or after ticking "Cooked and tested"). The phone resizes it; the server re-encodes to WebP at 2048 px and a 640 px thumbnail, applying the orientation and dropping all metadata (EXIF, GPS). No raw original is kept.
+- **Candidates:** `pnpm photos:candidates` writes `data/photo-candidates.json` (up to 6 per recipe and ingredient from Wikimedia Commons and Openverse, CC0, CC BY and CC BY-SA only, with author, licence and source). The agent may refresh this file; it never approves a candidate. A person approves or rejects each one at `/photos/review`; approving downloads it from an allowlisted host (`lib/photos/remote.ts`), rechecks the licence and credits it on `/credits`.
+- **No Unsplash, no AI-generated recipe images.** `data/image-titles.json` maps a slug to the Wikipedia article whose lead image is its first candidate (`null` blocks a subject).
+- **Storage:** rows in `photos` and `photo_decisions` (written only through `lib/human/photos.ts`); bytes in a `BlobStore` (`lib/blob`, `uploads/` or `UPLOADS_DIR`), keys derived from the photo's uid. `pnpm backup` copies `uploads/` beside the database; `pnpm photos:check` finds orphan and missing files. Only "Everything" in Settings deletes photos.
+- **Display rule:** a recipe shows its cover photo; otherwise a collage of its ingredients' photos only when there are 3 or more; otherwise a plain card. An ingredient without a photo shows an aisle-tinted tile with an icon.
+
 ### Technique — `data/techniques/<slug>.md`
 Front-matter `title`, `tags`. Body: why it matters, steps, common mistakes, 150–400 words.
 

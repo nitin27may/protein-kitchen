@@ -26,8 +26,6 @@ export const ingredients = sqliteTable(
     isPantryStaple: bool("is_pantry_staple").notNull(),
     containsOnionGarlic: bool("contains_onion_garlic").notNull(),
     isDairy: bool("is_dairy").notNull(),
-    image: text("image"),
-    imageCredit: text("image_credit"),
   },
   (t) => [uniqueIndex("ingredients_slug_uq").on(t.slug), index("ingredients_aisle_idx").on(t.aisle)],
 );
@@ -72,8 +70,6 @@ export const recipes = sqliteTable(
     equipment: json<string[]>("equipment").notNull(),
     tags: json<string[]>("tags").notNull(),
     fridgeDays: integer("fridge_days").notNull(),
-    image: text("image"),
-    imageCredit: text("image_credit"),
   },
   (t) => [uniqueIndex("recipes_slug_uq").on(t.slug), index("recipes_family_idx").on(t.family)],
 );
@@ -455,6 +451,75 @@ export const recipeLinks = sqliteTable(
     index("recipe_links_recipe_idx").on(t.recipeId),
     uniqueIndex("recipe_links_uid_uq").on(t.uid),
     check("recipe_links_kind_ck", sql`${t.kind} in ('recipe', 'video', 'article')`),
+  ],
+);
+
+// ---- Photos ----
+
+/**
+ * A photo of a recipe or an ingredient that a person uploaded or approved. Human-owned: written only through
+ * lib/human/photos.ts. The bytes live in the BlobStore under keys derived from `uid` (see lib/photos/keys.ts); this
+ * table never holds bytes or URLs, so it moves to Postgres unchanged. Exactly one of recipe_id and ingredient_slug is set.
+ * Ingredient photos are keyed by slug (not a foreign key) so a re-seed of the library never cascades them away.
+ */
+export const photos = sqliteTable(
+  "photos",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    uid: text("uid").notNull(),
+    recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "cascade" }),
+    ingredientSlug: text("ingredient_slug"),
+    /** upload (your own photo), commons or openverse (an approved candidate). */
+    origin: text("origin").notNull(),
+    /** Set for approved candidates, so removing the photo can mark the candidate rejected. */
+    candidateKey: text("candidate_key"),
+    sha256: text("sha256").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    isCover: bool("is_cover").notNull().default(false),
+    position: integer("position").notNull().default(0),
+    /** Credit for approved candidates; null for your own uploads. */
+    title: text("title"),
+    author: text("author"),
+    licence: text("licence"),
+    licenceUrl: text("licence_url"),
+    sourceUrl: text("source_url"),
+    createdAt: isoTimestamp("created_at").notNull(),
+    updatedAt: isoTimestamp("updated_at").notNull(),
+    createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    index("photos_recipe_idx").on(t.recipeId),
+    index("photos_ingredient_idx").on(t.ingredientSlug),
+    uniqueIndex("photos_uid_uq").on(t.uid),
+    check("photos_origin_ck", sql`${t.origin} in ('upload', 'commons', 'openverse')`),
+    check("photos_subject_ck", sql`(${t.recipeId} is not null) + (${t.ingredientSlug} is not null) = 1`),
+  ],
+);
+
+/**
+ * Your approve or reject on a candidate photo (data/photo-candidates.json), per subject: the same Commons file can be a
+ * candidate for two recipes and be approved for one. Nothing shows until it is approved.
+ */
+export const photoDecisions = sqliteTable(
+  "photo_decisions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    uid: text("uid").notNull(),
+    /** `provider:id`, for example commons:File:Falafel.jpg. */
+    candidateKey: text("candidate_key").notNull(),
+    subjectKind: text("subject_kind").notNull(),
+    subjectSlug: text("subject_slug").notNull(),
+    decision: text("decision").notNull(),
+    createdAt: isoTimestamp("created_at").notNull(),
+    updatedAt: isoTimestamp("updated_at").notNull(),
+    createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("photo_decisions_uid_uq").on(t.uid),
+    uniqueIndex("photo_decisions_candidate_uq").on(t.subjectKind, t.subjectSlug, t.candidateKey),
+    check("photo_decisions_kind_ck", sql`${t.subjectKind} in ('recipe', 'ingredient')`),
+    check("photo_decisions_decision_ck", sql`${t.decision} in ('approved', 'rejected')`),
   ],
 );
 

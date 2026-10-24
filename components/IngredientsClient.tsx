@@ -1,5 +1,6 @@
 "use client";
 
+import { IngredientTile } from "@/components/IngredientTile";
 import Link from "next/link";
 import { useMemo } from "react";
 import { FilterToolbar } from "@/components/FilterToolbar";
@@ -27,9 +28,9 @@ export function IngredientsClient({ items, savedDefault }: { items: IngredientCa
               <Link href={`/ingredients/${i.slug}`} className="group flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface hover:border-primary">
                 <div className="aspect-[4/3] w-full overflow-hidden bg-primarysoft">
                   {i.image ? (
-                    <img src={`/ingredient-images/${i.image}`} alt="" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-105" />
+                    <img src={i.image} alt="" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-105" />
                   ) : (
-                    <div className="flex size-full items-center justify-center text-sm font-semibold text-primary">{aisleLabel(i.aisle)}</div>
+                    <IngredientTile aisle={i.aisle} name={i.name} state={i.state} size="card" />
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-3">

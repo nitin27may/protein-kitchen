@@ -177,20 +177,6 @@ export function loadData(root: string): DataSet {
     else issues.push({ file: rel(ovPath), message: "invalid overrides file" });
   }
 
-  // Photos come from data/images.json (scripts/fetch-images.ts). A hand-set recipe image wins over the manifest.
-  const imagesPath = path.join(dataDir, "images.json");
-  if (fs.existsSync(imagesPath)) {
-    const raw = readJson(imagesPath, issues) as Partial<Record<"recipes" | "ingredients", Record<string, { file: string; credit: string }>>> | undefined;
-    for (const [slug, img] of Object.entries(raw?.ingredients ?? {})) {
-      const ing = ingredients.get(slug);
-      if (ing) ingredients.set(slug, { ...ing, image: img.file, image_credit: img.credit });
-    }
-    for (const [slug, img] of Object.entries(raw?.recipes ?? {})) {
-      const rec = recipes.get(slug);
-      if (rec && !rec.image) recipes.set(slug, { ...rec, image: img.file, image_credit: img.credit });
-    }
-  }
-
   const notesPath = path.join(dataDir, "ingredient-notes.json");
   if (fs.existsSync(notesPath)) {
     const parsed = z.record(z.string(), z.string().min(10).max(320)).safeParse(readJson(notesPath, issues));

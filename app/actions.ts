@@ -8,6 +8,9 @@ import * as s from "@/lib/db/schema";
 import { withTx } from "@/lib/db/tx";
 import { writeRecipeFeedback } from "@/lib/human/feedback";
 import type { LinkInput } from "@/lib/links/types";
+import { loadCandidates } from "@/lib/photos/candidates";
+import { approveCandidateChecked, rejectCandidateChecked } from "@/lib/server/photo-review";
+import { addRecipePhotoChecked, makeCoverChecked, removePhotoChecked } from "@/lib/server/photo-actions";
 import { addLinkChecked, moveLinkChecked, removeLinkChecked, updateLinkChecked } from "@/lib/server/link-actions";
 import type { PartMode } from "@/lib/parts/mode";
 import { datesBetween } from "@/lib/planner/dates";
@@ -21,6 +24,7 @@ import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/plann
 import type { GeneratedPlan, PlannedSlot, Slot } from "@/lib/planner/types";
 import { ACTIVITY_LEVELS, MEAL_SLOTS, PlanSetupSchema, SEXES } from "@/lib/schemas";
 import { getData, getDb, getSqlite } from "@/lib/server/context";
+import { getBlobStore } from "@/lib/blob";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
@@ -350,6 +354,53 @@ export async function setRecipeFeedback(
   return { ok: true };
 }
 
+// ---------- Photos ----------
+
+/** Adds a photo the person took to a recipe. The phone has already resized it; the server checks and re-encodes it. */
+export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ uid: string }>> {
+  const slug = formData.get("recipe");
+  const file = formData.get("photo");
+  if (typeof slug !== "string" || !(file instanceof File)) return fail("Choose a photo first.");
+  const result = await addRecipePhotoChecked(await getDb(), getBlobStore(), { recipeSlug: slug, bytes: new Uint8Array(await file.arrayBuffer()) });
+  if (!result.ok) return result;
+  refreshRecipe(result.recipeSlug);
+  return { ok: true, uid: result.uid };
+}
+
+/** Approves a candidate photo. Only the subject and the candidate key come from the page; everything else is read on the server. */
+export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
+  if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
+  const r = await approveCandidateChecked(await getDb(), getBlobStore(), loadCandidates(process.cwd()), { kind, slug, key });
+  if (!r.ok) return r;
+  revalidatePath("/photos/review");
+  revalidatePath("/credits");
+  if (r.recipeSlug) refreshRecipe(r.recipeSlug);
+  else revalidatePath("/ingredients", "layout");
+  return { ok: true };
+}
+
+export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
+  if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
+  const r = await rejectCandidateChecked(await getDb(), loadCandidates(process.cwd()), { kind, slug, key });
+  if (!r.ok) return r;
+  revalidatePath("/photos/review");
+  return { ok: true };
+}
+
+export async function removePhoto(uid: string): Promise<Result> {
+  const result = await removePhotoChecked(await getDb(), getBlobStore(), uid);
+  if (!result.ok) return result;
+  if (result.recipeSlug) refreshRecipe(result.recipeSlug);
+  return { ok: true };
+}
+
+export async function makeCoverPhoto(uid: string): Promise<Result> {
+  const result = await makeCoverChecked(await getDb(), uid);
+  if (!result.ok) return result;
+  if (result.recipeSlug) refreshRecipe(result.recipeSlug);
+  return { ok: true };
+}
+
 // ---------- Groceries ----------
 
 export async function setGroceryChecked(planId: number, ingredientSlug: string, checked: boolean): Promise<Result> {
@@ -426,7 +477,7 @@ export async function resetScope(scope: string, typed: string): Promise<Result<{
   if (NEEDS_TYPED_CONFIRM.includes(sc) && typed.trim() !== CONFIRM_WORD) return fail(`Type ${CONFIRM_WORD} to confirm`);
   try {
     const backup = await backupBeforeReset(await getSqlite(), process.cwd(), sc);
-    await resetData(await getDb(), sc);
+    await resetData(await getDb(), sc, getBlobStore());
     refresh();
     return { ok: true, backup: backup ? path.relative(process.cwd(), backup) : null };
   } catch (e) {

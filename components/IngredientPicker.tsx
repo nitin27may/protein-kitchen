@@ -1,5 +1,6 @@
 "use client";
 
+import { IngredientTile } from "@/components/IngredientTile";
 import { useMemo, useState } from "react";
 import { CheckIcon, MinusIcon, XIcon } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
@@ -11,6 +12,8 @@ export interface PickerIngredient {
   name: string;
   aliases: string[];
   group: string;
+  /** Aisle slug, for the tile shown when there is no photo. */
+  aisle: string;
   /** Protein per 100 kcal, to help people spot protein-dense foods. */
   density: number;
   image: string | null;
@@ -177,7 +180,7 @@ export function IngredientPicker({
                 return (
                   <li key={i.slug} className={`flex flex-col overflow-hidden rounded-card border bg-surface ${st === "like" ? "border-ok" : st === "avoid" ? "border-bad" : "border-line"}`}>
                     <div className="aspect-[16/9] w-full overflow-hidden bg-primarysoft">
-                      {i.image ? <img src={`/ingredient-images/${i.image}`} alt="" loading="lazy" className="size-full object-cover" /> : <div className="flex size-full items-center justify-center text-xs font-semibold text-primary">{i.group}</div>}
+                      {i.image ? <img src={i.image} alt="" loading="lazy" className="size-full object-cover" /> : <IngredientTile aisle={i.aisle} size="card" />}
                     </div>
                     <div className="flex flex-1 flex-col gap-2 p-2.5">
                       <div className="min-w-0">

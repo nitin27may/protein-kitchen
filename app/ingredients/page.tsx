@@ -4,14 +4,16 @@ import type { IngredientCard } from "@/components/IngredientsClient";
 import { Suspense } from "react";
 import { PageTitle } from "@/components/ui";
 import { displayName } from "@/lib/schemas";
-import { getData } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
 import { getDefaultViewQuery } from "@/lib/server/queries";
+import { photoIndex } from "@/lib/server/photo-index";
 
 export const metadata: Metadata = { title: "Ingredients" };
 export const dynamic = "force-dynamic";
 
 export default async function IngredientsPage() {
   const data = getData();
+  const photos = await photoIndex(await getDb());
   const cards: IngredientCard[] = [...data.ingredients.values()].map((i) => {
     return {
       slug: i.slug,
@@ -19,7 +21,7 @@ export default async function IngredientsPage() {
       aliases: i.aliases,
       aisle: i.aisle,
       state: i.state,
-      image: i.image ?? null,
+      image: photos.ingredients.get(i.slug) ?? null,
       kcal: i.per100g.kcal,
       proteinG: i.per100g.protein_g,
       carbsG: i.per100g.carbs_g,
