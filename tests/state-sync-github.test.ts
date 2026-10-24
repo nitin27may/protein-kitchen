@@ -108,6 +108,38 @@ describe("private state configuration and GitHub App admission", () => {
 });
 
 describe("bounded private Git HTTP and immutable object verification", () => {
+  it("accepts wrapped base64 at the encoded-response boundary and refuses one extra byte", async () => {
+    const repository = await open(), bytes = Buffer.alloc(60, 65);
+    const blob = fixture.putBlob(bytes), content = bytes.toString("base64").match(/.{1,60}/g)!.join("\n");
+    const boundary = 80 + 4 + 1024 * 1024;
+    for (const extra of [0, 1]) {
+      const value = { sha: blob, size: bytes.length, encoding: "base64", content, padding: "" };
+      value.padding = " ".repeat(boundary + extra - Buffer.byteLength(JSON.stringify(value)));
+      const responseBody = JSON.stringify(value);
+      expect(Buffer.byteLength(responseBody)).toBe(boundary + extra);
+      fixture.intercept = (request, response) => {
+        if (!request.url?.includes("/git/blobs/")) return false;
+        response.writeHead(200, { "content-type": "application/json" }); response.end(responseBody);
+        return true;
+      };
+      if (extra) await expect(repository.blob(blob, bytes.length)).rejects.toThrow("invalid JSON");
+      else expect(await repository.blob(blob, bytes.length)).toEqual(bytes);
+    }
+  });
+  it("rejects invalid blob limits before requests and bounds the streamed encoded response", async () => {
+    const repository = await open();
+    const before = fixture.requests.length;
+    for (const limit of [0, -1, 1.5, Number.NaN, 65 * 1024 * 1024 + 1]) {
+      await expect(repository.blob(id, limit)).rejects.toThrow("size limit");
+    }
+    expect(fixture.requests).toHaveLength(before);
+    fixture.intercept = (request, response) => {
+      if (!request.url?.includes("/git/blobs/")) return false;
+      fixture.json(response, { sha: id, size: 1, encoding: "base64", content: "A".repeat(2 * 1024 * 1024) });
+      return true;
+    };
+    await expect(repository.blob(id, 1)).rejects.toThrow("invalid JSON");
+  });
   it.each([401, 403, 404, 409, 422, 429, 500, 503])("surfaces HTTP %s without response data or automatic write retries", async (status) => {
     fixture.intercept = (_request, response) => { fixture.json(response, { message: "SENSITIVE_UPSTREAM_CONTENT" }, status); return true; };
     const error = await open().catch((error: unknown) => error);

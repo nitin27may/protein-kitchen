@@ -49,7 +49,7 @@ export interface PrivateStateRepository {
   head(): Promise<string>;
   commit(id: string): Promise<z.infer<typeof commitSchema>>;
   tree(id: string): Promise<GitTreeEntry[]>;
-  blob(id: string): Promise<Uint8Array>;
+  blob(id: string, limit?: number): Promise<Uint8Array>;
   createBlob(bytes: Uint8Array): Promise<string>;
   createTree(base: string, entries: { path: string; sha: string | null }[]): Promise<string>;
   createCommit(parent: string, tree: string, message: string): Promise<string>;
@@ -77,7 +77,7 @@ export async function openPrivateStateRepository(
   const base = `/repos/${config.owner}/${config.repository}`;
   const branch = config.branch.split("/").map(encodeURIComponent).join("/");
 
-  async function request<T>(token: string, path: string, schema: z.ZodType<T>, method = "GET", body?: unknown): Promise<T> {
+  async function request<T>(token: string, path: string, schema: z.ZodType<T>, method = "GET", body?: unknown, limit?: number): Promise<T> {
     let response: Response;
     try {
       response = await fetcher(`https://api.github.com${path}`, {
@@ -95,7 +95,23 @@ export async function openPrivateStateRepository(
       throw new StateGitHubError(response.status, response.status === 429 || response.status === 403 || response.status >= 500);
     }
     let value: unknown;
-    try { value = await response.json(); }
+    try {
+      if (limit === undefined) value = await response.json();
+      else {
+        const reader = response.body!.getReader();
+        const chunks: Uint8Array[] = []; let size = 0;
+        try {
+          for (;;) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            size += chunk.value.length;
+            if (size > limit) throw new Error("Response exceeds limit.");
+            chunks.push(chunk.value);
+          }
+          value = JSON.parse(Buffer.concat(chunks).toString());
+        } finally { await reader.cancel(); reader.releaseLock(); }
+      }
+    }
     catch { throw new Error("Private state repository returned invalid JSON."); }
     const result = schema.safeParse(value);
     if (!result.success) throw new Error("Private state repository returned an invalid response.");
@@ -127,9 +143,9 @@ export async function openPrivateStateRepository(
   if (repository.id !== config.repositoryId || repository.full_name.toLowerCase() !== target) {
     throw new Error("Private state repository identity does not match its pinned configuration.");
   }
-  const call = <T>(path: string, schema: z.ZodType<T>, method?: string, body?: unknown) => {
+  const call = <T>(path: string, schema: z.ZodType<T>, method?: string, body?: unknown, limit?: number) => {
     if (Date.parse(access.expires_at) <= now() + 30000) throw new Error("Private state repository credential expired. Start a fresh sync.");
-    return request(access.token, `${base}${path}`, schema, method, body);
+    return request(access.token, `${base}${path}`, schema, method, body, limit);
   };
   const checkedSha = (id: string) => {
     if (!sha.safeParse(id).success) throw new Error("Invalid immutable Git object id.");
@@ -154,8 +170,12 @@ export async function openPrivateStateRepository(
       }
       return result.tree;
     },
-    async blob(id) {
-      const result = await call(`/git/blobs/${checkedSha(id)}`, z.object({ sha, encoding: z.literal("base64"), content: z.string(), size: z.number().int().nonnegative() }));
+    async blob(id, limit = 65 * 1024 * 1024) {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 65 * 1024 * 1024) throw new Error("Invalid private blob size limit.");
+      // GitHub wraps base64 at 60 columns; JSON escapes each line break.
+      const encoded = Math.ceil(limit / 3) * 4;
+      const result = await call(`/git/blobs/${checkedSha(id)}`, z.object({ sha, encoding: z.literal("base64"), content: z.string(), size: z.number().int().nonnegative().max(limit) }),
+        "GET", undefined, encoded + Math.ceil(encoded / 60) * 2 + 1024 * 1024);
       const bytes = Buffer.from(result.content.replace(/\n/g, ""), "base64");
       if (result.sha !== id || result.size !== bytes.length || gitBlobSha(bytes) !== id) throw new Error("Private state repository returned corrupt blob bytes.");
       return bytes;

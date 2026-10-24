@@ -14,7 +14,7 @@ const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const file = z.string().regex(new RegExp(`^(?:database\\.dump|manifest\\.json|${uuid})\\.age$`));
 const key = z.string().regex(new RegExp(`^(?:database\\.dump|photos/${uuid}/(?:master|thumb)\\.webp)$`));
 const receipt = z.object({ file, sha256: z.string().regex(/^[0-9a-f]{64}$/), size: z.number().int().positive().max(65 * MiB) }).strict();
-export const encryptedBackupIndex = z.object({
+const encryptedBackupIndex = z.object({
   format: z.literal("protein-kitchen-encrypted-backup"), version: z.literal(1), id: z.string().uuid(),
   created_at: z.string().datetime(), files: z.array(receipt).min(2).max(5002),
 }).strict();
@@ -75,12 +75,17 @@ export async function readBackupFile(file: string, limit: number) {
   } finally { await handle.close(); }
 }
 
-export async function readBackupIndex(root: string) {
-  const index = encryptedBackupIndex.parse(JSON.parse((await readBackupFile(path.join(root, "index.json"), MiB)).toString()));
+export function parseBackupIndex(bytes: Uint8Array) {
+  if (bytes.byteLength > MiB) throw new RecoveryError("artifact-invalid");
+  const index = encryptedBackupIndex.parse(JSON.parse(Buffer.from(bytes).toString()));
   const names = new Map(index.files.map((entry) => [entry.file, entry]));
   if (names.size !== index.files.length || !names.has("manifest.json.age") || !names.has("database.dump.age") ||
       index.files.reduce((size, entry) => size + entry.size, 0) > 256 * MiB) throw new RecoveryError("artifact-invalid");
   return { index, names };
+}
+
+export async function readBackupIndex(root: string) {
+  return parseBackupIndex(await readBackupFile(path.join(root, "index.json"), MiB));
 }
 
 export async function readEncryptedBackup(directory: string, identity: string, trusted: boolean, age = "age") {

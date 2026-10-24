@@ -59,6 +59,8 @@ First run: open Profiles, add everyone who eats, then create a plan.
 | `pnpm db:verify:postgres runtime` / `migration` | Verify runtime or direct CLI configuration and live remote branch mapping without opening Postgres or changing credentials |
 | `pnpm db:import:sqlite /absolute/path/to/source-copy.db` | Read-only legacy snapshot and checksum-verified import into an empty dev/test target; remote rehearsal needs an explicit branch pin and live verification |
 | `pnpm test:e2e` | Saved phone-width Chromium browser regressions against an explicitly selected disposable local Postgres database |
+| `pnpm vault:postgres publish /private/artifact --trust-artifact` | Explicit guarded operator publication of an existing trusted encrypted artifact; stable artifact id makes retries safe |
+| `pnpm vault:postgres fetch <artifact-uuid> <commit-sha> /private/download-root` | Fetch checked ciphertext from one immutable commit into a new private `backup-<uuid>` directory; never decrypts or restores |
 
 ## CI and deployment
 
@@ -90,11 +92,17 @@ Use synthetic data only for now. Remote rehearsals require `SQLITE_IMPORT_NEON_B
 
 The source is never migrated or modified. An entirely empty source is refused; use the guarded seed for a new library instead. Top-level JSON null, unsafe JSON integers, malformed JSON/booleans/dates and unrepresentable values are refused rather than silently coerced. Digests cover database rows only: photo **metadata** is preserved, but photo bytes are not copied or verified. No new photo approval or human decision is created. Protect reports and source copies as private migration artifacts. This is not yet the production migration or backup/restore procedure.
 
-### Encrypted vault library (20C1)
+### Encrypted vault operator (20C1-20C2)
 
 `lib/backup/vault.ts` implements append-only publication of an explicitly trusted local encrypted backup through the pinned private GitHub App transport. Before target access it checks the bounded index, file allowlist, checksums, sizes and binary age framing; only canonical non-sensitive metadata and listed ciphertext are published. Framing is not proof of encryption, sender identity or recoverability: the source must be a trusted locally generated artifact. Identical artifact-id retries are no-ops; divergent contents are conflicts. Existing artifacts/unrelated files are preserved, branch updates never force, and ambiguous updates are reconciled before reporting success.
 
-This is a tested library, not an enabled off-machine backup service. No vault CLI, real target, schedule or automatic retention/deletion is enabled. Deleting a Git tree entry would not erase its encrypted history; no expiry guarantee is made. The guarded runner, fetch-to-isolated-restore drill, approved off-machine acceptance and pre-reset failure gate remain pending; Settings reset stays blocked. See [the detailed stage plan](docs/plan-v3-publish-and-protect.md).
+The operator command requires `NODE_ENV=development|test`, `DATABASE_ENV=development|test`, `VAULT_ENABLED=true` and every `VAULT_GITHUB_*` variable shown in `.env.example`. It never loads local credentials or falls back to state-sync variables. App/installation/repository identity, private/nonfork/nonarchived status and branch are checked by the pinned transport; a vault must use a different repository from selective state sync, whose managed-tree cleanup is not suitable for backups. Commands refuse Vercel/preview and production. No database connection is needed for publication/download. Supply secrets through an approved private operator environment, not command arguments.
+
+`publish` uses the **same existing directory** on retries; generating a fresh backup first would create a new artifact id. Preserve that directory after failure and retry only after inspecting the error/target. `fetch` requires an existing private, non-symlink download root and an exact immutable commit SHA from the verified publication report, never a moving branch name. It refuses any existing `backup-<uuid>` destination, even empty, and writes files as 0600 in a 0700 directory. Index/blob responses, sizes, aggregate bytes, hashes, modes and paths are bounded/checked. A flushed temporary index is atomically renamed to `index.json` only after every ciphertext member passes; interrupted downloads have no valid completion marker and failures clean up or explicitly report cleanup failure. Never treat an incomplete directory as a backup.
+
+Downloading ciphertext does not authorize executing its decrypted SQL. Only an owner-approved source may be passed to `pnpm restore:postgres <downloaded-directory> <offline-identity-file> <new-photo-directory> --trust-artifact`, with a separately configured empty disposable `RESTORE_DATABASE_URL`; see the [isolated recovery runbook](docs/plan-v3-publish-and-protect.md). Local acceptance uses signed loopback GitHub HTTP, real age/native dumps and downloaded-artifact restore parity, not real household data or a live remote vault.
+
+This is not an enabled off-machine backup service. No real target, schedule or automatic retention/deletion is enabled. Deleting a Git tree entry would not erase its encrypted history; no expiry guarantee is made. Owner target/App/content consent, offline-key custody, retention choice, approved live off-machine acceptance and the pre-reset failure gate remain pending; Settings reset stays blocked. See [the detailed stage plan](docs/plan-v3-publish-and-protect.md).
 
 ### Repeatable browser tests
 

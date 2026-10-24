@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { lstat } from "node:fs/promises";
+import { lstat, mkdir, readdir, rename, rmdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { readBackupIndex, readBackupFile } from "./read";
+import { parseBackupIndex, readBackupIndex, readBackupFile } from "./read";
 import type { GitTreeEntry, PrivateStateRepository } from "../sync/github";
 import { StateGitHubError } from "../sync/github";
 
@@ -11,9 +11,14 @@ const blobSha = (bytes: Uint8Array) => createHash("sha1").update(`blob ${bytes.l
 const sorted = (entries: GitTreeEntry[]) => entries.slice().sort((a, b) => a.path.localeCompare(b.path));
 
 export class VaultError extends Error {
-  constructor(readonly code: "artifact-refused" | "conflict" | "verification-failed") {
+  constructor(readonly code: "artifact-refused" | "conflict" | "verification-failed" | "destination-refused" | "download-failed" | "cleanup-failed") {
     super(`Encrypted vault publication failed (${code}). No verified off-machine backup was reported; preserve the trusted local artifact for inspection/retry.`);
   }
+}
+
+function checkCiphertext(bytes: Uint8Array, item: { size: number; sha256: string }) {
+  if (bytes.byteLength !== item.size || createHash("sha256").update(bytes).digest("hex") !== item.sha256 ||
+      !Buffer.from(bytes.subarray(0, 22)).equals(Buffer.from("age-encryption.org/v1\n")) || bytes.length < 64) throw new VaultError("artifact-refused");
 }
 
 /** Framing/integrity is not sender authentication: only publish artifacts from a trusted local backup. */
@@ -27,10 +32,10 @@ async function vaultPayload(directory: string, trusted: boolean) {
     const files: Record<string, Uint8Array> = { [`${prefix}index.json`]: Buffer.from(JSON.stringify(index)) };
     for (const item of index.files) {
       const bytes = await readBackupFile(path.join(folder, item.file), 65 * MiB);
-      if (bytes.byteLength !== item.size || createHash("sha256").update(bytes).digest("hex") !== item.sha256 ||
-          !bytes.subarray(0, 22).equals(Buffer.from("age-encryption.org/v1\n")) || bytes.length < 64) throw new VaultError("artifact-refused");
+      checkCiphertext(bytes, item);
       files[`${prefix}${item.file}`] = bytes;
     }
+
     return { id: index.id, prefix, files };
   } catch (error) {
     throw error instanceof VaultError ? error : new VaultError("artifact-refused");
@@ -48,6 +53,51 @@ function artifactEntries(entries: GitTreeEntry[], prefix: string) {
 function matches(entries: GitTreeEntry[], desired: Record<string, string>): boolean {
   return entries.length === Object.keys(desired).length && entries.every((entry) =>
     entry.type === "blob" && entry.mode === "100644" && desired[entry.path] === entry.sha);
+}
+
+/** Fetching ciphertext does not grant trust to execute its decrypted SQL. */
+export async function fetchEncryptedVault(
+  id: string, commit: string, outputRoot: string, openRepository: () => Promise<PrivateStateRepository>,
+): Promise<{ id: string; commit: string; directory: string }> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) ||
+      !/^[0-9a-f]{40}$/.test(commit)) throw new VaultError("artifact-refused");
+  const parent = path.resolve(outputRoot);
+  if (!(await lstat(parent)).isDirectory()) throw new VaultError("destination-refused");
+  const destination = path.join(parent, `backup-${id}`);
+  const repository = await openRepository();
+  const revision = await repository.commit(commit);
+  const entries = artifactEntries(await repository.tree(revision.tree.sha), `${root}${id}/`);
+  const indexEntry = entries.find((entry) => entry.path === `${root}${id}/index.json`);
+  if (!indexEntry || indexEntry.type !== "blob" || indexEntry.mode !== "100644") throw new VaultError("artifact-refused");
+  const { index } = parseBackupIndex(await repository.blob(indexEntry.sha, MiB));
+  if (index.id !== id || entries.length !== index.files.length + 1) throw new VaultError("artifact-refused");
+  const desired = new Map(index.files.map((item) => [`${root}${id}/${item.file}`, item]));
+  for (const entry of entries) {
+    if (entry === indexEntry) continue;
+    if (entry.type !== "blob" || entry.mode !== "100644" || !desired.has(entry.path)) throw new VaultError("artifact-refused");
+  }
+  // Exclusive creation refuses even an existing empty destination; only this call owns cleanup.
+  try { await mkdir(destination, { mode: 0o700 }); }
+  catch { throw new VaultError("destination-refused"); }
+  try {
+    for (const entry of entries) {
+      if (entry === indexEntry) continue;
+      const item = desired.get(entry.path)!;
+      const bytes = await repository.blob(entry.sha, item.size);
+      checkCiphertext(bytes, item);
+      await writeFile(path.join(destination, item.file), bytes, { flag: "wx", mode: 0o600, flush: true });
+    }
+    // Atomically publish the completion marker; consumers refuse incomplete downloads.
+    await writeFile(path.join(destination, ".pending-index"), JSON.stringify(index), { flag: "wx", mode: 0o600, flush: true });
+    await rename(path.join(destination, ".pending-index"), path.join(destination, "index.json"));
+    return { id, commit, directory: destination };
+  } catch (error) {
+    try {
+      for (const file of await readdir(destination)) await unlink(path.join(destination, file));
+      await rmdir(destination);
+    } catch { throw new VaultError("cleanup-failed"); }
+    throw error instanceof VaultError ? error : new VaultError("download-failed");
+  }
 }
 
 /** Append-only: no retention pruning, remote deletion, private identity, plaintext dump or force update. */

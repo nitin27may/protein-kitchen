@@ -34,7 +34,7 @@ import { openPrivateStateRepository } from "../lib/sync/github";
 import { fixtureConfiguration as syncConfig, fixtureTime, githubFixture } from "./helpers/github-state";
 import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
-import { publishEncryptedVault } from "../lib/backup/vault";
+import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -528,7 +528,7 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       expect(result.stdout).toContain("not an off-machine backup");
       expect(result.stdout).not.toMatch(/PRIVATE_|postgres:|AGE-SECRET/);
       const [name] = await readdir(outputRoot);
-      const artifact = path.join(outputRoot, name!);
+      let artifact = path.join(outputRoot, name!);
       const index = JSON.parse(await readFile(path.join(artifact, "index.json"), "utf8"));
       expect(JSON.stringify(index)).not.toMatch(/PRIVATE_|photos\/|AGE-SECRET/);
       const vault = githubFixture();
@@ -542,6 +542,14 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
         const entries = vault.trees.get(vault.commits.get(vault.head)!.tree.sha)!;
         expect(entries.filter((entry) => entry.path.startsWith(`protein-kitchen/vault/${index.id}/`))).toHaveLength(index.files.length + 1);
         expect(JSON.stringify(vault.requests)).not.toMatch(/PRIVATE_|AGE-SECRET/);
+        const downloads = path.join(folder, "downloads");
+        await mkdir(downloads, { mode: 0o700 });
+        const downloaded = await fetchEncryptedVault(index.id, published.commit, downloads, open);
+        expect(downloaded.directory).not.toBe(artifact);
+        for (const item of index.files) {
+          expect(await readFile(path.join(downloaded.directory, item.file))).toEqual(await readFile(path.join(artifact, item.file)));
+        }
+        artifact = downloaded.directory;
       } finally { await vault.close(); }
       const decrypt = (file: string, key = identity) => exec(age, ["--decrypt", "--identity", key, path.join(artifact, file)], { encoding: "buffer", maxBuffer: 16 * 1024 * 1024 });
       const manifest = JSON.parse((await decrypt("manifest.json.age")).stdout.toString());

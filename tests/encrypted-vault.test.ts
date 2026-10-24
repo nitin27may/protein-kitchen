@@ -1,10 +1,17 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { publishEncryptedVault } from "../lib/backup/vault";
+import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
+import { parseBackupIndex } from "../lib/backup/read";
+import { runVaultCommand } from "../lib/backup/operator";
 import { openPrivateStateRepository, StateGitHubError } from "../lib/sync/github";
 import { fixtureConfiguration, fixtureTime, githubFixture } from "./helpers/github-state";
+
+vi.mock("node:fs/promises", async (original) => {
+  const fs = await original<typeof import("node:fs/promises")>();
+  return { ...fs, readdir: vi.fn(fs.readdir) };
+});
 
 const fixture = githubFixture();
 beforeAll(() => fixture.start());
@@ -29,6 +36,108 @@ beforeEach(async () => {
     files: [entry("database.dump.age"), entry("manifest.json.age")],
   }));
   for (const file of ["database.dump.age", "manifest.json.age"]) await writeFile(path.join(folder, file), bytes);
+});
+
+describe("bounded immutable vault downloads", () => {
+  it("runs the actual operator argument/config/report path with signed synthetic HTTP", async () => {
+    const env = {
+      NODE_ENV: "test", DATABASE_ENV: "test", VAULT_ENABLED: "true",
+      VAULT_GITHUB_APP_ID: "123", VAULT_GITHUB_INSTALLATION_ID: "456", VAULT_GITHUB_REPOSITORY_ID: "789",
+      VAULT_GITHUB_OWNER: fixtureConfiguration.owner, VAULT_GITHUB_REPOSITORY: fixtureConfiguration.repository,
+      VAULT_GITHUB_BRANCH: fixtureConfiguration.branch, VAULT_GITHUB_PRIVATE_KEY: fixtureConfiguration.privateKey,
+    };
+    const connect = vi.fn(async (config) => {
+      expect(config).toEqual(fixtureConfiguration);
+      return open();
+    });
+    expect((await runVaultCommand(["publish", folder, "--trust-artifact"], env, connect))[0]).toContain("(published)");
+    expect((await runVaultCommand(["publish", folder, "--trust-artifact"], env, connect))[0]).toContain("(already present)");
+    const output = path.join(folder, "operator-downloads"); await mkdir(output);
+    const messages = await runVaultCommand(["fetch", id, fixture.head, output], env, connect);
+    expect(messages[0]).toContain(`${id} at ${fixture.head}`);
+    expect(messages[1]).toContain("not source trust");
+    expect(JSON.stringify(messages)).not.toContain(folder);
+    for (const args of [[], ["publish", "", "--trust-artifact"], ["publish", folder, "--wrong"], ["fetch", id, fixture.head, ""], ["unknown"]]) {
+      await expect(runVaultCommand(args, env, connect)).rejects.toThrow("Invalid vault command");
+    }
+    await expect(runVaultCommand(["publish", folder, "--trust-artifact"], {}, connect)).rejects.toThrow();
+    const calls = connect.mock.calls.length;
+    await expect(runVaultCommand(["publish", folder, "--trust-artifact"], { ...env, VERCEL: "1" }, connect)).rejects.toThrow();
+    expect(connect).toHaveBeenCalledTimes(calls);
+  });
+  async function published() {
+    const result = await publishEncryptedVault(folder, true, open);
+    const output = path.join(folder, "downloads");
+    await mkdir(output);
+    return { result, output, destination: path.join(output, `backup-${id}`) };
+  }
+  it("downloads exact ciphertext from the selected commit despite a later branch edit", async () => {
+    const { result, output, destination } = await published();
+    fixture.edit({ [`${prefix()}database.dump.age`]: "Changed later" });
+    const fetched = await fetchEncryptedVault(id, result.commit, output, open);
+    expect(fetched).toEqual({ id, commit: result.commit, directory: destination });
+    expect(await readFile(path.join(destination, "database.dump.age"))).toEqual(bytes);
+    expect(await readIndex()).toEqual(JSON.parse(await readFile(path.join(destination, "index.json"), "utf8")));
+    expect((await lstat(destination)).mode & 0o777).toBe(0o700);
+    expect((await lstat(path.join(destination, "index.json"))).mode & 0o777).toBe(0o600);
+    await expect(fetchEncryptedVault(id, result.commit, output, open)).rejects.toMatchObject({ code: "destination-refused" });
+    expect(await readdir(destination)).toHaveLength(3);
+  });
+  it.each(["id", "commit", "parent-symlink", "parent-file"])("refuses unsafe %s before repository access", async (kind) => {
+    const { result, output } = await published();
+    let parent = output;
+    if (kind === "parent-symlink") { parent = path.join(folder, "link"); await symlink(output, parent); }
+    if (kind === "parent-file") parent = path.join(folder, "index.json");
+    const repository = vi.fn(open);
+    await expect(fetchEncryptedVault(kind === "id" ? "../private" : id, kind === "commit" ? "main" : result.commit, parent, repository)).rejects.toThrow();
+    expect(repository).not.toHaveBeenCalled();
+  });
+  it.each(["missing-index", "index-type", "index-mode", "wrong-id", "extra", "file-type", "file-mode", "file-path", "bad-hash", "bad-framing", "interrupted"])(
+    "refuses %s without leaving a completed download", async (kind) => {
+      const { result, output } = await published();
+      const rows = fixture.trees.get(fixture.commits.get(result.commit)!.tree.sha)!;
+      const indexRow = rows.find((entry) => entry.path.endsWith("/index.json"))!;
+      const fileRow = rows.find((entry) => entry.path.endsWith("/database.dump.age"))!;
+      if (kind === "missing-index") rows.splice(rows.indexOf(indexRow), 1);
+      if (kind === "index-type") indexRow.type = "tree";
+      if (kind === "index-mode") indexRow.mode = "100755";
+      if (kind === "wrong-id") {
+        const index = await readIndex(); index.id = randomUUID();
+        indexRow.sha = fixture.putBlob(Buffer.from(JSON.stringify(index)));
+      }
+      if (kind === "extra") rows.push({ ...fileRow, path: `${prefix()}extra.age` });
+      if (kind === "file-type") fileRow.type = "tree";
+      if (kind === "file-mode") fileRow.mode = "100755";
+      if (kind === "file-path") fileRow.path = `${prefix()}unlisted.age`;
+      if (kind === "bad-hash") fileRow.sha = fixture.putBlob(Buffer.from(`age-encryption.org/v1\n${"changed".repeat(30)}`));
+      if (kind === "bad-framing") {
+        const raw = Buffer.from("PRIVATE_NOT_CIPHERTEXT".repeat(10));
+        const index = await readIndex(); index.files[0] = { file: "database.dump.age", size: raw.length, sha256: digest(raw) };
+        indexRow.sha = fixture.putBlob(Buffer.from(JSON.stringify(index)));
+        fileRow.sha = fixture.putBlob(raw);
+      }
+      const repository = await open();
+      if (kind === "interrupted") {
+        const blob = repository.blob; let calls = 0;
+        repository.blob = async (...args) => { if (++calls === 3) throw new Error("PRIVATE_UPSTREAM"); return blob(...args); };
+      }
+      await expect(fetchEncryptedVault(id, result.commit, output, async () => repository)).rejects.toThrow();
+      expect(await readdir(output)).toEqual([]);
+    },
+  );
+  it("refuses an oversized parsed index", () => {
+    expect(() => parseBackupIndex(Buffer.alloc(1024 * 1024 + 1))).toThrow();
+  });
+  it("reports cleanup failure explicitly instead of reporting completed recovery", async () => {
+    const { result, output } = await published();
+    const repository = await open(); const blob = repository.blob; let calls = 0;
+    repository.blob = async (...args) => {
+      if (++calls === 3) throw new Error("Synthetic interruption");
+      return blob(...args);
+    };
+    vi.mocked(readdir).mockRejectedValueOnce(new Error("Synthetic cleanup refusal"));
+    await expect(fetchEncryptedVault(id, result.commit, output, async () => repository)).rejects.toMatchObject({ code: "cleanup-failed" });
+  });
 });
 afterEach(async () => { vi.restoreAllMocks(); await rm(folder, { recursive: true, force: true }); });
 
