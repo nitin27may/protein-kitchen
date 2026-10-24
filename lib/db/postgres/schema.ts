@@ -371,6 +371,31 @@ export const reminderLog = pgTable("reminder_log", {
   sentAt: isoTimestamp("sent_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.date, t.personId] })]);
 
+export const reminderBatches = pgTable("reminder_batches", {
+  id: text("id").primaryKey(),
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  date: isoDate("date").notNull(),
+  payload: json<{ title: string; body: string; url: string }>("payload").notNull(),
+  expiresAt: isoTimestamp("expires_at").notNull(),
+  createdAt: isoTimestamp("created_at").notNull(),
+}, (t) => [uniqueIndex("reminder_batch_day_uq").on(t.personId, t.date)]);
+
+export const reminderDeliveries = pgTable("reminder_deliveries", {
+  batchId: text("batch_id").notNull().references(() => reminderBatches.id, { onDelete: "cascade" }),
+  subscriptionId: integer("subscription_id").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  status: text("status", { enum: ["pending", "sending", "accepted", "gone", "cancelled", "retry", "ambiguous"] }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  attemptToken: text("attempt_token"),
+  attemptedAt: isoTimestamp("attempted_at"),
+  retryAt: isoTimestamp("retry_at"),
+  updatedAt: isoTimestamp("updated_at").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.batchId, t.subscriptionId] }),
+  check("reminder_delivery_status_valid", sql`${t.status} in ('pending', 'sending', 'accepted', 'gone', 'cancelled', 'retry', 'ambiguous')`),
+  check("reminder_delivery_attempts_valid", sql`${t.attempts} >= 0 and ${t.attempts} <= 3`),
+]);
+
 export const savedViews = pgTable("saved_views", {
   id: id(),
   list: text("list").notNull(),

@@ -64,6 +64,13 @@
       "when": 1792835102489,
       "tag": "0008_conscious_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792835793731,
+      "tag": "0009_melted_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

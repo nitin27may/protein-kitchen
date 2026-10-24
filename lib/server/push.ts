@@ -2,7 +2,7 @@ import { and, eq, gt } from "drizzle-orm";
 import webpush from "web-push";
 import * as s from "@/lib/db/schema";
 import { buildReminder, isReminderDue, localParts } from "@/lib/reminders/due";
-import { claimReminder } from "@/lib/reminders/claim";
+import { claimDelivery, deliveryFailure, expireDeliveryAttempts, finishDelivery, prepareReminderBatch, reminderClock, type DeliveryOutcome } from "@/lib/reminders/delivery";
 import { getDb } from "./context";
 import { loadNight, tonight } from "./prep";
 import { getPlanView, latestPlanId, listPeople } from "./queries";
@@ -56,27 +56,39 @@ export async function sendToPerson(personId: number, payload: { title: string; b
   return result;
 }
 
-/** Called once a minute. Sends each due person tomorrow's prep tasks that are not yet ticked. */
-export async function checkReminders(now: Date = new Date()): Promise<number> {
+/** Scheduled sends use frozen device receipts; manual test pushes remain separate. */
+export async function checkReminders(at?: Date): Promise<number> {
   if (!vapidConfigured()) return 0;
   const db = await getDb();
+  const now = at ?? await reminderClock(db);
+  await expireDeliveryAttempts(db);
   const { date: householdDate } = localParts(now, APP_TZ);
   const planId = await latestPlanId();
   const view = planId ? await getPlanView(planId) : undefined;
   const night = view ? await loadNight(view, householdDate) : undefined;
   let sent = 0;
   for (const p of await listPeople()) {
-    const timezone = p.reminderTimezone ?? APP_TZ;
-    const { date } = localParts(now, timezone);
-    const already = (await db.select().from(s.reminderLog).where(eq(s.reminderLog.personId, p.id))).some((r) => r.date === date);
-    if (!isReminderDue(p.reminderTime, now, timezone, already)) continue;
-    // Mark first so a slow send or a restart can never cause a second message.
-    if (!await claimReminder(db, { date, personId: p.id, sentAt: now.toISOString() })) continue;
+    if (!isReminderDue(p.reminderTime, now, p.reminderTimezone ?? APP_TZ, false)) continue;
     const open = tonight(night, householdDate).filter((t) => !t.done).map((t) => `${t.text}, for ${t.forName}`);
     const msg = buildReminder(p.name, open);
-    if (!msg) continue;
-    const r = await sendToPerson(p.id, msg);
-    sent += r.sent;
+    const batchId = await prepareReminderBatch(db, { personId: p.id, householdTimezone: APP_TZ, payload: msg, now });
+    if (!batchId) continue;
+    const devices = await db.select({ id: s.reminderDeliveries.subscriptionId }).from(s.reminderDeliveries)
+      .where(eq(s.reminderDeliveries.batchId, batchId));
+    for (const device of devices) {
+      if (!configure()) return sent;
+      const attempt = await claimDelivery(db, batchId, device.id);
+      if (!attempt) continue;
+      let outcome: DeliveryOutcome = "accepted";
+      try {
+        const sub = attempt.registration;
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify(attempt.payload), { TTL: 60 * 60 * 6, timeout: 10_000 });
+      } catch (error) {
+        outcome = deliveryFailure(error);
+      }
+      if (await finishDelivery(db, attempt, outcome) && outcome === "accepted") sent++;
+    }
   }
   return sent;
 }

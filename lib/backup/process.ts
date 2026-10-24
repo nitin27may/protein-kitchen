@@ -56,6 +56,7 @@ export function postgresDump(target: PostgresTarget, binary = "pg_dump"): DumpSo
   const running = tool(binary, [
     "--format=custom", "--no-owner", "--no-privileges", "--no-password",
     "--exclude-table-data=public.state_sync_jobs", "--exclude-table-data=public.state_sync_requests",
+    "--exclude-table-data=public.reminder_batches", "--exclude-table-data=public.reminder_deliveries",
   ], "dump-failed", postgresEnvironment(target));
   running.child.stdin.end();
   return { stream: running.child.stdout, finished: running.finished, abort: () => { running.child.kill("SIGTERM"); } };

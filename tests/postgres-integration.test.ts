@@ -33,6 +33,7 @@ import { createMemoryStore } from "../lib/blob/memory";
 import { openPrivateStateRepository } from "../lib/sync/github";
 import { fixtureConfiguration as syncConfig, fixtureTime, githubFixture } from "./helpers/github-state";
 import { claimReminder } from "../lib/reminders/claim";
+import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -89,6 +90,42 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       expect(await handle.db.select().from(s.reminderLog).where(eq(s.reminderLog.date, reminder.date))).toEqual([reminder]);
       expect(await claimReminder(handle.db, { ...reminder, date: "2099-11-02" })).toBe(true);
     } finally { source.close(); }
+  });
+
+  it("freezes one batch and admits exactly one fenced device attempt across native connections", async () => {
+    await handle.db.insert(s.people).values({
+      id: 1, name: "Synthetic reminder cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light", dietFlags: [], reminderTime: "21:00",
+    });
+    await handle.db.insert(s.authUsers).values({ id: "reminder-user", name: "Synthetic cook", email: "native-reminder@example.test", emailVerified: true });
+    await handle.db.insert(s.householdMembers).values({ userId: "reminder-user", personId: 1, role: "owner" });
+    await handle.db.insert(s.authSessions).values({
+      id: "reminder-session", userId: "reminder-user", token: "native-synthetic-reminder-session",
+      expiresAt: new Date(Date.now() + 3_600_000), updatedAt: new Date(),
+    });
+    await handle.db.insert(s.pushSubscriptions).values({
+      id: 1, personId: 1, endpoint: "https://push.example.test/native", p256dh: "synthetic", auth: "synthetic", createdAt: at,
+    });
+    const input = { personId: 1, householdTimezone: "UTC", payload: { title: "Synthetic", body: "Synthetic", url: "/" }, now: new Date("2099-11-01T21:00:00Z") };
+    const batches = await Promise.all(Array.from({ length: 8 }, () => prepareReminderBatch(handle.db, input)));
+    expect(new Set(batches).size).toBe(1);
+    const batchId = batches[0]!;
+    const claims = await Promise.all(Array.from({ length: 8 }, () => claimDelivery(handle.db, batchId, 1)));
+    const winner = claims.find((v) => v !== undefined)!;
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await finishDelivery(handle.db, { ...winner, token: randomUUID() }, "accepted")).toBe(false);
+    expect(await finishDelivery(handle.db, winner, "accepted")).toBe(true);
+    expect(await claimDelivery(handle.db, batchId, 1)).toBeUndefined();
+    const second = (await prepareReminderBatch(handle.db, { ...input, now: new Date("2099-11-02T21:00:00Z") }))!;
+    const interrupted = (await claimDelivery(handle.db, second, 1))!;
+    await handle.db.update(s.reminderDeliveries).set({ attemptedAt: at }).where(eq(s.reminderDeliveries.batchId, second));
+    const stale = await Promise.all(Array.from({ length: 8 }, () => claimDelivery(handle.db, second, 1)));
+    expect(stale.every((v) => v === undefined)).toBe(true);
+    expect(await finishDelivery(handle.db, interrupted, "accepted")).toBe(false);
+    const third = (await prepareReminderBatch(handle.db, { ...input, now: new Date("2099-11-03T21:00:00Z") }))!;
+    await handle.db.delete(s.householdMembers);
+    expect(await claimDelivery(handle.db, third, 1)).toBeUndefined();
+    expect(await handle.db.select().from(s.reminderDeliveries).where(eq(s.reminderDeliveries.batchId, third))).toMatchObject([{ status: "cancelled" }]);
   });
 
   it("keeps concurrent same-timestamp writes pending across stale and racing sync acknowledgements", async () => {
@@ -455,6 +492,14 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await restoreSqliteSnapshot(handle.db, readSqliteSnapshot(source.file));
       await handle.db.update(s.people).set({ name: "PRIVATE_RECOVERY_SENTINEL" });
       await handle.db.insert(s.authUsers).values({ id: "synthetic-recovery-account", name: "PRIVATE_ACCOUNT_SENTINEL", email: "recovery@example.test", emailVerified: true });
+      const operationalBatch = randomUUID();
+      await handle.db.insert(s.reminderBatches).values({
+        id: operationalBatch, personId: 300, date: "2099-01-01", payload: { title: "PRIVATE_REMINDER_SENTINEL", body: "Private", url: "/" },
+        createdAt: at, expiresAt: at,
+      });
+      await handle.db.insert(s.reminderDeliveries).values({
+        batchId: operationalBatch, subscriptionId: 1234, fingerprint: "synthetic", status: "sending", attempts: 1, updatedAt: at,
+      });
       const uid = randomUUID();
       const bytes = await sharp({ create: { width: 20, height: 20, channels: 3, background: "#884422" } }).webp().toBuffer();
       await handle.db.update(s.photos).set({ uid, sha256: createHash("sha256").update(bytes).digest("hex"), width: 20, height: 20 });
@@ -463,7 +508,8 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       const keys = photoKeys(uid);
       await photoStore.put(keys.master, bytes, "image/webp"); await photoStore.put(keys.thumb, bytes, "image/webp");
       const human = await exportHumanData(handle.db);
-      const tables = Object.values(s).filter((table) => table !== s.stateSyncJobs && table !== s.stateSyncRequests);
+      const tables = Object.values(s).filter((table) => table !== s.stateSyncJobs && table !== s.stateSyncRequests &&
+        table !== s.reminderBatches && table !== s.reminderDeliveries);
       const before = await Promise.all(tables.map(async (table) => ({ table: getTableName(table), ...digestRows(await handle.db.select().from(table)) })));
       await exec(keygen, ["--output", identity]);
       await exec(keygen, ["--output", wrongIdentity]);
@@ -528,6 +574,8 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await expect(runRestore()).rejects.toMatchObject({ stderr: expect.stringContaining("destination-refused") });
       const after = await Promise.all(tables.map(async (table) => ({ table: getTableName(table), ...digestRows(await restored!.db.select().from(table)) })));
       expect(after).toEqual(before);
+      expect(await restored.db.select().from(s.reminderBatches)).toEqual([]);
+      expect(await restored.db.select().from(s.reminderDeliveries)).toEqual([]);
       expect(await exportHumanData(restored.db)).toEqual(human);
       const restoredPhotos = createFsStore(photoDirectory);
       if (hasPhotos) {
