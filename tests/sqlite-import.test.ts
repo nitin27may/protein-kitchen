@@ -103,7 +103,7 @@ describe("atomic SQLite restore", () => {
     expect(await restoreSqliteSnapshot(target.db, snapshot)).toEqual(snapshot.tables);
     expect(await target.db.select().from(s.syncState)).toEqual([{
       dataClass: "recipe-feedback", changedAt: "2026-10-23T12:00:00.000Z", exportedAt: "2026-10-23T00:00:00.000Z",
-      revision: 1, exportedRevision: 0, householdId: null,
+      revision: 1, exportedRevision: 0, householdId: "00000000-0000-4000-8000-000000000001",
     }]);
     expect(await target.db.select().from(s.libraryState)).toEqual([]);
     for (const table of importTables) {

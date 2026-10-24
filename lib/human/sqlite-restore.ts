@@ -5,6 +5,7 @@ import { digestRows, importColumns, importTables } from "../db/sqlite-snapshot";
 import type { ImportRow, SqliteSnapshot, TableDigest } from "../db/sqlite-snapshot";
 import * as s from "../db/schema";
 import { withTx } from "../db/tx";
+import { bindImportedHousehold } from "./household-migration";
 
 function dependencyOrder() {
   const remaining = [...importTables];
@@ -88,6 +89,7 @@ export async function restoreSqliteSnapshot(db: Db, snapshot: SqliteSnapshot): P
       if (nextId > 2147483647) throw new Error(`Identity range exhausted for ${name}.`);
       await tx.execute(sql`alter table ${table} alter column ${sql.identifier(identity.name)} restart with ${sql.raw(String(nextId))}`);
     }
+    await bindImportedHousehold(tx);
     return verified;
   });
 }
