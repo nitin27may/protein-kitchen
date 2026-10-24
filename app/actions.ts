@@ -5,7 +5,6 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import * as s from "@/lib/db/schema";
-import { withTx } from "@/lib/db/tx";
 import { FeedbackInput, writePersonalRecipeFeedback } from "@/lib/human/personal-feedback";
 import type { LinkInput } from "@/lib/links/types";
 import { loadCandidates } from "@/lib/photos/candidates";
@@ -31,15 +30,17 @@ import { photoWritesEnabled } from "@/lib/blob/config";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
-import { persistPlanDeletion, persistRegeneratedPlan } from "@/lib/server/plan-persistence";
 import { writePlanStep } from "@/lib/server/plan-progress";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
-import { manualItemExists, planExists, slotBelongsToPlan } from "@/lib/server/plan-access";
+import { manualItemExists, slotBelongsToPlan } from "@/lib/server/plan-access";
 import { resolveOnlyHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
 import { HouseholdAccessError } from "@/lib/auth/household";
-import { deleteHouseholdPerson, householdPeople, householdPlan, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences } from "@/lib/server/household-plans";
+import {
+  deleteHouseholdPerson, householdPeople, persistHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
+  deleteHouseholdPlan, mutateHouseholdPlan, regenerateHouseholdPlan,
+} from "@/lib/server/household-plans";
 import type { Db } from "@/lib/db/client";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; fields?: Record<string, string> };
@@ -51,6 +52,21 @@ async function householdContext(): Promise<Result<{ db: Db; access: HouseholdAcc
     const member = await requireMember();
     const db = await getDb();
     return { ok: true, db, access: await resolveOnlyHouseholdAccess(db, member.userId) };
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
+}
+
+async function planMutation<T = object>(
+  planId: number, write: (db: Db, access: HouseholdAccess) => Promise<Result<NoInfer<T>>>,
+): Promise<Result<T>> {
+  if (!Number.isSafeInteger(planId) || planId <= 0) return fail("Plan not found.");
+  const context = await householdContext();
+  if (!context.ok) return context;
+  const { db, access } = context;
+  try {
+    return await mutateHouseholdPlan(db, access, planId, (tx) => write(tx, access));
   } catch (error) {
     if (error instanceof HouseholdAccessError) return fail(error.message);
     throw error;
@@ -230,7 +246,7 @@ export async function previewFeasibility(input: FeasibilityInput): Promise<Resul
 export async function markPlanStep(planId: number, step: PlanStep): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  const written = await writePlanStep(await getDb(), planId, step);
+  const written = await planMutation(planId, (db) => writePlanStep(db, planId, step));
   if (!written.ok) return fail(written.error);
   refresh(planId);
   return { ok: true };
@@ -245,20 +261,25 @@ export async function regeneratePlan(planId: number): Promise<Result> {
   if (!view) return fail("Plan not found");
   const seed = Math.floor(Math.random() * 2 ** 31);
   const plan = generatePlan({ ...view.input, seed }, await getCandidates(view.people.map((p) => p.id)));
-  const db = await getDb();
-  await persistRegeneratedPlan(db, planId, seed, plan.slots, (await recipeIds()).bySlug);
-  refresh(planId);
-  return { ok: true };
+  const ids = (await recipeIds()).bySlug;
+  const written = await planMutation(planId, async (db, access) => {
+    await regenerateHouseholdPlan(db, access, planId, seed, plan.slots, ids);
+    return { ok: true };
+  });
+  if (written.ok) refresh(planId);
+  return written;
 }
 
 export async function toggleLock(planId: number, slotId: number, locked: boolean): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  const db = await getDb();
-  if (!(await slotBelongsToPlan(db, planId, slotId))) return fail("Meal not found in this plan.");
-  await db.update(s.planSlots).set({ locked }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
-  refresh(planId);
-  return { ok: true };
+  const written = await planMutation(planId, async (db) => {
+    if (!(await slotBelongsToPlan(db, planId, slotId))) return fail("Meal not found in this plan.");
+    await db.update(s.planSlots).set({ locked }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
+    return { ok: true };
+  });
+  if (written.ok) refresh(planId);
+  return written;
 }
 
 export interface SwapOption {
@@ -304,40 +325,42 @@ export async function swapSlot(planId: number, slotId: number, recipeSlug: strin
   if (recipeId === undefined) return fail("Recipe not found");
   const shares = slotShares(view.mealTypes);
   const portions = portionsFor(candidate, view.input.people, shares[slot.slot] ?? 0.25);
-  const db = await getDb();
-  await withTx(db, async (tx) => {
+  const written = await planMutation(planId, async (tx) => {
+    if (!(await slotBelongsToPlan(tx, planId, slotId))) return fail("Meal not found in this plan.");
     // A swapped meal is cooked fresh, so it is no longer a leftover.
     await tx.update(s.planSlots).set({ recipeId, isLeftover: false }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
     await tx.delete(s.planSlotPortions).where(eq(s.planSlotPortions.planSlotId, slotId));
     for (const [pid, servings] of Object.entries(portions)) await tx.insert(s.planSlotPortions).values({ planSlotId: slotId, personId: Number(pid), servings });
+    return { ok: true };
   });
-  refresh(planId);
-  return { ok: true };
+  if (written.ok) refresh(planId);
+  return written;
 }
 
 export async function setPortion(planId: number, slotId: number, personId: number, servings: number): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  if (!(servings >= 0.25 && servings <= 4)) return fail("Servings must be between 0.25 and 4");
-  const db = await getDb();
-  if (!(await slotBelongsToPlan(db, planId, slotId, personId))) return fail("That portion is not part of this plan.");
+  if (!Number.isFinite(servings) || !(servings >= 0.25 && servings <= 4)) return fail("Servings must be between 0.25 and 4");
   const q = Math.round(servings * 4) / 4;
-  await db
-    .update(s.planSlotPortions)
-    .set({ servings: q })
-    .where(and(eq(s.planSlotPortions.planSlotId, slotId), eq(s.planSlotPortions.personId, personId)));
-  refresh(planId);
-  return { ok: true };
+  const written = await planMutation(planId, async (db) => {
+    if (!(await slotBelongsToPlan(db, planId, slotId, personId))) return fail("That portion is not part of this plan.");
+    await db.update(s.planSlotPortions).set({ servings: q })
+      .where(and(eq(s.planSlotPortions.planSlotId, slotId), eq(s.planSlotPortions.personId, personId)));
+    return { ok: true };
+  });
+  if (written.ok) refresh(planId);
+  return written;
 }
 
 export async function deletePlan(planId: number): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  const db = await getDb();
-  if (!(await planExists(db, planId))) return fail("Plan not found.");
-  await persistPlanDeletion(db, planId);
-  refresh();
-  return { ok: true };
+  const written = await planMutation(planId, async (db, access) => {
+    await deleteHouseholdPlan(db, access, planId);
+    return { ok: true };
+  });
+  if (written.ok) refresh();
+  return written;
 }
 
 // ---------- Recipes ----------
@@ -426,43 +449,55 @@ export async function makeCoverPhoto(uid: string): Promise<Result> {
 export async function setGroceryChecked(planId: number, ingredientSlug: string, checked: boolean): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  if (!(await planExists(await getDb(), planId))) return fail("Plan not found.");
   const ingredientId = (await ingredientIds()).bySlug.get(ingredientSlug);
   if (ingredientId === undefined) return fail("Unknown ingredient");
-  await (await getDb())
-    .insert(s.groceryState)
-    .values({ planId, ingredientId, checked })
-    .onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked } });
-  return { ok: true };
+  return planMutation(planId, async (db) => {
+    await db.insert(s.groceryState).values({ planId, ingredientId, checked })
+      .onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked } });
+    return { ok: true };
+  });
 }
 
 export async function addManualItem(planId: number, text: string): Promise<Result<{ id: number }>> {
   const denied = await actionDenial();
   if (denied) return denied;
-  if (!(await planExists(await getDb(), planId))) return fail("Plan not found.");
   const t = text.trim();
   if (!t) return fail("Type an item first");
   if (t.length > 120) return fail("That is too long");
-  const [row] = await (await getDb()).insert(s.groceryManual).values({ planId, text: t, checked: false }).returning({ id: s.groceryManual.id });
-  revalidatePath("/groceries");
-  return { ok: true, id: row!.id };
+  const written = await planMutation<{ id: number }>(planId, async (db) => {
+    const [row] = await db.insert(s.groceryManual).values({ planId, text: t, checked: false }).returning({ id: s.groceryManual.id });
+    return { ok: true, id: row!.id };
+  });
+  if (written.ok) revalidatePath("/groceries");
+  return written;
 }
 
 export async function setManualChecked(id: number, checked: boolean): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  if (!(await manualItemExists(await getDb(), id))) return fail("Shopping item not found.");
-  await (await getDb()).update(s.groceryManual).set({ checked }).where(eq(s.groceryManual.id, id));
-  return { ok: true };
+  if (!Number.isSafeInteger(id) || id <= 0) return fail("Shopping item not found.");
+  const [item] = await (await getDb()).select({ planId: s.groceryManual.planId }).from(s.groceryManual).where(eq(s.groceryManual.id, id));
+  if (!item) return fail("Shopping item not found.");
+  return planMutation(item.planId, async (db) => {
+    if (!(await manualItemExists(db, id))) return fail("Shopping item not found.");
+    await db.update(s.groceryManual).set({ checked }).where(and(eq(s.groceryManual.id, id), eq(s.groceryManual.planId, item.planId)));
+    return { ok: true };
+  });
 }
 
 export async function removeManualItem(id: number): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  if (!(await manualItemExists(await getDb(), id))) return fail("Shopping item not found.");
-  await (await getDb()).delete(s.groceryManual).where(eq(s.groceryManual.id, id));
-  revalidatePath("/groceries");
-  return { ok: true };
+  if (!Number.isSafeInteger(id) || id <= 0) return fail("Shopping item not found.");
+  const [item] = await (await getDb()).select({ planId: s.groceryManual.planId }).from(s.groceryManual).where(eq(s.groceryManual.id, id));
+  if (!item) return fail("Shopping item not found.");
+  const written = await planMutation(item.planId, async (db) => {
+    if (!(await manualItemExists(db, id))) return fail("Shopping item not found.");
+    await db.delete(s.groceryManual).where(and(eq(s.groceryManual.id, id), eq(s.groceryManual.planId, item.planId)));
+    return { ok: true };
+  });
+  if (written.ok) revalidatePath("/groceries");
+  return written;
 }
 
 // ---------- Today card ----------
@@ -485,10 +520,6 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
   if (denied) return denied;
   const match = /^(?:night|prep):([1-9]\d*):/.exec(taskKey);
   if (!match || taskKey.length > 256) return fail("Prep task not found in this plan.");
-  const context = await householdContext();
-  if (!context.ok) return context;
-  const { db, access } = context;
-  if (!(await householdPlan(db, access, Number(match[1])))) return fail("Prep task not found in this plan.");
   const planId = Number(match[1]);
   const view = await getPlanView(planId);
   if (!view) return fail("Plan not found.");
@@ -497,15 +528,15 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
   const session = night.guide.sessions.find((se) => se.events.some((event) => `prep:${planId}:${event.id}` === taskKey));
   if (!task && !session) return fail("Prep task not found in this plan.");
   date = task?.dueDate ?? session!.date;
-  const saved = await db
-    .insert(s.prepTaskState)
-    .values({ householdId: access.householdId, date, taskKey, done })
-    .onConflictDoUpdate({
-      target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done },
-      setWhere: eq(s.prepTaskState.householdId, access.householdId),
-    }).returning({ key: s.prepTaskState.taskKey });
-  if (saved.length === 0) return fail("Prep task ownership conflicts with this household.");
-  return { ok: true };
+  return planMutation(planId, async (db, access) => {
+    const saved = await db.insert(s.prepTaskState).values({ householdId: access.householdId, date, taskKey, done })
+      .onConflictDoUpdate({
+        target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done },
+        setWhere: eq(s.prepTaskState.householdId, access.householdId),
+      }).returning({ key: s.prepTaskState.taskKey });
+    if (saved.length === 0) return fail("Prep task ownership conflicts with this household.");
+    return { ok: true };
+  });
 }
 
 export async function enableShake(planId: number): Promise<Result> {
@@ -514,11 +545,17 @@ export async function enableShake(planId: number): Promise<Result> {
   const view = await getPlanView(planId);
   if (!view) return fail("Plan not found");
   if (view.mealTypes.includes("shake")) return { ok: true };
-  await (await getDb())
-    .update(s.planSetups)
-    .set({ mealTypes: [...view.mealTypes, "shake"] })
-    .where(eq(s.planSetups.id, view.setupId));
-  return regeneratePlan(planId);
+  const mealTypes: Slot[] = [...view.mealTypes, "shake"];
+  const seed = Math.floor(Math.random() * 2 ** 31);
+  const plan = generatePlan({ ...view.input, mealTypes, seed }, await getCandidates(view.people.map((p) => p.id)));
+  const ids = (await recipeIds()).bySlug;
+  const written = await planMutation(planId, async (db, access) => {
+    await db.update(s.planSetups).set({ mealTypes }).where(eq(s.planSetups.id, view.setupId));
+    await regenerateHouseholdPlan(db, access, planId, seed, plan.slots, ids);
+    return { ok: true };
+  });
+  if (written.ok) refresh(planId);
+  return written;
 }
 
 // ---------- Settings: reset ----------
@@ -579,8 +616,7 @@ export async function clearDefaultView(list: string): Promise<Result> {
 export async function setPartMode(planId: number, componentSlug: string, mode: PartMode): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
-  if (!(await planExists(await getDb(), planId))) return fail("Plan not found.");
-  const written = await writePartMode(await getDb(), getData().recipes, planId, componentSlug, mode);
+  const written = await planMutation(planId, (db) => writePartMode(db, getData().recipes, planId, componentSlug, mode));
   if (!written.ok) return fail(written.error);
   revalidatePath(`/plan/${planId}/prep`);
   revalidatePath("/groceries");

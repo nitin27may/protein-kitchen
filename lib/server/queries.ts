@@ -150,6 +150,7 @@ export async function listPlans(limit = 10): Promise<{ id: number; startDate: st
 }
 
 export async function getPlanView(planId: number, candidates?: Candidate[]): Promise<PlanView | undefined> {
+  if (!Number.isSafeInteger(planId) || planId <= 0) return undefined;
   const db = await getDb();
   const access = await requestHousehold(db);
   const row = await householdPlan(db, access, planId);

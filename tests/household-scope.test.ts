@@ -6,6 +6,7 @@ import { refreshHouseholdAccess, requireHouseholdProfile, resolveHouseholdAccess
 import {
   deleteHouseholdPlan, householdPeople, householdPerson, householdPlan, householdPlans,
   deleteHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan, saveHouseholdPerson, saveHouseholdPreferences,
+  mutateHouseholdPlan,
 } from "../lib/server/household-plans";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { householdAccount } from "../lib/server/household-account";
@@ -61,6 +62,39 @@ function input(personId = a.personId!) {
     recipeIds: new Map([["scope-fixture", recipeId]]),
   };
 }
+
+it("refreshes and locks plan ownership before any shared-state callback and rolls failures back", async () => {
+  const id = await persistHouseholdPlan(h.db, a, input());
+  const foreign = await persistHouseholdPlan(h.db, b, input(b.personId!));
+  let called = 0;
+  const write = async () => { called++; return "saved"; };
+  await expect(mutateHouseholdPlan(h.db, a, foreign, write)).rejects.toThrow("not available in your household");
+  await expect(mutateHouseholdPlan(h.db, a, 999, write)).rejects.toThrow("not available in your household");
+  expect(called).toBe(0);
+  expect(await mutateHouseholdPlan(h.db, a, id, write)).toBe("saved");
+  expect(called).toBe(1);
+  await expect(mutateHouseholdPlan(h.db, a, id, async (tx) => {
+    await tx.insert(s.groceryManual).values({ planId: id, text: "Must roll back", checked: false });
+    throw new Error("Synthetic mutation failure");
+  })).rejects.toThrow("Synthetic mutation failure");
+  expect(await h.db.select().from(s.groceryManual)).toEqual([]);
+  const [slot] = await h.db.select().from(s.planSlots).where(eq(s.planSlots.planId, id));
+  await h.db.update(s.planSlotPortions).set({ personId: otherPerson }).where(eq(s.planSlotPortions.planSlotId, slot!.id));
+  await expect(mutateHouseholdPlan(h.db, a, id, write)).rejects.toThrow("selected household profiles");
+  expect(called).toBe(1);
+  await h.db.update(s.planSlotPortions).set({ personId: a.personId! }).where(eq(s.planSlotPortions.planSlotId, slot!.id));
+  await h.db.update(s.planRoutines).set({ personId: otherPerson }).where(eq(s.planRoutines.planId, id));
+  await expect(mutateHouseholdPlan(h.db, a, id, write)).rejects.toThrow("selected household profiles");
+  expect(called).toBe(1);
+  await h.db.update(s.planRoutines).set({ personId: a.personId! }).where(eq(s.planRoutines.planId, id));
+  const [plan] = await h.db.select().from(s.plans).where(eq(s.plans.id, id));
+  await h.db.update(s.planSetups).set({ personIds: [otherPerson] }).where(eq(s.planSetups.id, plan!.setupId));
+  await expect(mutateHouseholdPlan(h.db, a, id, write)).rejects.toThrow("not in this household");
+  expect(called).toBe(1);
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  await expect(mutateHouseholdPlan(h.db, a, id, write)).rejects.toThrow("not available");
+  expect(called).toBe(1);
+});
 
 it("resolves a verified membership, freezes selection and rejects another household even for an owner", async () => {
   expect(a).toMatchObject({ householdId: "a", userId: "a", role: "owner", personId: a.personId });

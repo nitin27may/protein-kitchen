@@ -173,6 +173,36 @@ detail/prep HTML and RSC, parameterized groceries, PDF/XLSX export, home and set
 Backend cases cover revoked verification/ownership, invalid selected profiles,
 foreign portions/routines and scoped child loaders. No deployment occurred.
 
+### Next H2 slice: transactional plan and shopping mutations
+
+Adopt an authoritative owned-plan transaction around slot locks, portions,
+swaps, grocery/manual items, prep completion, plan milestones and part modes.
+Resolve request membership first, refresh it and lock the same household's
+plan/setup inside the write transaction, then run existing child consistency
+checks. Reuse scoped regeneration/deletion helpers; do not move a plan or
+reinterpret a foreign child id as an owned one. Manual-item operations derive
+the parent from the persisted row, not a client claim. Keep finite portion
+limits and avoid partial shake enablement if regeneration fails.
+
+Add direct transaction tests for cross-owner refusal, stale membership,
+callback non-execution, rollback and valid writes. Retain and extend actual
+captured-action replay cases for foreign household ids, plus same-household
+swap/lock/regeneration/shopping/prep reload flows. Run targeted backend coverage,
+full native regression, types/build and saved browser cases before committing.
+Photo/feedback/saved-view/sync writers and the membership/schema contract remain
+separate pending slices; open signup stays blocked.
+
+**Mutation acceptance:** 1,836 tests / 93 files pass, including native Postgres
+contention checks that membership revocation, verification changes and a
+competing plan write cannot pass the active mutation transaction. All 25 saved
+browser journeys, typecheck and production build pass. The captured-action case
+replays a real lock action against another household and verifies refusal without
+a write; existing same-household editing/shopping/prep flows still persist.
+Corrupt selected profiles, stored portions/routines, stale membership and
+foreign/missing children are refused before writes; failed shake regeneration
+rolls its setup change back. Household core coverage retains its 100% gate;
+overall statements are 70.25%. No public admission or deployment was enabled.
+
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.
 
 The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity with explicit additive Postgres-only fields; the schema now has 48 tables including households, library versioning, eight identity/rate-limit tables, separate personal recipe feedback and four operational sync/reminder tables. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists. Existing SQLite files were not touched or imported.

@@ -3,16 +3,17 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, recipes, plans, planSetups } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, recipes, plans, planSetups, planSlots } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
 
-test("owners cannot read another household's newer plan, prep, groceries or exports", async ({ page }) => {
+test("owners cannot read or mutate another household's newer plan, prep, groceries or exports", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   const householdId = `foreign-plan-${randomUUID()}`;
   let personId: number | undefined;
   let setupId: number | undefined;
   let planId: number | undefined;
+  let restoreLock: { id: number; locked: boolean } | undefined;
   try {
     await handle.db.insert(households).values({ id: householdId, name: "Unrelated synthetic plan household" });
     const [person] = await handle.db.insert(people).values({
@@ -33,6 +34,25 @@ test("owners cannot read another household's newer plan, prep, groceries or expo
       }], routines: [], recipeIds: new Map([["tofu-burrito-bowl", recipe!.id]]),
     });
     setupId = (await handle.db.select().from(plans).where(eq(plans.id, planId)))[0]!.setupId;
+    const [ownedSlot] = await handle.db.select().from(planSlots).where(eq(planSlots.planId, Number(process.env.E2E_PREP_PLAN_ID))).limit(1);
+    const [foreignSlot] = await handle.db.select().from(planSlots).where(eq(planSlots.planId, planId)).limit(1);
+    restoreLock = { id: ownedSlot!.id, locked: ownedSlot!.locked };
+    await page.goto(`/plan/${process.env.E2E_PREP_PLAN_ID}`);
+    const weekday = new Date(`${ownedSlot!.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+    await page.getByRole("tab", { name: `${weekday} ${ownedSlot!.date.slice(-2)}`, exact: true }).click();
+    const capturing = page.waitForRequest((request) => request.method() === "POST" && request.headers()["next-action"] !== undefined);
+    await page.getByRole("button", { name: ownedSlot!.locked ? "Locked" : "Lock", exact: true }).first().click();
+    const captured = await capturing;
+    await page.waitForLoadState("networkidle");
+    const replay = await page.request.post(`/plan/${process.env.E2E_PREP_PLAN_ID}`, {
+      headers: {
+        origin: "http://127.0.0.1:3112", "content-type": captured.headers()["content-type"]!,
+        "next-action": captured.headers()["next-action"]!,
+      },
+      data: JSON.stringify([planId, foreignSlot!.id, true]),
+    });
+    expect(await replay.text()).toContain("not available in your household");
+    expect((await handle.db.select().from(planSlots).where(eq(planSlots.id, foreignSlot!.id)))[0]!.locked).toBe(false);
     for (const path of [`/plan/${planId}`, `/plan/${planId}/prep`]) {
       expect((await page.goto(path))?.status()).toBe(404);
       await expect(page.getByText("Foreign private plan profile", { exact: true })).toHaveCount(0);
@@ -51,6 +71,7 @@ test("owners cannot read another household's newer plan, prep, groceries or expo
     await page.goto("/plan/new?step=who");
     await expect(page.getByText("Foreign private plan profile", { exact: true })).toHaveCount(0);
   } finally {
+    if (restoreLock) await handle.db.update(planSlots).set({ locked: restoreLock.locked }).where(eq(planSlots.id, restoreLock.id));
     if (planId) await handle.db.delete(plans).where(eq(plans.id, planId));
     if (setupId) await handle.db.delete(planSetups).where(eq(planSetups.id, setupId));
     if (personId) await handle.db.delete(people).where(eq(people.id, personId));

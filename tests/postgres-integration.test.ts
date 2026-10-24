@@ -37,7 +37,7 @@ import { claimReminder } from "../lib/reminders/claim";
 import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/reminders/delivery";
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
-import { deleteHouseholdPlan, householdPlan, householdPlans, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
+import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -109,6 +109,24 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await expect(handle.db.update(s.planSetups).set({ householdId: "native-b" })).rejects.toThrow();
       await expect(handle.db.update(s.plans).set({ householdId: "native-b" })).rejects.toThrow();
       const [owned] = await householdPlans(handle.db, a);
+      await expect(mutateHouseholdPlan(handle.db, b, owned!.id, async () => {
+        throw new Error("Foreign mutation callback must not run");
+      })).rejects.toThrow("not available");
+      await mutateHouseholdPlan(handle.db, a, owned!.id, async (tx) => {
+        await tx.insert(s.groceryManual).values({ planId: owned!.id, text: "Owned native write", checked: false });
+        for (const statement of [
+          "delete from household_members where user_id = 'native-a'",
+          "update auth_users set email_verified = false where id = 'native-a'",
+          `update plans set seed = 999 where id = ${owned!.id}`,
+        ]) {
+          await contender.query("begin");
+          try {
+            await contender.query("set local lock_timeout = '150ms'");
+            await expect(contender.query(statement)).rejects.toMatchObject({ code: "55P03" });
+          } finally { await contender.query("rollback"); }
+        }
+      });
+      expect(await handle.db.select().from(s.groceryManual)).toMatchObject([{ planId: owned!.id, text: "Owned native write" }]);
       await expect(deleteHouseholdPlan(handle.db, b, owned!.id)).rejects.toThrow("not available");
       await expect(regenerateHouseholdPlan(handle.db, b, owned!.id, 7, [], input.recipeIds)).rejects.toThrow("not available");
       await expect(persistHouseholdPlan(handle.db, a, { ...input, setup: { ...input.setup, personIds: [profiles[1]!.id] } })).rejects.toThrow("not in this household");

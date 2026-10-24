@@ -25,6 +25,13 @@ function checkPortions(ids: readonly number[], slots: readonly Pick<PlannedSlot,
   }
 }
 
+async function checkStoredPortions(tx: Tx, planId: number, ids: readonly number[]) {
+  const portions = await tx.select({ personId: s.planSlotPortions.personId }).from(s.planSlotPortions)
+    .innerJoin(s.planSlots, eq(s.planSlots.id, s.planSlotPortions.planSlotId)).where(eq(s.planSlots.planId, planId));
+  const routines = await tx.select({ personId: s.planRoutines.personId }).from(s.planRoutines).where(eq(s.planRoutines.planId, planId));
+  checkPortions(ids, [], [...portions, ...routines]);
+}
+
 async function lockHouseholdPlan(tx: Tx, access: HouseholdAccess, planId: number) {
   await refreshHouseholdAccess(tx, access);
   requireHouseholdProfile(access);
@@ -87,10 +94,8 @@ export async function regenerateHouseholdPlan(
   await withTx(db, async (tx) => {
     const { setup } = await lockHouseholdPlan(tx, access, planId);
     await lockHouseholdPeople(tx, access, setup.personIds);
-    const portions = await tx.select({ personId: s.planSlotPortions.personId }).from(s.planSlotPortions)
-      .innerJoin(s.planSlots, eq(s.planSlots.id, s.planSlotPortions.planSlotId)).where(eq(s.planSlots.planId, planId));
-    const routines = await tx.select({ personId: s.planRoutines.personId }).from(s.planRoutines).where(eq(s.planRoutines.planId, planId));
-    checkPortions(setup.personIds, slots, [...portions, ...routines]);
+    await checkStoredPortions(tx, planId, setup.personIds);
+    checkPortions(setup.personIds, slots, []);
     await persistRegeneratedPlan(tx, planId, seed, slots, recipeIds);
   });
 }
@@ -99,6 +104,17 @@ export async function deleteHouseholdPlan(db: Db, access: HouseholdAccess, planI
   await withTx(db, async (tx) => {
     await lockHouseholdPlan(tx, access, planId);
     await persistPlanDeletion(tx, planId);
+  });
+}
+
+export async function mutateHouseholdPlan<T>(
+  db: Db, access: HouseholdAccess, planId: number, write: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return withTx(db, async (tx) => {
+    const { setup } = await lockHouseholdPlan(tx, access, planId);
+    await lockHouseholdPeople(tx, access, setup.personIds);
+    await checkStoredPortions(tx, planId, setup.personIds);
+    return write(tx);
   });
 }
 

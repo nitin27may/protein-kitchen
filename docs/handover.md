@@ -10,6 +10,19 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest transactional plan/shopping mutations:** slot locks, portions, swaps,
+milestones, shopping/manual items, prep completion and part modes now refresh
+verified household membership and lock the owned plan/setup and selected
+profiles inside their write transaction. Stored portions/routines are validated
+before callbacks; regeneration/deletion use scoped helpers. Shake enablement
+and regeneration roll back together. Native contention proves revocation and
+competing plan writes wait for the transaction; a captured browser action cannot
+lock another household's meal. **Acceptance: 1,836 tests / 93 files, all 25 saved
+browser journeys, typecheck and production build pass**, with the core 100%
+coverage gate intact and 70.25% statements overall. Remaining shared feedback,
+pantry, saved views, links/photos, personal consumers, sync/export/jobs and the
+non-null/composite membership contract still block open signup and deployment.
+
 **Latest request-owned plan projections:** verified household scope now controls
 latest/list/detail plan queries, grocery/part/routine/milestone projections and
 batch-prep ticks. Selected profiles, portions and routine snapshots are checked
@@ -18,9 +31,9 @@ file-export flows. **Acceptance: 1,830 tests / 92 files and all 25 retained brow
 journeys**, typecheck and production build pass; prep/context/delivery retain
 100% gates. The new real-browser owner refusal case covers a foreign newer plan,
 detail/prep HTML and RSC, query-selected groceries, both export formats, home and
-setup privacy. This does not yet close unscoped mutations, feedback/photos/
+setup privacy. This does not yet close feedback/photos/
 saved-view/export-job consumers or composite ownership keys; admission remains
-gated. Next: remaining plan/shopping mutations under transactional ownership.
+gated. Plan/shopping mutations are now covered by the newer slice above.
 
 **Latest reminder isolation and CI slice:** the scheduler now selects each
 recipient's household-owned plan, validates selected profiles/portions/routines,
