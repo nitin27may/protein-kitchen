@@ -247,12 +247,16 @@ export interface SavedView {
 }
 
 export async function getSavedViews(list: string): Promise<SavedView[]> {
-  return (await getDb()).select({ id: s.savedViews.id, name: s.savedViews.name, query: s.savedViews.query, isDefault: s.savedViews.isDefault }).from(s.savedViews).where(eq(s.savedViews.list, list)).orderBy(s.savedViews.id);
+  const db = await getDb();
+  const access = await requestHousehold(db);
+  return db.select({ id: s.savedViews.id, name: s.savedViews.name, query: s.savedViews.query, isDefault: s.savedViews.isDefault })
+    .from(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.householdId, access.householdId))).orderBy(s.savedViews.id);
 }
 
 /** The query string saved as this list's default view, or null. */
 export async function getDefaultViewQuery(list: string): Promise<string | null> {
-  return defaultViewQuery(await getDb(), list);
+  const db = await getDb();
+  return defaultViewQuery(db, list, (await requestHousehold(db)).householdId);
 }
 
 /** How each part of a meal is provided for one plan; a part not in the result is made. */

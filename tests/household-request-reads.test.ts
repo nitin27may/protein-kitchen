@@ -10,6 +10,7 @@ import {
   getBatchPrepTicks, getPartModes, getPlanMilestones, getPlanRoutines, getPlanView, groceryChecks,
   lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans,
   getPerson, getPrefs, getPersonRoutines, getTodayRoutines, getHabitsFor,
+  getSavedViews, getDefaultViewQuery,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
@@ -69,6 +70,25 @@ it("loads only the verified request household's people and last setup", async ()
   await h.db.delete(s.plans).where(eq(s.plans.householdId, "b"));
   await h.db.delete(s.planSetups).where(eq(s.planSetups.householdId, "b"));
   expect(await lastSetup()).toBeUndefined();
+});
+
+it("reads only household saved views and never adopts an unowned legacy default", async () => {
+  await h.db.insert(s.savedViews).values([
+    { householdId: null, list: "recipes", name: "Legacy", query: "q=legacy", isDefault: true },
+    { householdId: "a", list: "recipes", name: "First default", query: "q=first", isDefault: true },
+    { householdId: "a", list: "recipes", name: "First named", query: "q=named", isDefault: false },
+    { householdId: "b", list: "recipes", name: "Other private default", query: "q=other", isDefault: true },
+  ]);
+  expect((await getSavedViews("recipes")).map((v) => v.name)).toEqual(["First default", "First named"]);
+  expect(await getDefaultViewQuery("recipes")).toBe("q=first");
+  expect(await getSavedViews("ingredients")).toEqual([]);
+  expect(await getDefaultViewQuery("ingredients")).toBeNull();
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect((await getSavedViews("recipes")).map((v) => v.name)).toEqual(["Other private default"]);
+  expect(await getDefaultViewQuery("recipes")).toBe("q=other");
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
+  await expect(getSavedViews("recipes")).rejects.toThrow("Select an available household");
+  await expect(getDefaultViewQuery("recipes")).rejects.toThrow("Select an available household");
 });
 
 it("scopes profile preferences, routines and daily habits without foreign empty-success projections", async () => {

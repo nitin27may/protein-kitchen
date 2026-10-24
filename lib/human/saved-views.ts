@@ -9,6 +9,7 @@ import { markChanged, newUid, nowIso, stableJson } from "./util";
 export const SAVED_VIEWS_CLASS = "saved-views";
 
 export interface SavedViewInput {
+  householdId?: string;
   list: string;
   name?: string;
   query: string;
@@ -22,14 +23,17 @@ export async function writeSavedView(db: Db, input: SavedViewInput): Promise<{ u
   const at = nowIso();
   const isDefault = input.isDefault ?? true;
   const existing = isDefault
-    ? (await db.select().from(s.savedViews).where(and(eq(s.savedViews.list, input.list), eq(s.savedViews.isDefault, true))))[0]
+    ? (await db.select().from(s.savedViews).where(and(
+      input.householdId === undefined ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, input.householdId),
+      eq(s.savedViews.list, input.list), eq(s.savedViews.isDefault, true),
+    )))[0]
     : undefined;
   const uid = existing?.uid ?? newUid();
   await withTx(db, async (tx) => {
     if (existing) {
       await tx.update(s.savedViews).set({ query: input.query, name: input.name ?? existing.name, uid, createdAt: existing.createdAt ?? at, updatedAt: at }).where(eq(s.savedViews.id, existing.id));
     } else {
-      await tx.insert(s.savedViews).values({ list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null });
+      await tx.insert(s.savedViews).values({ householdId: input.householdId ?? null, list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null });
     }
     await markChanged(tx, SAVED_VIEWS_CLASS, at);
   });
@@ -37,12 +41,16 @@ export async function writeSavedView(db: Db, input: SavedViewInput): Promise<{ u
 }
 
 /** Removes the list's default view. */
-export async function clearSavedView(db: Db, list: string): Promise<void> {
+export async function clearSavedView(db: Db, list: string, householdId?: string): Promise<void> {
   const at = nowIso();
-  const existing = (await db.select({ id: s.savedViews.id }).from(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true))))[0];
+  const predicate = and(
+    householdId === undefined ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, householdId),
+    eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true),
+  );
+  const existing = (await db.select({ id: s.savedViews.id }).from(s.savedViews).where(predicate))[0];
   if (!existing) return;
   await withTx(db, async (tx) => {
-    await tx.delete(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true)));
+    await tx.delete(s.savedViews).where(predicate);
     await markChanged(tx, SAVED_VIEWS_CLASS, at);
   });
 }

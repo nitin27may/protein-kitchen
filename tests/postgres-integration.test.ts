@@ -38,6 +38,7 @@ import { claimDelivery, finishDelivery, prepareReminderBatch } from "../lib/remi
 import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault";
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
 import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
+import { changeHouseholdDefaultView, defaultViewQuery } from "../lib/server/saved-views";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -127,6 +128,14 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
         }
       });
       expect(await handle.db.select().from(s.groceryManual)).toMatchObject([{ planId: owned!.id, text: "Owned native write" }]);
+      await Promise.all(Array.from({ length: 6 }, (_, i) => changeHouseholdDefaultView(handle.db, a, "recipes", `q=native-${i}`)));
+      const saved = await handle.db.select().from(s.savedViews);
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toMatchObject({ householdId: "native-a", isDefault: true });
+      await changeHouseholdDefaultView(handle.db, b, "recipes", "q=foreign");
+      await changeHouseholdDefaultView(handle.db, a, "recipes", null);
+      expect(await defaultViewQuery(handle.db, "recipes", "native-a")).toBeNull();
+      expect(await defaultViewQuery(handle.db, "recipes", "native-b")).toBe("q=foreign");
       await mutateHouseholdPerson(handle.db, a, profiles[0]!.id, async () => {
         for (const statement of [
           "delete from household_members where user_id = 'native-a'",

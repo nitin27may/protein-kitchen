@@ -3,9 +3,40 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipes, plans, planSetups, planSlots } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipes, plans, planSetups, planSlots, savedViews } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
+
+test("saved list defaults survive reload and leave another household's view untouched", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = `foreign-view-${randomUUID()}`;
+  try {
+    await handle.db.insert(households).values({ id: householdId, name: "Unrelated saved-view household" });
+    await handle.db.insert(savedViews).values({
+      householdId, list: "ingredients", name: "Foreign private default", query: "q=foreign", isDefault: true,
+    });
+    await page.goto("/ingredients?q=tofu");
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Filters", exact: true });
+    await dialog.getByRole("button", { name: "Save as my default", exact: true }).click();
+    await expect(dialog.getByText("Saved. This view opens first next time.", { exact: true })).toBeVisible();
+    await page.goto("/ingredients");
+    await expect(page.getByRole("searchbox")).toHaveValue("tofu");
+    await page.reload();
+    await expect(page.getByRole("searchbox")).toHaveValue("tofu");
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    await dialog.getByRole("button", { name: "Remove default", exact: true }).click();
+    await expect(dialog.getByText("Default view removed.", { exact: true })).toBeVisible();
+    await page.goto("/ingredients");
+    await expect(page.getByRole("searchbox")).toHaveValue("");
+    expect(await handle.db.select({ query: savedViews.query }).from(savedViews).where(eq(savedViews.householdId, householdId)))
+      .toEqual([{ query: "q=foreign" }]);
+  } finally {
+    await handle.db.delete(savedViews).where(eq(savedViews.householdId, householdId));
+    await handle.db.delete(households).where(eq(households.id, householdId));
+    await handle.close();
+  }
+});
 
 test("routine choices persist on reload and captured actions cannot change a foreign household profile", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));

@@ -10,6 +10,19 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest household saved views:** request saved/default reads now filter by
+verified household. Saving and clearing refresh membership, require a linked
+profile and serialize on the household row; human writers persist ownership,
+preserve uid and never adopt or overwrite unowned/foreign defaults.
+**Acceptance: 1,843 tests / 93 files and all 27 saved browser journeys pass**,
+alongside production build, follow-up types and a new permanent 100% saved-view
+boundary gate. Native concurrent saves produce one default; real mobile
+save/reload/clear leaves another household's view unchanged. Validation,
+stale/unverified/incomplete membership and atomic rollback are covered.
+Saved-view operator export/import and sync-marker composite ownership still
+require separate work. Shared feedback/pantry/photos/links, exports/jobs and the
+remaining schema/admission/deployment stages remain open.
+
 **Latest private-profile request boundaries:** profile details/preferences,
 routine choices, today's routines and habit completion reads now require an
 owned household profile. Routine and daily-habit writes refresh verified

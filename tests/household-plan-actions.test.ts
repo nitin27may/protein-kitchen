@@ -12,6 +12,7 @@ import { persistNewPlan } from "../lib/server/plan-persistence";
 import {
   addManualItem, deletePlan, enableShake, getSwapOptions, markPlanStep, regeneratePlan, removeManualItem,
   setGroceryChecked, setManualChecked, setPartMode, setPortion, setPrepDone, swapSlot, toggleLock, setPersonRoutine, setHabitDone,
+  saveDefaultView, clearDefaultView,
 } from "../app/actions";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -103,6 +104,50 @@ it("refuses foreign profile routines/habits while preserving valid owner and mem
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
   expect((await setPersonRoutine(1, routine.habitSlug, { active: true })).ok).toBe(false);
   expect((await setHabitDone("2026-11-02", 1, routine.habitSlug, true)).ok).toBe(false);
+});
+
+it("saves updates and clears only the caller's household defaults with stable identity", async () => {
+  await h.db.insert(s.savedViews).values([
+    { householdId: null, list: "recipes", name: "Legacy", query: "q=legacy", isDefault: true },
+    { householdId: "b", list: "recipes", name: "Foreign", query: "q=foreign", isDefault: true },
+  ]);
+  expect(await saveDefaultView("recipes", "q=first")).toEqual({ ok: true });
+  const [first] = await h.db.select().from(s.savedViews).where(eq(s.savedViews.householdId, "a"));
+  expect(first).toMatchObject({ householdId: "a", createdByPersonId: 1, query: "q=first" });
+  expect(first!.uid).toBeTruthy();
+  expect(await saveDefaultView("recipes", "q=updated")).toEqual({ ok: true });
+  expect(await h.db.select().from(s.savedViews).where(eq(s.savedViews.householdId, "a")))
+    .toMatchObject([{ id: first!.id, uid: first!.uid, query: "q=updated" }]);
+  expect(await saveDefaultView("ingredients", "q=tofu")).toEqual({ ok: true });
+  expect(await clearDefaultView("recipes")).toEqual({ ok: true });
+  expect(await clearDefaultView("recipes")).toEqual({ ok: true });
+  expect(await h.db.select().from(s.savedViews)).toMatchObject([
+    { householdId: null, query: "q=legacy" }, { householdId: "b", query: "q=foreign" },
+    { householdId: "a", list: "ingredients", query: "q=tofu" },
+  ]);
+  for (const call of [
+    () => saveDefaultView("unknown", ""), () => saveDefaultView("recipes", "<script>"),
+    () => clearDefaultView("unknown"),
+  ]) expect((await call()).ok).toBe(false);
+  await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "a"));
+  expect((await saveDefaultView("recipes", "q=blocked")).ok).toBe(false);
+  expect((await clearDefaultView("ingredients")).ok).toBe(false);
+  await h.db.update(s.authUsers).set({ emailVerified: true }).where(eq(s.authUsers.id, "a"));
+  await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "a"));
+  expect((await saveDefaultView("recipes", "q=blocked")).ok).toBe(false);
+  expect((await clearDefaultView("ingredients")).ok).toBe(false);
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  expect((await saveDefaultView("recipes", "q=blocked")).ok).toBe(false);
+  expect((await clearDefaultView("ingredients")).ok).toBe(false);
+});
+
+it("rolls saved defaults and deletion back when sync marking fails", async () => {
+  await h.db.execute(sql`alter table sync_state add constraint synthetic_view_sync_failure check (data_class <> 'saved-views')`);
+  await expect(saveDefaultView("recipes", "q=rollback")).rejects.toThrow("sync_state");
+  expect(await h.db.select().from(s.savedViews)).toEqual([]);
+  await h.db.insert(s.savedViews).values({ householdId: "a", list: "recipes", name: "Keep", query: "q=keep", isDefault: true });
+  await expect(clearDefaultView("recipes")).rejects.toThrow("sync_state");
+  expect(await h.db.select().from(s.savedViews)).toMatchObject([{ query: "q=keep" }]);
 });
 
 it("propagates profile infrastructure failures and rolls routine choices and sync markers back together", async () => {

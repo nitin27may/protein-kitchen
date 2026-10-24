@@ -31,7 +31,7 @@ import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, res
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
 import { writePlanStep } from "@/lib/server/plan-progress";
-import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
+import { changeHouseholdDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, slotBelongsToPlan } from "@/lib/server/plan-access";
@@ -601,7 +601,14 @@ export async function saveDefaultView(list: string, query: string): Promise<Resu
   if (denied) return denied;
   const parsed = ViewInput.safeParse({ list, query });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "That view cannot be saved");
-  await setDefaultView(await getDb(), parsed.data.list, parsed.data.query);
+  const context = await householdContext();
+  if (!context.ok) return context;
+  try {
+    await changeHouseholdDefaultView(context.db, context.access, parsed.data.list, parsed.data.query);
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
   revalidatePath(`/${parsed.data.list}`);
   return { ok: true };
 }
@@ -611,7 +618,14 @@ export async function clearDefaultView(list: string): Promise<Result> {
   if (denied) return denied;
   const parsed = ViewInput.shape.list.safeParse(list);
   if (!parsed.success) return fail("Unknown list");
-  await clearDefaultViewRow(await getDb(), parsed.data);
+  const context = await householdContext();
+  if (!context.ok) return context;
+  try {
+    await changeHouseholdDefaultView(context.db, context.access, parsed.data, null);
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
   revalidatePath(`/${parsed.data}`);
   return { ok: true };
 }

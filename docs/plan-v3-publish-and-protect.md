@@ -244,6 +244,39 @@ journey taps the routine label, reloads persisted state, replays the action
 against another household, confirms no write and restores the original toggle.
 No deployment, schema contract or admission gate changed.
 
+### Next H2 slice: household saved list views
+
+Scope: isolate recipe/ingredient saved defaults and list reads without changing
+filter syntax, anonymous browsing, human export bytes or the existing operator
+import/export path. Request reads must use authoritative household scope; writes
+must refresh verified membership and require a linked profile. Serialize changes
+on the household row so simultaneous saves cannot create two defaults for one
+list. Extend the existing human writer with explicit ownership predicates and
+persist ownership on inserts; legacy operator calls address null-owned rows,
+never another household's default. Keep all writes through lib/human and retain
+its atomic sync marking. Sync marker composite keys and operator export isolation
+remain separate gated work; this stage does not claim them complete.
+
+Acceptance: two-household saved/default reads, independent save/update/clear and
+stable uid; unowned legacy rows must not become request defaults or be rewritten.
+Cover stale membership, incomplete profiles, transaction rollback and concurrent
+native saves. Retain real browser save/reload/clear plus captured foreign-context
+checks where applicable (actions accept no household id). Run focused tests,
+full native coverage, browser suite, types and build before committing. No remote
+resource, credential, production data or signup changes.
+
+**Saved-view acceptance:** 1,843 tests / 93 files, all 27 retained browser
+journeys and production build pass. Follow-up focused coverage and typecheck
+pass with a permanent 100% statements/branches/functions/lines gate on
+`lib/server/saved-views.ts`. Native six-way concurrent saves produce one
+household default; clearing it preserves the other household's default.
+Actions preserve uid on update, ownership/creator on insert, explicit validation
+and stale/unverified/incomplete-profile refusal. Database failure rolls back
+save/clear and sync marking together. Mobile save/reload/clear preserves a
+separate household's private default. Unowned rows are neither adopted nor
+changed by requests; operator import/export and sync-marker ownership remain
+pending. No remote changes occurred.
+
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.
 
 The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity with explicit additive Postgres-only fields; the schema now has 48 tables including households, library versioning, eight identity/rate-limit tables, separate personal recipe feedback and four operational sync/reminder tables. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists. Existing SQLite files were not touched or imported.
