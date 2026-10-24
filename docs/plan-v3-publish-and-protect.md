@@ -337,6 +337,40 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H3 slice: single-use email-link continuation
+
+Installed-provider findings: Better Auth 1.7.12's built-in verification link is a
+signed stateless JWT, not a hashed atomic single-use record. Its magic-link
+plugin supports `storeToken: "hashed"` and atomic consume, establishes a session
+in the browser context that opens the link, and can keep signup disabled. For an
+unverified pre-existing account it deliberately revokes pre-proof passwords and
+sessions before marking the mailbox verified. Preserve that protection rather
+than silently restoring an unproven password.
+
+Scope this stage to verified continuation for existing accounts, before opening
+new account admission: install the provider magic-link plugin with signup
+disabled, five-minute hashed single-use records and persistent rate limits.
+Wire separate required link delivery through the existing fixed-origin mail
+transport and synthetic-only local mailbox; no credential or logging fallback.
+Use fixed application callbacks for onboarding and explicit sign-in error pages.
+Do not disclose account or household existence through the send response; send
+the same generic response for missing accounts. Bound failure/retry explicitly
+and do not leave a usable unsent token after a delivery failure.
+
+Add "Use an email link" to the existing sign-in UI without removing password,
+OTP recovery or the still-gated signup flow in this preparatory slice. A reloaded
+page can resend a link; the link itself establishes the opening context's real
+provider session. Keep tokens out of React props, app URLs beyond the provider
+verification endpoint, logs and public payloads.
+
+Acceptance: real HTTP send -> synthetic mailbox -> distinct browser context ->
+provider verification -> selected/incomplete onboarding; no original-window
+false success; expiry/replay/concurrent consume, wrong/foreign callback refusal,
+missing account, unverified account cleanup, send failure/retry and persistent
+throttling. Retain browser cases and backend/provider transport tests, preserve
+critical coverage gates, then full/native suite, all browser cases, types/build.
+No live mail, credential provisioning, public signup or deployment.
+
 ### H1/H3 foundation: isolated household creation and legacy quarantine
 
 **Local acceptance:** a new server-only session primitive validates the name,
