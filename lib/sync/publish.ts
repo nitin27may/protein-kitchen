@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
-import sharp from "sharp";
 import { z } from "zod";
 import type { BlobStore } from "../blob/types";
-import { photoKeys } from "../photos/keys";
-import { MASTER_PX, THUMB_PX } from "../photos/process";
+import { readProcessedPhoto } from "../photos/processed";
 import { stableJson } from "../human/util";
 import type { GitTreeEntry, PrivateStateRepository } from "./github";
 import { StateGitHubError } from "./github";
@@ -49,20 +47,8 @@ export async function statePayload(snapshot: StateSnapshot, store: Pick<BlobStor
       catch { throw new Error("Invalid photo metadata in state snapshot."); }
       const parsed = photo.safeParse(value);
       if (!parsed.success || !path.endsWith(`/${parsed.data.uid}.json`)) throw new Error("Invalid photo metadata in state snapshot.");
-      const keys = photoKeys(parsed.data.uid);
-      for (const [variant, key] of Object.entries(keys)) {
-        const object = await store.get(key);
-        if (!object || object.contentType !== "image/webp" || (variant === "master" && hash("sha256", object.bytes) !== parsed.data.sha256)) {
-          throw new Error("State sync photo is missing or corrupt. Run photos:check.");
-        }
-        const image = sharp(object.bytes, { limitInputPixels: MASTER_PX * MASTER_PX, failOn: "error" });
-        const metadata = await image.metadata();
-        if (metadata.format !== "webp" || metadata.exif || metadata.iptc || metadata.xmp || metadata.icc ||
-            !metadata.width || !metadata.height || Math.max(metadata.width, metadata.height) > (variant === "master" ? MASTER_PX : THUMB_PX)) {
-          throw new Error("State sync accepts only metadata-free processed WebP photos.");
-        }
-        await image.stats();
-        files[`${ROOT}blobs/${key}`] = object.bytes;
+      for await (const object of readProcessedPhoto(store, parsed.data.uid, parsed.data.sha256)) {
+        files[`${ROOT}blobs/${object.key}`] = object.bytes;
       }
     }
   }

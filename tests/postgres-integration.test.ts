@@ -1,5 +1,5 @@
 import path from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, getTableName, sql } from "drizzle-orm";
@@ -22,7 +22,12 @@ import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
 import { createAuth } from "../lib/auth/create";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import sharp from "sharp";
+import { createFsStore } from "../lib/blob/fs";
+import { photoKeys } from "../lib/photos/keys";
+import { digestRows } from "../lib/db/sqlite-snapshot";
 import { runStateSync, stateTargetKey } from "../lib/sync/run";
 import { createMemoryStore } from "../lib/blob/memory";
 import { openPrivateStateRepository } from "../lib/sync/github";
@@ -414,5 +419,90 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await expect(run()).rejects.toMatchObject({ stderr: expect.stringContaining("requires an empty destination") });
       expect(await handle.db.select().from(s.people)).toHaveLength(1);
     } finally { source.close(); }
+  });
+
+  it("runs a real pg_dump-to-age backup and restores its decrypted native dump and both processed photo variants", async () => {
+    const exec = promisify(execFile);
+    const source = createSqliteSource();
+    await mkdir("backups", { recursive: true });
+    const folder = await mkdtemp(path.resolve("backups/native-recovery-"));
+    const identity = path.join(folder, "synthetic-identity.txt");
+    const wrongIdentity = path.join(folder, "synthetic-wrong-identity.txt");
+    const age = process.env.AGE_TEST_BIN || "age";
+    const keygen = process.env.AGE_KEYGEN_TEST_BIN || "age-keygen";
+    const database = `protein_kitchen_restore_${randomUUID().replaceAll("-", "")}`;
+    const restoredUrl = new URL(url!); restoredUrl.pathname = `/${database}`;
+    let restored: ReturnType<typeof openPostgres> | undefined;
+    let created = false;
+    try {
+      await restoreSqliteSnapshot(handle.db, readSqliteSnapshot(source.file));
+      await handle.db.update(s.people).set({ name: "PRIVATE_RECOVERY_SENTINEL" });
+      await handle.db.insert(s.authUsers).values({ id: "synthetic-recovery-account", name: "PRIVATE_ACCOUNT_SENTINEL", email: "recovery@example.test", emailVerified: true });
+      const uid = randomUUID();
+      const bytes = await sharp({ create: { width: 20, height: 20, channels: 3, background: "#884422" } }).webp().toBuffer();
+      await handle.db.update(s.photos).set({ uid, sha256: createHash("sha256").update(bytes).digest("hex"), width: 20, height: 20 });
+      const photoStore = createFsStore(path.join(folder, "uploads"));
+      const keys = photoKeys(uid);
+      await photoStore.put(keys.master, bytes, "image/webp"); await photoStore.put(keys.thumb, bytes, "image/webp");
+      const human = await exportHumanData(handle.db);
+      const tables = Object.values(s).filter((table) => table !== s.stateSyncJobs && table !== s.stateSyncRequests);
+      const before = await Promise.all(tables.map(async (table) => ({ table: getTableName(table), ...digestRows(await handle.db.select().from(table)) })));
+      await exec(keygen, ["--output", identity]);
+      await exec(keygen, ["--output", wrongIdentity]);
+      const recipient = (await exec(keygen, ["-y", identity])).stdout.trim();
+      const outputRoot = path.join(folder, "encrypted");
+      const result = await exec(process.execPath, ["--import", "tsx", "scripts/backup-postgres.ts"], {
+        env: {
+          ...process.env, NODE_ENV: "test", DATABASE_ENV: "test", DATABASE_URL_UNPOOLED: url,
+          BACKUP_AGE_RECIPIENT: recipient, BACKUP_OUTPUT_DIR: outputRoot, AGE_BIN: age,
+          PG_DUMP_BIN: process.env.PG_DUMP_TEST_BIN || "pg_dump",
+          BLOB_STORE: "filesystem", UPLOADS_DIR: path.join(folder, "uploads"), VERCEL: "", VERCEL_ENV: "",
+        },
+      });
+      expect(result.stdout).toContain("Encrypted local recovery artifact written");
+      expect(result.stdout).toContain("not an off-machine backup");
+      expect(result.stdout).not.toMatch(/PRIVATE_|postgres:|AGE-SECRET/);
+      const [name] = await readdir(outputRoot);
+      const artifact = path.join(outputRoot, name!);
+      const index = JSON.parse(await readFile(path.join(artifact, "index.json"), "utf8"));
+      expect(JSON.stringify(index)).not.toMatch(/PRIVATE_|photos\/|AGE-SECRET/);
+      const decrypt = (file: string, key = identity) => exec(age, ["--decrypt", "--identity", key, path.join(artifact, file)], { encoding: "buffer", maxBuffer: 16 * 1024 * 1024 });
+      const manifest = JSON.parse((await decrypt("manifest.json.age")).stdout.toString());
+      const recoveredStore = createMemoryStore();
+      let dump: Buffer | undefined;
+      for (const item of manifest.contents) {
+        const content = (await decrypt(item.file)).stdout;
+        expect(createHash("sha256").update(content).digest("hex")).toBe(item.sha256);
+        expect(content.byteLength).toBe(item.size);
+        if (item.key === "database.dump") dump = content;
+        else await recoveredStore.put(item.key, content, "image/webp");
+      }
+      expect(dump!.subarray(0, 5).toString()).toBe("PGDMP");
+      await expect(decrypt("database.dump.age", wrongIdentity)).rejects.toThrow();
+      const corrupt = await readFile(path.join(artifact, "database.dump.age"));
+      corrupt[corrupt.length - 1] = corrupt[corrupt.length - 1]! ^ 1;
+      await writeFile(path.join(artifact, "corrupt.age"), corrupt);
+      await expect(decrypt("corrupt.age")).rejects.toThrow();
+      await handle.db.execute(sql`CREATE DATABASE ${sql.identifier(database)}`); created = true;
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn(process.env.PG_RESTORE_TEST_BIN || "pg_restore", [
+          "--single-transaction", "--exit-on-error", "--no-owner", "--no-privileges", "--dbname", restoredUrl.toString(),
+        ], { stdio: ["pipe", "ignore", "pipe"], timeout: 30_000 });
+        child.stderr.resume(); child.once("error", reject); child.stdin.once("error", reject);
+        child.once("close", (code) => code === 0 ? resolve() : reject(new Error(`Synthetic native restore failed (${code}).`)));
+        child.stdin.end(dump);
+      });
+      restored = openPostgres({ connectionString: restoredUrl.toString(), runtimeEnvironment: "test", databaseEnvironment: "test" });
+      const after = await Promise.all(tables.map(async (table) => ({ table: getTableName(table), ...digestRows(await restored!.db.select().from(table)) })));
+      expect(after).toEqual(before);
+      expect(await exportHumanData(restored.db)).toEqual(human);
+      expect((await recoveredStore.get(keys.master))!.bytes).toEqual(new Uint8Array(bytes));
+      expect((await recoveredStore.get(keys.thumb))!.bytes).toEqual(new Uint8Array(bytes));
+    } finally {
+      if (restored) await restored.close();
+      if (created) await handle.db.execute(sql`DROP DATABASE ${sql.identifier(database)}`);
+      source.close();
+      await rm(folder, { recursive: true, force: true });
+    }
   });
 });
