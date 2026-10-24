@@ -59,6 +59,19 @@ User direction, 2026-10-24: finish and test the product, then deploy using GitHu
 
 Only configure values required by the enabled feature/environment; do not copy all secrets to every job or runtime. Test fixture URLs, `POSTGRES_TEST_URL` and `POSTGRES_E2E_URL` remain disposable loopback CI configuration, not cloud credentials. Environment inventory and runtime validation must be updated alongside any new feature configuration. These stages are pending and do not claim remote secrets, workflows, schedules, deployments or a release were configured.
 
+**Final local configuration, user-directed:** once feature acceptance is complete,
+consolidate the actual local runtime configuration in one ignored, owner-readable
+`.env.local`: isolated Neon development pooled/direct URLs, matching project/branch
+pins and hosts, branch-verification API access, local auth origin/secret, timezone,
+and the mail/push/storage variables needed by enabled features. Preserve existing
+values; never guess live credentials, use production as a development fallback,
+or enable outbound services merely to fill the file. The initial local file is
+already present with development URLs and a local auth secret; API/mail credentials
+are still absent. Verify real local startup and enabled account flows before
+calling this setup ready. CLI commands still require explicit trusted environment
+loading and disposable test targets; do not make test runners inherit the cloud
+database as their fixture. GitHub/Vercel environment setup remains separate.
+
 ### Public-library implementation slice
 
 The independent, read-only portion of H5 was implemented before H1-H4 because it neither opens registration nor changes household admission. Anonymous `/`, `/recipes`, `/ingredients` and their library details use dedicated library-only server renderers, with query-string search, linked components/ingredients, computed macros, methods/cues/tips, embedded technique cards, storage and ingredient sources. Routines are not publicly listed or served as recipe details. No household photos, saved links, feedback, personal targets or saved views are passed to these renderers. Public navigation has Recipes, Ingredients, Sign in and Create account; authorized members retain the existing app shell and loaders. Authenticated routines retain their existing route behavior.
@@ -323,6 +336,50 @@ another household's same-recipe history and never renders its private note.
 Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
+
+### H2 slice: fail-closed legacy human-bundle boundary
+
+**Local acceptance:** legacy export now refuses multiple households before
+serialization; legacy import refuses every claimed target. Catalogue SHARE locks
+cover all class work, and all legacy import/export writes are transactional.
+Native contention proves household creation is blocked through both operations,
+then succeeds after commit. New tests cover refusal without stamps, v1/v2 claimed
+import denial, scoped compatibility and rollback of earlier writes when a later
+class fails. All **1,936 tests / 95 files**, **33 retained browser journeys**,
+types/build and critical coverage gates pass; the new boundary has a permanent
+100% all-metric gate. Overall statements **72.54%**. An initial concurrent
+build/native/browser run hit existing setup/interaction timeouts; serial native
+and browser reruns passed unchanged. This is not a namespaced multi-household
+bundle format or completion of operator renames/null-ownership contraction.
+
+Scope: the version-1/version-2 human-file bundle has no household identity and
+cannot safely represent multiple households. Before opening admission, refuse
+unscoped legacy export whenever the database contains more than one household;
+keep verified explicitly scoped shared exports unchanged. Refuse legacy import
+into a database containing any household, even if recipe slugs happen to match.
+Legacy imports remain available only in an unclaimed operator staging target.
+Whole-instance encrypted SQL backup/recovery retains its separate existing
+identity-preserving format; do not replace it with a flattened human bundle.
+
+Dependencies and permission boundary: existing exporters/importers and the
+verified household export service remain in use. No new route/action, operator
+credential, cloud operation, namespace format or household-owner import is added.
+Hold a Postgres SHARE lock on the household catalogue inside the same transaction
+as serialization/import, so concurrent household creation cannot race the
+preflight. Keep all class writes atomic, including legacy export stamps and
+imports that encounter malformed later files. Do not silently skip mixed tenants
+or guess an import destination. Operator library renames and null-ownership
+contraction remain distinct follow-up work.
+
+Acceptance: retain v1/v2 byte-stable/idempotent unclaimed round trips and existing
+single-household operator export compatibility; prove two-household export
+refusal before stamping, claimed import refusal before writes, scoped export
+compatibility and complete rollback on later serialization/import failure.
+Native TCP tests must show a concurrent household insert blocked until legacy
+bundle work commits. Run focused backend coverage first, then full/native
+coverage, existing retained browser journeys, typecheck and build. There is no
+new browser surface; retain and rerun the existing private download/chooser
+journeys rather than invent an operator UI.
 
 ### H2 slice: visible selector and selected-household management
 

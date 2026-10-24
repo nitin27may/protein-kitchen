@@ -10,7 +10,17 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
-**Latest household chooser and selected management:** Account offers a verified
+**Latest legacy human-bundle boundary:** unscoped v1/v2 human exports refuse
+multiple households; legacy imports require an unclaimed operator staging target.
+Catalogue locking prevents concurrent household creation racing the check.
+Serialization/import writes are atomic, including rollback of legacy stamps.
+**Acceptance: 1,936 tests / 95 files, 33 browser journeys, types/build and all
+critical gates pass**, overall statements 72.54%; the boundary is gated at 100%.
+Encrypted SQL recovery remains the separate identity-preserving whole-instance
+format. Operator renames, nullable legacy ownership and email-first admission
+still need implementation; no deployment or release has occurred.
+
+**Earlier household chooser and selected management:** Account offers a verified
 session-bound switcher; ambiguous onboarding shows the same chooser. Selected
 profile creation/linking, invitation management and role/removal writes revalidate
 the capability transactionally. Switching never moves profiles or merges plans.

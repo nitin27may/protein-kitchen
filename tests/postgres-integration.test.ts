@@ -11,6 +11,7 @@ import { withTx } from "../lib/db/tx";
 import { loadData } from "../lib/data/load";
 import { seedDatabase } from "../lib/db/seed";
 import { exportHumanData } from "../lib/human/export";
+import { importHumanData } from "../lib/human/import";
 import { writeRecipeFeedback } from "../lib/human/feedback";
 import { savedViewsClass, writeSavedView } from "../lib/human/saved-views";
 import { markChanged } from "../lib/human/util";
@@ -61,6 +62,38 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it.each(["export", "import"] as const)("holds the household catalogue lock throughout legacy %s class work", async (operation) => {
+    const contender = await handle.pool.connect();
+    let calls = 0;
+    const lockCheck = async () => {
+      calls++;
+      await expect(contender.query("insert into households (id, name) values ('concurrent', 'Synthetic contender')"))
+        .rejects.toMatchObject({ code: "55P03" });
+    };
+    const originalExport = savedViewsClass.exportFiles, originalImport = savedViewsClass.importFiles;
+    const probe = operation === "export"
+      ? vi.spyOn(savedViewsClass, "exportFiles").mockImplementation(async (db, scope) => {
+        await lockCheck();
+        return originalExport(db, scope);
+      })
+      : vi.spyOn(savedViewsClass, "importFiles").mockImplementation(async (db, files, context) => {
+        await lockCheck();
+        return originalImport(db, files, context);
+      });
+    try {
+      await contender.query("set lock_timeout = '100ms'");
+      if (operation === "export") await exportHumanData(handle.db);
+      else await importHumanData(handle.db, { manifest: { version: 2, tables: {} }, files: {} });
+      expect(calls).toBe(1);
+      await contender.query("insert into households (id, name) values ('concurrent', 'Synthetic contender')");
+      expect(await handle.db.select().from(s.households)).toMatchObject([{ id: "concurrent" }]);
+    } finally {
+      probe.mockRestore();
+      await contender.query("reset lock_timeout");
+      contender.release();
+    }
+  });
 
   it("commits a household reset before removing only its photo bytes on native Postgres", async () => {
     await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);

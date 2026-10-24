@@ -1,6 +1,6 @@
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { openDb } from "./helpers/db";
 import type { DbHandle } from "./helpers/db";
 import * as s from "../lib/db/schema";
@@ -8,6 +8,7 @@ import { applyRenames, RenamesSchema } from "../lib/db/renames";
 import { clearSavedView, exportHumanData, importHumanData, registerExporter, writeRecipeFeedback, writeSavedView } from "../lib/human";
 import type { HumanDataClass } from "../lib/human";
 import { feedbackClass } from "../lib/human/feedback";
+import { savedViewsClass } from "../lib/human/saved-views";
 
 const migrations = path.resolve(__dirname, "..", "db", "migrations");
 let a: DbHandle;
@@ -106,6 +107,55 @@ describe("saved views", () => {
 });
 
 describe("export and import", () => {
+  it("refuses an unscoped multi-household bundle before filling legacy export stamps", async () => {
+    const recipeId = await addRecipe(a, "fixture");
+    await a.db.update(s.recipeFeedback).set({ favourite: true }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    await a.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const before = await a.db.select().from(s.recipeFeedback);
+    await expect(exportHumanData(a.db)).rejects.toThrow("cannot represent multiple households");
+    expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+    expect(await exportHumanData(a.db, ["recipe-feedback"], { householdId: "a" }))
+      .toMatchObject({ files: {}, manifest: { version: 2 } });
+  });
+
+  it("preserves single-household operator exports but refuses legacy import into any claimed target", async () => {
+    const recipeId = await addRecipe(a, "fixture");
+    await a.db.insert(s.households).values({ id: "a", name: "First" });
+    await a.db.update(s.recipeFeedback).set({ householdId: "a", favourite: true }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    const bundle = await exportHumanData(a.db);
+    expect(Object.keys(bundle.files)).toEqual(["feedback/fixture.json"]);
+    const before = await a.db.select().from(s.recipeFeedback);
+    for (const version of [1, 2] as const) {
+      await expect(importHumanData(a.db, { ...bundle, manifest: { ...bundle.manifest, version } }))
+        .rejects.toThrow("unclaimed operator staging");
+    }
+    expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+  });
+
+  it("rolls back earlier export stamps if a later class fails", async () => {
+    const recipeId = await addRecipe(a, "fixture");
+    await a.db.update(s.recipeFeedback).set({ favourite: true }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    const before = await a.db.select().from(s.recipeFeedback);
+    const later = vi.spyOn(savedViewsClass, "exportFiles").mockRejectedValueOnce(new Error("synthetic serialization failure"));
+    try {
+      await expect(exportHumanData(a.db)).rejects.toThrow("synthetic serialization failure");
+      expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+    } finally { later.mockRestore(); }
+  });
+
+  it("rolls back earlier class writes when a later legacy import file is malformed", async () => {
+    const source = await openDb();
+    const recipeId = await addRecipe(source, "fixture");
+    await writeRecipeFeedback(source.db, recipeId, { favourite: true });
+    const bundle = await exportHumanData(source.db);
+    bundle.files["saved-views/recipes.json"] = "{";
+    await addRecipe(a, "fixture");
+    const before = await a.db.select().from(s.recipeFeedback);
+    await expect(importHumanData(a.db, bundle)).rejects.toThrow();
+    expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+    expect(await a.db.select().from(s.syncState)).toEqual([]);
+  });
+
   async function seedHuman(h: DbHandle) {
     const palak = await addRecipe(h, "palak-paneer");
     const rajma = await addRecipe(h, "rajma-masala");

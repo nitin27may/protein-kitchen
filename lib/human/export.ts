@@ -1,5 +1,7 @@
 import type { Db } from "../db/client";
+import { withTx } from "../db/tx";
 import { registerBuiltinClasses } from "./builtin";
+import { checkLegacyBundleTarget } from "./legacy-bundle";
 import { registeredClasses, type ExportScope } from "./registry";
 import { sha256 } from "./util";
 
@@ -32,20 +34,23 @@ export async function exportHumanData(db: Db, dataClasses?: readonly string[], s
   if (scope && (scope.householdId === "" || !dataClasses || selected.some((cls) => !cls.householdScoped))) {
     throw new Error("Household exports require an explicit household and supported shared data classes.");
   }
-  const files: Record<string, string> = {};
-  const tables: ExportBundle["manifest"]["tables"] = {};
-  for (const cls of selected) {
-    const part = await cls.exportFiles(db, scope);
-    for (const [path, content] of Object.entries(part)) {
-      if (!path.startsWith(cls.prefix)) throw new Error(`${cls.name} wrote "${path}" outside its folder "${cls.prefix}"`);
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(path) || path.split("/").some((segment) => !segment || segment === "." || segment === ".." || segment === ".git")) {
-        throw new Error(`${cls.name} wrote an unsafe export path.`);
+  return withTx(db, async (tx) => {
+    if (!scope) await checkLegacyBundleTarget(tx, "export");
+    const files: Record<string, string> = {};
+    const tables: ExportBundle["manifest"]["tables"] = {};
+    for (const cls of selected) {
+      const part = await cls.exportFiles(tx, scope);
+      for (const [path, content] of Object.entries(part)) {
+        if (!path.startsWith(cls.prefix)) throw new Error(`${cls.name} wrote "${path}" outside its folder "${cls.prefix}"`);
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(path) || path.split("/").some((segment) => !segment || segment === "." || segment === ".." || segment === ".git")) {
+          throw new Error(`${cls.name} wrote an unsafe export path.`);
+        }
+        files[path] = content;
       }
-      files[path] = content;
+      tables[cls.name] = { count: Object.keys(part).length, sha256: checksum(part) };
     }
-    tables[cls.name] = { count: Object.keys(part).length, sha256: checksum(part) };
-  }
-  // Sorted by path, so the bundle is identical whatever order the database returned rows in.
-  const sorted = Object.fromEntries(Object.entries(files).sort(([x], [y]) => (x < y ? -1 : 1)));
-  return { manifest: { version: 2, tables }, files: sorted };
+    // Sorted by path, so the bundle is identical whatever order the database returned rows in.
+    const sorted = Object.fromEntries(Object.entries(files).sort(([x], [y]) => (x < y ? -1 : 1)));
+    return { manifest: { version: 2, tables }, files: sorted };
+  });
 }

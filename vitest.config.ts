@@ -14,6 +14,7 @@ export default defineConfig({
       include: ["lib/**/*.ts", "app/**/*.ts", "components/**/*.tsx"],
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
+        "lib/human/legacy-bundle.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-export.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

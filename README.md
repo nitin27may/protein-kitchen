@@ -101,6 +101,15 @@ Application readiness shares one in-flight verification and pool across concurre
 
 ### SQLite import rehearsal
 
+Legacy version-1/version-2 human-file bundles have no household namespace.
+Unscoped export refuses databases containing multiple households; use the
+verified household-scoped shared export or encrypted whole-instance SQL backup
+instead. Legacy human-file import is operator staging only and refuses any
+database containing a household. It never guesses a target or merges people.
+Export stamps and all imported classes commit atomically; a failed later class
+rolls back earlier writes. This restriction does not replace the separately
+guarded empty-target SQLite import or encrypted SQL restore procedures below.
+
 Use synthetic data only for now. Remote rehearsals require `SQLITE_IMPORT_NEON_BRANCH_ID` explicitly matching `NEON_DEVELOPMENT_BRANCH_ID`, in addition to all live branch/endpoint verification variables above. A host merely labelled development is insufficient; the verified pool is opened only after the metadata check passes. Production/preview imports remain disabled and actual household cutover needs separate approval. The importer requires the explicit direct `DATABASE_URL_UNPOOLED` and `DATABASE_ENV=development|test`; it does not load local credentials.
 
 1. Prepare a private copy of the source database using the legacy backup procedure, never a file-only copy of a live WAL database. The source must have the current legacy SQLite schema. Missing/unknown tables or columns are errors; if necessary migrate another private copy, not the original.
