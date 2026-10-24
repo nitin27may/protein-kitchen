@@ -1,4 +1,5 @@
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -23,7 +24,7 @@ import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
 import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
 import { createAuth } from "../lib/auth/create";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { createFsStore } from "../lib/blob/fs";
 import { photoKeys } from "../lib/photos/keys";
@@ -53,6 +54,56 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it("atomically expands populated legacy household ownership on native Postgres and never replays a successful backfill", async () => {
+    const database = `protein_kitchen_household_${randomUUID().replaceAll("-", "")}`;
+    const directory = await mkdtemp(path.join(tmpdir(), "pk-native-household-migration-"));
+    let created = false;
+    let target: ReturnType<typeof openPostgres> | undefined;
+    try {
+      const migrationsFolder = path.resolve("db/postgres-migrations");
+      await cp(migrationsFolder, directory, { recursive: true });
+      const journalFile = path.join(directory, "meta/_journal.json");
+      const journal = JSON.parse(await readFile(journalFile, "utf8")) as { entries: { idx: number }[] };
+      journal.entries = journal.entries.filter((entry) => entry.idx < 10);
+      await writeFile(journalFile, JSON.stringify(journal));
+      await handle.pool.query(`CREATE DATABASE "${database}"`);
+      created = true;
+      const connection = new URL(url!); connection.pathname = `/${database}`;
+      target = openPostgres({ connectionString: connection.toString(), runtimeEnvironment: "test", databaseEnvironment: "test" });
+      await migrate(target.db, { migrationsFolder: directory });
+      await target.pool.query(`insert into people (id, name, sex, birth_date, height_cm, weight_kg, activity_level, diet_flags)
+        values (300, 'Synthetic legacy household', 'other', '2000-01-01', 170, 70, 'light', '[]')`);
+      await target.pool.query(`insert into auth_users (id, name, email, email_verified) values ('legacy-owner', 'Synthetic owner', 'legacy@example.test', true)`);
+      await target.pool.query(`insert into household_members (user_id, role, person_id) values ('legacy-owner', 'owner', 300)`);
+      await target.pool.query(`insert into plan_setups (id, person_ids, start_date, end_date, meal_types, cuisine_balance, created_at)
+        values (400, '[300]', '2026-11-01', '2026-11-07', '["dinner"]', 0.5, $1)`, [at]);
+      await target.pool.query(`insert into plans (id, setup_id, seed, created_at) values (500, 400, 42, $1)`, [at]);
+      const before = (await target.pool.query("select * from people")).rows[0];
+      await target.pool.query(`create function reject_household_backfill() returns trigger language plpgsql as
+        $$ begin raise exception 'injected migration failure'; end $$`);
+      await target.pool.query(`create trigger reject_household_backfill before update on people for each row execute function reject_household_backfill()`);
+      await expect(migrate(target.db, { migrationsFolder })).rejects.toThrow();
+      expect((await target.pool.query("select * from people")).rows).toEqual([before]);
+      expect((await target.pool.query("select to_regclass('public.households') as household")).rows).toEqual([{ household: null }]);
+      await target.pool.query("drop trigger reject_household_backfill on people");
+      await target.pool.query("drop function reject_household_backfill()");
+      await migrate(target.db, { migrationsFolder });
+      const householdId = "00000000-0000-4000-8000-000000000001";
+      expect((await target.pool.query("select * from people")).rows).toEqual([{ ...before, household_id: householdId }]);
+      expect(await target.db.select().from(s.householdMembers)).toMatchObject([{ userId: "legacy-owner", personId: 300, role: "owner", householdId }]);
+      expect(await target.db.select().from(s.plans)).toMatchObject([{ id: 500, seed: 42, householdId }]);
+      expect(await target.db.select().from(s.planSetups)).toMatchObject([{ id: 400, personIds: [300], householdId }]);
+      const household = await target.db.select().from(s.households);
+      await migrate(target.db, { migrationsFolder });
+      expect(await target.db.select().from(s.households)).toEqual(household);
+      await expect(target.db.delete(s.households)).rejects.toThrow();
+    } finally {
+      if (target) await target.close();
+      if (created) await handle.pool.query(`DROP DATABASE "${database}"`);
+      await rm(directory, { recursive: true });
+    }
+  });
 
   it("commits awaited writes, rolls back rejection and reuses the pool after failure", async () => {
     await expect(withTx(handle.db, async (tx) => {

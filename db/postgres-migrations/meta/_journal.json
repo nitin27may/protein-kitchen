@@ -71,6 +71,13 @@
       "when": 1792835793731,
       "tag": "0009_melted_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792850357370,
+      "tag": "0010_careful_the_twelve",
+      "breakpoints": true
     }
   ]
 }

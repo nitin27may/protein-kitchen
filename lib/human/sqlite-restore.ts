@@ -11,7 +11,9 @@ function dependencyOrder() {
   const ordered: typeof importTables = [];
   while (remaining.length) {
     const next = remaining.find((table) => getTableConfig(table).foreignKeys.every((fk) => {
-      const parent = fk.reference().foreignTable;
+      const reference = fk.reference();
+      if (!reference.columns.some((column) => importColumns(table).includes(column))) return true;
+      const parent = reference.foreignTable;
       return parent === table || ordered.some((done) => getTableName(done) === getTableName(parent));
     }));
     if (!next) throw new Error("SQLite import table dependencies contain a cycle.");

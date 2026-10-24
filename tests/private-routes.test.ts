@@ -89,7 +89,7 @@ describe("direct private route boundaries", () => {
     vi.mocked(getPerson).mockResolvedValue(undefined);
     uncached(await testPush(request({ personId: 5 })), 404);
     vi.mocked(getPerson).mockResolvedValue({
-      id: 5, name: "Synthetic cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light",
+      id: 5, householdId: null, name: "Synthetic cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light",
       proteinTargetG: null, proteinGPerKg: 1.2, kcalTarget: null, reminderTime: "21:00", reminderTimezone: null, dietFlags: [],
     });
     vi.mocked(sendToPerson).mockResolvedValue({ sent: 0, failed: 0, removed: 0 });

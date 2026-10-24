@@ -11,8 +11,8 @@ import * as pg from "../lib/db/postgres/schema";
 import * as sqlite from "../lib/db/sqlite-schema";
 
 type PostgresRows = { [K in keyof typeof sqlite]: K extends "syncState"
-  ? Omit<(typeof pg)[K]["$inferSelect"], "revision" | "exportedRevision">
-  : K extends "people" ? Omit<(typeof pg)[K]["$inferSelect"], "reminderTimezone"> : (typeof pg)[K]["$inferSelect"] };
+  ? Omit<(typeof pg)[K]["$inferSelect"], "revision" | "exportedRevision" | "householdId">
+  : K extends "people" ? Omit<(typeof pg)[K]["$inferSelect"], "reminderTimezone" | "householdId"> : Omit<(typeof pg)[K]["$inferSelect"], "householdId"> };
 type SQLiteRows = { [K in keyof typeof sqlite]: (typeof sqlite)[K]["$inferSelect"] };
 
 describe("Postgres baseline parity", () => {
@@ -23,7 +23,7 @@ describe("Postgres baseline parity", () => {
   it("preserves all tables, columns, nullability, keys, indexes and foreign-key deletion behavior", () => {
     const postgresOnly = ["libraryState", "authUsers", "authSessions", "authAccounts", "authVerifications", "authRateLimits",
       "householdBootstrap", "householdMembers", "householdInvitations", "personRecipeFeedback", "stateSyncJobs", "stateSyncRequests",
-      "reminderBatches", "reminderDeliveries"];
+      "reminderBatches", "reminderDeliveries", "households"];
     expect(Object.keys(pg).filter((key) => !postgresOnly.includes(key)).sort()).toEqual(Object.keys(sqlite).sort());
     for (const name of Object.keys(sqlite) as (keyof typeof sqlite)[]) {
       const source = sqliteConfig(sqlite[name]);
@@ -34,7 +34,9 @@ describe("Postgres baseline parity", () => {
         enum: c.enumValues, default: c.default,
       })).sort((a, b) => a.name.localeCompare(b.name));
       expect(columns(target).filter((c) => (name !== "syncState" || !["revision", "exported_revision"].includes(c.name)) &&
-        (name !== "people" || c.name !== "reminder_timezone")), name).toEqual(columns(source));
+        (name !== "people" || c.name !== "reminder_timezone") && c.name !== "household_id"), name).toEqual(columns(source));
+      const ownership = columns(target).find((c) => c.name === "household_id");
+      if (ownership) expect(ownership).toMatchObject({ notNull: false, default: undefined });
       if (name === "people") {
         expect(columns(target).find((c) => c.name === "reminder_timezone")).toMatchObject({ notNull: false, default: undefined });
       }
@@ -53,12 +55,12 @@ describe("Postgres baseline parity", () => {
           foreign: ref.foreignColumns.map((c) => c.name), onDelete: key.onDelete ?? "no action",
         };
       }).sort((a, b) => a.columns.join().localeCompare(b.columns.join()));
-      expect(foreignKeys(target), name).toEqual(foreignKeys(source));
+      expect(foreignKeys(target).filter((fk) => fk.table !== "households"), name).toEqual(foreignKeys(source));
       const indexes = (config: typeof source | typeof target) => config.indexes.map((index) => ({
         name: index.config.name, unique: index.config.unique,
         columns: index.config.columns.map((c) => "name" in c ? c.name : undefined),
       })).sort((a, b) => a.name!.localeCompare(b.name!));
-      expect(indexes(target), name).toEqual(indexes(source));
+      expect(indexes(target).filter((index) => !index.name!.endsWith("_household_idx")), name).toEqual(indexes(source));
       const uniqueConstraints = (config: typeof source | typeof target) => config.uniqueConstraints.map((key) => ({
         columns: key.columns.map((c) => c.name),
       }));
@@ -94,7 +96,7 @@ describe("Postgres migration on PGlite", () => {
       const before = (await old.query<Record<string, unknown>>("select * from people")).rows[0];
       const claims = (await old.query("select * from reminder_log")).rows;
       for (const migration of migrations.slice(8)) for (const statement of migration.sql) await old.exec(statement);
-      expect((await old.query("select * from people")).rows).toEqual([{ ...before, reminder_timezone: null }]);
+      expect((await old.query("select * from people")).rows).toEqual([{ ...before, reminder_timezone: null, household_id: "00000000-0000-4000-8000-000000000001" }]);
       expect((await old.query("select * from reminder_log")).rows).toEqual(claims);
     } finally { await old.close(); }
   });
@@ -121,7 +123,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(10);
+    expect(journal.rows).toHaveLength(11);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {
@@ -132,7 +134,7 @@ describe("Postgres migration on PGlite", () => {
       await old.query("insert into sync_state(data_class, changed_at, exported_at) values ($1, $2, $2)", ["saved-views", now]);
       for (const migration of migrations.slice(6)) for (const statement of migration.sql) await old.exec(statement);
       expect((await old.query("select * from sync_state")).rows).toEqual([
-        { data_class: "saved-views", changed_at: new Date(now), exported_at: new Date(now), revision: 1, exported_revision: 0 },
+        { data_class: "saved-views", changed_at: new Date(now), exported_at: new Date(now), revision: 1, exported_revision: 0, household_id: "00000000-0000-4000-8000-000000000001" },
       ]);
       for (const [revision, exported] of [[0, 0], [1, -1], [1, 2]]) {
         await expect(old.query("update sync_state set revision = $1, exported_revision = $2", [revision, exported])).rejects.toThrow();

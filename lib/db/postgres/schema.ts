@@ -69,18 +69,31 @@ export const householdBootstrap = pgTable("household_bootstrap", {
   createdAt: authTime("created_at").defaultNow().notNull(),
 }, (t) => [check("household_bootstrap_singleton", sql`${t.id} = 1`)]);
 
+export const households = pgTable("households", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: authTime("created_at").defaultNow().notNull(),
+  updatedAt: authTime("updated_at").defaultNow().notNull(),
+}, (t) => [check("households_name_check", sql`length(trim(${t.name})) between 1 and 100`)]);
+
+// Nullable only during the ownership expansion; admission remains closed until scoped writers replace it.
+const householdId = () => text("household_id").references(() => households.id, { onDelete: "restrict" });
+
 export const householdMembers = pgTable("household_members", {
+  householdId: householdId(),
   userId: text("user_id").primaryKey().references(() => authUsers.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["owner", "member"] }).notNull(),
   personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
   createdAt: authTime("created_at").defaultNow().notNull(),
   updatedAt: authTime("updated_at").defaultNow().notNull(),
 }, (t) => [
+  index("household_members_household_idx").on(t.householdId),
   check("household_members_role_check", sql`${t.role} in ('owner', 'member')`),
   uniqueIndex("household_members_person_uq").on(t.personId),
 ]);
 
 export const householdInvitations = pgTable("household_invitations", {
+  householdId: householdId(),
   id: text("id").primaryKey(),
   email: text("email").notNull(),
   tokenHash: text("token_hash").notNull().unique(),
@@ -92,6 +105,7 @@ export const householdInvitations = pgTable("household_invitations", {
   acceptedByUserId: text("accepted_by_user_id").references(() => authUsers.id, { onDelete: "set null" }),
   revokedAt: authTime("revoked_at"),
 }, (t) => [
+  index("household_invitations_household_idx").on(t.householdId),
   check("household_invitations_email_check", sql`${t.email} = lower(trim(${t.email}))`),
   check("household_invitations_expiry_check", sql`${t.expiresAt} > ${t.createdAt}`),
   uniqueIndex("household_invitations_pending_email_uq").on(t.email)
@@ -209,6 +223,7 @@ export const recipeAnchors = pgTable("recipe_anchors", {
 }, (t) => [primaryKey({ columns: [t.recipeId, t.ingredientId] }), index("recipe_anchors_ingredient_idx").on(t.ingredientId)]);
 
 export const people = pgTable("people", {
+  householdId: householdId(),
   id: id(),
   name: text("name").notNull(),
   sex: text("sex", { enum: ["male", "female", "other"] }).notNull(),
@@ -222,9 +237,10 @@ export const people = pgTable("people", {
   reminderTime: text("reminder_time"),
   reminderTimezone: text("reminder_timezone"),
   dietFlags: json<string[]>("diet_flags").notNull(),
-});
+}, (t) => [index("people_household_idx").on(t.householdId)]);
 
 export const recipeFeedback = pgTable("recipe_feedback", {
+  householdId: householdId(),
   recipeId: integer("recipe_id").primaryKey().references(() => recipes.id, { onDelete: "cascade" }),
   status: text("status", { enum: ["draft", "tested"] }).notNull().default("draft"),
   rating: integer("rating"),
@@ -236,7 +252,7 @@ export const recipeFeedback = pgTable("recipe_feedback", {
   createdAt: isoTimestamp("created_at"),
   updatedAt: isoTimestamp("updated_at"),
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
-}, (t) => [uniqueIndex("recipe_feedback_uid_uq").on(t.uid)]);
+}, (t) => [uniqueIndex("recipe_feedback_uid_uq").on(t.uid), index("recipe_feedback_household_idx").on(t.householdId)]);
 
 export const personRecipeFeedback = pgTable("person_recipe_feedback", {
   personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
@@ -262,6 +278,7 @@ export const preferences = pgTable("preferences", {
 }, (t) => [index("preferences_person_idx").on(t.personId)]);
 
 export const planSetups = pgTable("plan_setups", {
+  householdId: householdId(),
   id: id(),
   personIds: json<number[]>("person_ids").notNull(),
   startDate: isoDate("start_date").notNull(),
@@ -274,14 +291,15 @@ export const planSetups = pgTable("plan_setups", {
   shoppingDay: integer("shopping_day"),
   prepDay: integer("prep_day"),
   createdAt: isoTimestamp("created_at").notNull(),
-});
+}, (t) => [index("plan_setups_household_idx").on(t.householdId)]);
 
 export const plans = pgTable("plans", {
+  householdId: householdId(),
   id: id(),
   setupId: integer("setup_id").notNull().references(() => planSetups.id, { onDelete: "no action" }),
   seed: integer("seed").notNull(),
   createdAt: isoTimestamp("created_at").notNull(),
-});
+}, (t) => [index("plans_household_idx").on(t.householdId)]);
 
 export const planSlots = pgTable("plan_slots", {
   id: id(),
@@ -319,10 +337,11 @@ export const habitLog = pgTable("habit_log", {
 }, (t) => [primaryKey({ columns: [t.date, t.personId, t.habitId] })]);
 
 export const prepTaskState = pgTable("prep_task_state", {
+  householdId: householdId(),
   date: isoDate("date").notNull(),
   taskKey: text("task_key").notNull(),
   done: bool("done").notNull(),
-}, (t) => [primaryKey({ columns: [t.date, t.taskKey] })]);
+}, (t) => [primaryKey({ columns: [t.date, t.taskKey] }), index("prep_task_state_household_idx").on(t.householdId)]);
 
 export const groceryState = pgTable("grocery_state", {
   planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
@@ -351,10 +370,11 @@ export const groceryManual = pgTable("grocery_manual", {
 });
 
 export const pantry = pgTable("pantry", {
+  householdId: householdId(),
   ingredientId: integer("ingredient_id").primaryKey().references(() => ingredients.id, { onDelete: "no action" }),
   have: bool("have").notNull(),
   alwaysStock: bool("always_stock").notNull(),
-});
+}, (t) => [index("pantry_household_idx").on(t.householdId)]);
 
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: id(),
@@ -397,6 +417,7 @@ export const reminderDeliveries = pgTable("reminder_deliveries", {
 ]);
 
 export const savedViews = pgTable("saved_views", {
+  householdId: householdId(),
   id: id(),
   list: text("list").notNull(),
   name: text("name").notNull(),
@@ -406,18 +427,20 @@ export const savedViews = pgTable("saved_views", {
   createdAt: isoTimestamp("created_at"),
   updatedAt: isoTimestamp("updated_at"),
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
-}, (t) => [index("saved_views_list_idx").on(t.list), uniqueIndex("saved_views_uid_uq").on(t.uid)]);
+}, (t) => [index("saved_views_list_idx").on(t.list), uniqueIndex("saved_views_uid_uq").on(t.uid), index("saved_views_household_idx").on(t.householdId)]);
 
 export const syncState = pgTable("sync_state", {
+  householdId: householdId(),
   dataClass: text("data_class").primaryKey(),
   changedAt: isoTimestamp("changed_at").notNull(),
   exportedAt: isoTimestamp("exported_at"),
   revision: integer("revision").notNull().default(1),
   exportedRevision: integer("exported_revision").notNull().default(0),
-}, (t) => [check("sync_state_revision_valid", sql`${t.revision} > 0 and ${t.exportedRevision} >= 0 and ${t.exportedRevision} <= ${t.revision}`)]);
+}, (t) => [check("sync_state_revision_valid", sql`${t.revision} > 0 and ${t.exportedRevision} >= 0 and ${t.exportedRevision} <= ${t.revision}`), index("sync_state_household_idx").on(t.householdId)]);
 
 // Operational coordination only: never part of human-state exporters.
 export const stateSyncJobs = pgTable("state_sync_jobs", {
+  householdId: householdId(),
   targetKey: text("target_key").primaryKey(),
   status: text("status").$type<"idle" | "running" | "success" | "error" | "conflict">().notNull().default("idle"),
   leaseToken: text("lease_token"),
@@ -428,7 +451,7 @@ export const stateSyncJobs = pgTable("state_sync_jobs", {
   lastAttemptAt: isoTimestamp("last_attempt_at"),
   lastSuccessAt: isoTimestamp("last_success_at"),
   errorCode: text("error_code"),
-}, (t) => [check("state_sync_job_status_valid", sql`${t.status} in ('idle', 'running', 'success', 'error', 'conflict')`)]);
+}, (t) => [check("state_sync_job_status_valid", sql`${t.status} in ('idle', 'running', 'success', 'error', 'conflict')`), index("state_sync_jobs_household_idx").on(t.householdId)]);
 
 export const stateSyncRequests = pgTable("state_sync_requests", {
   id: text("id").primaryKey(),
@@ -439,6 +462,7 @@ export const stateSyncRequests = pgTable("state_sync_requests", {
 }, (t) => [check("state_sync_request_status_valid", sql`${t.status} in ('running', 'success', 'error', 'conflict')`)]);
 
 export const recipeLinks = pgTable("recipe_links", {
+  householdId: householdId(),
   id: id(),
   uid: text("uid").notNull(),
   recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
@@ -454,12 +478,14 @@ export const recipeLinks = pgTable("recipe_links", {
   updatedAt: isoTimestamp("updated_at").notNull(),
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
 }, (t) => [
+  index("recipe_links_household_idx").on(t.householdId),
   index("recipe_links_recipe_idx").on(t.recipeId),
   uniqueIndex("recipe_links_uid_uq").on(t.uid),
   check("recipe_links_kind_ck", sql`${t.kind} in ('recipe', 'video', 'article')`),
 ]);
 
 export const photos = pgTable("photos", {
+  householdId: householdId(),
   id: id(),
   uid: text("uid").notNull(),
   recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "cascade" }),
@@ -480,6 +506,7 @@ export const photos = pgTable("photos", {
   updatedAt: isoTimestamp("updated_at").notNull(),
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
 }, (t) => [
+  index("photos_household_idx").on(t.householdId),
   index("photos_recipe_idx").on(t.recipeId),
   index("photos_ingredient_idx").on(t.ingredientSlug),
   uniqueIndex("photos_uid_uq").on(t.uid),
@@ -488,6 +515,7 @@ export const photos = pgTable("photos", {
 ]);
 
 export const photoDecisions = pgTable("photo_decisions", {
+  householdId: householdId(),
   id: id(),
   uid: text("uid").notNull(),
   candidateKey: text("candidate_key").notNull(),
@@ -498,6 +526,7 @@ export const photoDecisions = pgTable("photo_decisions", {
   updatedAt: isoTimestamp("updated_at").notNull(),
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
 }, (t) => [
+  index("photo_decisions_household_idx").on(t.householdId),
   uniqueIndex("photo_decisions_uid_uq").on(t.uid),
   uniqueIndex("photo_decisions_candidate_uq").on(t.subjectKind, t.subjectSlug, t.candidateKey),
   check("photo_decisions_kind_ck", sql`${t.subjectKind} in ('recipe', 'ingredient')`),
