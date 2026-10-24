@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { deletePerson, savePerson } from "@/app/actions";
 import type { Result, PersonInputData } from "@/app/actions";
 import { ReminderSettings } from "@/components/ReminderSettings";
@@ -37,10 +38,6 @@ const PRESETS = [
   { label: "Building 1.6", value: 1.6, hint: "Upper end for muscle gain" },
 ];
 
-const subscribeToHydration = () => () => {};
-const hydratedSnapshot = () => true;
-const serverSnapshot = () => false;
-
 function feetInches(cm: number): string {
   const totalIn = cm / 2.54;
   const ft = Math.floor(totalIn / 12);
@@ -58,7 +55,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
   saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>>; canDelete?: boolean; deviceReminders?: boolean;
 }) {
   const router = useRouter();
-  const hydrated = useSyncExternalStore(subscribeToHydration, hydratedSnapshot, serverSnapshot);
+  const hydrated = useHydrated();
   const [v, setV] = useState<ProfileInitial>(initial);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});

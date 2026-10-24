@@ -721,6 +721,11 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       for (const id of ["first", "second"]) {
         await handle.db.insert(s.authSessions).values({ id, userId: id, token: `${id}-token`, updatedAt: new Date(), expiresAt: new Date(Date.now() + 60000) });
         await handle.db.insert(s.authAccounts).values({ id, userId: id, accountId: id, providerId: "credential", password: "synthetic-hash", updatedAt: new Date() });
+        await handle.db.insert(s.authVerifications).values({
+          id, identifier: `magic-link:synthetic-${id}`,
+          value: JSON.stringify({ type: "magic-link", email: `${id}@example.test`.toUpperCase() }),
+          expiresAt: new Date(Date.now() + 60_000),
+        });
       }
     }
     const results = await Promise.allSettled(["first", "second"].map((id, index) => {
@@ -736,6 +741,11 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(rejected?.status === "rejected" && rejected.reason.message).toContain("at least one verified owner");
     expect(await handle.db.select().from(s.householdMembers).where(eq(s.householdMembers.role, "owner"))).toHaveLength(1);
     expect(await handle.db.select().from(s.people)).toHaveLength(2);
+    if (operation.startsWith("delete")) {
+      const users = await handle.db.select({ id: s.authUsers.id }).from(s.authUsers);
+      const pendingLinks = await handle.db.select({ id: s.authVerifications.id }).from(s.authVerifications);
+      expect(pendingLinks.map((row) => row.id).sort()).toEqual(users.map((row) => row.id).sort());
+    }
   });
 
   it("atomically consumes one invitation and reserves each meal profile for one account", async () => {

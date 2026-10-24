@@ -145,6 +145,11 @@ export async function deleteOwnAccount(db: Db, input: {
     await tx.delete(authVerifications).where(or(
       inArray(authVerifications.identifier, ["sign-in", "email-verification", "forget-password"].map((type) => `${type}-otp-${user.email}`)),
       and(like(authVerifications.identifier, "reset-password:%"), eq(authVerifications.value, user.id)),
+      and(like(authVerifications.identifier, "magic-link:%"), sql`case
+        when ${authVerifications.value} is json object
+        then ${authVerifications.value}::jsonb ->> 'type' = 'magic-link'
+          and lower(${authVerifications.value}::jsonb ->> 'email') = ${user.email}
+        else false end`),
     ));
     await tx.delete(authUsers).where(eq(authUsers.id, user.id));
   });

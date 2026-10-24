@@ -2,6 +2,156 @@
 
 Written 2026-10-23 so the work can continue on another machine, or in a fresh session, without losing intent. Read this, then `CLAUDE.md`, then `docs/roadmap.md`. Nothing here contains a secret, and nothing here contains health data.
 
+## Resume here: 2026-10-24 session handoff
+
+The user requested this handoff before starting another session. **Continue in
+the existing worktree, not from `main`.** The latest corrective implementation,
+tests and accepted results are included with this handoff. Worktree:
+`/Users/nks/workspace/copilot-worktrees/meal-plan/nitin27may-musical-spoon`;
+branch: `nitin27may-handover-status-review`. The canonical staged implementation
+plan remains `docs/plan-v3-publish-and-protect.md`. The older numbered notes below
+are historical; the current state and blockers in this section take precedence.
+
+### Committed and accepted
+
+| Commit | Milestone |
+|---|---|
+| `f9f22fa` | Visible session-bound household chooser, selected management and hydration-safe profile edits |
+| `b9a65cf` | Fail-closed, transactional legacy human bundles with native catalogue locking |
+| `2e9f05b` | Household-preserving transactional recipe-id renames and owned revisions |
+| `e53b48a` | Isolated, session-bound household-creation service; no adoption of quarantined legacy data |
+| `534bfe3` | Detailed plan for provider-backed email-link continuation |
+| `5bd914b` | Existing-account email-link sign-in, delivery and real cross-browser continuation |
+
+The email-link feature at `5bd914b` passed 1,963 tests / 96 files and 34 browser
+journeys. **Latest final acceptance, including the corrections below: 1,965
+tests / 97 files, 35 retained Playwright journeys, typecheck/build and all
+critical coverage gates.** Coverage: statements 72.68%, branches 62.61%,
+functions 62.62%, lines 74.00%. There are still 19 migrations / 48 tables; these
+last slices added no migration. Nothing has been pushed, publicly deployed or
+released.
+
+### Latest accepted corrections
+
+Two related corrective slices are included with this handoff, with detailed
+plans recorded before implementation:
+
+1. **Account-deletion token lifecycle.** `lib/auth/household.ts` now deletes
+   outstanding provider magic-link records for the deleted account's email,
+   case-insensitively, in its existing transaction. PostgreSQL JSON-object
+   guards protect malformed/non-JSON verification values. Other recipients'
+   proofs and shared household state remain untouched.
+   `tests/account-deletion.test.ts` contains a real provider
+   send/delete/recreate-email/replay case and verifies another mailbox's link
+   still works. Native final-owner races verify owned token cleanup; the saved
+   browser deletion journey also checks an outstanding mixed-case-address link
+   is refused afterward.
+2. **Plan hydration race exposed by full browser acceptance.** Two runs lost
+   an SSR-visible Generate or Lock click; the retained trace showed a Lock
+   click after reload without its POST. The unchanged isolated flow passed.
+   Do not mask this with longer timeouts or retries. `PlanClient.tsx` now waits
+   for hydration before enabling controls. `SetupForm.tsx` uses its existing
+   draft-restoration readiness to gate controls. The profile form's existing
+   signal is extracted into `lib/hooks/use-hydrated.ts`, reused by
+   `ProfileForm.tsx` and `PlanClient.tsx`, with `tests/hydration.test.ts` and a
+   permanent 100% hook coverage gate in `vitest.config.ts`.
+   The new `tests/e2e/household-plan.spec.ts` case deliberately delays actual
+   browser scripts, checks SSR controls are disabled, releases scripts, then
+   generates, locks and reloads successfully.
+
+Verification history for these corrective slices:
+- Before the hydration extraction, full native coverage passed **1,964 tests /
+  96 files**, including the deletion/reused-email regression, with critical
+  gates unchanged. All 34 browser cases except the intermittent plan
+  interaction passed; the deletion/link cases themselves passed.
+- After the hydration extraction, focused hook/deletion tests passed **18
+  tests**, typecheck passed, and the intentionally script-delayed browser case
+  passed.
+- **Final serial validation pipeline, shell `381`, completed with exit 0.**
+  Full native coverage passed **1,965 tests / 97 files**, all **35 browser
+  journeys passed**, followed by successful typecheck and production build.
+  All existing critical gates and the new 100% hydration-hook gate passed.
+  There is no outstanding acceptance pipeline to wait for.
+
+Local artifacts are under
+`/Users/nks/.copilot/session-state/a854f304-eba0-4619-a67d-f1a35ee0397c/files/`:
+`plan-hydration-full.log`, `plan-hydration-browser.log`,
+`plan-hydration-build.log`, and `plan-hydration-browser-focused.log`. Earlier
+accepted logs: `auth-links-full.log`, `auth-links-browser-final.log`,
+`auth-links-build.log`. Lifecycle diagnostics: `auth-link-lifecycle-full.log`,
+`auth-link-lifecycle-browser.log`, `auth-link-lifecycle-browser-final.log`,
+`auth-link-lifecycle-plan-recheck.log`. A later log's existence alone is not
+proof the complete chained command succeeded; check its end and exit status.
+
+Inspect the retained logs before deciding what needs rerunning. Run full native
+coverage, browser, then types/build **serially**. Do not
+typecheck while the browser runner generates `.next-e2e` types, or run competing
+native fixtures/coverage writers.
+
+For a needed clean rerun on this machine:
+
+```bash
+ARTIFACTS=/Users/nks/.copilot/session-state/a854f304-eba0-4619-a67d-f1a35ee0397c/files
+AGE_TEST_BIN="$ARTIFACTS/step20-tools/age/age" \
+AGE_KEYGEN_TEST_BIN="$ARTIFACTS/step20-tools/age/age-keygen" \
+PG_DUMP_TEST_BIN=/opt/homebrew/opt/postgresql@17/bin/pg_dump \
+PG_RESTORE_TEST_BIN=/opt/homebrew/opt/postgresql@17/bin/pg_restore \
+POSTGRES_TEST_URL=postgres://fixture@127.0.0.1:54329/protein_kitchen_test \
+pnpm exec vitest run --coverage
+
+POSTGRES_E2E_URL=postgres://fixture@127.0.0.1:54329/protein_kitchen_e2e pnpm test:e2e
+pnpm typecheck
+NEXT_DIST_DIR=.next-build pnpm build
+```
+
+The disposable Postgres uses `127.0.0.1:54329`, with data directory
+`$ARTIFACTS/step12-postgres` (original shell `selector-postgres`); the owned helper
+is stopped for this handoff after validation. When needed, start
+`/opt/homebrew/opt/postgresql@17/bin/postgres -D "$ARTIFACTS/step12-postgres" -h 127.0.0.1 -p 54329`
+in an owned long-running shell and verify readiness. Verify process
+ownership before stopping anything in a new runtime. Do not stop the user's
+server on port 3001. The browser runner owns port 3112 and cleans up its server.
+The font fallback warning for Atkinson Hyperlegible Next is pre-existing.
+
+### Exact next actions and remaining scope
+
+1. Confirm this worktree/branch and read the latest accepted state above;
+   do not repeat already completed isolation/link/hydration work.
+2. Plan the next bounded H3/H4 slice before code. **Public signup is still
+   gated**, `magicLink.disableSignUp` is still true, and signup/onboarding still
+   expose the old grant/code UI. Household creation is an unexposed service.
+   Finish ordinary code-free signup, verified email association accept/decline,
+   create-household/profile UI and add-members-by-email. The existing pending
+   invitation email index is global; it must support per-household associations.
+   Prove ownership before association disclosure. Accepting another household
+   must preserve current selection, profiles and plans until an explicit switch.
+3. Preserve installed Better Auth semantics: its magic-link plugin has hashed
+   atomic consume and establishes the opening browser's session. Its built-in
+   verification JWT is not an equivalent one-use store. Proving an unverified
+   account with a magic link deliberately revokes pre-proof passwords/sessions.
+   Keep that protection, persistent throttling, exact origins, pinned callbacks,
+   generic send responses and explicit delivery errors. Do not replace the
+   existing self-managed provider or introduce a parallel homemade token flow.
+4. Complete H6 and then the already detailed D1-D8 deployment/reminder/release
+   stages. Physical Android/installed-iPhone push and live provider acceptance
+   are still unverified. Production cutover, remote schema writes and new
+   credentials keep their approval gates. Recipe-id rename handling does not
+   claim to cover textual `partSlug` / `photoDecisions.subjectSlug` references.
+
+**Local environment, user-directed deferral:** `.env.local` already exists,
+gitignored and owner-readable, with the isolated Neon development URLs/branch
+pins, local auth secret/origin, timezone and disabled outbound jobs. It is
+**not fully runnable**: `NEON_API_KEY` and real mail credentials/from address are
+not configured. The user explicitly asked to finish one complete `.env.local`
+**once everything is working**, not prematurely. Do not invent credentials or
+create a cloud key without approval. The earlier Step-14 private artifacts may
+contain the existing project-scoped key; locate/reuse it privately if applicable,
+never print it. Verify the dev branch still exists and its expiry before final
+startup, and do not migrate/seed the cloud branch based solely on this env-file
+request. GitHub/Vercel secrets are a separate later deployment task.
+
+---
+
 **Step-12 update:** the application now uses awaited Postgres transactions, not SQLite. The original SQLite files are untouched import/rollback sources. No production migration or public deployment has occurred. Requests/builds no longer seed; explicit guarded migration/seed commands prepare an isolated dev/test database. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists; local 20A-20B recovery alone does not enable it. See the current setup below and the step-12 closeout in `roadmap.md`; older numbered implementation notes later in this handover are historical.
 
 **Step-14 complete:** after explicit approval, schema-only Neon branch `dev-step14-rehearsal` (`br-odd-flower-b43d2ryu`, expires 2026-10-31 04:30 UTC) was created without production rows. Two fresh synthetic imports matched all 33 table digests; all 17 identity sequences and human exports through seed were verified. `pnpm db:import:sqlite` requires an empty dev/test target, and remote rehearsal additionally requires an explicit matching branch pin plus live metadata verification. No household source or photo bytes were transferred; existing local credential files were not changed. Rehearsal URLs and a project-scoped API key are private session artifacts; do not print or commit them.

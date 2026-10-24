@@ -360,11 +360,21 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     await page.getByLabel("Type DELETE to confirm", { exact: true }).fill("DELETE");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: "test-results/account-deletion-phone.png", fullPage: true });
+    const linkSent = await page.request.post("/api/auth/sign-in/magic-link", {
+      headers: { origin: "http://127.0.0.1:3112", "x-forwarded-for": "127.0.0.31" },
+      data: { email: owner.toUpperCase(), callbackURL: "/onboarding", newUserCallbackURL: "/onboarding",
+        errorCallbackURL: "/sign-in?emailLinkError=1" },
+    });
+    expect(linkSent.status()).toBe(200);
+    const outstandingLink = z.object({ url: z.string().url() }).parse(JSON.parse(await readFile(testMailPath(owner, "sign-in-link"), "utf8"))).url;
     const staleOwner = await page.context().cookies();
     await submit.click();
     await expect(page).toHaveURL(/\/sign-in$/);
     await page.context().addCookies(staleOwner);
     expect((await page.request.get("/api/account/export")).status()).toBe(401);
+    await page.goto(outstandingLink);
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("invalid, expired or already used");
+    expect(await (await page.request.get("/api/auth/get-session")).json()).toBeNull();
     await page.goto(plan);
     await expect(page).toHaveURL(/\/sign-in$/);
     await second.goto(plan);

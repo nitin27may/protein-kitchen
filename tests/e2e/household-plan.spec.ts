@@ -1,5 +1,5 @@
 import { test, expect } from "./member-fixture";
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
@@ -39,6 +39,45 @@ test("plan generation, swap and locked regeneration survive reload", async ({ pa
   await page.reload();
   await expect(page.getByRole("main")).toContainText(candidate);
   await expect(page.getByRole("button", { name: "Locked", exact: true })).toBeVisible();
+});
+
+test("plan setup and reloaded plan controls wait for hydration rather than discarding their first click", async ({ page }) => {
+  let release = () => {};
+  let scriptsReady = Promise.resolve();
+  function pauseScripts() {
+    scriptsReady = new Promise<void>((resolve) => { release = resolve; });
+  }
+  const delayScripts = async (route: Route) => {
+    if (route.request().resourceType() === "script") await scriptsReady;
+    await route.continue();
+  };
+  await page.route("**/_next/static/**", delayScripts);
+  try {
+    pauseScripts();
+    await page.goto("/plan/new", { waitUntil: "commit" });
+    const generate = page.getByRole("button", { name: "Generate plan", exact: true });
+    await expect(generate).toBeVisible();
+    await expect(generate).toBeDisabled();
+    release();
+    await expect(generate).toBeEnabled();
+    await mutation(page, () => generate.click());
+    await expect(page).toHaveURL(/\/plan\/\d+(\?.*)?$/);
+    pauseScripts();
+    await page.reload({ waitUntil: "commit" });
+    const lock = page.getByRole("button", { name: "Lock", exact: true }).first();
+    await expect(lock).toBeVisible();
+    await expect(lock).toBeDisabled();
+    release();
+    await expect(lock).toBeEnabled();
+    await mutation(page, () => lock.click());
+    await expect(page.getByRole("button", { name: "Locked", exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Locked", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally {
+    release();
+    await page.unroute("**/_next/static/**", delayScripts);
+  }
 });
 
 test("shopping progress is shared between independent browser contexts and persists", async ({ page, browser }) => {

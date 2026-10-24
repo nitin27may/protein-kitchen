@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { eq, getTableName, sql } from "drizzle-orm";
 import * as s from "../lib/db/schema";
 import { deleteOwnAccount } from "../lib/auth/household";
+import { createAuth, type AuthLinkMail } from "../lib/auth/create";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -43,6 +44,10 @@ async function fixture() {
     { id: "link", identifier: "reset-password:synthetic", value: "first" },
     { id: "unrelated", identifier: "sign-in-otp-second@example.test", value: "synthetic-other-code:0" },
     { id: "same-value", identifier: "unrelated-identifier", value: "first" },
+    { id: "magic-own", identifier: "magic-link:synthetic-own", value: JSON.stringify({ type: "magic-link", email: "first@example.test", name: "Synthetic" }) },
+    { id: "magic-other", identifier: "magic-link:synthetic-other", value: JSON.stringify({ type: "magic-link", email: "second@example.test" }) },
+    { id: "magic-malformed", identifier: "magic-link:synthetic-invalid", value: "not JSON" },
+    { id: "magic-array", identifier: "magic-link:synthetic-array", value: "[]" },
   ].map((row) => ({ ...row, expiresAt: new Date(Date.now() + 60000) })));
   const [recipe] = await h.db.insert(s.recipes).values({
     slug: "shared-bowl", name: "Shared bowl", kind: "recipe", family: "bowls", mealSlots: ["dinner"], cuisine: "global",
@@ -90,10 +95,38 @@ describe("atomic confirmed self-deletion", () => {
     expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "second" }]);
     expect(await h.db.select().from(s.householdBootstrap)).toEqual([{ id: 1, ownerUserId: null, createdAt: new Date(at) }]);
     expect(await h.db.select().from(s.householdInvitations)).toMatchObject([{ id: "unrelated" }]);
-    expect((await h.db.select().from(s.authVerifications)).map((row) => row.id).sort()).toEqual(["same-value", "unrelated"]);
+    expect((await h.db.select().from(s.authVerifications)).map((row) => row.id).sort())
+      .toEqual(["magic-array", "magic-malformed", "magic-other", "same-value", "unrelated"]);
     expect(await h.db.select().from(s.pushSubscriptions)).toMatchObject([{ endpoint: "https://push.example.test/second" }]);
     expect(await h.db.select().from(s.personRecipeFeedback)).toMatchObject([{ personId: 2, rating: 4 }]);
     expect(await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "personal-recipe-feedback"))).toHaveLength(1);
+  });
+  it("revokes an actual pending email link before email reuse while preserving another mailbox's usable proof", async () => {
+    await fixture();
+    const origin = "http://localhost:3112";
+    const links: AuthLinkMail[] = [];
+    const auth = createAuth(h.db, {
+      baseURL: origin, secret: "synthetic-deletion-link-session-secret", isVercel: false,
+      sendCode: async () => {}, sendLink: async (mail) => { links.push(mail); },
+    });
+    const headers = { origin, "content-type": "application/json", "x-forwarded-for": "127.0.0.91" };
+    for (const email of ["FIRST@EXAMPLE.TEST", "second@example.test"]) {
+      const response = await auth.handler(new Request(`${origin}/api/auth/sign-in/magic-link`, {
+        method: "POST", headers, body: JSON.stringify({
+          email, callbackURL: "/onboarding", newUserCallbackURL: "/onboarding", errorCallbackURL: "/sign-in?emailLinkError=1",
+        }),
+      }));
+      expect(response.status).toBe(200);
+    }
+    await deleteOwnAccount(h.db, deleting());
+    await h.db.insert(s.authUsers).values({ id: "replacement", name: "Synthetic replacement", email: "first@example.test", emailVerified: true });
+    const replay = await auth.handler(new Request(links[0]!.url, { headers }));
+    expect(replay.headers.get("location")).toContain("error=INVALID_TOKEN");
+    expect(replay.headers.getSetCookie()).toEqual([]);
+    expect(await h.db.select().from(s.authSessions).where(eq(s.authSessions.userId, "replacement"))).toEqual([]);
+    const other = await auth.handler(new Request(links[1]!.url, { headers }));
+    expect(other.headers.get("location")).toBe(`${origin}/onboarding`);
+    expect(other.headers.getSetCookie().length).toBeGreaterThan(0);
   });
   it("allows an incomplete member to delete their login without clearing any meal profile", async () => {
     await fixture();

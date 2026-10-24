@@ -385,6 +385,40 @@ response but cannot create an account in this slice. Fresh signup, verified
 email associations and the household-creation UI remain pending. No new
 migration, live delivery, credential provisioning or deployment occurred.
 
+**Linked lifecycle follow-up plan:** include pending magic-link proofs in
+confirmed account deletion's existing token revocation transaction. Otherwise a
+previously issued link could outlive deletion and target a later account using
+the same email. Match the installed provider's JSON email record only inside
+the `magic-link:` namespace, guard malformed non-JSON rows, and preserve other
+mailboxes' proofs and shared household state. Add an actual provider
+send/delete/recreate/replay test plus an unrelated recipient's still-usable
+link, extend deletion rollback fixtures, and repeat full/native/browser/type/
+build acceptance before closing the follow-up. No change to signup gates or
+remote permissions.
+
+**Acceptance blocker / corrective plan:** the full browser suite exposed
+pre-hydration plan clicks being discarded: an SSR-visible Generate control
+returned no navigation in one run; after reload an SSR-visible Lock control
+sent no POST in another. The retained trace confirms the click without its
+mutation; the unchanged isolated flow passes. Fix the user-visible race, not the
+test timeout: reuse/extract the profile form's hydration signal for plan controls
+and keep setup controls disabled until its existing stored-draft restoration
+finishes. Retain an intentionally script-delayed browser case proving controls
+are disabled before hydration, become usable after release and actually
+generate/lock/reload. Preserve layout, draft restoration and existing mutation
+behavior; rerun the full acceptance suite without relaxing retries or timeouts.
+
+**Corrective acceptance / session handoff, 2026-10-24:** token revocation now
+handles mixed-case provider email records safely and preserves other recipients'
+usable links, including through native final-owner contention. The actual
+browser deletion flow refuses a previously issued link. Setup/plan controls
+wait for readiness; the shared profile/plan hydration signal has a 100% gate and
+a retained deliberately script-delayed browser case. Final serial pipeline
+passed **1,965 tests / 97 files**, all **35 browser journeys**, types/build and
+all critical gates. Coverage: statements 72.68%, branches 62.61%, functions
+62.62%, lines 74.00%. Public signup, email associations and household creation UI
+remain pending. See the resume section at the top of `docs/handover.md`.
+
 ### H1/H3 foundation: isolated household creation and legacy quarantine
 
 **Local acceptance:** a new server-only session primitive validates the name,
