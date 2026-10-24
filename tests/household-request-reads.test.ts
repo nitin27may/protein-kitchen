@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { beforeEach, expect, it, vi } from "vitest";
 import * as s from "../lib/db/schema";
 import { loadData } from "../lib/data/load";
@@ -8,6 +8,10 @@ import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { requireMember } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
 import { photoIndex, photosOfRecipe, photosOfIngredient, creditedPhotos } from "../lib/server/photo-index";
+import { exportHouseholdState } from "../lib/server/household-export";
+import { resolveHouseholdAccess } from "../lib/auth/household-access";
+import { exportHumanData } from "../lib/human/export";
+import { photosClass } from "../lib/human/photos";
 import {
   getBatchPrepTicks, getPartModes, getPlanMilestones, getPlanRoutines, getPlanView, groceryChecks,
   lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans,
@@ -76,6 +80,75 @@ it("loads only the verified request household's people and last setup", async ()
   await h.db.delete(s.plans).where(eq(s.plans.householdId, "b"));
   await h.db.delete(s.planSetups).where(eq(s.planSetups.householdId, "b"));
   expect(await lastSetup()).toBeUndefined();
+});
+
+it("exports stable shared household files and blob references without stamping or serializing another namespace", async () => {
+  const [stored] = await h.db.select().from(s.recipes);
+  const at = "2026-11-02T00:00:00Z";
+  for (const householdId of ["a", "b", null]) {
+    const text = `Owned fixture ${householdId}`;
+    await h.db.insert(s.recipeFeedback).values({ householdId, recipeId: stored!.id, notes: text });
+    await h.db.insert(s.savedViews).values({ householdId, list: "recipes", name: text, query: text });
+    await h.db.insert(s.recipeLinks).values({
+      householdId, recipeId: stored!.id, uid: `export-link-${householdId}`, kind: "recipe",
+      url: "https://example.com/shared-url", title: text, createdAt: at, updatedAt: at,
+    });
+    for (const kind of ["recipe", "ingredient"]) {
+      await h.db.insert(s.photos).values({
+        householdId, recipeId: kind === "recipe" ? stored!.id : null, ingredientSlug: kind === "ingredient" ? "tofu-extra-firm" : null,
+        uid: `export-photo-${householdId}-${kind}`, origin: "commons", candidateKey: "commons:synthetic",
+        sha256: "0".repeat(64), width: 1, height: 1, title: text, createdAt: at, updatedAt: at,
+      });
+    }
+    await h.db.insert(s.photoDecisions).values({
+      householdId, uid: `export-decision-${householdId}`, subjectKind: "recipe", subjectSlug: recipe.slug,
+      candidateKey: "commons:synthetic", decision: "approved", createdAt: at, updatedAt: at,
+    });
+  }
+  const classes = ["recipe-feedback", "recipe-links", "saved-views", "photos", "photo-decisions"];
+  const a = await resolveHouseholdAccess(h.db, "a", "a");
+  const first = await exportHouseholdState(h.db, a, classes);
+  expect(await exportHouseholdState(h.db, a, [...classes].reverse())).toEqual(first);
+  expect(Object.keys(first.files)).toHaveLength(6);
+  expect(Object.values(first.manifest.tables).map((t) => t.count).sort()).toEqual([1, 1, 1, 1, 2]);
+  expect(JSON.stringify(first)).toContain("Owned fixture a");
+  expect(JSON.stringify(first)).not.toMatch(/Owned fixture b|Owned fixture null|export-photo-b|export-photo-null/);
+  for (const householdId of ["b", null]) {
+    const predicate = householdId === null ? isNull(s.recipeFeedback.householdId) : eq(s.recipeFeedback.householdId, householdId);
+    expect((await h.db.select().from(s.recipeFeedback).where(predicate))[0]).toMatchObject({ uid: null, createdAt: null, updatedAt: null });
+    const viewPredicate = householdId === null ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, householdId);
+    expect((await h.db.select().from(s.savedViews).where(viewPredicate))[0]).toMatchObject({ uid: null, createdAt: null, updatedAt: null });
+  }
+  const refs = await photosClass.blobs!(h.db, { householdId: "a" });
+  expect(refs.map((r) => r.key).sort()).toEqual([
+    "photos/export-photo-a-ingredient/master.webp", "photos/export-photo-a-ingredient/thumb.webp",
+    "photos/export-photo-a-recipe/master.webp", "photos/export-photo-a-recipe/thumb.webp",
+  ]);
+  const b = await resolveHouseholdAccess(h.db, "b", "b");
+  const second = await exportHouseholdState(h.db, b, classes);
+  expect(JSON.stringify(second)).toContain("Owned fixture b");
+  expect(JSON.stringify(second)).not.toContain("Owned fixture a");
+  expect(await exportHouseholdState(h.db, a, ["photos"])).toMatchObject({ manifest: { tables: { photos: { count: 2 } } } });
+  for (const selection of [[], ["photos", "photos"], ["unknown"], ["person-routines"]]) {
+    await expect(exportHouseholdState(h.db, a, selection)).rejects.toThrow();
+  }
+  await expect(exportHumanData(h.db, undefined, { householdId: "a" })).rejects.toThrow("explicit household");
+  await expect(exportHumanData(h.db, ["photos"], { householdId: "" })).rejects.toThrow("explicit household");
+  await h.db.update(s.householdMembers).set({ personId: null }).where(eq(s.householdMembers.userId, "b"));
+  const incomplete = await resolveHouseholdAccess(h.db, "b", "b");
+  await expect(exportHouseholdState(h.db, incomplete, classes)).rejects.toThrow("Finish your household profile");
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  await expect(exportHouseholdState(h.db, a, classes)).rejects.toThrow("not available");
+});
+
+it("rolls back export-time legacy stamps if a later shared class fails serialization", async () => {
+  const [stored] = await h.db.select().from(s.recipes);
+  await h.db.insert(s.recipeFeedback).values({ householdId: "a", recipeId: stored!.id, notes: "Preserve unstamped row" });
+  await h.db.insert(s.savedViews).values({ householdId: "a", uid: "invalid/../unsafe", list: "recipes", name: "Invalid path", query: "" });
+  const access = await resolveHouseholdAccess(h.db, "a", "a");
+  await expect(exportHouseholdState(h.db, access, ["recipe-feedback", "saved-views"])).rejects.toThrow("unsafe export path");
+  expect((await h.db.select().from(s.recipeFeedback))[0]).toMatchObject({ uid: null, createdAt: null, updatedAt: null });
+  expect((await h.db.select().from(s.savedViews))[0]).toMatchObject({ createdAt: null, updatedAt: null });
 });
 
 it("counts only owned Settings roots and children, excluding foreign and null-owned data in every summary", async () => {

@@ -141,14 +141,16 @@ const entryOf = (r: LinkRow) => ({
 
 export const linksClass: HumanDataClass = {
   name: LINKS_CLASS,
+  householdScoped: true,
   prefix: PREFIX,
 
   /** One file per recipe, links in position order, keyed by uid. Never contains a database id. */
-  async exportFiles(db) {
+  async exportFiles(db, scope) {
     const rows = await db
       .select({ link: s.recipeLinks, slug: s.recipes.slug })
       .from(s.recipeLinks)
-      .innerJoin(s.recipes, eq(s.recipes.id, s.recipeLinks.recipeId));
+      .innerJoin(s.recipes, eq(s.recipes.id, s.recipeLinks.recipeId))
+      .where(scope ? eq(s.recipeLinks.householdId, scope.householdId) : undefined);
     const bySlug = new Map<string, LinkRow[]>();
     for (const { link, slug } of rows) bySlug.set(slug, [...(bySlug.get(slug) ?? []), link]);
     const files: Record<string, string> = {};

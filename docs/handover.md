@@ -10,6 +10,18 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest shared export foundation:** an explicit household context now filters
+feedback, links, saved views, photos/decisions and photo blob references before
+serialization or legacy uid/timestamp stamping. Unsupported scoped classes fail
+instead of falling back to global export. A verified repeatable-read service
+refreshes membership and requires a profile; it preserves stable version-2
+slug/uid files and rolls back stamps on serialization failure. Global operator
+exports remain compatible. **Acceptance: 1,860 tests / 93 files, all 29 retained
+browser journeys, types and production build pass**; service coverage is gated
+at 100%, overall statements 71.97%. No new request endpoint or transfer is
+enabled. Sync receipts/targets/jobs and UI adoption, imports/reset/recovery and
+operational blob copying still need household contracts; signup stays gated.
+
 **Latest Settings summaries:** the request resolves verified household membership
 before counting profiles/plans, groceries/pantry, progress, feedback, links,
 routines, plan choices/steps and photos. Private roots use household ownership;

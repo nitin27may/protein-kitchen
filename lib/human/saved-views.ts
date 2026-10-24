@@ -69,10 +69,11 @@ const PREFIX = "saved-views/";
 
 export const savedViewsClass: HumanDataClass = {
   name: SAVED_VIEWS_CLASS,
+  householdScoped: true,
   prefix: PREFIX,
 
-  async exportFiles(db) {
-    const rows = await db.select().from(s.savedViews);
+  async exportFiles(db, scope) {
+    const rows = await db.select().from(s.savedViews).where(scope ? eq(s.savedViews.householdId, scope.householdId) : undefined);
     const files: Record<string, string> = {};
     for (const r of rows) {
       const at = nowIso();

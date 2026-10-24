@@ -324,6 +324,41 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: household shared export foundation
+
+Scope: add an explicit household export context to the registered shared classes
+(recipe feedback, links, saved views, photos and decisions). Filter before
+serializing or filling legacy uid/timestamps, including photo blob references.
+Keep existing slug/uid paths and byte-stable version-2 files; a configured target
+will later bind one household rather than place household ids in file names.
+Exports without a scope remain explicitly deployment-operator helpers, not
+ordinary request APIs. Scoped exports require an explicit supported class
+selection and fail for unimplemented classes rather than silently exporting them.
+
+Add a verified household snapshot service using a repeatable-read transaction and
+membership refresh; it does not expose a new endpoint or transfer any bytes.
+Dependencies: accepted scoped human rows and photo/link identity. Permission
+boundary: never infer a target household from whichever row is first. Do not
+claim sync UI, receipts, importer/reset or remote target isolation is complete:
+those require later adoption and schema work.
+
+Acceptance: two households with the same recipe, URL and candidate produce
+independent byte-stable bundles; only selected classes/owned blobs appear, null
+and foreign rows are absent and their missing stamps remain untouched. Reject
+unsupported selections and stale membership before serialization. Existing
+operator round trips, full coverage/native checks, browser journeys, types and
+build remain intact. No real export, human decisions, repository transfer,
+remote write or signup change is permitted in this foundation stage.
+
+Acceptance complete locally: all 1,860 tests / 93 files, 29 retained Playwright
+browser journeys, typecheck and production build pass. The verified export
+service has a permanent 100% coverage gate; overall statement coverage is
+71.97%. Tests also verify incomplete-profile refusal and transaction rollback
+of legacy stamps when a later class fails serialization. There is no new UI or
+HTTP endpoint in this prerequisite slice; existing browser flows remain intact.
+Deployment-wide sync invocation, receipts/targets/jobs, imports/reset/recovery
+and operational blob copying have not adopted this boundary yet.
+
 ### H2 slice: Settings household counts
 
 Scope: replace the request's deployment-wide reset-summary counts with explicit

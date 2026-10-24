@@ -80,13 +80,15 @@ const PREFIX = "feedback/";
 
 export const feedbackClass: HumanDataClass = {
   name: FEEDBACK_CLASS,
+  householdScoped: true,
   prefix: PREFIX,
 
-  async exportFiles(db) {
+  async exportFiles(db, scope) {
     const rows = await db
       .select({ r: s.recipeFeedback, slug: s.recipes.slug })
       .from(s.recipeFeedback)
-      .innerJoin(s.recipes, eq(s.recipes.id, s.recipeFeedback.recipeId));
+      .innerJoin(s.recipes, eq(s.recipes.id, s.recipeFeedback.recipeId))
+      .where(scope ? eq(s.recipeFeedback.householdId, scope.householdId) : undefined);
     const files: Record<string, string> = {};
     const touched = rows.filter(({ r }) => isTouched(r));
     if (new Set(touched.map(({ slug }) => slug)).size !== touched.length) {

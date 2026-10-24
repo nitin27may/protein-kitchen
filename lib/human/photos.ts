@@ -6,7 +6,7 @@ import * as s from "../db/schema";
 import { withTx, type Tx } from "../db/tx";
 import { photoKeys } from "../photos/keys";
 import { PhotoError, processPhoto } from "../photos/process";
-import type { BlobRef, HumanDataClass } from "./registry";
+import type { BlobRef, ExportScope, HumanDataClass } from "./registry";
 import { markChanged, newUid, nowIso, stableJson } from "./util";
 
 export const PHOTOS_CLASS = "photos";
@@ -245,9 +245,10 @@ const PhotoFileSchema = z.object({
 
 const PHOTO_PREFIX = "photos/";
 
-async function photoRows(db: Db): Promise<{ photo: PhotoRow; subject: { kind: "recipe" | "ingredient"; slug: string } }[]> {
-  const recipePhotos = await db.select({ photo: s.photos, slug: s.recipes.slug }).from(s.photos).innerJoin(s.recipes, eq(s.recipes.id, s.photos.recipeId));
-  const ingredientPhotos = await db.select().from(s.photos).where(isNull(s.photos.recipeId));
+async function photoRows(db: Db, scope?: ExportScope): Promise<{ photo: PhotoRow; subject: { kind: "recipe" | "ingredient"; slug: string } }[]> {
+  const predicate = scope ? eq(s.photos.householdId, scope.householdId) : undefined;
+  const recipePhotos = await db.select({ photo: s.photos, slug: s.recipes.slug }).from(s.photos).innerJoin(s.recipes, eq(s.recipes.id, s.photos.recipeId)).where(predicate);
+  const ingredientPhotos = await db.select().from(s.photos).where(and(isNull(s.photos.recipeId), predicate));
   return [
     ...recipePhotos.map((r) => ({ photo: r.photo, subject: { kind: "recipe" as const, slug: r.slug } })),
     ...ingredientPhotos.map((photo) => ({ photo, subject: { kind: "ingredient" as const, slug: photo.ingredientSlug! } })),
@@ -256,12 +257,13 @@ async function photoRows(db: Db): Promise<{ photo: PhotoRow; subject: { kind: "r
 
 export const photosClass: HumanDataClass = {
   name: PHOTOS_CLASS,
+  householdScoped: true,
   prefix: PHOTO_PREFIX,
 
   /** One file per photo: `photos/recipes/<slug>/<uid>.json` or `photos/ingredients/<slug>/<uid>.json`. No database ids, no bytes. */
-  async exportFiles(db) {
+  async exportFiles(db, scope) {
     const files: Record<string, string> = {};
-    for (const { photo: p, subject } of await photoRows(db)) {
+    for (const { photo: p, subject } of await photoRows(db, scope)) {
       const folder = subject.kind === "recipe" ? "recipes" : "ingredients";
       files[`${PHOTO_PREFIX}${folder}/${subject.slug}/${p.uid}.json`] = stableJson({
         uid: p.uid, subject, origin: p.origin, candidate_key: p.candidateKey, sha256: p.sha256, width: p.width, height: p.height,
@@ -297,9 +299,9 @@ export const photosClass: HumanDataClass = {
     return { imported, skipped };
   },
 
-  async blobs(db) {
+  async blobs(db, scope) {
     const refs: BlobRef[] = [];
-    for (const p of await db.select({ uid: s.photos.uid, sha256: s.photos.sha256 }).from(s.photos)) {
+    for (const p of await db.select({ uid: s.photos.uid, sha256: s.photos.sha256 }).from(s.photos).where(scope ? eq(s.photos.householdId, scope.householdId) : undefined)) {
       const keys = photoKeys(p.uid);
       refs.push({ key: keys.master, sha256: p.sha256 }, { key: keys.thumb });
     }
@@ -343,11 +345,12 @@ const DECISION_PREFIX = "photo-decisions/";
 
 export const photoDecisionsClass: HumanDataClass = {
   name: PHOTO_DECISIONS_CLASS,
+  householdScoped: true,
   prefix: DECISION_PREFIX,
 
-  async exportFiles(db) {
+  async exportFiles(db, scope) {
     const files: Record<string, string> = {};
-    for (const d of await db.select().from(s.photoDecisions)) {
+    for (const d of await db.select().from(s.photoDecisions).where(scope ? eq(s.photoDecisions.householdId, scope.householdId) : undefined)) {
       files[`${DECISION_PREFIX}${d.subjectKind}s/${d.subjectSlug}/${d.uid}.json`] = stableJson({
         uid: d.uid, candidate_key: d.candidateKey, subject_kind: d.subjectKind, subject_slug: d.subjectSlug, decision: d.decision, created_at: d.createdAt, updated_at: d.updatedAt,
       });
