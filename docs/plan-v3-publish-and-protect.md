@@ -54,7 +54,7 @@ User direction, 2026-10-24: finish and test the product, then deploy using GitHu
 | Identity/mail | `BETTER_AUTH_SECRET`, `RESEND_API_KEY` secrets; fixed `BETTER_AUTH_URL`, `AUTH_EMAIL_FROM` variables | Separate by environment; no bootstrap secret in the final self-service flow; fixture mailbox flags forbidden in deployment |
 | Private photos | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` secrets; `BLOB_STORE`, `BLOB_BUCKET`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION` variables | Explicit private branch-bound store; preview restrictions retained; no filesystem fallback on Vercel |
 | Push/reminders | `VAPID_PRIVATE_KEY`, `REMINDER_SCHEDULER_SECRET` secrets; `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `APP_TZ`, `REMINDER_SCHEDULER_ENABLED` variables | Private key only where actual sends are approved; scheduler gets only its invocation credential, not database/deploy secrets |
-| Optional state sync | `STATE_GITHUB_PRIVATE_KEY`, `STATE_SYNC_SCHEDULER_SECRET` secrets; `STATE_GITHUB_*` target ids, consent classes and enablement variables | Dedicated private target/least-privilege App; disabled until household-safe transport and content consent pass |
+| Optional state sync | `STATE_GITHUB_PRIVATE_KEY`, `STATE_SYNC_SCHEDULER_SECRET` secrets; `STATE_GITHUB_*` target ids, `STATE_SYNC_HOUSEHOLD_ID`, consent classes and enablement variables | Dedicated household-pinned private target/least-privilege App; disabled until content consent passes |
 | Optional vault/recovery | `VAULT_GITHUB_PRIVATE_KEY` and explicit runner database credential as protected secrets; vault target ids and public `BACKUP_AGE_RECIPIENT` as variables | Operator runner only, not Vercel. Private age identity never uploaded; production backup support/retention/pre-reset gates still require implementation and acceptance |
 
 Only configure values required by the enabled feature/environment; do not copy all secrets to every job or runtime. Test fixture URLs, `POSTGRES_TEST_URL` and `POSTGRES_E2E_URL` remain disposable loopback CI configuration, not cloud credentials. Environment inventory and runtime validation must be updated alongside any new feature configuration. These stages are pending and do not claim remote secrets, workflows, schedules, deployments or a release were configured.
@@ -323,6 +323,47 @@ another household's same-recipe history and never renders its private note.
 Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
+
+### H2 slice: household reset boundary, gate still closed
+
+Scope: give the owner Settings action a verified household reset service rather
+than the deployment-wide operator helper. Reuse its existing scopes and typed
+confirmation; do not enable reset or change backup consent. Resolve membership
+before the backup gate and refresh it again in the destructive SQL transaction.
+Filter all roots and profile/plan children by ownership; preserve foreign and
+null-owned data. Profiles/all must refuse cross-household references rather than
+let cascades alter another household's records. Keep auth accounts/household
+memberships; deleted profile links become incomplete onboarding as before.
+
+Photo keys must be captured from deleted owned rows and removed only after SQL
+commit, outside locks. Never list/delete the whole shared BlobStore from a
+household request. Surface cleanup failure as a post-commit partial cleanup,
+not "nothing was changed"; keep unexpected infrastructure errors sanitized and
+logged. The legacy global reset helper remains operator-only.
+
+Acceptance: every scope tested against two households plus null data, unchanged
+library/auth/foreign records and photo bytes, atomic marker/SQL failure, stale
+and non-owner refusal, foreign-reference refusal and explicit blob cleanup
+failure. The actual Settings action and retained browser case still report the
+closed Postgres recovery gate and mutate nothing. All existing backend/native,
+browser, types/build gates remain. No real reset or recovery is authorized.
+
+Acceptance complete locally: the actual owner action now resolves verified
+household context before the closed backup gate and calls only the scoped reset
+service. Human-owned SQL lives in `lib/human/reset.ts`; the service refreshes
+membership, serializes household/plan/profile changes, and cleans captured owned
+photo keys after commit. Profile deletion refuses foreign plan/setup/routine,
+authorship or reminder references. Auth accounts and memberships remain; deleted
+profiles require onboarding again. Foreign and null rows/bytes are preserved.
+Settings text describes household scope, retained accounts and the closed gate.
+
+All 1,890 tests / 94 files, 30 retained browser journeys, types and build pass.
+The human reset writer and server boundary both have permanent 100% coverage
+gates; overall statements 72.47%. Native Postgres verifies SQL commits before
+owned blob cleanup; failure cases distinguish rollback from post-commit cleanup
+failure. The new actual browser test attempts ordinary and typed resets and
+verifies the recovery gate leaves plans/profiles/photos unchanged. No real reset,
+backup enablement, remote operation, signup or deployment occurred.
 
 ### H2 slice: pantry and prep identity namespaces
 

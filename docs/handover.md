@@ -10,6 +10,20 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest household reset boundary:** owner requests resolve verified household
+context before the closed recovery gate and no longer call the deployment-wide
+reset helper. `lib/human/reset.ts` owns scoped SQL/markers; the verified service
+locks household/plan/profile state and removes only captured owned photo keys
+after commit. Foreign/null data and bytes remain; malformed foreign profile
+references cause rollback. Auth accounts/memberships are retained. Cleanup
+failure is reported as post-commit cleanup, not "nothing was changed."
+**Acceptance: 1,890 tests / 94 files, all 30 retained browser journeys, types and
+build pass**, permanent 100% human reset/server boundary gates, overall
+statements 72.47%. Native Postgres verifies post-commit owned-byte deletion; real
+browser ordinary/typed attempts leave plans/profiles/photos unchanged behind
+the recovery gate. Reset is still disabled; global operator reset/import and
+recovery contracts, remaining ownership/admission and deployment remain open.
+
 **Latest pantry/prep identities:** migration `0016` preserves all existing rows
 and replaces global ingredient/date-task keys with null-safe household-composite
 uniqueness. Actual prep completion and legacy renames upsert only the owned

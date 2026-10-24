@@ -27,7 +27,8 @@ import { PersonInput, type PersonInputData } from "@/lib/schemas/person";
 import { getData, getDb } from "@/lib/server/context";
 import { getBlobStore } from "@/lib/blob";
 import { photoWritesEnabled } from "@/lib/blob/config";
-import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
+import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, ResetUnavailableError } from "@/lib/server/reset";
+import { resetHouseholdData, ResetPhotoCleanupError } from "@/lib/server/household-reset";
 import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
 import { writePlanStep } from "@/lib/server/plan-progress";
@@ -621,12 +622,17 @@ export async function resetScope(scope: string, typed: string): Promise<Result<{
   const sc = scope as ResetScope;
   if (NEEDS_TYPED_CONFIRM.includes(sc) && typed.trim() !== CONFIRM_WORD) return fail(`Type ${CONFIRM_WORD} to confirm`);
   try {
+    const context = await householdContext();
+    if (!context.ok) return context;
     const backup = await backupBeforeReset();
-    await resetData(await getDb(), sc, getBlobStore());
+    await resetHouseholdData(context.db, context.access, sc, getBlobStore());
     refresh();
     return { ok: true, backup: backup ? path.relative(process.cwd(), backup) : null };
-  } catch (e) {
-    return fail(`Reset failed and nothing was changed: ${(e as Error).message}`);
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    if (error instanceof ResetUnavailableError) return fail(`Reset failed and nothing was changed: ${error.message}`);
+    console.error("Household reset did not complete.", { code: error instanceof ResetPhotoCleanupError ? "photo-cleanup-failed" : "reset-unavailable" });
+    return fail(error instanceof ResetPhotoCleanupError ? error.message : "Reset could not complete. Ask the operator to check the recovery and storage status before retrying.");
   }
 }
 

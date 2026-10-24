@@ -14,6 +14,8 @@ export default defineConfig({
       include: ["lib/**/*.ts", "app/**/*.ts", "components/**/*.tsx"],
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
+        "lib/human/reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/server/household-reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-export.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/photo-index.ts": { statements: 100, branches: 75, functions: 100, lines: 100 },
         "lib/server/saved-views.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

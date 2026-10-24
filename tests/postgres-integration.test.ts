@@ -41,6 +41,7 @@ import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan
 import { writeLink } from "../lib/human/links";
 import { approveCandidate, writeUploadedPhoto, type PhotoWriteScope } from "../lib/human/photos";
 import { changeHouseholdDefaultView, defaultViewQuery } from "../lib/server/saved-views";
+import { resetHouseholdData } from "../lib/server/household-reset";
 
 const url = process.env.POSTGRES_TEST_URL;
 let handle: ReturnType<typeof openPostgres>;
@@ -59,6 +60,37 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     if (handle) await handle.db.execute(sql`truncate table ${sql.join(Object.values(s).map((t) => sql.identifier(getTableName(t))), sql`, `)} restart identity cascade`);
   });
   afterAll(async () => { if (handle) await handle.close(); });
+
+  it("commits a household reset before removing only its photo bytes on native Postgres", async () => {
+    await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const [profile] = await handle.db.insert(s.people).values({
+      householdId: "a", name: "Fixture", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    await handle.db.insert(s.authUsers).values({ id: "owner", name: "Fixture", email: "fixture@example.test", emailVerified: true });
+    await handle.db.insert(s.householdMembers).values({ userId: "owner", householdId: "a", personId: profile!.id, role: "owner" });
+    const access = await resolveHouseholdAccess(handle.db, "owner", "a");
+    const store = createMemoryStore();
+    const uids = [randomUUID(), randomUUID(), randomUUID()];
+    for (const [i, householdId] of ["a", "b", null].entries()) {
+      await handle.db.insert(s.savedViews).values({ householdId, list: "recipes", name: "Fixture", query: "", uid: randomUUID() });
+      await handle.db.insert(s.photos).values({ householdId, uid: uids[i]!, ingredientSlug: "fixture", origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, createdAt: at, updatedAt: at });
+      for (const key of Object.values(photoKeys(uids[i]!))) await store.put(key, Buffer.from("Synthetic"), "image/webp");
+    }
+    const originalDelete = store.delete.bind(store);
+    const removed: string[] = [];
+    vi.spyOn(store, "delete").mockImplementation(async (key) => {
+      expect(await handle.db.select().from(s.photos).where(eq(s.photos.householdId, "a"))).toEqual([]);
+      removed.push(key);
+      await originalDelete(key);
+    });
+    await resetHouseholdData(handle.db, access, "all", store);
+    expect(removed.sort()).toEqual(Object.values(photoKeys(uids[0]!)).sort());
+    expect(await handle.db.select().from(s.photos)).toHaveLength(2);
+    expect(await handle.db.select().from(s.savedViews)).toHaveLength(2);
+    expect((await store.list()).sort()).toEqual(uids.slice(1).flatMap((uid) => Object.values(photoKeys(uid))).sort());
+    expect(await handle.db.select().from(s.householdMembers)).toMatchObject([{ userId: "owner", personId: null }]);
+  });
 
   it("keeps concurrent pantry and prep upserts independent in each household and legacy namespace", async () => {
     await handle.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);

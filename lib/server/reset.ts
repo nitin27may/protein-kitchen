@@ -141,6 +141,10 @@ export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStor
 }
 
 /** Destructive application resets stay disabled until the Postgres backup/restore gate is implemented. */
+export class ResetUnavailableError extends Error {
+  constructor() { super("Reset is disabled: a verified Postgres backup and restore procedure is required first."); }
+}
+
 export async function backupBeforeReset(): Promise<string> {
-  throw new Error("Reset is disabled: a verified Postgres backup and restore procedure is required first.");
+  throw new ResetUnavailableError();
 }

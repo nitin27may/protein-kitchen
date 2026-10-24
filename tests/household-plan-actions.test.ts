@@ -15,6 +15,7 @@ import {
   saveDefaultView, clearDefaultView,
   setRecipeFeedback,
   addLink, updateLink, moveLink, removeLink,
+  resetScope,
 } from "../app/actions";
 import { openDb, type DbHandle } from "./helpers/db";
 import sharp from "sharp";
@@ -23,6 +24,7 @@ import { getBlobStore } from "../lib/blob";
 import { loadCandidates } from "../lib/photos/candidates";
 import { photoKeys } from "../lib/photos/keys";
 import { uploadRecipePhoto, removePhoto, makeCoverPhoto, rejectPhotoCandidate } from "../app/actions";
+import * as resetService from "../lib/server/reset";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../lib/auth/access", () => ({ requireMember: vi.fn(), actionDenial: vi.fn().mockResolvedValue(null) }));
@@ -114,6 +116,28 @@ it("refuses foreign profile routines/habits while preserving valid owner and mem
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
   expect((await setPersonRoutine(1, routine.habitSlug, { active: true })).ok).toBe(false);
   expect((await setHabitDone("2026-11-02", 1, routine.habitSlug, true)).ok).toBe(false);
+});
+
+it("keeps the real reset recovery gate closed and binds a permitted synthetic reset to the verified household", async () => {
+  expect(await resetScope("unknown", "")).toMatchObject({ ok: false });
+  expect(await resetScope("all", "")).toMatchObject({ ok: false, error: "Type RESET to confirm" });
+  expect(await resetScope("plans", "")).toMatchObject({ ok: false, error: expect.stringContaining("verified Postgres backup") });
+  expect(await h.db.select().from(s.plans)).toHaveLength(2);
+  const backup = vi.spyOn(resetService, "backupBeforeReset").mockResolvedValue(`${process.cwd()}/backups/synthetic`);
+  try {
+    expect(await resetScope("plans", "")).toEqual({ ok: true, backup: "backups/synthetic" });
+    expect(await h.db.select().from(s.plans)).toMatchObject([{ householdId: "b", id: foreign }]);
+    backup.mockRejectedValue(new Error("PRIVATE_RECOVERY_FAILURE"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await resetScope("plans", "")).toMatchObject({ ok: false, error: expect.not.stringContaining("PRIVATE_RECOVERY_FAILURE") });
+      expect(log).toHaveBeenCalledWith("Household reset did not complete.", { code: "reset-unavailable" });
+    } finally { log.mockRestore(); }
+    backup.mockClear();
+    await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+    expect((await resetScope("plans", "")).ok).toBe(false);
+    expect(backup).not.toHaveBeenCalled();
+  } finally { backup.mockRestore(); }
 });
 
 it("saves updates and clears only the caller's household defaults with stable identity", async () => {

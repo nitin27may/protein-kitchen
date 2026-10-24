@@ -76,6 +76,30 @@ test("night-before prep completion survives reload", async ({ page }) => {
   }
 });
 
+test("household Settings reset keeps the recovery gate closed for ordinary and typed scopes", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  try {
+    const plans = await handle.db.select().from(s.plans);
+    const people = await handle.db.select().from(s.people);
+    const photos = await handle.db.select().from(s.photos);
+    for (const title of ["plans", "everything"]) {
+      await page.goto("/settings");
+      const section = page.getByRole("region", { name: "Reset data" });
+      await expect(section).toContainText("Resets affect only this household");
+      await section.getByRole("button", { name: `Reset ${title}`, exact: true }).click();
+      if (title === "everything") {
+        await expect(section.getByRole("button", { name: "Reset everything", exact: true })).toBeDisabled();
+        await section.getByLabel("Type RESET to confirm").fill("RESET");
+      }
+      await mutation(page, () => section.getByRole("button", { name: `Reset ${title}`, exact: true }).click());
+      await expect(section.getByRole("alert")).toContainText("verified Postgres backup and restore procedure");
+      expect(await handle.db.select().from(s.plans)).toEqual(plans);
+      expect(await handle.db.select().from(s.people)).toEqual(people);
+      expect(await handle.db.select().from(s.photos)).toEqual(photos);
+    }
+  } finally { await handle.close(); }
+});
+
 test("Excel and PDF exports return actual file payloads", async ({ request }) => {
   const id = process.env.E2E_PREP_PLAN_ID;
   const excel = await request.get(`/api/plan/${id}/export?format=xlsx`);

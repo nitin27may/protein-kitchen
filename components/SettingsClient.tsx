@@ -22,8 +22,8 @@ const OPTIONS: Option[] = [
   { scope: "groceries", title: "Grocery lists", clears: "Ticked items, items you added by hand and the pantry (what you have at home).", keeps: "Plans, profiles and ratings.", count: (c) => `${c.groceryItems} entries`, typed: false },
   { scope: "progress", title: "Daily habits and prep ticks", clears: "Habit check-offs, night-before prep ticks and reminder history.", keeps: "Plans, profiles and ratings.", count: (c) => `${c.progressTicks} ticks`, typed: false },
   { scope: "ratings", title: "Ratings and favourites", clears: "Star ratings, favourites, banned recipes, notes, and the tested flag. Every recipe goes back to draft.", keeps: "Plans, profiles and the recipes themselves.", count: (c) => `${c.ratings} recipes`, typed: false },
-  { scope: "profiles", title: "Profiles", clears: "Every person, their likes and avoids, reminder subscriptions, habit history, and all plans (plans need a person).", keeps: "Ratings and favourites.", count: (c) => `${c.profiles} people, ${c.plans} plans`, typed: true },
-  { scope: "all", title: "Everything", clears: "All of the above, plus your recipe links, photos and daily routine choices. The app returns to how it was on first run.", keeps: "The recipe, ingredient and technique library.", count: () => "start from zero", typed: true },
+  { scope: "profiles", title: "Profiles", clears: "Every household profile, their likes and avoids, personal ratings, reminder subscriptions, habit history, and all household plans.", keeps: "Shared recipe history, account sign-ins and household membership.", count: (c) => `${c.profiles} people, ${c.plans} plans`, typed: true },
+  { scope: "all", title: "Everything", clears: "All of the above, plus this household's recipe links, photos, saved views and daily routine choices.", keeps: "Account sign-ins, household membership and the recipe, ingredient and technique library.", count: () => "start from zero", typed: true },
 ];
 
 export function SettingsClient({ counts }: { counts: ResetCounts }) {
@@ -48,7 +48,7 @@ export function SettingsClient({ counts }: { counts: ResetCounts }) {
     <section aria-labelledby="reset-h" className="space-y-3">
       <div>
         <h2 id="reset-h" className="text-lg font-semibold">Reset data</h2>
-        <p className="mt-1 text-sm text-muted">Each reset saves a copy of the database to the backups folder first. The recipe and ingredient library is never deleted.</p>
+        <p className="mt-1 text-sm text-muted">Resets affect only this household. Reset is disabled until the operator has verified the backup and recovery procedure. The recipe and ingredient library is never deleted.</p>
       </div>
       {msg ? <Banner tone={msg.tone}>{msg.text}</Banner> : null}
 
