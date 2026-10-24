@@ -1,9 +1,11 @@
 import path from "node:path";
+import { count } from "drizzle-orm";
 import { loadData } from "@/lib/data/load";
 import type { DataSet } from "@/lib/data/load";
 import { openDb } from "@/lib/db/client";
 import type { Db, DbHandle } from "@/lib/db/client";
 import { seedDatabase } from "@/lib/db/seed";
+import * as s from "@/lib/db/schema";
 
 interface Ctx {
   data: DataSet;
@@ -33,9 +35,11 @@ export function ctx(): Ctx {
 function ready(c: Ctx): Promise<void> {
   if (!c.ready) {
     c.ready = (async () => {
-      const count = c.handle.sqlite.prepare("SELECT count(*) AS n FROM recipes").get() as { n: number };
-      const ingCount = c.handle.sqlite.prepare("SELECT count(*) AS n FROM ingredients").get() as { n: number };
-      if (count.n !== c.data.recipes.size || ingCount.n !== c.data.ingredients.size) await seedDatabase(c.handle.db, c.data);
+      const [recipeCounts, ingredientCounts] = await Promise.all([
+        c.handle.db.select({ n: count() }).from(s.recipes),
+        c.handle.db.select({ n: count() }).from(s.ingredients),
+      ]);
+      if (recipeCounts[0]!.n !== c.data.recipes.size || ingredientCounts[0]!.n !== c.data.ingredients.size) await seedDatabase(c.handle.db, c.data);
     })().catch((e) => {
       c.ready = undefined;
       throw e;

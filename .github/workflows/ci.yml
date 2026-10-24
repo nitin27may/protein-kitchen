@@ -2,8 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,6 +17,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DB_PATH: ${{ runner.temp }}/protein-kitchen-ci.db
+      NEXT_DIST_DIR: .next-build
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +41,16 @@ jobs:
         run: pnpm validate
 
       - name: Test
-        run: pnpm test
+        run: pnpm test --reporter=default --reporter=junit --outputFile.junit=${{ runner.temp }}/test-results.xml
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ${{ runner.temp }}/test-results.xml
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build
         run: pnpm build

@@ -67,24 +67,35 @@ Done when: a repeat plan takes under a minute and ends on the grocery list.
 ### Step 9. Today with routines (10b) (done)
 Scope: add the morning routine card, and "Add a morning routine" when none chosen, into the Today screen from step 1.
 
-### Step 10. Photos you take or approve (11 and 12)
+### Step 10. Photos you take or approve (11 and 12) (built; owner checks pending)
 Scope: upload a photo on any recipe or when ticking "Cooked and tested"; resize on the phone, convert to WebP and strip location data on the server; stored through a storage interface (local folder now, Neon bucket later). A review page lists candidate photos from Wikimedia Commons and Openverse with source, licence and author, and nothing shows until you approve it. Ingredients without a photo get an aisle tile with an icon; recipe collages only when there are three or more ingredient photos.
 Decision: your own photos first, no Unsplash, no AI-generated recipe images.
 
+Verified 2026-10-23 on a scratch database with Playwright: Reject removes a candidate and the decision survives reload. A failed request shows an error, leaves the candidate in the queue, and allows retry. This does not reproduce or explain the reported failure in the owner's original instance.
+
+Still pending: owner photo approvals, a real iPhone upload, and broader candidate coverage. The current candidate file has 218 candidates across 56 recipe subjects (17 have no candidates), plus 119 candidates across 21 ingredients. The ingredient batches cover almonds, black beans, bulgur, chickpeas (dry and canned), paneer, oats, spinach, tempeh, tofu, tomatoes, Greek yogurt, milk, quinoa, white and brown rice, kidney beans, lentils, onions, cucumber and red pepper. Quinoa and cucumber succeeded on retry. Retrying the unblocked `white-bean-zucchini-skillet` recipe found no candidates; the other 16 empty recipe entries are explicitly blocked in `image-titles.json`. Obvious meat-dish and wrong-food matches were removed from the new batches. Search results are unapproved and may still be poor matches; review them individually.
+
 ### Step 11. Data debts to clear before go-live
-- Move `water-tap` and `hummus-commercial` from USDA to CNF values when the service is back.
-- Falafel mix counts chickpeas at dry weight although they are soaked: measure a soaked weight, then correct portions.
-- Four recipes still say "water is not counted": `besan-oat-muffins`, `spinach-cottage-cheese-bake`, `cottage-oat-pancakes`, `spiced-protein-chaas`.
-- Eight unresolved nutrition sources (paneer, soya chunks, ultrafiltered milk, skyr, roasted chana, nutritional yeast, whole wheat atta, fortified milk) and the vegetarian iron and zinc multipliers.
-- `kheera-raita` kcal warning (add an override).
-- Phone-width check of every screen, the ingredient picker, pin sheet and swap sheet, and the sidebar icons.
+Done: water included in the four recipes, `kheera-raita` override, falafel step wording and slug rename, effective-time tags, make-ahead totals, and reset counts. Fortified milk is resolved; atta and soya chunks remain documented stand-ins, and paneer micronutrients are partial. See `docs/nutrient-targets.md`.
+
+Checked 2026-10-23: `pnpm validate` passes. A Playwright layout smoke check at 375 and 390 px found no horizontal overflow on Today, recipes, recipe detail, cook mode, ingredients, ingredient detail, plan setup, groceries, profiles, settings, credits and photo review. Shared search-clear and clear-filter targets were increased to at least 44 px; the recipe filter panel also fits. This is not a complete populated-plan interaction audit.
+
+Populated-plan follow-up, 2026-10-23: used synthetic profiles and plans in a scratch database to check the ingredient picker, pin sheet, swap picker, populated plan/prep/groceries, Buy/Have panels, profile routines and Today's expanded routine/evidence card at 375 and 390 px. No horizontal overflow was found. Prep completion, pantry labels, routine serving controls and the routine evidence summary now have at least 44 px targets. Swap, Buy/Have choices, prep completion and a routine choice were verified across reloads. These browser checks do not replace the real iPhone upload check.
+
+Still pending:
+- Move `water-tap` and `hummus-commercial` from USDA only when matching CNF records can be verified. The food API still returned HTTP 503 on 2026-10-23.
+- Measure 150 g dry chickpeas after a 12-hour soak and draining, then correct the falafel yield and portions.
+- Supply labels for skyr, ultrafiltered milk and nutritional yeast; find a usable IFCT entry for roasted chana. No values are guessed.
+- Iron and zinc multipliers are documented but not applied; direct National Academies report verification remains open.
+- Real iPhone photo upload is still unverified.
+- Dependabot PRs #1–#4 remain open; they have not been rebased or merged in this pass.
 
 ## Group 2: publish and protect (starts after step 10)
 
 | Step | What | Size |
 |---|---|---|
-| 12 | Finish async conversion (13) | M |
-| 13 | Postgres schema in one baseline (every table including routines, links, photos, saved views, household, login), connection pool, fast real-Postgres tests, build-time seed (14) | L |
+| 12 | Finish async conversion (13) — in progress | M |
+| 13 | Postgres schema in one baseline (every table including routines, links, photos, saved views, household, login), connection pool, fast real-Postgres tests, build-time seed (14) — foundations in progress | L |
 | 14 | Safe `dev` branch on Neon, startup guard against `production`, SQLite import script with counts and checksums, rehearsal (15) | M |
 | 15 | Better Auth: sign-in with password or emailed code, invitations, bootstrap claim of your existing profile, rate limits, `proxy.ts` (16) | L |
 | 16 | Authorisation on every action and route, the open plan export closed, push subscriptions bound to the login, service worker stops caching personal pages, security headers (17) | M |
@@ -95,6 +106,14 @@ Decision: your own photos first, no Unsplash, no AI-generated recipe images.
 | 21 | Go-live on Vercel: Neon integration, environment variables, reminder scheduler, domain, email DNS, final data move, cutover (22) | M |
 
 Group 2 totals about 95 hours. Owner decisions are listed in `plan-v3-publish-and-protect.md` (14 items, each with a recommendation).
+
+Step 12 progress, 2026-10-23: public query and mutation helpers already return promises. Startup content counts now use awaited Drizzle queries rather than raw SQLite statements. `withTx` rejects promise-returning callbacks at compile time and rolls back if one reaches it at runtime; regression tests cover commit, rollback and promise-returning callbacks. SQLite transaction bodies must remain synchronous until the driver changes: `withTx`, `markChanged`, plan setup insertion, seed/human-data writes and reset transactions still need conversion alongside the Postgres adapter. SQLite `VACUUM INTO` backup also needs a replacement before publishing. Step 12 is not complete.
+
+Deployment visibility, 2026-10-23: GitHub Actions already exists, and the latest inspected main run passed `ci` and `secrets`. The current local workflow changes enable all-branch pushes and manual runs, isolate build data in the runner's temporary directory, and upload JUnit test results. Uncommitted or unpushed work does not appear in Actions; the new triggers are not live until pushed. Neon/Postgres application integration and Vercel deployment are still pending, not background jobs. The publish-and-protect document now distinguishes completed foundations from these remaining deployment gates.
+
+Postgres foundations, 2026-10-23: added a parallel Postgres schema and generated baseline for all 33 current application tables, with JSONB, booleans, double-precision nutrition/quantity values, dates, UTC ISO timestamp mapping and explicit foreign-key deletion rules. Schema parity tests cover row types, columns, keys, indexes and foreign keys; PGlite runs the migration and exercises constraints, async commit/rollback and deletion behavior. The node-postgres pool has bounded connections and Vercel lifecycle attachment. A guarded `db:migrate:postgres` command accepts only explicitly configured dev/test direct endpoints, with no application-URL fallback or automatic local configuration loading. Its remote-host allowlist requires operator verification of the branch; it does not discover the branch from Neon. No remote migration was run.
+
+Remaining in steps 12-14: port application/seed/human-data transactions onto the async Postgres driver, complete auth/household schema with the identity implementation, add TCP Postgres integration coverage (Docker was unavailable in this session), move seeding out of request startup, wire the runtime environment guard when the app switches drivers, select an isolated Neon dev branch, and rehearse checksum-verified SQLite import. The running app still uses SQLite; these foundations do not make it deployable on Vercel.
 
 ## Things only you can provide later
 A Resend account and sending domain, a domain for the app, the Neon and GitHub plan choices, a GitHub App created in your account (steps will be given), and an offline copy of the backup decryption key.

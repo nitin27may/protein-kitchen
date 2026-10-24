@@ -46,6 +46,18 @@ First run: open Profiles, add everyone who eats, then create a plan.
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm backup` | `VACUUM INTO backups/app-<timestamp>.db` |
 | `pnpm db:generate` | Generate a Drizzle migration after a schema change |
+| `pnpm db:generate:postgres` | Generate the separate Postgres baseline/migrations without connecting to a database |
+| `pnpm db:migrate:postgres` | Apply Postgres migrations to an explicitly configured development/test database only |
+
+## CI and deployment
+
+The [GitHub Actions workflow](https://github.com/nitin27may/protein-kitchen/actions/workflows/ci.yml) runs on every branch push and pull request, and supports **Run workflow** for a branch already on GitHub. It checks types, validates data, runs tests, builds the app with a temporary SQLite database, and scans for secrets. Test results are available as a `test-results` artifact for 14 days. Local, unpushed changes do not start a GitHub run.
+
+Neon and Vercel deployment are not implemented yet. Follow [the roadmap](docs/roadmap.md), steps 12-21, and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). The current SQLite app has no login or authorization and must not be exposed publicly. Postgres, safe development databases, authentication, authorization, cloud photo storage and recoverable backups precede the Vercel cutover.
+
+The Postgres groundwork lives in `lib/db/postgres/` with a separate Drizzle history in `db/postgres-migrations/`; never apply the SQLite migration history to Postgres. Local PGlite tests apply the baseline and check parity with all 33 existing application tables. This is not yet an application runtime switch or a library/data import; login and household tables will be added with the identity implementation.
+
+For a **reviewed, isolated dev/test database**, supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification. Do not point it at an existing production endpoint and label it development: the host allowlist is an explicit operator assertion, not an API lookup of the Neon branch.
 
 ## Configuration
 

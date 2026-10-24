@@ -1,6 +1,20 @@
 # Publish and protect: Postgres, auth, GitHub backup, Vercel
 
-Status: proposed, not started. Written 2026-10-23. Runs AFTER the UI work in `plan-v2-experience.md`, with one exception (PR 0).
+Status: foundations implemented; publishing not started. Updated 2026-10-23. Repo safety and the async facade are built; finishing the async conversion is in progress (roadmap step 12). The UI/photo work is built with owner checks still pending. The infrastructure and identity recommendations below still need confirmation before provisioning or changing existing services. See `roadmap.md` for current status; the PR numbers in this document are delivery labels, not GitHub pull request numbers.
+
+## Current delivery status
+
+GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. The local workflow update adds all-branch pushes, manual dispatch, a temporary build database and downloadable test results. It will take effect on GitHub only after it is committed and pushed.
+
+The app still connects through `better-sqlite3`. A separate Postgres schema/baseline now covers the 33 current application tables, with local PGlite migration/parity tests, a node-postgres pool, and a development/test-only migration command. The pool is not wired into application queries yet; auth/household schema, async transaction conversion, seed/import and TCP integration coverage remain open. `neon.ts` declares Auth, Realtime and a private assets bucket, but that file is not proof those services are deployed or wired into the app. Do not run `neon deploy` blindly: the recommendations below differ from that declaration. No Postgres application runtime, Vercel deployment pipeline or cloud cutover has been completed in this development pass.
+
+Next delivery gates, in order:
+
+1. Finish the async data-layer/transaction conversion alongside a Postgres adapter and schema baseline (roadmap 12-13).
+2. Select an isolated Neon development branch, add production-target guards, and rehearse SQLite import with counts and checksums (14). Do not use an existing production pointer for development.
+3. Implement authentication, authorization and household/account screens (15-17) before public access.
+4. Wire cloud photos, state sync and encrypted backup/restore (18-20).
+5. Add environment-scoped deployment automation and cut over to Vercel with protected previews, migrations, scheduler, domain and email DNS (21). Never seed a production database from an ordinary validation workflow.
 
 ## Why this is more than a hosting change
 
