@@ -8,11 +8,11 @@ import { formatDay } from "@/lib/planner/dates";
 import { getRoutineCatalog } from "@/lib/routines/catalog";
 import { planRoutineRows } from "@/lib/routines/view";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { getPlanExport } from "@/lib/server/export";
 import { getCandidates, getPlanMilestones, getPlanRoutines, getPlanView, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getPhotoIndex } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Your plan" };
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const candidates = await getCandidates(view.people.map((p) => p.id));
   const byslug = new Map(candidates.map((c) => [c.slug, c]));
   const data = getData();
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
 
   const slots: PlanSlotView[] = view.slots.map((s) => {
     const c = byslug.get(s.recipeSlug);

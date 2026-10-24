@@ -324,6 +324,54 @@ Unscoped duplicate-history reads, operator exports/imports and renames fail
 explicitly rather than flattening household rows. Multi-household operator
 formats and scoped sync remain pending; no hosted migration or admission change.
 
+### H2 slice: photo requests, decisions and private bytes
+
+Scope: household-filter every signed-in photo index, recipe/ingredient gallery,
+candidate-review decision/photo-presence read and credits projection. Add verified
+request loaders and adopt them on home, plan creation/detail, groceries, catalogue
+and detail pages. Anonymous library payloads stay image-free. Private uid routes
+resolve current verified household membership and check uid ownership before
+opening BlobStore; foreign, legacy-unowned and missing uids return the same private
+no-store 404. Keep uid/blob-key contracts, ordering and credits unchanged.
+
+Dependencies: the accepted household scope and nullable ownership columns.
+Compatibility helpers without an explicit household address only the null-owned
+operator namespace, never all tenants. Reading only owned rows while retaining
+null-owned request writes would make new uploads/approvals disappear, so scope
+upload/approval/cover/delete/reject in this same stage. Replace candidate-decision
+uniqueness with a null-safe household/subject/candidate key preserving all rows.
+Keep image processing, download and blob IO outside database locks: existing human
+writers receive a verified commit boundary which refreshes membership and locks
+the household around SQL only. Upload failure cleans staged bytes, deletion drops
+bytes only after the owned SQL transaction commits, and count/cover/order checks
+run under that boundary. Tenant-aware operator exports/sync remain later work.
+Signup remains closed. No cloud reads/writes, human approvals or source photos
+are needed; all acceptance uses disposable synthetic rows/bytes.
+
+Acceptance: exact two-household recipe/ingredient/index/credits payloads; independent
+candidate decisions and only-without-photo filters; null-owned exclusion; current
+session scope and revocation refusal. Route tests must prove foreign/unowned/
+missing uids never invoke BlobStore, both owned variants return correct private
+headers/bytes, and malformed variants fail before storage. Retain a real browser
+journey verifying foreign photo metadata/credits/candidate decisions and bytes
+remain private. Existing photo behavior, critical coverage gates, types and
+database-free production build must stay green. Update handover only after
+backend/browser acceptance.
+
+Acceptance complete locally: migration `0014` preserves every existing decision
+and enforces null-safe household/subject/candidate identity. All request pages,
+photo uid routes and actual photo actions use explicit verified scope; null-owned
+legacy data is not adopted. Native concurrent uploads have distinct positions and
+one cover; concurrent same-candidate approvals reuse one uid and clean unused
+staged objects. Scoped duplicate approvals, independent household decisions,
+marker-failure rollback and stale-membership cleanup are covered. All 1,857 tests
+/ 93 files, 29 retained phone browser journeys, strict types and production build
+pass; photo projections have a permanent 100% statement/line/function gate,
+overall statements 71.91%. Browser coverage checks foreign metadata, credits,
+private uid bytes, independent rejection and own upload/reload/delete with real
+WebP bytes. Operational exports/imports/sync/reset remain outside this completed
+request slice. No public admission or remote resource changed.
+
 ### H2 slice: shared recipe links
 
 Scope: isolate recipe/part/step links on request reads and every add/edit/delete/

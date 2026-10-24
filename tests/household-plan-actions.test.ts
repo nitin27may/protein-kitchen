@@ -17,10 +17,17 @@ import {
   addLink, updateLink, moveLink, removeLink,
 } from "../app/actions";
 import { openDb, type DbHandle } from "./helpers/db";
+import sharp from "sharp";
+import { createMemoryStore } from "../lib/blob/memory";
+import { getBlobStore } from "../lib/blob";
+import { loadCandidates } from "../lib/photos/candidates";
+import { photoKeys } from "../lib/photos/keys";
+import { uploadRecipePhoto, removePhoto, makeCoverPhoto, rejectPhotoCandidate } from "../app/actions";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../lib/auth/access", () => ({ requireMember: vi.fn(), actionDenial: vi.fn().mockResolvedValue(null) }));
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn(), getData: vi.fn() }));
+vi.mock("../lib/blob", () => ({ getBlobStore: vi.fn() }));
 
 const data = loadData(process.cwd());
 const routine = getRoutineCatalog(data)[0]!;
@@ -32,6 +39,7 @@ let foreignSlot: number;
 let ingredientId: number;
 
 beforeEach(async () => {
+  vi.mocked(getBlobStore).mockReturnValue(createMemoryStore());
   h = await openDb();
   await h.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
   await h.db.insert(s.people).values(["a", "b"].map((householdId, i) => ({
@@ -208,6 +216,76 @@ it("rolls link creation back with its human sync marker on database failure", as
     recipeSlug: "falafel-bowl", kind: "recipe", url: "https://example.com/rollback", title: "Must roll back",
   })).rejects.toThrow("sync_state");
   expect(await h.db.select().from(s.recipeLinks)).toEqual([]);
+});
+
+it("binds actual photo upload cover delete and rejection actions to the household without changing another household's bytes", async () => {
+  const bytes = await sharp({ create: { width: 10, height: 10, channels: 3, background: "#336699" } }).jpeg().toBuffer();
+  const upload = () => {
+    const form = new FormData();
+    form.set("recipe", "falafel-bowl"); form.set("photo", new File([Uint8Array.from(bytes)], "fixture.jpg", { type: "image/jpeg" }));
+    return uploadRecipePhoto(form);
+  };
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  const foreign = await upload();
+  if (!foreign.ok) throw new Error(foreign.error);
+  const [foreignRow] = await h.db.select().from(s.photos);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "a", role: "owner", personId: 1 });
+  expect(await makeCoverPhoto(foreign.uid)).toMatchObject({ ok: false });
+  expect(await removePhoto(foreign.uid)).toMatchObject({ ok: false });
+  const own = await upload();
+  const second = await upload();
+  if (!own.ok || !second.ok) throw new Error("Synthetic upload failed");
+  expect(await makeCoverPhoto(second.uid)).toEqual({ ok: true });
+  const ownRows = await h.db.select().from(s.photos).where(eq(s.photos.householdId, "a"));
+  expect(ownRows).toMatchObject([{ createdByPersonId: 1, isCover: false }, { createdByPersonId: 1, isCover: true }]);
+  expect(await removePhoto(second.uid)).toEqual({ ok: true });
+  expect((await h.db.select().from(s.photos).where(eq(s.photos.uid, own.uid)))[0]).toMatchObject({ isCover: true });
+  expect(await getBlobStore().exists(photoKeys(second.uid).master)).toBe(false);
+  expect(await getBlobStore().exists(photoKeys(foreign.uid).master)).toBe(true);
+  expect(await h.db.select().from(s.photos).where(eq(s.photos.uid, foreign.uid))).toEqual([foreignRow]);
+  const [slug, candidates] = Object.entries(loadCandidates(process.cwd()).recipes).find(([, rows]) => rows.length)!;
+  const key = candidates[0]!.key;
+  expect(await rejectPhotoCandidate("recipe", slug, key)).toEqual({ ok: true });
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect(await rejectPhotoCandidate("recipe", slug, key)).toEqual({ ok: true });
+  expect((await h.db.select().from(s.photoDecisions)).map((r) => [r.householdId, r.createdByPersonId])).toEqual([["a", 1], ["b", 2]]);
+  await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "b"));
+  expect((await removePhoto(foreign.uid)).ok).toBe(false);
+  expect((await upload()).ok).toBe(false);
+});
+
+it("rolls failed photo SQL and markers back and cleans only newly staged bytes, with storage outside locks", async () => {
+  const { writeUploadedPhoto } = await import("../lib/human/photos");
+  const { resolveHouseholdAccess } = await import("../lib/auth/household-access");
+  const { mutateHouseholdState } = await import("../lib/server/household-plans");
+  const access = await resolveHouseholdAccess(h.db, "a", "a");
+  const [recipe] = await h.db.select().from(s.recipes);
+  let locked = false;
+  const store = getBlobStore();
+  const put = store.put.bind(store), drop = store.delete.bind(store);
+  vi.spyOn(store, "put").mockImplementation(async (...args) => { expect(locked).toBe(false); await put(...args); });
+  vi.spyOn(store, "delete").mockImplementation(async (...args) => { expect(locked).toBe(false); await drop(...args); });
+  const scope = {
+    householdId: "a", personId: 1,
+    commit: <T>(work: (tx: import("../lib/db/tx").Tx) => Promise<T>) =>
+      mutateHouseholdState(h.db, access, async (tx) => {
+        locked = true;
+        try { return await work(tx); } finally { locked = false; }
+      }),
+  };
+  const bytes = await sharp({ create: { width: 10, height: 10, channels: 3, background: "#336699" } }).jpeg().toBuffer();
+  const saved = await writeUploadedPhoto(h.db, store, { ...scope, subject: { kind: "recipe", recipeId: recipe!.id }, bytes });
+  await h.db.execute(sql`delete from sync_state`);
+  await h.db.execute(sql`alter table sync_state add constraint synthetic_photo_sync_failure check (data_class <> 'photos')`);
+  await expect(removePhoto(saved.uid)).rejects.toThrow("sync_state");
+  expect(await store.exists(photoKeys(saved.uid).master)).toBe(true);
+  await expect(writeUploadedPhoto(h.db, store, { ...scope, subject: { kind: "recipe", recipeId: recipe!.id }, bytes })).rejects.toThrow("sync_state");
+  expect((await store.list()).sort()).toEqual(Object.values(photoKeys(saved.uid)).sort());
+  expect(await h.db.select().from(s.photos)).toHaveLength(1);
+  expect(await h.db.select().from(s.syncState)).toEqual([]);
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "a"));
+  await expect(writeUploadedPhoto(h.db, store, { ...scope, subject: { kind: "recipe", recipeId: recipe!.id }, bytes })).rejects.toThrow("not available");
+  expect((await store.list()).sort()).toEqual(Object.values(photoKeys(saved.uid)).sort());
 });
 
 it("keeps legacy links separate, limits only the current household and rolls edits removals and ordering back", async () => {

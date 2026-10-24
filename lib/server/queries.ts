@@ -32,12 +32,40 @@ import { resolveOnlyHouseholdAccess } from "../auth/household-access";
 import { householdPeople, householdPerson, householdPlan, householdPlans } from "./household-plans";
 import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
+import { creditedPhotos, photoIndex, photosOfRecipe, photosOfIngredient } from "./photo-index";
+import { pendingReview, type ReviewFilter } from "./photo-review";
+import type { CandidateFile } from "../photos/candidates";
 
 export type PersonRow = typeof s.people.$inferSelect;
 
 async function requestHousehold(db: Db) {
   const member = await requireMember();
   return resolveOnlyHouseholdAccess(db, member.userId);
+}
+
+export async function getPhotoIndex() {
+  const db = await getDb();
+  return photoIndex(db, (await requestHousehold(db)).householdId);
+}
+
+export async function getRecipePhotos(recipeId: number) {
+  const db = await getDb();
+  return photosOfRecipe(db, recipeId, (await requestHousehold(db)).householdId);
+}
+
+export async function getIngredientPhotos(slug: string) {
+  const db = await getDb();
+  return photosOfIngredient(db, slug, (await requestHousehold(db)).householdId);
+}
+
+export async function getCreditedPhotos() {
+  const db = await getDb();
+  return (await creditedPhotos(db, (await requestHousehold(db)).householdId)).filter((p) => p.origin !== "upload");
+}
+
+export async function getPhotoReview(file: CandidateFile, names: Parameters<typeof pendingReview>[2], filter: ReviewFilter = {}) {
+  const db = await getDb();
+  return pendingReview(db, file, names, filter, (await requestHousehold(db)).householdId);
 }
 
 async function requestPlan(db: Db, planId: number) {

@@ -7,6 +7,7 @@ import { writePersonRoutine } from "../lib/human/routines";
 import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { requireMember } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
+import { photoIndex, photosOfRecipe, photosOfIngredient, creditedPhotos } from "../lib/server/photo-index";
 import {
   getBatchPrepTicks, getPartModes, getPlanMilestones, getPlanRoutines, getPlanView, groceryChecks,
   lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans,
@@ -14,6 +15,7 @@ import {
   getSavedViews, getDefaultViewQuery,
   feedbackMap, getCandidates,
   getRecipeLinks,
+  getPhotoIndex, getRecipePhotos, getIngredientPhotos, getCreditedPhotos, getPhotoReview,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
@@ -107,6 +109,50 @@ it("returns only the request household's recipe links", async () => {
   expect(await getRecipeLinks("missing")).toEqual([]);
   vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
   expect((await getRecipeLinks(recipe.slug)).map((r) => r.title)).toEqual(["Private b"]);
+});
+
+it("scopes photo galleries covers credits and candidate decisions to the verified household", async () => {
+  const [stored] = await h.db.select().from(s.recipes);
+  for (const householdId of ["a", "b", null]) {
+    for (const kind of ["recipe", "ingredient"]) {
+      await h.db.insert(s.photos).values({
+        householdId, uid: `${householdId}-${kind}`, recipeId: kind === "recipe" ? stored!.id : null,
+        ingredientSlug: kind === "ingredient" ? "tofu-extra-firm" : null,
+        origin: "commons", title: `Private ${householdId}`, author: `Credit ${householdId}`, licence: "CC0 1.0",
+        isCover: true, sha256: "0".repeat(64), width: 10, height: 10, createdAt: "2026-11-02", updatedAt: "2026-11-02",
+      });
+    }
+  }
+  const file = { recipes: { [recipe.slug]: [{
+    key: "commons:synthetic", provider: "commons" as const, title: "Synthetic", author: "Fixture", licence: "CC0 1.0",
+    licence_url: null, source_url: "https://example.com/source", image_url: "https://upload.wikimedia.org/synthetic",
+    width: 10, height: 10,
+  }] }, ingredients: {} };
+  const names = { recipes: new Map([[recipe.slug, recipe.name]]), ingredients: new Map<string, string>() };
+  await h.db.insert(s.photoDecisions).values({
+    householdId: "b", uid: "b-decision", subjectKind: "recipe", subjectSlug: recipe.slug,
+    candidateKey: "commons:synthetic", decision: "rejected", createdAt: "2026-11-02", updatedAt: "2026-11-02",
+  });
+  expect((await getRecipePhotos(stored!.id)).map((p) => p.uid)).toEqual(["a-recipe"]);
+  expect((await getIngredientPhotos("tofu-extra-firm")).map((p) => p.uid)).toEqual(["a-ingredient"]);
+  expect(await getPhotoIndex()).toEqual({
+    recipes: new Map([[recipe.slug, "/photos/a-recipe/thumb"]]),
+    ingredients: new Map([["tofu-extra-firm", "/photos/a-ingredient/thumb"]]),
+  });
+  expect((await getCreditedPhotos()).map((p) => p.author)).toEqual(["Credit a", "Credit a"]);
+  expect((await photosOfRecipe(h.db, stored!.id)).map((p) => p.uid)).toEqual(["null-recipe"]);
+  expect((await photosOfIngredient(h.db, "tofu-extra-firm")).map((p) => p.uid)).toEqual(["null-ingredient"]);
+  expect((await photoIndex(h.db)).recipes.get(recipe.slug)).toBe("/photos/null-recipe/thumb");
+  expect((await creditedPhotos(h.db)).map((p) => p.author)).toEqual(["Credit null", "Credit null"]);
+  expect(await getPhotoReview(file, names)).toMatchObject([{ slug: recipe.slug, hasPhoto: true, candidates: [{ key: "commons:synthetic" }] }]);
+  expect(await getPhotoReview(file, names, { onlyWithoutPhoto: true })).toEqual([]);
+  await h.db.delete(s.photos).where(eq(s.photos.householdId, "a"));
+  expect(await getPhotoReview(file, names, { onlyWithoutPhoto: true })).toMatchObject([{ hasPhoto: false }]);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  expect(await getPhotoReview(file, names)).toEqual([]);
+  expect((await getRecipePhotos(stored!.id)).map((p) => p.uid)).toEqual(["b-recipe"]);
+  await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
+  await expect(getPhotoIndex()).rejects.toThrow("Select an available household");
 });
 
 it("scopes historical/personal feedback and candidate filtering to the selected household profiles", async () => {

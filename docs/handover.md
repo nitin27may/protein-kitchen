@@ -10,6 +10,23 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest household photo requests:** migration `0014` preserves decisions while
+adding null-safe household/subject/candidate identity. Galleries/covers, review
+decisions/photo-presence, credits and private uid bytes use verified household
+scope; foreign and unowned image ids return private no-store 404s without storage
+access. Actual upload/approval/reject/cover/delete actions persist scope and
+creator. Image/network/blob work stays outside locks; SQL commits refresh
+membership and serialize household cover/order/limit changes. Failed uploads
+clean their staged bytes; deletion removes bytes only after SQL commit.
+**Acceptance: 1,857 tests / 93 files, all 29 browser journeys, types and production
+build pass**. Native concurrent uploads keep one cover/distinct positions, and
+concurrent approvals create one photo without orphan blobs. Photo projections
+have 100% statements/lines/functions and a permanent gate (75% branches, with
+the remaining branch excluded by the database subject constraint); human photo
+writer has 97.94% line coverage. Overall statements 71.91%. Tenant-aware operator
+exports/imports/sync/reset and remaining schema/admission work are still pending;
+no cloud operation, real photo approval or deployment was performed.
+
 **Latest household recipe links:** request recipe/part/step links and actual
 add/edit/move/remove actions now share verified household scope. The shared-state
 transaction refreshes membership, requires a profile and serializes position/

@@ -25,8 +25,8 @@ import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
 import { routineDayTotals, withoutRoutineHabits } from "@/lib/routines/schedule";
 import { summaryLine } from "@/lib/routines/view";
-import { getData, getDb } from "@/lib/server/context";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getData } from "@/lib/server/context";
+import { getPhotoIndex } from "@/lib/server/queries";
 import { loadNight } from "@/lib/server/prep";
 import { getCandidates, getHabitsFor, getPersonRoutines, getPlanView, getTodayRoutines, groceryProgress, lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
 import { localMinutes, todayISO } from "@/lib/server/time";
@@ -58,7 +58,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     ? people.find((x) => String(x.id) === p) ?? people.find((x) => x.id === member.personId)!
     : people.find((x) => x.id === member.personId)!;
   const data = getData();
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
   const now = new Date();
   const today = todayISO(now);
   const part = dayPart(localMinutes(now));

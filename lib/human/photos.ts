@@ -3,9 +3,9 @@ import { z } from "zod";
 import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
-import { withTx } from "../db/tx";
+import { withTx, type Tx } from "../db/tx";
 import { photoKeys } from "../photos/keys";
-import { processPhoto } from "../photos/process";
+import { PhotoError, processPhoto } from "../photos/process";
 import type { BlobRef, HumanDataClass } from "./registry";
 import { markChanged, newUid, nowIso, stableJson } from "./util";
 
@@ -25,6 +25,15 @@ export interface PhotoCredit {
 type PhotoRow = typeof s.photos.$inferSelect;
 
 const subjectWhere = (subject: PhotoSubject) => (subject.kind === "recipe" ? eq(s.photos.recipeId, subject.recipeId) : eq(s.photos.ingredientSlug, subject.slug));
+const owned = (householdId?: string) => householdId === undefined ? isNull(s.photos.householdId) : eq(s.photos.householdId, householdId);
+
+export interface PhotoWriteScope {
+  householdId?: string;
+  commit?: <T>(write: (db: Tx) => Promise<T>) => Promise<T>;
+}
+
+const commitPhoto = <T>(db: Db, scope: PhotoWriteScope, write: (tx: Tx) => Promise<T>) =>
+  scope.commit ? scope.commit(write) : withTx(db, write);
 
 async function putBoth(store: BlobStore, uid: string, master: Uint8Array, thumb: Uint8Array): Promise<void> {
   const keys = photoKeys(uid);
@@ -39,13 +48,14 @@ async function dropBoth(store: BlobStore, uid: string): Promise<void> {
   if (failures.length) throw new AggregateError(failures, "Photo object cleanup failed. Run photos:check.");
 }
 
-interface NewPhoto {
+interface NewPhoto extends PhotoWriteScope {
   subject: PhotoSubject;
   origin: "upload" | "commons" | "openverse";
   bytes: Uint8Array;
   credit?: PhotoCredit;
   candidateKey?: string;
   personId?: number | null;
+  maxPhotos?: number;
   /** Written with the photo in the same transaction (the approval of a candidate). */
   decision?: { candidateKey: string; kind: "recipe" | "ingredient"; slug: string };
 }
@@ -62,17 +72,21 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
   const at = nowIso();
   try {
     await putBoth(store, uid, processed.master, processed.thumb);
-    const existing = await db.select().from(s.photos).where(subjectWhere(input.subject)).orderBy(asc(s.photos.position));
-    const cover = existing.find((p) => p.isCover);
-    const becomesCover = !cover || (input.origin === "upload" && cover.origin !== "upload");
-    const position = existing.length ? Math.max(...existing.map((p) => p.position)) + 1 : 0;
     const credit = input.credit ?? {};
-    const id = await withTx(db, async (tx) => {
+    const result = await commitPhoto(db, input, async (tx) => {
+      const existing = await tx.select().from(s.photos).where(and(subjectWhere(input.subject), owned(input.householdId))).orderBy(asc(s.photos.position));
+      const duplicate = input.candidateKey ? existing.find((p) => p.candidateKey === input.candidateKey) : undefined;
+      if (duplicate) return { id: duplicate.id, uid: duplicate.uid };
+      if (input.maxPhotos !== undefined && existing.length >= input.maxPhotos) throw new PhotoError(`A recipe keeps up to ${input.maxPhotos} photos. Remove one first.`);
+      const cover = existing.find((p) => p.isCover);
+      const becomesCover = !cover || (input.origin === "upload" && cover.origin !== "upload");
+      const position = existing.length ? Math.max(...existing.map((p) => p.position)) + 1 : 0;
       if (becomesCover && cover) await tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(eq(s.photos.id, cover.id));
       const row = (await tx
         .insert(s.photos)
         .values({
           uid,
+          householdId: input.householdId ?? null,
           recipeId: input.subject.kind === "recipe" ? input.subject.recipeId : null,
           ingredientSlug: input.subject.kind === "ingredient" ? input.subject.slug : null,
           origin: input.origin,
@@ -94,12 +108,13 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
         .returning({ id: s.photos.id }))[0];
       await markChanged(tx, PHOTOS_CLASS, at);
       if (input.decision) {
-        await upsertDecision(tx, input.decision.candidateKey, input.decision.kind, input.decision.slug, "approved", at, input.personId ?? null);
+        await upsertDecision(tx, input.decision.candidateKey, input.decision.kind, input.decision.slug, "approved", at, input.personId ?? null, input.householdId);
         await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
       }
-      return row!.id;
+      return { id: row!.id, uid };
     });
-    return { id, uid };
+    if (result.uid !== uid) await dropBoth(store, uid);
+    return result;
   } catch (e) {
     try {
       await dropBoth(store, uid);
@@ -112,18 +127,18 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
 
 type TxLike = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-async function upsertDecision(tx: TxLike, candidateKey: string, kind: "recipe" | "ingredient", slug: string, decision: "approved" | "rejected", at: string, personId: number | null): Promise<void> {
+async function upsertDecision(tx: TxLike, candidateKey: string, kind: "recipe" | "ingredient", slug: string, decision: "approved" | "rejected", at: string, personId: number | null, householdId?: string): Promise<void> {
   const existing = (await tx
     .select({ id: s.photoDecisions.id })
     .from(s.photoDecisions)
-    .where(and(eq(s.photoDecisions.candidateKey, candidateKey), eq(s.photoDecisions.subjectKind, kind), eq(s.photoDecisions.subjectSlug, slug))))[0];
+    .where(and(householdId === undefined ? isNull(s.photoDecisions.householdId) : eq(s.photoDecisions.householdId, householdId), eq(s.photoDecisions.candidateKey, candidateKey), eq(s.photoDecisions.subjectKind, kind), eq(s.photoDecisions.subjectSlug, slug))))[0];
   if (existing) await tx.update(s.photoDecisions).set({ decision, updatedAt: at }).where(eq(s.photoDecisions.id, existing.id));
-  else await tx.insert(s.photoDecisions).values({ uid: newUid(), candidateKey, subjectKind: kind, subjectSlug: slug, decision, createdAt: at, updatedAt: at, createdByPersonId: personId });
+  else await tx.insert(s.photoDecisions).values({ uid: newUid(), householdId: householdId ?? null, candidateKey, subjectKind: kind, subjectSlug: slug, decision, createdAt: at, updatedAt: at, createdByPersonId: personId });
 }
 
 /** A photo the person took. The only writer of uploads. */
-export async function writeUploadedPhoto(db: Db, store: BlobStore, input: { subject: PhotoSubject; bytes: Uint8Array; title?: string | null; personId?: number | null }): Promise<{ id: number; uid: string }> {
-  return insertPhoto(db, store, { subject: input.subject, origin: "upload", bytes: input.bytes, credit: { title: input.title ?? null }, personId: input.personId });
+export async function writeUploadedPhoto(db: Db, store: BlobStore, input: PhotoWriteScope & { subject: PhotoSubject; bytes: Uint8Array; title?: string | null; personId?: number | null; maxPhotos?: number }): Promise<{ id: number; uid: string }> {
+  return insertPhoto(db, store, { ...input, origin: "upload", credit: { title: input.title ?? null } });
 }
 
 /**
@@ -133,11 +148,17 @@ export async function writeUploadedPhoto(db: Db, store: BlobStore, input: { subj
 export async function approveCandidate(
   db: Db,
   store: BlobStore,
-  input: { candidateKey: string; provider: "commons" | "openverse"; subject: PhotoSubject; subjectSlug: string; bytes: Uint8Array; credit: PhotoCredit; personId?: number | null },
+  input: PhotoWriteScope & { candidateKey: string; provider: "commons" | "openverse"; subject: PhotoSubject; subjectSlug: string; bytes: Uint8Array; credit: PhotoCredit; personId?: number | null },
 ): Promise<{ id: number; uid: string }> {
-  const existing = (await db.select().from(s.photos).where(and(eq(s.photos.candidateKey, input.candidateKey), subjectWhere(input.subject))))[0];
+  const existing = (await db.select().from(s.photos).where(and(owned(input.householdId), eq(s.photos.candidateKey, input.candidateKey), subjectWhere(input.subject))))[0];
+  if (existing && input.commit) return input.commit(async (tx) => {
+    const [current] = await tx.select().from(s.photos).where(and(eq(s.photos.uid, existing.uid), owned(input.householdId)));
+    if (!current) throw new PhotoError("That photo changed. Reload before continuing.");
+    return { id: current.id, uid: current.uid };
+  });
   if (existing) return { id: existing.id, uid: existing.uid };
   return insertPhoto(db, store, {
+    ...input,
     subject: input.subject,
     origin: input.provider,
     bytes: input.bytes,
@@ -149,52 +170,54 @@ export async function approveCandidate(
 }
 
 /** Marks a candidate rejected. It never comes back to the review queue. */
-export async function rejectCandidate(db: Db, input: { candidateKey: string; kind: "recipe" | "ingredient"; slug: string; personId?: number | null }): Promise<void> {
+export async function rejectCandidate(db: Db, input: PhotoWriteScope & { candidateKey: string; kind: "recipe" | "ingredient"; slug: string; personId?: number | null }): Promise<void> {
   const at = nowIso();
-  await withTx(db, async (tx) => {
-    await upsertDecision(tx, input.candidateKey, input.kind, input.slug, "rejected", at, input.personId ?? null);
+  await commitPhoto(db, input, async (tx) => {
+    await upsertDecision(tx, input.candidateKey, input.kind, input.slug, "rejected", at, input.personId ?? null, input.householdId);
     await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
   });
 }
 
 /** Makes the photo the cover of its recipe or ingredient. Returns false if there is no such photo. */
-export async function setCoverPhoto(db: Db, uid: string): Promise<boolean> {
-  const row = (await db.select().from(s.photos).where(eq(s.photos.uid, uid)))[0];
-  if (!row) return false;
-  if (row.isCover) return true;
-  const at = nowIso();
-  const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
-  await withTx(db, async (tx) => {
-    await tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(and(siblings, eq(s.photos.isCover, true)));
+export async function setCoverPhoto(db: Db, uid: string, scope: PhotoWriteScope = {}): Promise<boolean> {
+  return commitPhoto(db, scope, async (tx) => {
+    const row = (await tx.select().from(s.photos).where(and(eq(s.photos.uid, uid), owned(scope.householdId))))[0];
+    if (!row) return false;
+    if (row.isCover) return true;
+    const at = nowIso();
+    const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
+    await tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(and(owned(scope.householdId), siblings, eq(s.photos.isCover, true)));
     await tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, row.id));
     await markChanged(tx, PHOTOS_CLASS, at);
+    return true;
   });
-  return true;
 }
 
 /**
  * Removes a photo and its bytes. If it was the cover, the next photo takes over. A removed candidate is marked
  * rejected, so it does not return to the review queue.
  */
-export async function deletePhoto(db: Db, store: BlobStore, uid: string): Promise<boolean> {
-  const row = (await db.select().from(s.photos).where(eq(s.photos.uid, uid)))[0];
-  if (!row) return false;
-  const at = nowIso();
-  const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
-  await withTx(db, async (tx) => {
+export async function deletePhoto(db: Db, store: BlobStore, uid: string, scope: PhotoWriteScope = {}): Promise<boolean> {
+  const removed = await commitPhoto(db, scope, async (tx) => {
+    const row = (await tx.select().from(s.photos).where(and(eq(s.photos.uid, uid), owned(scope.householdId))))[0];
+    if (!row) return false;
+    const at = nowIso();
+    const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
     await tx.delete(s.photos).where(eq(s.photos.id, row.id));
     if (row.isCover) {
-      const next = (await tx.select({ id: s.photos.id }).from(s.photos).where(siblings).orderBy(asc(s.photos.position), asc(s.photos.id)))[0];
+      const next = (await tx.select({ id: s.photos.id }).from(s.photos).where(and(siblings, owned(scope.householdId))).orderBy(asc(s.photos.position), asc(s.photos.id)))[0];
       if (next) await tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, next.id));
     }
     await markChanged(tx, PHOTOS_CLASS, at);
     if (row.candidateKey) {
       const kind = row.recipeId !== null ? "recipe" : "ingredient";
       const slug = row.recipeId !== null ? ((await tx.select({ slug: s.recipes.slug }).from(s.recipes).where(eq(s.recipes.id, row.recipeId)))[0]?.slug ?? "") : row.ingredientSlug!;
-      await upsertDecision(tx, row.candidateKey, kind, slug, "rejected", at, null);
+      await upsertDecision(tx, row.candidateKey, kind, slug, "rejected", at, null, scope.householdId);
       await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
     }
+    return true;
   });
+  if (!removed) return false;
   await dropBoth(store, uid);
   return true;
 }

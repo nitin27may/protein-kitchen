@@ -33,15 +33,16 @@ const viewOf = (p: typeof s.photos.$inferSelect): PhotoView => ({
   licenceUrl: p.licenceUrl,
   sourceUrl: p.sourceUrl,
 });
+const owned = (householdId?: string) => householdId === undefined ? isNull(s.photos.householdId) : eq(s.photos.householdId, householdId);
 
 /** Every photo of a recipe, cover first, then in the order they were added. */
-export async function photosOfRecipe(db: Db, recipeId: number): Promise<PhotoView[]> {
-  const rows = await db.select().from(s.photos).where(eq(s.photos.recipeId, recipeId)).orderBy(desc(s.photos.isCover), asc(s.photos.position), asc(s.photos.id));
+export async function photosOfRecipe(db: Db, recipeId: number, householdId?: string): Promise<PhotoView[]> {
+  const rows = await db.select().from(s.photos).where(and(eq(s.photos.recipeId, recipeId), owned(householdId))).orderBy(desc(s.photos.isCover), asc(s.photos.position), asc(s.photos.id));
   return rows.map(viewOf);
 }
 
-export async function photosOfIngredient(db: Db, slug: string): Promise<PhotoView[]> {
-  const rows = await db.select().from(s.photos).where(eq(s.photos.ingredientSlug, slug)).orderBy(desc(s.photos.isCover), asc(s.photos.position), asc(s.photos.id));
+export async function photosOfIngredient(db: Db, slug: string, householdId?: string): Promise<PhotoView[]> {
+  const rows = await db.select().from(s.photos).where(and(eq(s.photos.ingredientSlug, slug), owned(householdId))).orderBy(desc(s.photos.isCover), asc(s.photos.position), asc(s.photos.id));
   return rows.map(viewOf);
 }
 
@@ -53,12 +54,16 @@ export interface PhotoIndex {
 }
 
 /** One query for every cover, for list pages. A subject with no photo is absent from the maps. */
-export async function photoIndex(db: Db): Promise<PhotoIndex> {
+export async function photoIndex(db: Db, householdId?: string): Promise<PhotoIndex> {
   const recipes = new Map<string, string>();
   const ingredients = new Map<string, string>();
-  const forRecipes = await db.select({ slug: s.recipes.slug, uid: s.photos.uid }).from(s.photos).innerJoin(s.recipes, eq(s.recipes.id, s.photos.recipeId)).where(eq(s.photos.isCover, true));
+  const forRecipes = await db.select({ slug: s.recipes.slug, uid: s.photos.uid }).from(s.photos).innerJoin(s.recipes, eq(s.recipes.id, s.photos.recipeId)).where(and(eq(s.photos.isCover, true), owned(householdId)));
   for (const r of forRecipes) recipes.set(r.slug, photoUrl(r.uid, "thumb"));
-  const forIngredients = await db.select({ slug: s.photos.ingredientSlug, uid: s.photos.uid }).from(s.photos).where(and(eq(s.photos.isCover, true), isNull(s.photos.recipeId)));
+  const forIngredients = await db.select({ slug: s.photos.ingredientSlug, uid: s.photos.uid }).from(s.photos).where(and(eq(s.photos.isCover, true), isNull(s.photos.recipeId), owned(householdId)));
   for (const r of forIngredients) if (r.slug) ingredients.set(r.slug, photoUrl(r.uid, "thumb"));
   return { recipes, ingredients };
+}
+
+export async function creditedPhotos(db: Db, householdId?: string) {
+  return db.select().from(s.photos).where(owned(householdId));
 }

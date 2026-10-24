@@ -14,10 +14,10 @@ import { targetFor } from "@/lib/nutrition/dri";
 import { MICRO_GROUPS, MICRO_LABELS } from "@/lib/nutrition/labels";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { displayName } from "@/lib/schemas";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { listPeople } from "@/lib/server/queries";
 import { PhotoCredit } from "@/components/photos/PhotoCredit";
-import { photoIndex, photosOfIngredient } from "@/lib/server/photo-index";
+import { getPhotoIndex, getIngredientPhotos } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -42,8 +42,8 @@ export default async function IngredientPage({ params }: { params: Promise<{ slu
   const member = await requirePageMember();
 
   const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
-  const photoIdx = await photoIndex(await getDb());
-  const cover = (await photosOfIngredient(await getDb(), slug)).find((x) => x.isCover);
+  const photoIdx = await getPhotoIndex();
+  const cover = (await getIngredientPhotos(slug)).find((x) => x.isCover);
   const micros = data.micros[slug]?.per100g ?? {};
   const p = ing.per100g;
   const e = energySplit(p.protein_g, p.carbs_g, p.fat_g);

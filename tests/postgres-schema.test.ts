@@ -63,7 +63,8 @@ describe("Postgres baseline parity", () => {
         name: index.config.name, unique: index.config.unique,
         columns: index.config.columns.map((c) => "name" in c ? c.name : undefined),
       })).sort((a, b) => a.name!.localeCompare(b.name!));
-      expect(indexes(target).filter((index) => !index.name!.endsWith("_household_idx") && !index.name!.endsWith("_household_id_uq")), name).toEqual(indexes(source));
+      expect(indexes(target).filter((index) => !index.name!.endsWith("_household_idx") && !index.name!.endsWith("_household_id_uq")), name)
+        .toEqual(indexes(source).filter((index) => index.name !== "photo_decisions_candidate_uq"));
       expect(indexes(target).filter((index) => index.name!.endsWith("_household_id_uq")), name).toEqual(
         name === "people" || name === "planSetups"
           ? [{ name: `${source.name}_household_id_uq`, unique: true, columns: ["household_id", "id"] }] : [],
@@ -71,10 +72,16 @@ describe("Postgres baseline parity", () => {
       const uniqueConstraints = (config: typeof source | typeof target) => config.uniqueConstraints.map((key) => ({
         columns: key.columns.map((c) => c.name),
       }));
-      expect(uniqueConstraints(target).filter((key) => name !== "recipeFeedback" || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
+      expect(uniqueConstraints(target).filter((key) => !["recipeFeedback", "photoDecisions"].includes(name) || !key.columns.includes("household_id")), name).toEqual(uniqueConstraints(source));
       if (name === "recipeFeedback") {
         expect(target.uniqueConstraints).toMatchObject([{
           name: "recipe_feedback_household_recipe_uq", nullsNotDistinct: true,
+        }]);
+      }
+      if (name === "photoDecisions") {
+        expect(target.uniqueConstraints).toMatchObject([{
+          name: "photo_decisions_household_candidate_uq", nullsNotDistinct: true,
+          columns: [{ name: "household_id" }, { name: "subject_kind" }, { name: "subject_slug" }, { name: "candidate_key" }],
         }]);
       }
       expect(target.checks.map((c) => c.name).sort(), name).toEqual(name === "syncState" ? ["sync_state_revision_valid"] : source.checks.map((c) => c.name).sort());
@@ -98,6 +105,25 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("preserves photo decisions and permits independent household decisions with null-safe uniqueness", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, 14)) for (const statement of migration.sql) await old.exec(statement);
+      await old.exec("insert into households(id,name) values ('a','First'),('b','Second')");
+      await old.query("insert into photo_decisions(household_id,uid,subject_kind,subject_slug,candidate_key,decision,created_at,updated_at) values ('a','stable','recipe','fixture','commons:fixture','rejected',$1,$1)", [now]);
+      const before = (await old.query("select * from photo_decisions")).rows;
+      for (const migration of migrations.slice(14)) for (const statement of migration.sql) await old.exec(statement);
+      expect((await old.query("select * from photo_decisions")).rows).toEqual(before);
+      for (const [i, householdId] of ["b", null].entries()) {
+        await old.query("insert into photo_decisions(household_id,uid,subject_kind,subject_slug,candidate_key,decision,created_at,updated_at) values ($1,$2,'recipe','fixture','commons:fixture','approved',$3,$3)", [householdId, `other-${i}`, now]);
+      }
+      for (const householdId of ["a", "b", null]) {
+        await expect(old.query("insert into photo_decisions(household_id,uid,subject_kind,subject_slug,candidate_key,decision,created_at,updated_at) values ($1,$2,'recipe','fixture','commons:fixture','approved',$3,$3)", [householdId, "duplicate", now])).rejects.toThrow();
+      }
+      expect((await old.query("select * from photo_decisions")).rows).toHaveLength(3);
+    } finally { await old.close(); }
+  });
   it("preserves feedback bytes and replaces recipe-only identity with null-safe household identity", async () => {
     const old = new PGlite();
     try {
@@ -172,7 +198,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(14);
+    expect(journal.rows).toHaveLength(15);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

@@ -3,9 +3,58 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews, photos, photoDecisions } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
+import { loadCandidates } from "../../lib/photos/candidates";
+
+test("photo metadata credits bytes and candidate decisions stay within the current household", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = `foreign-photo-${randomUUID()}`;
+  const uid = randomUUID();
+  try {
+    await handle.db.insert(households).values({ id: householdId, name: "Synthetic photo household" });
+    const [recipe] = await handle.db.select().from(recipes).where(eq(recipes.slug, "tofu-burrito-bowl"));
+    await handle.db.insert(photos).values({
+      householdId, uid, recipeId: recipe!.id, origin: "commons", isCover: true, sha256: "0".repeat(64),
+      width: 10, height: 10, title: "Foreign private photo", author: "Foreign private credit", licence: "CC0 1.0",
+      createdAt: "2026-11-02", updatedAt: "2026-11-02",
+    });
+    for (const path of ["/recipes/tofu-burrito-bowl", "/recipes", "/groceries", "/"]) {
+      await page.goto(path);
+      expect(await page.content()).not.toContain(uid);
+    }
+    await page.goto("/credits");
+    await expect(page.getByText("Foreign private credit", { exact: false })).toHaveCount(0);
+    for (const variant of ["thumb", "master"]) {
+      const response = await page.request.get(`/photos/${uid}/${variant}`);
+      expect(response.status()).toBe(404);
+      expect(response.headers()["cache-control"]).toBe("private, no-store");
+    }
+    const decided = new Set((await handle.db.select().from(photoDecisions)).map((r) => `${r.subjectSlug}:${r.candidateKey}`));
+    const entry = Object.entries(loadCandidates(process.cwd()).recipes)
+      .flatMap(([slug, candidates]) => candidates.map((candidate) => ({ slug, candidate })))
+      .find(({ slug, candidate }) => !decided.has(`${slug}:${candidate.key}`))!;
+    await handle.db.insert(photoDecisions).values({
+      householdId, uid: randomUUID(), candidateKey: entry.candidate.key, subjectKind: "recipe", subjectSlug: entry.slug,
+      decision: "rejected", createdAt: "2026-11-02", updatedAt: "2026-11-02",
+    });
+    await page.goto(`/photos/review?kind=recipe&q=${entry.slug}`);
+    const card = page.getByRole("listitem").filter({ has: page.getByRole("img", { name: `${entry.candidate.title}, candidate photo for`, exact: false }) }).last();
+    await expect(card.getByRole("button", { name: "Reject", exact: true })).toBeVisible();
+    await card.getByRole("button", { name: "Reject", exact: true }).click();
+    await expect(card).toHaveCount(0);
+    await page.reload();
+    await expect(card).toHaveCount(0);
+    expect((await handle.db.select().from(photoDecisions).where(eq(photoDecisions.householdId, householdId)))[0])
+      .toMatchObject({ decision: "rejected", candidateKey: entry.candidate.key });
+  } finally {
+    await handle.db.delete(photoDecisions).where(eq(photoDecisions.householdId, householdId));
+    await handle.db.delete(photos).where(eq(photos.householdId, householdId));
+    await handle.db.delete(households).where(eq(households.id, householdId));
+    await handle.close();
+  }
+});
 
 test("shared links survive editing and reload while captured actions refuse foreign household links", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));

@@ -6,6 +6,7 @@ import { PageTitle } from "@/components/ui";
 import { needsCredit } from "@/lib/photos/candidates";
 import { getData, getDb } from "@/lib/server/context";
 import { displayName } from "@/lib/schemas";
+import { getCreditedPhotos } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Photo credits" };
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export default async function CreditsPage() {
   const data = getData();
   const db = await getDb();
   const recipeNames = new Map((await db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes)).map((r) => [r.id, data.recipes.get(r.slug)?.name ?? r.slug]));
-  const all = (await db.select().from(s.photos)).filter((p) => p.origin !== "upload");
+  const all = await getCreditedPhotos();
   const toRow = (p: (typeof all)[number]): Row => ({
     key: p.uid,
     name: p.recipeId !== null ? (recipeNames.get(p.recipeId) ?? "Recipe") : (data.ingredients.get(p.ingredientSlug!) ? displayName(data.ingredients.get(p.ingredientSlug!)!) : p.ingredientSlug!),

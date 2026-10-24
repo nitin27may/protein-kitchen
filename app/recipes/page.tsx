@@ -9,9 +9,9 @@ import { PageTitle } from "@/components/ui";
 import { perServing } from "@/lib/nutrition/macros";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { feedbackMap, getCandidates, getDefaultViewQuery } from "@/lib/server/queries";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getPhotoIndex } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
   const member = await requirePageMember();
   const data = getData();
   const fb = await feedbackMap(member.personId);
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
   const cards: RecipeCardData[] = (await getCandidates()).map((c) => {
     const r = data.recipes.get(c.slug)!;
     const f = fb.get(c.slug);

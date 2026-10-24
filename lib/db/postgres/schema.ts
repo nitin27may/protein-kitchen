@@ -543,7 +543,7 @@ export const photoDecisions = pgTable("photo_decisions", {
 }, (t) => [
   index("photo_decisions_household_idx").on(t.householdId),
   uniqueIndex("photo_decisions_uid_uq").on(t.uid),
-  uniqueIndex("photo_decisions_candidate_uq").on(t.subjectKind, t.subjectSlug, t.candidateKey),
+  unique("photo_decisions_household_candidate_uq").on(t.householdId, t.subjectKind, t.subjectSlug, t.candidateKey).nullsNotDistinct(),
   check("photo_decisions_kind_ck", sql`${t.subjectKind} in ('recipe', 'ingredient')`),
   check("photo_decisions_decision_ck", sql`${t.decision} in ('approved', 'rejected')`),
 ]);

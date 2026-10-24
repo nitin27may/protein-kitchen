@@ -7,9 +7,9 @@ import type { IngredientCard } from "@/components/IngredientsClient";
 import { Suspense } from "react";
 import { PageTitle } from "@/components/ui";
 import { displayName } from "@/lib/schemas";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { getDefaultViewQuery } from "@/lib/server/queries";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getPhotoIndex } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Ingredients" };
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function IngredientsPage({ searchParams }: { searchParams: 
   }
   await requirePageMember();
   const data = getData();
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
   const cards: IngredientCard[] = [...data.ingredients.values()].map((i) => {
     return {
       slug: i.slug,

@@ -15,7 +15,8 @@ import { buildWorkbook } from "../lib/export/xlsx";
 import { buildPdf } from "../lib/export/pdf";
 import { createMemoryStore } from "../lib/blob/memory";
 import { openDb } from "./helpers/db";
-import { photos } from "../lib/db/schema";
+import { photos, households, authUsers, householdMembers, people } from "../lib/db/schema";
+import { eq } from "drizzle-orm";
 import { photoKeys } from "../lib/photos/keys";
 import { buildPlanExport } from "../lib/export/model";
 vi.mock("../lib/auth/access", () => ({ routeAccess: vi.fn() }));
@@ -110,6 +111,10 @@ describe("direct private route boundaries", () => {
   it("serves only existing authorized photo variants, without reusable cache headers", async () => {
     const h = await openDb();
     try {
+      await h.db.insert(households).values([{ id: "owned", name: "Owned" }, { id: "foreign", name: "Foreign" }]);
+      await h.db.insert(authUsers).values({ id: "cook", name: "Synthetic", email: "cook@example.test", emailVerified: true });
+      await h.db.insert(people).values({ id: 5, householdId: "owned", name: "Synthetic", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [] });
+      await h.db.insert(householdMembers).values({ householdId: "owned", userId: "cook", personId: 5, role: "member" });
       const uid = "00000000-0000-4000-8000-000000000001";
       const store = createMemoryStore();
       vi.mocked(getDb).mockResolvedValue(h.db);
@@ -117,7 +122,7 @@ describe("direct private route boundaries", () => {
       const context = { params: Promise.resolve({ uid, variant: "thumb" }) };
       uncached(await photo(request(), context), 404);
       await h.db.insert(photos).values({
-        uid, ingredientSlug: "synthetic", origin: "upload", sha256: "0".repeat(64), width: 1, height: 1,
+        householdId: "owned", uid, ingredientSlug: "synthetic", origin: "upload", sha256: "0".repeat(64), width: 1, height: 1,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
       uncached(await photo(request(), context), 404);
@@ -126,6 +131,19 @@ describe("direct private route boundaries", () => {
       uncached(response, 200);
       expect(response.headers.get("content-type")).toBe("image/webp");
       expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([82, 73, 70, 70]));
+      const get = vi.spyOn(store, "get");
+      for (const householdId of ["foreign", null]) {
+        await h.db.update(photos).set({ householdId }).where(eq(photos.uid, uid));
+        uncached(await photo(request(), context), 404);
+        expect(get).not.toHaveBeenCalled();
+      }
+      await h.db.update(photos).set({ householdId: "owned" }).where(eq(photos.uid, uid));
+      await store.put(photoKeys(uid).master, new Uint8Array([1, 2]), "image/webp");
+      uncached(await photo(request(), { params: Promise.resolve({ uid, variant: "master" }) }), 200);
+      get.mockClear();
+      await h.db.update(authUsers).set({ emailVerified: false }).where(eq(authUsers.id, "cook"));
+      uncached(await photo(request(), context), 403);
+      expect(get).not.toHaveBeenCalled();
       uncached(await photo(request(), { params: Promise.resolve({ uid, variant: "original" }) }), 404);
     } finally { await h.close(); }
   });

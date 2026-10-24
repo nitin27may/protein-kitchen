@@ -42,6 +42,7 @@ import {
   deleteHouseholdPlan, mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState, regenerateHouseholdPlan,
 } from "@/lib/server/household-plans";
 import type { Db } from "@/lib/db/client";
+import type { PhotoWriteScope } from "@/lib/human/photos";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; fields?: Record<string, string> };
 
@@ -96,6 +97,23 @@ async function householdMutation<T>(
   if (!context.ok) return context;
   try {
     return await mutateHouseholdState(context.db, context.access, (tx) => write(tx, context.access));
+  } catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
+}
+
+async function photoMutation<T>(
+  write: (db: Db, scope: PhotoWriteScope & { personId: number | null }) => Promise<Result<NoInfer<T>>>,
+): Promise<Result<T>> {
+  const context = await householdContext();
+  if (!context.ok) return context;
+  try {
+    requireHouseholdProfile(context.access);
+    return await write(context.db, {
+      householdId: context.access.householdId, personId: context.access.personId,
+      commit: (work) => mutateHouseholdState(context.db, context.access, work),
+    });
   } catch (error) {
     if (error instanceof HouseholdAccessError) return fail(error.message);
     throw error;
@@ -426,7 +444,9 @@ export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ ui
   const slug = formData.get("recipe");
   const file = formData.get("photo");
   if (typeof slug !== "string" || !(file instanceof File)) return fail("Choose a photo first.");
-  const result = await addRecipePhotoChecked(await getDb(), getBlobStore(), { recipeSlug: slug, bytes: new Uint8Array(await file.arrayBuffer()) });
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const result = await photoMutation<{ uid: string; recipeSlug: string }>((db, scope) =>
+    addRecipePhotoChecked(db, getBlobStore(), { ...scope, recipeSlug: slug, bytes }));
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
   return { ok: true, uid: result.uid };
@@ -438,7 +458,8 @@ export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug:
   if (denied) return denied;
   if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
-  const r = await approveCandidateChecked(await getDb(), getBlobStore(), loadCandidates(process.cwd()), { kind, slug, key });
+  const r = await photoMutation<{ recipeSlug: string | null }>((db, scope) =>
+    approveCandidateChecked(db, getBlobStore(), loadCandidates(process.cwd()), { ...scope, kind, slug, key }));
   if (!r.ok) return r;
   revalidatePath("/photos/review");
   revalidatePath("/credits");
@@ -452,7 +473,8 @@ export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: 
   if (denied) return denied;
   if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
   if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
-  const r = await rejectCandidateChecked(await getDb(), loadCandidates(process.cwd()), { kind, slug, key });
+  const r = await photoMutation<{ recipeSlug: string | null }>((db, scope) =>
+    rejectCandidateChecked(db, loadCandidates(process.cwd()), { ...scope, kind, slug, key }));
   if (!r.ok) return r;
   revalidatePath("/photos/review");
   return { ok: true };
@@ -462,7 +484,7 @@ export async function removePhoto(uid: string): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
   if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
-  const result = await removePhotoChecked(await getDb(), getBlobStore(), uid);
+  const result = await photoMutation<{ recipeSlug: string | null }>((db, scope) => removePhotoChecked(db, getBlobStore(), uid, scope));
   if (!result.ok) return result;
   if (result.recipeSlug) refreshRecipe(result.recipeSlug);
   return { ok: true };
@@ -472,7 +494,7 @@ export async function makeCoverPhoto(uid: string): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
   if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
-  const result = await makeCoverChecked(await getDb(), uid);
+  const result = await photoMutation<{ recipeSlug: string | null }>((db, scope) => makeCoverChecked(db, uid, scope));
   if (!result.ok) return result;
   if (result.recipeSlug) refreshRecipe(result.recipeSlug);
   return { ok: true };

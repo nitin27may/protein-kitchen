@@ -1,4 +1,5 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import type { PhotoWriteScope } from "../human/photos";
 import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
@@ -29,9 +30,9 @@ export interface ReviewFilter {
 const decisionKey = (kind: string, slug: string, key: string) => `${kind}\u0000${slug}\u0000${key}`;
 
 /** Candidates still waiting for a decision, grouped by recipe or ingredient. Names come from the library. */
-export async function pendingReview(db: Db, file: CandidateFile, names: { recipes: ReadonlyMap<string, string>; ingredients: ReadonlyMap<string, string> }, filter: ReviewFilter = {}): Promise<ReviewItem[]> {
-  const decided = new Set((await db.select().from(s.photoDecisions)).map((d) => decisionKey(d.subjectKind, d.subjectSlug, d.candidateKey)));
-  const photoRows = await db.select({ recipeId: s.photos.recipeId, ingredientSlug: s.photos.ingredientSlug }).from(s.photos);
+export async function pendingReview(db: Db, file: CandidateFile, names: { recipes: ReadonlyMap<string, string>; ingredients: ReadonlyMap<string, string> }, filter: ReviewFilter = {}, householdId?: string): Promise<ReviewItem[]> {
+  const decided = new Set((await db.select().from(s.photoDecisions).where(householdId === undefined ? isNull(s.photoDecisions.householdId) : eq(s.photoDecisions.householdId, householdId))).map((d) => decisionKey(d.subjectKind, d.subjectSlug, d.candidateKey)));
+  const photoRows = await db.select({ recipeId: s.photos.recipeId, ingredientSlug: s.photos.ingredientSlug }).from(s.photos).where(householdId === undefined ? isNull(s.photos.householdId) : eq(s.photos.householdId, householdId));
   const recipeIds = new Map((await db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes)).map((r) => [r.id, r.slug]));
   const withPhoto = new Set(photoRows.map((p) => (p.recipeId !== null ? `recipe:${recipeIds.get(p.recipeId)}` : `ingredient:${p.ingredientSlug}`)));
   const q = (filter.q ?? "").trim().toLowerCase();
@@ -68,7 +69,7 @@ interface Deps {
  * data/photo-candidates.json on the server, never from the request. The licence is checked again with the provider, the
  * image is fetched from an allowlisted host, and the bytes go through the same pipeline as an upload.
  */
-export async function approveCandidateChecked(db: Db, store: BlobStore, file: CandidateFile, input: { kind: SubjectKind; slug: string; key: string; personId?: number | null }, deps: Deps = {}): Promise<Outcome> {
+export async function approveCandidateChecked(db: Db, store: BlobStore, file: CandidateFile, input: PhotoWriteScope & { kind: SubjectKind; slug: string; key: string; personId?: number | null }, deps: Deps = {}): Promise<Outcome> {
   const candidate = find(file, input.kind, input.slug, input.key);
   if (!candidate) return { ok: false, error: "That photo is no longer in the candidate list." };
 
@@ -99,6 +100,7 @@ export async function approveCandidateChecked(db: Db, store: BlobStore, file: Ca
       bytes,
       credit: { title: candidate.title, author: candidate.author, licence: candidate.licence, licenceUrl: candidate.licence_url, sourceUrl: candidate.source_url },
       personId: input.personId,
+      householdId: input.householdId, commit: input.commit,
     });
   } catch (e) {
     if (e instanceof PhotoError) return { ok: false, error: e.message };
@@ -107,8 +109,8 @@ export async function approveCandidateChecked(db: Db, store: BlobStore, file: Ca
   return { ok: true, recipeSlug: input.kind === "recipe" ? input.slug : null };
 }
 
-export async function rejectCandidateChecked(db: Db, file: CandidateFile, input: { kind: SubjectKind; slug: string; key: string; personId?: number | null }): Promise<Outcome> {
+export async function rejectCandidateChecked(db: Db, file: CandidateFile, input: PhotoWriteScope & { kind: SubjectKind; slug: string; key: string; personId?: number | null }): Promise<Outcome> {
   if (!find(file, input.kind, input.slug, input.key)) return { ok: false, error: "That photo is no longer in the candidate list." };
-  await rejectCandidate(db, { candidateKey: input.key, kind: input.kind, slug: input.slug, personId: input.personId });
+  await rejectCandidate(db, { ...input, candidateKey: input.key });
   return { ok: true, recipeSlug: null };
 }

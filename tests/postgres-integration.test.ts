@@ -39,6 +39,7 @@ import { fetchEncryptedVault, publishEncryptedVault } from "../lib/backup/vault"
 import { resolveHouseholdAccess } from "../lib/auth/household-access";
 import { deleteHouseholdPlan, householdPlan, householdPlans, mutateHouseholdPlan, mutateHouseholdPerson, mutateHouseholdState, persistHouseholdPlan, regenerateHouseholdPlan } from "../lib/server/household-plans";
 import { writeLink } from "../lib/human/links";
+import { approveCandidate, writeUploadedPhoto, type PhotoWriteScope } from "../lib/human/photos";
 import { changeHouseholdDefaultView, defaultViewQuery } from "../lib/server/saved-views";
 
 const url = process.env.POSTGRES_TEST_URL;
@@ -147,6 +148,32 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
           kind: "recipe", url: `https://example.com/native-${i}`, title: `Native ${i}`,
         }, profiles[0]!.id, a.householdId))));
       expect((await handle.db.select().from(s.recipeLinks)).map((row) => row.position).sort()).toEqual([0, 1, 2, 3, 4, 5]);
+      const store = createMemoryStore();
+      const bytes = await sharp({ create: { width: 10, height: 10, channels: 3, background: "#336699" } }).jpeg().toBuffer();
+      const scope: PhotoWriteScope = { householdId: a.householdId, commit: (work) => mutateHouseholdState(handle.db, a, work) };
+      await Promise.all(Array.from({ length: 4 }, () => writeUploadedPhoto(handle.db, store, {
+        ...scope, subject: { kind: "recipe", recipeId: feedbackRecipe!.id }, bytes, personId: profiles[0]!.id,
+      })));
+      const photos = await handle.db.select().from(s.photos);
+      expect(photos.map((row) => row.position).sort()).toEqual([0, 1, 2, 3]);
+      expect(photos.filter((row) => row.isCover)).toHaveLength(1);
+      await expect(writeUploadedPhoto(handle.db, store, {
+        ...scope, subject: { kind: "recipe", recipeId: feedbackRecipe!.id }, bytes, maxPhotos: 4,
+      })).rejects.toThrow("up to 4");
+      expect(await store.list()).toHaveLength(8);
+      const approvals = await Promise.all(Array.from({ length: 4 }, () => approveCandidate(handle.db, store, {
+        ...scope, candidateKey: "commons:native", provider: "commons", subject: { kind: "recipe", recipeId: feedbackRecipe!.id },
+        subjectSlug: "native-feedback", credit: { licence: "CC0 1.0" }, bytes,
+      })));
+      expect(new Set(approvals.map((r) => r.uid)).size).toBe(1);
+      expect(await store.list()).toHaveLength(10);
+      expect(await handle.db.select().from(s.photoDecisions)).toMatchObject([{ householdId: a.householdId, decision: "approved" }]);
+      await approveCandidate(handle.db, store, {
+        householdId: b.householdId, commit: (work) => mutateHouseholdState(handle.db, b, work),
+        candidateKey: "commons:native", provider: "commons", subject: { kind: "recipe", recipeId: feedbackRecipe!.id },
+        subjectSlug: "native-feedback", credit: { licence: "CC0 1.0" }, bytes,
+      });
+      expect(await handle.db.select().from(s.photoDecisions)).toHaveLength(2);
       await Promise.all([{ favourite: true }, { rating: 5 }, { notes: "First household" }].map((patch) =>
         mutateHouseholdPerson(handle.db, a, profiles[0]!.id, async (tx) => {
           await tx.select().from(s.households).where(eq(s.households.id, a.householdId)).for("update");

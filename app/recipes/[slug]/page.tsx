@@ -17,8 +17,8 @@ import { microsPerServing } from "@/lib/nutrition/micros";
 import { TARGETS, targetFor } from "@/lib/nutrition/dri";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData, getDb } from "@/lib/server/context";
-import { photoIndex, photosOfRecipe } from "@/lib/server/photo-index";
+import { getData } from "@/lib/server/context";
+import { getPhotoIndex, getRecipePhotos } from "@/lib/server/queries";
 import { feedbackMap, getCandidates, getPartModes, getRecipeLinks, listPeople, listPlans, recipeIds } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +43,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const fb = (await feedbackMap(member.personId)).get(slug);
   const history = (await feedbackMap()).get(slug);
   const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
-  const photoIdx = await photoIndex(await getDb());
+  const photoIdx = await getPhotoIndex();
   const dn = (k: string) => {
     const ing = data.ingredients.get(k);
     return ing ? displayName(ing) : k;
@@ -90,7 +90,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const links = collectLinks(slug, ownLinks, Object.fromEntries(partLinkEntries.map(([s, ls]) => [s, ls.filter((l) => l.partSlug === null)])));
 
   const recipeId = (await recipeIds()).bySlug.get(slug);
-  const photos = recipeId === undefined ? [] : await photosOfRecipe(await getDb(), recipeId);
+  const photos = recipeId === undefined ? [] : await getRecipePhotos(recipeId);
   const cover = photos.find((x) => x.isCover);
 
   const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);

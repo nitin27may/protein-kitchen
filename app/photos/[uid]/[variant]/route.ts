@@ -1,4 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { resolveOnlyHouseholdAccess } from "@/lib/auth/household-access";
+import { HouseholdAccessError } from "@/lib/auth/household";
 import { getBlobStore } from "@/lib/blob";
 import * as s from "@/lib/db/schema";
 import { isPhotoUid, photoKeys } from "@/lib/photos/keys";
@@ -17,7 +19,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ uid: st
   const { uid, variant } = await params;
   const missing = () => new Response("Not found", { status: 404, headers: { "Cache-Control": "private, no-store" } });
   if (!isPhotoUid(uid) || (variant !== "master" && variant !== "thumb")) return missing();
-  const [row] = await (await getDb()).select({ id: s.photos.id }).from(s.photos).where(eq(s.photos.uid, uid)).limit(1);
+  const db = await getDb();
+  let householdId: string;
+  try {
+    householdId = (await resolveOnlyHouseholdAccess(db, access.member.userId)).householdId;
+  } catch (error) {
+    if (!(error instanceof HouseholdAccessError)) throw error;
+    return new Response("Household not available", { status: 403, headers: { "Cache-Control": "private, no-store" } });
+  }
+  const [row] = await db.select({ id: s.photos.id }).from(s.photos).where(and(eq(s.photos.uid, uid), eq(s.photos.householdId, householdId))).limit(1);
   if (!row) return missing();
   const blob = await getBlobStore().get(photoKeys(uid)[variant]);
   if (!blob) return missing();
