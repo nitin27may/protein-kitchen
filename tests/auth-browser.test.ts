@@ -31,6 +31,15 @@ describe("browser auth transport", () => {
     await expect(authRequest("/sign-out", {})).rejects.toThrow("Authentication failed");
     await expect(authRequest("/sign-out", {})).rejects.toThrow("Check your connection");
   });
+  it.each([null, {}, { success: false }, "success", 1])("does not redirect on an unconfirmed deletion response %s", async (body) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(body)));
+    await expect(authRequest("/delete-household-account", {})).rejects.toThrow("did not confirm account deletion");
+  });
+  it("requires a confirmed JSON deletion response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(new Response("<html>failure</html>")).mockResolvedValueOnce(Response.json({ success: true })));
+    await expect(authRequest("/delete-household-account", {})).rejects.toThrow("did not confirm account deletion");
+    await expect(authRequest("/delete-household-account", {})).resolves.toBeUndefined();
+  });
 });
 describe("safe local auth return paths", () => {
   it("rejects repeated or non-string query input", () => {

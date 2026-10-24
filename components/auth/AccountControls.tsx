@@ -20,6 +20,9 @@ export function AccountControls({ owner, profiles, invitations, members, current
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmation, setConfirmation] = useState<{ userId: string; role?: "owner" | "member" } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   async function run(task: () => Promise<void>) {
     setPending(true); setError("");
     try { await task(); }
@@ -50,6 +53,33 @@ export function AccountControls({ owner, profiles, invitations, members, current
           link.remove(); setTimeout(() => URL.revokeObjectURL(url), 0);
         }
       })}>Download my account</Button>
+    </section>
+    <section className="space-y-3">
+      <h2 className="text-xl font-semibold">Delete your account</h2>
+      <p className="text-sm text-muted">Permanently removes your login, sessions, invitations, device registrations, ratings and favourites. Shared plans, shopping, prep, notes and photos remain. Your unlinked meal profile, requirements, preferences, routines and profile history remain for the household's saved meals; this does not erase your meal profile. An owner manages profile deletion separately. Download your account first if you want a copy.</p>
+      <p className="text-sm text-muted">The last verified owner with a completed profile cannot delete their account. Make another cook an owner first.</p>
+      {deleting ? <form className="space-y-3" onSubmit={(event) => {
+        event.preventDefault();
+        void run(async () => {
+          try {
+            await authRequest("/delete-household-account", { password: deletePassword, confirmation: deleteConfirmation });
+            setToken(""); window.location.replace("/sign-in");
+          } finally { setDeletePassword(""); }
+        });
+      }}>
+        <fieldset disabled={pending} className="space-y-3">
+          <Field label="Current password" htmlFor="delete-password">
+            <Input id="delete-password" type="password" autoComplete="current-password" required maxLength={128} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+          </Field>
+          <Field label="Type DELETE to confirm" htmlFor="delete-confirmation">
+            <Input id="delete-confirmation" autoComplete="off" required value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="danger" type="submit" loading={pending} disabled={deleteConfirmation !== "DELETE" || !deletePassword}>Permanently delete my account</Button>
+            <Button variant="secondary" type="button" onClick={() => { setDeleting(false); setDeletePassword(""); setDeleteConfirmation(""); }}>Cancel account deletion</Button>
+          </div>
+        </fieldset>
+      </form> : <Button variant="danger" disabled={pending} onClick={() => setDeleting(true)}>Delete my account</Button>}
     </section>
     {owner ? <section className="space-y-4">
       <h2 className="text-xl font-semibold">Household cooks</h2>

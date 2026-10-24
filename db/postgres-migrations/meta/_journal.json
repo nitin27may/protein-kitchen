@@ -36,6 +36,13 @@
       "when": 1792823727505,
       "tag": "0004_puzzling_slyde",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792826026081,
+      "tag": "0005_rich_paibok",
+      "breakpoints": true
     }
   ]
 }

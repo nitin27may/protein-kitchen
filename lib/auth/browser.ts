@@ -1,4 +1,4 @@
-type AuthPath = "/sign-up/email" | "/sign-in/email" | "/sign-in/email-otp" | "/sign-out" |
+type AuthPath = "/sign-up/email" | "/sign-in/email" | "/sign-in/email-otp" | "/sign-out" | "/delete-household-account" |
   "/email-otp/send-verification-otp" | "/email-otp/verify-email" |
   "/email-otp/request-password-reset" | "/email-otp/reset-password";
 
@@ -17,6 +17,12 @@ export async function authRequest(path: AuthPath, body: object, headers: Record<
     const message = data && typeof data === "object" && "message" in data && typeof data.message === "string"
       ? data.message : "Authentication failed. Please try again.";
     throw new Error(response.status === 429 ? "Too many attempts. Wait a minute before trying again." : message);
+  }
+  if (path === "/delete-household-account") {
+    const data: unknown = await response.json().catch(() => null);
+    if (!data || typeof data !== "object" || !("success" in data) || data.success !== true) {
+      throw new Error("The server did not confirm account deletion. Sign in again to check your account.");
+    }
   }
 }
 

@@ -461,10 +461,11 @@ describe("installed Better Auth schema compatibility", () => {
     await expect(h.db.insert(s.householdBootstrap).values({ id: 2, ownerUserId: "owner" })).rejects.toThrow();
     await expect(h.db.execute(sql`insert into household_members (user_id, role) values ('owner', 'admin')`)).rejects.toThrow();
     await claimHousehold(h.db, "owner", bootstrapSecret, bootstrapSecret);
-    await expect(h.db.delete(s.authUsers).where(eq(s.authUsers.id, "owner"))).rejects.toThrow();
     const personId = await profile();
     await assignMemberProfile(h.db, "owner", "owner", personId);
     await user("cook");
+    await issueInvitation(h.db, "owner", { email: "pending@example.test" });
+    await expect(h.db.delete(s.authUsers).where(eq(s.authUsers.id, "owner"))).rejects.toThrow();
     await expect(h.db.insert(s.householdMembers).values({ userId: "cook", role: "member", personId })).rejects.toThrow();
     expect(await h.db.select().from(s.householdMembers)).toHaveLength(1);
   });

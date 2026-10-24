@@ -17,7 +17,7 @@ import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persi
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
-import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
+import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
 import { createAuth } from "../lib/auth/create";
 
 const url = process.env.POSTGRES_TEST_URL;
@@ -114,7 +114,7 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(await handle.db.select().from(s.householdMembers)).toHaveLength(1);
   });
 
-  it.each(["demote", "remove", "mixed"])("preserves a final owner under concurrent %s requests", async (operation) => {
+  it.each(["demote", "remove", "mixed", "delete", "delete-demote", "delete-remove"])("preserves a final owner under concurrent %s requests", async (operation) => {
     await handle.db.insert(s.authUsers).values(["first", "second"].map((id) => ({
       id, name: "Synthetic concurrent owner", email: `${id}@example.test`, emailVerified: true,
     })));
@@ -129,10 +129,20 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     await acceptInvitation(handle.db, "second", invite.token);
     await createMemberProfile(handle.db, "second", input);
     await changeMemberRole(handle.db, "first", "second", "owner");
-    const results = await Promise.allSettled(["first", "second"].map((id, index) =>
-      operation === "remove" || (operation === "mixed" && index === 0)
+    if (operation.startsWith("delete")) {
+      for (const id of ["first", "second"]) {
+        await handle.db.insert(s.authSessions).values({ id, userId: id, token: `${id}-token`, updatedAt: new Date(), expiresAt: new Date(Date.now() + 60000) });
+        await handle.db.insert(s.authAccounts).values({ id, userId: id, accountId: id, providerId: "credential", password: "synthetic-hash", updatedAt: new Date() });
+      }
+    }
+    const results = await Promise.allSettled(["first", "second"].map((id, index) => {
+      if (operation === "delete" || (operation.startsWith("delete-") && index === 0)) {
+        return deleteOwnAccount(handle.db, { userId: id, sessionToken: `${id}-token`, password: "synthetic", verifyPassword: async () => true });
+      }
+      return operation === "remove" || operation === "delete-remove" || (operation === "mixed" && index === 0)
         ? removeHouseholdMember(handle.db, id, id)
-        : changeMemberRole(handle.db, id, id, "member")));
+        : changeMemberRole(handle.db, id, id, "member");
+    }));
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((r) => r.status === "rejected");
     expect(rejected?.status === "rejected" && rejected.reason.message).toContain("at least one verified owner");

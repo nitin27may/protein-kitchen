@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { eq, getTableName, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { getTableConfig as pgConfig } from "drizzle-orm/pg-core";
 import { getTableConfig as sqliteConfig } from "drizzle-orm/sqlite-core";
 import * as pg from "../lib/db/postgres/schema";
@@ -70,6 +71,22 @@ afterEach(async () => {
 afterAll(async () => { await client.close(); });
 
 describe("Postgres migration on PGlite", () => {
+  it("upgrades existing bootstrap provenance without reopening admission or changing its timestamp", async () => {
+    const old = new PGlite();
+    try {
+      const migrations = readMigrationFiles({ migrationsFolder });
+      for (const migration of migrations.slice(0, -1)) for (const statement of migration.sql) await old.exec(statement);
+      await old.query("insert into auth_users(id, name, email, email_verified) values ($1, $2, $3, true)", ["original", "Synthetic creator", "original@example.test"]);
+      await old.query("insert into household_bootstrap(id, owner_user_id, created_at) values (1, $1, $2)", ["original", now]);
+      await expect(old.query("delete from auth_users where id = $1", ["original"])).rejects.toThrow();
+      for (const statement of migrations.at(-1)!.sql) await old.exec(statement);
+      const before = await old.query<{ id: number; owner_user_id: string | null; created_at: Date }>("select * from household_bootstrap");
+      expect(before.rows).toMatchObject([{ id: 1, owner_user_id: "original", created_at: new Date(now) }]);
+      await old.query("delete from auth_users where id = $1", ["original"]);
+      expect((await old.query("select * from household_bootstrap")).rows).toEqual([{ ...before.rows[0], owner_user_id: null }]);
+    } finally { await old.close(); }
+  });
+
   it("creates every table and can be applied twice without replaying the baseline", async () => {
     await migrate(db, { migrationsFolder });
     const result = await client.query<{ table_name: string }>(
@@ -77,7 +94,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(5);
+    expect(journal.rows).toHaveLength(6);
   });
 
   it("round-trips JSON, booleans, dates, UTC timestamps, generated ids and double precision", async () => {

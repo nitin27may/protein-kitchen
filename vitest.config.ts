@@ -15,6 +15,7 @@ export default defineConfig({
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
         "lib/auth/household.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/auth/account-deletion.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/signup.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/tokens.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

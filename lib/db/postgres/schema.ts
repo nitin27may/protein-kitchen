@@ -65,7 +65,7 @@ export const authRateLimits = pgTable("auth_rate_limits", {
 
 export const householdBootstrap = pgTable("household_bootstrap", {
   id: integer("id").primaryKey(),
-  ownerUserId: text("owner_user_id").notNull().references(() => authUsers.id, { onDelete: "restrict" }),
+  ownerUserId: text("owner_user_id").references(() => authUsers.id, { onDelete: "set null" }),
   createdAt: authTime("created_at").defaultNow().notNull(),
 }, (t) => [check("household_bootstrap_singleton", sql`${t.id} = 1`)]);
 

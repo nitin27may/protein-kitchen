@@ -61,6 +61,74 @@ async function addOwnerDevice(userId: string) {
   });
 }
 
+async function deletionSession() {
+  await addOwnerDevice(await verifiedOwner());
+  await h.db.insert(s.authUsers).values({ id: "surviving-owner", name: "Synthetic survivor", email: "survivor@example.test", emailVerified: true });
+  await h.db.insert(s.householdMembers).values({ userId: "surviving-owner", role: "owner" });
+  await createMemberProfile(h.db, "surviving-owner", {
+    name: "Surviving owner profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+    activityLevel: "light", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+  });
+  return cookies(await passwordLogin());
+}
+
+describe("rate-limited Better Auth household account deletion", () => {
+  it("verifies the actual current password, clears cookies and denies every previous session", async () => {
+    const cookie = await deletionSession();
+    const secondCookie = cookies(await passwordLogin());
+    const profile = await h.db.select().from(s.people);
+    expect((await call("/delete-household-account", { password: "wrong-password", confirmation: "DELETE" }, { cookie })).status).toBe(403);
+    const response = await call("/delete-household-account", { password, confirmation: "DELETE" }, { cookie });
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.getSetCookie().join(";")).toMatch(/session_token=;.*Max-Age=0/i);
+    expect(await h.db.select().from(s.people)).toEqual(profile);
+    expect(await h.db.select().from(s.authUsers)).toMatchObject([{ id: "surviving-owner" }]);
+    expect(await h.db.select().from(s.authAccounts)).toEqual([]);
+    expect(await h.db.select().from(s.authSessions)).toEqual([]);
+    for (const stale of [cookie, secondCookie]) {
+      expect(await (await call("/get-session", undefined, { cookie: stale })).json()).toBeNull();
+      expect((await call("/delete-household-account", { password, confirmation: "DELETE" }, { cookie: stale })).status).toBe(401);
+    }
+    expect((await passwordLogin()).status).toBe(401);
+    expect((await signup("cannot-rebootstrap@example.test")).status).toBe(403);
+  });
+  it("refuses missing sessions, foreign origins and injected targets before deletion", async () => {
+    const cookie = await deletionSession();
+    const body = { password, confirmation: "DELETE" };
+    expect((await call("/delete-household-account", body)).status).toBe(401);
+    expect((await call("/delete-household-account", body, { cookie, origin: "https://untrusted.example.test" })).status).toBe(403);
+    expect((await call("/delete-household-account", { ...body, userId: "surviving-owner" }, { cookie })).status).toBe(400);
+    expect((await call("/delete-household-account", { password, confirmation: "delete" }, { cookie })).status).toBe(400);
+    expect(await h.db.select().from(s.authUsers)).toHaveLength(2);
+    expect((await call("/delete-user", { password }, { cookie })).status).not.toBe(200);
+    expect((await call("/verify-password", { password }, { cookie })).status).toBe(200);
+    expect(await h.db.select().from(s.authUsers)).toHaveLength(2);
+  });
+  it.each(["/delete-household-account", "/verify-password"])("persists a password-guessing limit across auth factories for %s", async (path) => {
+    const cookie = await deletionSession();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      expect((await call(path, { password: "wrong", confirmation: "DELETE" }, { cookie })).status).toBe(path === "/verify-password" ? 400 : 403);
+    }
+    auth = createAuth(h.db, { ...options, sendCode: async () => {} });
+    expect((await call(path, { password, confirmation: "DELETE" }, { cookie })).status).toBe(429);
+    expect(await h.db.select().from(s.authUsers)).toHaveLength(2);
+  });
+  it("does not report success or clear cookies on transactional failure", async () => {
+    const cookie = await deletionSession();
+    await h.failWrite("auth_users", "DELETE", "reject_http_deletion");
+    try {
+      const response = await call("/delete-household-account", { password, confirmation: "DELETE" }, { cookie });
+      expect(response.status).toBe(500);
+      expect(response.headers.getSetCookie().join(";")).not.toContain("Max-Age=0");
+      expect(await h.db.select().from(s.authUsers)).toHaveLength(2);
+      expect(await h.db.select().from(s.pushSubscriptions)).toHaveLength(1);
+      expect(await (await call("/get-session", undefined, { cookie })).json()).toMatchObject({ user: { email: "owner@example.test" } });
+    } finally { await h.dropFailure("auth_users", "reject_http_deletion"); }
+  });
+});
+
 describe("real Better Auth HTTP signup, verification and sessions", () => {
   it("rejects malformed reset JSON without creating or removing devices", async () => {
     const response = await auth.handler(new Request(`${origin}/api/auth/email-otp/reset-password`, {

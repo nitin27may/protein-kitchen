@@ -10,6 +10,7 @@ import type { Db } from "../db/client";
 import * as schema from "../db/schema";
 import { authorizeSignup } from "./signup";
 import { HouseholdAccessError } from "./household";
+import { accountDeletion } from "./account-deletion";
 
 export interface AuthCodeMail {
   email: string;
@@ -60,6 +61,8 @@ export function createAuth(db: Db, options: AuthOptions) {
         "/sign-up/email": { window: 60, max: 3 },
         "/sign-in/*": { window: 60, max: 5 },
         "/email-otp/*": { window: 60, max: 5 },
+        "/delete-household-account": { window: 60, max: 5 },
+        "/verify-password": { window: 60, max: 5 },
       },
     },
     hooks: {
@@ -89,7 +92,7 @@ export function createAuth(db: Db, options: AuthOptions) {
         return { data: user };
       } } },
     },
-    plugins: [emailOTP({
+    plugins: [accountDeletion(db), emailOTP({
       disableSignUp: true, sendVerificationOnSignUp: true, overrideDefaultEmailVerification: true,
       otpLength: 6, expiresIn: 300, allowedAttempts: 3, storeOTP: "hashed", resendStrategy: "rotate",
       async sendVerificationOTP(mail) {

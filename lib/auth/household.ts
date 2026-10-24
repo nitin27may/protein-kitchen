@@ -1,9 +1,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, like, lte, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client";
 import { withTx, type Tx } from "../db/tx";
-import { authSessions, authUsers, householdBootstrap, householdInvitations, householdMembers, people, pushSubscriptions } from "../db/schema";
+import { authAccounts, authSessions, authUsers, authVerifications, householdBootstrap, householdInvitations, householdMembers, people, pushSubscriptions } from "../db/schema";
+import { deletePersonalFeedbackForPerson } from "../human/personal-feedback";
 import { secretsMatch, tokenHash } from "./tokens";
 import { PersonInput, personRow, type PersonInputData } from "../schemas/person";
 
@@ -80,6 +81,42 @@ export async function removeHouseholdMember(db: Db, actorUserId: string, targetU
     await tx.update(householdInvitations).set({ revokedAt: new Date() })
       .where(and(pending(), eq(householdInvitations.invitedByUserId, targetUserId)));
     await tx.delete(householdMembers).where(eq(householdMembers.userId, targetUserId));
+  });
+}
+
+/** Called only by the rate-limited auth HTTP endpoint with its authoritative session. */
+export async function deleteOwnAccount(db: Db, input: {
+  userId: string; sessionToken: string; password: string;
+  verifyPassword: (input: { password: string; hash: string }) => Promise<boolean>;
+}) {
+  await withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const user = await verifiedUser(tx, input.userId);
+    const [member] = await tx.select().from(householdMembers).where(eq(householdMembers.userId, user.id)).for("update");
+    if (!member) throw new HouseholdAccessError("Your account is no longer in the household.");
+    const [session] = await tx.select({ id: authSessions.id }).from(authSessions).where(and(
+      eq(authSessions.userId, user.id), eq(authSessions.token, input.sessionToken), gt(authSessions.expiresAt, new Date()),
+    )).for("update");
+    if (!session) throw new HouseholdAccessError("Your session has expired. Sign in again before deleting your account.");
+    const [credential] = await tx.select({ password: authAccounts.password }).from(authAccounts)
+      .where(and(eq(authAccounts.userId, user.id), eq(authAccounts.providerId, "credential"))).for("update");
+    if (!credential?.password || !await input.verifyPassword({ password: input.password, hash: credential.password })) {
+      throw new HouseholdAccessError("Your current password is incorrect. Try again.");
+    }
+    if (member.role === "owner") await requireAnotherOwner(tx, user.id);
+    if (member.personId !== null) {
+      await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.personId, member.personId));
+      await deletePersonalFeedbackForPerson(tx, member.personId);
+    }
+    await tx.delete(householdInvitations).where(or(
+      eq(householdInvitations.invitedByUserId, user.id), eq(householdInvitations.email, user.email),
+      eq(householdInvitations.acceptedByUserId, user.id),
+    ));
+    await tx.delete(authVerifications).where(or(
+      inArray(authVerifications.identifier, ["sign-in", "email-verification", "forget-password"].map((type) => `${type}-otp-${user.email}`)),
+      and(like(authVerifications.identifier, "reset-password:%"), eq(authVerifications.value, user.id)),
+    ));
+    await tx.delete(authUsers).where(eq(authUsers.id, user.id));
   });
 }
 
