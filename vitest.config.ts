@@ -25,6 +25,8 @@ export default defineConfig({
         "lib/photos/processed.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/backup/create.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/backup/process.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/backup/read.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/human/postgres-recovery.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/sync/run.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/sync/config.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/sync/server.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

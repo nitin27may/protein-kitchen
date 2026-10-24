@@ -33,7 +33,7 @@ function tool(command: string, args: string[], code: "dump-failed" | "encryption
 export type DumpSource = { stream: Readable; finished: Promise<void>; abort(): void };
 
 /** libpq receives a single validated target via an isolated environment, never a URL in argv. */
-export function postgresDump(target: PostgresTarget, binary = "pg_dump"): DumpSource {
+export function postgresEnvironment(target: PostgresTarget): NodeJS.ProcessEnv {
   const url = validatePostgresTarget(target);
   if (!["development", "test"].includes(target.databaseEnvironment) || url.hostname.split(".")[0]?.endsWith("-pooler")) {
     throw new Error("Encrypted backup currently requires a direct development/test target.");
@@ -42,7 +42,7 @@ export function postgresDump(target: PostgresTarget, binary = "pg_dump"): DumpSo
     throw new Error("Encrypted backup refuses unsupported libpq connection parameters.");
   }
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  const env: NodeJS.ProcessEnv = {
+  return {
     PATH: process.env.PATH, LANG: "C", NODE_ENV: process.env.NODE_ENV, PGHOST: url.hostname.replace(/^\[|\]$/g, ""),
     PGPORT: url.port || "5432", PGDATABASE: decodeURIComponent(url.pathname.slice(1)),
     PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password),
@@ -50,10 +50,13 @@ export function postgresDump(target: PostgresTarget, binary = "pg_dump"): DumpSo
     PGSSLROOTCERT: local ? undefined : "system", PGCHANNELBINDING: url.searchParams.get("channel_binding") ?? "prefer",
     PGCONNECT_TIMEOUT: "10", PGPASSFILE: "/dev/null", PGSERVICEFILE: "/dev/null", PGAPPNAME: "protein-kitchen-backup",
   };
+}
+
+export function postgresDump(target: PostgresTarget, binary = "pg_dump"): DumpSource {
   const running = tool(binary, [
     "--format=custom", "--no-owner", "--no-privileges", "--no-password",
     "--exclude-table-data=public.state_sync_jobs", "--exclude-table-data=public.state_sync_requests",
-  ], "dump-failed", env);
+  ], "dump-failed", postgresEnvironment(target));
   running.child.stdin.end();
   return { stream: running.child.stdout, finished: running.finished, abort: () => { running.child.kill("SIGTERM"); } };
 }
