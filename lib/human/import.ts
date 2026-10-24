@@ -18,6 +18,7 @@ export interface ImportReport {
  * matches what was exported.
  */
 export async function importHumanData(db: Db, bundle: ExportBundle, opts: { renames?: Record<string, string> } = {}): Promise<ImportReport> {
+  if (bundle.manifest.version !== 1 && bundle.manifest.version !== 2) throw new Error("Unsupported human-data export version.");
   registerBuiltinClasses();
   const renames = opts.renames ?? loadRenames();
   const resolveRecipeId = async (slug: string): Promise<number | undefined> => {

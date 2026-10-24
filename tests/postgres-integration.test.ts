@@ -11,6 +11,7 @@ import { loadData } from "../lib/data/load";
 import { seedDatabase } from "../lib/db/seed";
 import { exportHumanData } from "../lib/human/export";
 import { writeRecipeFeedback } from "../lib/human/feedback";
+import { writePersonalRecipeFeedback } from "../lib/human/personal-feedback";
 import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persistence";
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
@@ -57,6 +58,27 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       await tx.update(s.libraryState).set({ version: String(Number(row!.version) + 1) }).where(eq(s.libraryState.key, "counter"));
     })));
     expect(await handle.db.select().from(s.libraryState)).toMatchObject([{ key: "counter", version: "8" }]);
+  });
+
+  it("preserves independent concurrent favourite/rating patches and another cook's feedback", async () => {
+    const people = await handle.db.insert(s.people).values(["First", "Second"].map((name) => ({
+      name, sex: "other" as const, birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light" as const, dietFlags: [],
+    }))).returning();
+    const [recipe] = await handle.db.insert(s.recipes).values({
+      slug: "concurrent-feedback", name: "Synthetic bowl", family: "bowls", kind: "recipe", mealSlots: ["lunch"], cuisine: "global",
+      servings: 1, prepMin: 1, activeMin: 1, totalMin: 1, fridgeDays: 2, isIndian: false, equipment: [], tags: [],
+    }).returning();
+    await writeRecipeFeedback(handle.db, recipe!.id, { rating: 4, favourite: true });
+    await Promise.all([
+      writePersonalRecipeFeedback(handle.db, people[0]!.id, recipe!.id, { favourite: true }),
+      writePersonalRecipeFeedback(handle.db, people[0]!.id, recipe!.id, { rating: 5 }),
+      writePersonalRecipeFeedback(handle.db, people[1]!.id, recipe!.id, { rating: 2 }),
+    ]);
+    expect(await handle.db.select().from(s.personRecipeFeedback).orderBy(s.personRecipeFeedback.personId)).toMatchObject([
+      { personId: people[0]!.id, rating: 5, favourite: true }, { personId: people[1]!.id, rating: 2, favourite: false },
+    ]);
+    expect(await handle.db.select().from(s.recipeFeedback)).toMatchObject([{ rating: 4, favourite: true, status: "tested" }]);
+    expect(await handle.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "personal-recipe-feedback"))).toHaveLength(1);
   });
 
   it("serializes competing bootstrap claims across real pool connections", async () => {

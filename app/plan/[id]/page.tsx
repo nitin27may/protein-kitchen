@@ -22,9 +22,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) notFound();
-  const candidates = await getCandidates();
-  const view = await getPlanView(planId, candidates);
+  const view = await getPlanView(planId);
   if (!view) notFound();
+  const candidates = await getCandidates(view.people.map((p) => p.id));
   const byslug = new Map(candidates.map((c) => [c.slug, c]));
   const data = getData();
   const photos = await photoIndex(await getDb());

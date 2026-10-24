@@ -5,6 +5,7 @@ import * as s from "../db/schema";
 import { withTx } from "../db/tx";
 import type { Tx } from "../db/tx";
 import { markChanged, nowIso } from "../human/util";
+import { resetPersonalFeedback } from "../human/personal-feedback";
 
 export const RESET_SCOPES = ["plans", "groceries", "progress", "ratings", "profiles", "all"] as const;
 export type ResetScope = (typeof RESET_SCOPES)[number];
@@ -50,7 +51,7 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
     plans: await count(db, s.plans),
     groceryItems: (await count(db, s.groceryState)) + (await count(db, s.groceryManual)) + (await count(db, s.pantry)),
     progressTicks: (await count(db, s.habitLog)) + (await count(db, s.prepTaskState)),
-    ratings: Number(feedback?.n ?? 0),
+    ratings: Number(feedback?.n ?? 0) + await count(db, s.personRecipeFeedback),
     partChoices: await count(db, s.planPartState),
     links: await count(db, s.recipeLinks),
     routineChoices: await count(db, s.personRoutines),
@@ -86,6 +87,7 @@ async function clearProgress(tx: Tx) {
 }
 
 async function clearRatings(tx: Tx) {
+  await resetPersonalFeedback(tx);
   await tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null });
   await markChanged(tx, "recipe-feedback", nowIso());
 }
@@ -98,6 +100,7 @@ async function clearProfiles(tx: Tx) {
   // Routine choices belong to a profile; deleting the people deletes them (the foreign key cascades), so mark the export.
   await tx.delete(s.personRoutines);
   await markChanged(tx, "person-routines", nowIso());
+  await resetPersonalFeedback(tx);
   await tx.delete(s.people);
 }
 

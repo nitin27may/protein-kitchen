@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import * as s from "@/lib/db/schema";
 import { withTx } from "@/lib/db/tx";
-import { writeRecipeFeedback } from "@/lib/human/feedback";
+import { deletePersonalFeedbackForPerson, FeedbackInput, writePersonalRecipeFeedback } from "@/lib/human/personal-feedback";
 import type { LinkInput } from "@/lib/links/types";
 import { loadCandidates } from "@/lib/photos/candidates";
 import { approveCandidateChecked, rejectCandidateChecked } from "@/lib/server/photo-review";
@@ -34,7 +34,7 @@ import { persistIngredientPreferences, persistNewPlan, persistPlanDeletion, pers
 import { writePlanStep } from "@/lib/server/plan-progress";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
-import { actionDenial } from "@/lib/auth/access";
+import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, planExists, slotBelongsToPlan } from "@/lib/server/plan-access";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; fields?: Record<string, string> };
@@ -85,7 +85,10 @@ export async function deletePerson(id: number): Promise<Result> {
   if (linked) return fail("This profile is linked to an account. Manage that account before deleting its profile.");
   const [used] = await db.select({ id: s.planSlotPortions.planSlotId }).from(s.planSlotPortions).where(eq(s.planSlotPortions.personId, id)).limit(1);
   if (used) return fail("This profile is part of a saved plan. Delete those plans first.");
-  await db.delete(s.people).where(eq(s.people.id, id));
+  await withTx(db, async (tx) => {
+    await deletePersonalFeedbackForPerson(tx, id);
+    await tx.delete(s.people).where(eq(s.people.id, id));
+  });
   refresh();
   return { ok: true };
 }
@@ -151,7 +154,7 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   const dates = datesBetween(v.startDate, v.endDate);
   const targets = await Promise.all(people.map(toPersonTarget));
   const seed = Math.floor(Math.random() * 2 ** 31);
-  const candidates = await getCandidates();
+  const candidates = await getCandidates(v.personIds);
   const plan = generatePlan(
     { dates, mealTypes: v.mealTypes as Slot[], people: targets, cuisineBalance: v.cuisineBalance, maxActiveMin: v.maxActiveMin, healthFocus: v.healthFocus, prepStyle: v.prepStyle, pinnedRecipes: v.pinned, locked: [], seed },
     candidates,
@@ -198,7 +201,7 @@ export async function previewFeasibility(input: FeasibilityInput): Promise<Resul
     const pref = v.prefs[t.id];
     return pref ? { ...t, liked: new Set(pref.liked.filter((l) => !pref.avoided.includes(l))), avoided: new Set(pref.avoided) } : t;
   });
-  const result = computeFeasibility({ ...v, mealTypes: v.mealTypes as FeasibilityInput["mealTypes"] }, await getCandidates(), targets);
+  const result = computeFeasibility({ ...v, mealTypes: v.mealTypes as FeasibilityInput["mealTypes"] }, await getCandidates(v.personIds), targets);
   return { ok: true, result };
 }
 
@@ -220,7 +223,7 @@ export async function regeneratePlan(planId: number): Promise<Result> {
   const view = await getPlanView(planId);
   if (!view) return fail("Plan not found");
   const seed = Math.floor(Math.random() * 2 ** 31);
-  const plan = generatePlan({ ...view.input, seed }, await getCandidates());
+  const plan = generatePlan({ ...view.input, seed }, await getCandidates(view.people.map((p) => p.id)));
   const db = await getDb();
   await persistRegeneratedPlan(db, planId, seed, plan.slots, (await recipeIds()).bySlug);
   refresh(planId);
@@ -252,7 +255,7 @@ export async function getSwapOptions(planId: number, slotId: number): Promise<Re
   const view = await getPlanView(planId);
   const slot = view?.slots.find((x) => x.id === slotId);
   if (!view || !slot) return fail("Meal not found");
-  const candidates = await getCandidates();
+  const candidates = await getCandidates(view.people.map((p) => p.id));
   const generated: GeneratedPlan = { slots: view.slots, days: view.days, warnings: [] };
   const options = suggestSwaps(generated, { date: slot.date, slot: slot.slot }, view.input, candidates, 3).map((c) => {
     const liked = view.input.people.some((p) => [...p.liked].some((l) => c.ingredients.has(l)));
@@ -273,7 +276,7 @@ export async function swapSlot(planId: number, slotId: number, recipeSlug: strin
   if (denied) return denied;
   const view = await getPlanView(planId);
   const slot = view?.slots.find((x) => x.id === slotId);
-  const candidate = (await getCandidates()).find((c) => c.slug === recipeSlug);
+  const candidate = view && (await getCandidates(view.people.map((p) => p.id))).find((c) => c.slug === recipeSlug);
   if (!view || !slot || !candidate) return fail("Could not swap that meal");
   const rid = await recipeIds();
   const recipeId = rid.bySlug.get(recipeSlug);
@@ -324,12 +327,13 @@ export async function setRecipeFeedback(
 ): Promise<Result> {
   const denied = await actionDenial();
   if (denied) return denied;
+  const parsed = FeedbackInput.safeParse(patch);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check your recipe feedback.");
+  const member = await requireMember();
   const id = (await recipeIds()).bySlug.get(slug);
   if (id === undefined) return fail("Recipe not found");
-  if (patch.rating !== undefined && patch.rating !== null && (patch.rating < 1 || patch.rating > 5)) return fail("Rating is 1 to 5");
-  if (patch.notes !== undefined && patch.notes !== null && patch.notes.length > 2000) return fail("Notes are too long");
   // The write path for human-owned data lives in lib/human; this action only validates and refreshes.
-  await writeRecipeFeedback(await getDb(), id, patch);
+  await writePersonalRecipeFeedback(await getDb(), member.personId, id, parsed.data);
   refresh();
   return { ok: true };
 }

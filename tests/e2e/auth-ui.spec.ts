@@ -46,6 +46,14 @@ async function signIn(page: Page, email: string, secret: string) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/account$/);
 }
+async function saveFeedback(page: Page, change: () => Promise<void>) {
+  const saved = page.waitForResponse((response) =>
+    response.request().method() === "POST" && new URL(response.url()).pathname === "/recipes/tofu-burrito-bowl");
+  await change();
+  const response = await saved;
+  expect(response.status()).toBe(200);
+  await expect(page.getByRole("button", { name: "Favourite", exact: true })).toBeEnabled();
+}
 
 test("owner and invited cook finish UI onboarding, keep separate profiles and share plan, shopping and prep", async ({ page, browser }) => {
   test.setTimeout(120_000);
@@ -121,6 +129,42 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await expect(cookControls.getByRole("button", { name: "Make owner", exact: true })).toBeVisible();
     await second.reload();
     await expect(second.getByRole("heading", { name: "Household cooks", exact: true })).toHaveCount(0);
+    const recipe = "/recipes/tofu-burrito-bowl";
+    await page.goto(recipe);
+    await second.goto(recipe);
+    const favourite = page.getByRole("button", { name: "Favourite", exact: true });
+    const otherFavourite = second.getByRole("button", { name: "Favourite", exact: true });
+    await expect(favourite).toHaveAttribute("aria-pressed", "false");
+    await expect(otherFavourite).toHaveAttribute("aria-pressed", "false");
+    await page.route("**/recipes/tofu-burrito-bowl", (route) => route.request().method() === "POST" ? route.abort("failed") : route.continue());
+    await favourite.click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("feedback could not be saved");
+    await expect(favourite).toHaveAttribute("aria-pressed", "false");
+    await page.unroute("**/recipes/tofu-burrito-bowl");
+    await saveFeedback(page, () => favourite.click());
+    await saveFeedback(page, () => page.getByRole("radio", { name: "5", exact: true }).click());
+    await second.reload();
+    await expect(otherFavourite).toHaveAttribute("aria-pressed", "false");
+    await expect(second.getByRole("radio", { name: "5", exact: true })).toHaveAttribute("aria-checked", "false");
+    await saveFeedback(second, () => second.getByRole("radio", { name: "2", exact: true }).click());
+    await page.reload();
+    await expect(favourite).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("radio", { name: "5", exact: true })).toHaveAttribute("aria-checked", "true");
+    await saveFeedback(second, () => second.getByRole("button", { name: "Cooked and tested", exact: true }).click());
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Cooked and tested", exact: true })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByRole("radio", { name: "5", exact: true })).toHaveAttribute("aria-checked", "true");
+    await second.reload();
+    await expect(second.getByRole("radio", { name: "2", exact: true })).toHaveAttribute("aria-checked", "true");
+    await saveFeedback(page, () => page.getByRole("button", { name: "Clear your rating", exact: true }).click());
+    await second.reload();
+    await expect(second.getByRole("radio", { name: "2", exact: true })).toHaveAttribute("aria-checked", "true");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: "test-results/personal-feedback-phone.png", fullPage: true });
+    await page.goto("/recipes?yours=favourites");
+    await expect(page.getByRole("main").locator('a[href="/recipes/tofu-burrito-bowl"]')).toBeVisible();
+    await second.goto("/recipes?yours=favourites");
+    await expect(second.getByRole("main").locator('a[href="/recipes/tofu-burrito-bowl"]')).toHaveCount(0);
     const plan = `/plan/${process.env.E2E_PREP_PLAN_ID}`;
     await page.goto(plan);
     await second.goto(plan);

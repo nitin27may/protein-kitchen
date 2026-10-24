@@ -59,6 +59,7 @@ export interface DetailProps {
   quality: { freeSugarG: number; totalSugarG: number; sodiumMg: number; satFatG: number; kcal: number; score: number; partial: boolean; lowSugar: boolean; light: boolean; dense: boolean };
   targetFor: string;
   feedback: { favourite: boolean; banned: boolean; rating: number | null; tested: boolean };
+  earlierFeedback?: { favourite: boolean; rating: number | null } | null;
   techniques: { slug: string; title: string }[];
   /** "component" for a part of other meals, such as hummus. */
   kind: "recipe" | "component";
@@ -96,10 +97,15 @@ export function RecipeDetail(p: DetailProps) {
     setFb((c) => ({ ...c, ...optimistic }));
     setError(null);
     start(async () => {
-      const r = await setRecipeFeedback(p.slug, patch);
-      if (!r.ok) {
+      try {
+        const r = await setRecipeFeedback(p.slug, patch);
+        if (!r.ok) {
+          setFb(before);
+          setError(r.error);
+        }
+      } catch {
         setFb(before);
-        setError(r.error);
+        setError("Your feedback could not be saved. Check your connection and try again.");
       }
     });
   }
@@ -182,10 +188,12 @@ export function RecipeDetail(p: DetailProps) {
           ) : null}
 
           <section aria-labelledby="notes" className="space-y-3 rounded-card border border-line bg-surface p-4">
-            <h2 id="notes" className="text-base font-semibold">Your notes on this recipe</h2>
+            <h2 id="notes" className="text-base font-semibold">Your recipe feedback</h2>
+            <p className="text-sm text-muted">Favourites and ratings are yours. Cooked status and hidden recipes are shared with your household.</p>
+            {p.earlierFeedback ? <p className="text-sm text-muted">Earlier household feedback (no author recorded): {p.earlierFeedback.favourite ? "favourite" : ""}{p.earlierFeedback.favourite && p.earlierFeedback.rating !== null ? ", " : ""}{p.earlierFeedback.rating !== null ? `${p.earlierFeedback.rating}/5` : ""}. This is not your personal rating.</p> : null}
             <div className="flex flex-wrap gap-2">
-              <Chip on={fb.favourite} onClick={() => !pending && update({ favourite: !fb.favourite }, { favourite: !fb.favourite })}>Favourite</Chip>
-              <Chip on={fb.tested} onClick={() => !pending && update({ tested: !fb.tested, ...(fb.tested ? { rating: null } : {}) }, { tested: !fb.tested, ...(fb.tested ? { rating: null } : {}) })}>Cooked and tested</Chip>
+              <Chip disabled={pending} on={fb.favourite} onClick={() => update({ favourite: !fb.favourite }, { favourite: !fb.favourite })}>Favourite</Chip>
+              <Chip disabled={pending} on={fb.tested} onClick={() => update({ tested: !fb.tested }, { tested: !fb.tested })}>Cooked and tested</Chip>
             </div>
             {fb.tested && !p.photos.some((x) => x.origin === "upload") ? (
               <div>
@@ -193,14 +201,13 @@ export function RecipeDetail(p: DetailProps) {
                 <PhotoUpload recipeSlug={p.slug} label="Add a photo of what you made" />
               </div>
             ) : null}
-            {fb.tested ? (
-              <div>
-                <p className="mb-1 text-sm font-semibold">Rating</p>
-                <Segmented value={fb.rating ? String(fb.rating) : ""} onChange={(v) => !pending && update({ rating: Number(v) }, { rating: Number(v), tested: true })} label="Rating out of 5" className="w-full"
-                  options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: String(n) }))} />
-                <p className="mt-1 text-sm text-muted">1 or 2 stops the recipe being suggested.</p>
-              </div>
-            ) : null}
+            <fieldset disabled={pending}>
+              <p className="mb-1 text-sm font-semibold">Your rating</p>
+              <Segmented value={fb.rating ? String(fb.rating) : ""} onChange={(v) => update({ rating: Number(v) }, { rating: Number(v), tested: true })} label="Rating out of 5" className="w-full"
+                options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: String(n) }))} />
+              <p className="mt-1 text-sm text-muted">1 or 2 stops the recipe being suggested for plans that include you.</p>
+              {fb.rating !== null ? <Button variant="secondary" size="sm" disabled={pending} onClick={() => update({ rating: null }, { rating: null })}>Clear your rating</Button> : null}
+            </fieldset>
             {confirmBan || fb.banned ? (
               fb.banned ? (
                 <Button variant="secondary" size="sm" disabled={pending} onClick={() => update({ banned: false }, { banned: false })}>Allow this recipe again</Button>

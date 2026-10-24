@@ -26,6 +26,7 @@ import type { TodayRoutine } from "./today-routines";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
+import { householdFeedback, personalFeedback, planningFeedback } from "./feedback";
 
 export type PersonRow = typeof s.people.$inferSelect;
 
@@ -67,22 +68,13 @@ export async function toPersonTarget(p: PersonRow): Promise<PersonTarget> {
   };
 }
 
-export async function feedbackMap(): Promise<Map<string, Feedback>> {
-  const rows = await (await getDb())
-    .select({
-      slug: s.recipes.slug,
-      favourite: s.recipeFeedback.favourite,
-      banned: s.recipeFeedback.banned,
-      rating: s.recipeFeedback.rating,
-      status: s.recipeFeedback.status,
-    })
-    .from(s.recipeFeedback)
-    .innerJoin(s.recipes, eq(s.recipes.id, s.recipeFeedback.recipeId));
-  return new Map(rows.map((r) => [r.slug, { favourite: r.favourite, banned: r.banned, rating: r.rating, tested: r.status === "tested" }]));
+export async function feedbackMap(personId?: number): Promise<Map<string, Feedback>> {
+  const db = await getDb();
+  return personId === undefined ? householdFeedback(db) : personalFeedback(db, personId);
 }
 
-export async function getCandidates(): Promise<Candidate[]> {
-  return buildCandidates(getData(), await feedbackMap());
+export async function getCandidates(personIds: readonly number[] = []): Promise<Candidate[]> {
+  return buildCandidates(getData(), await planningFeedback(await getDb(), personIds));
 }
 
 export async function recipeIds(): Promise<{ bySlug: Map<string, number>; byId: Map<number, string> }> {
@@ -142,7 +134,7 @@ export async function getPlanView(planId: number, candidates?: Candidate[]): Pro
     .where(eq(s.plans.id, planId))
     .limit(1);
   if (!row) return undefined;
-  const cands = candidates ?? (await getCandidates());
+  const cands = candidates ?? (await getCandidates(row.setup.personIds));
   const people = row.setup.personIds.length
     ? await db.select().from(s.people).where(inArray(s.people.id, row.setup.personIds)).orderBy(s.people.id)
     : [];

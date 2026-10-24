@@ -4,7 +4,7 @@ import { registeredClasses } from "./registry";
 import { sha256 } from "./util";
 
 export interface ExportBundle {
-  manifest: { version: 1; tables: Record<string, { count: number; sha256: string }> };
+  manifest: { version: 1 | 2; tables: Record<string, { count: number; sha256: string }> };
   /** Relative path to file content. Paths use slugs and uids, never database ids. */
   files: Record<string, string>;
 }
@@ -32,5 +32,5 @@ export async function exportHumanData(db: Db): Promise<ExportBundle> {
   }
   // Sorted by path, so the bundle is identical whatever order the database returned rows in.
   const sorted = Object.fromEntries(Object.entries(files).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
-  return { manifest: { version: 1, tables }, files: sorted };
+  return { manifest: { version: 2, tables }, files: sorted };
 }

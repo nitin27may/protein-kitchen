@@ -237,6 +237,21 @@ export const recipeFeedback = pgTable("recipe_feedback", {
   createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
 }, (t) => [uniqueIndex("recipe_feedback_uid_uq").on(t.uid)]);
 
+export const personRecipeFeedback = pgTable("person_recipe_feedback", {
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  rating: integer("rating"),
+  favourite: bool("favourite").notNull().default(false),
+  uid: text("uid").notNull(),
+  createdAt: isoTimestamp("created_at").notNull(),
+  updatedAt: isoTimestamp("updated_at").notNull(),
+  createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+}, (t) => [
+  primaryKey({ columns: [t.personId, t.recipeId] }),
+  uniqueIndex("person_recipe_feedback_uid_uq").on(t.uid),
+  check("person_recipe_feedback_rating_ck", sql`${t.rating} is null or ${t.rating} between 1 and 5`),
+]);
+
 export const preferences = pgTable("preferences", {
   id: id(),
   personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),

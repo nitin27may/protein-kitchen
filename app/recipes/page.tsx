@@ -15,9 +15,9 @@ export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
 
 export default async function RecipesPage() {
-  await requirePageMember();
+  const member = await requirePageMember();
   const data = getData();
-  const fb = await feedbackMap();
+  const fb = await feedbackMap(member.personId);
   const photos = await photoIndex(await getDb());
   const cards: RecipeCardData[] = (await getCandidates()).map((c) => {
     const r = data.recipes.get(c.slug)!;
