@@ -1,8 +1,8 @@
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import * as s from "../lib/db/schema";
 import type { PlannedSlot } from "../lib/planner/types";
 import { persistIngredientPreferences, persistNewPlan, persistPlanDeletion, persistRegeneratedPlan } from "../lib/server/plan-persistence";
@@ -25,7 +25,7 @@ const create = (slots: PlannedSlot[] = [slot()]) => persistNewPlan(h.db, {
 });
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.resolve(__dirname, "..", "db", "migrations"));
+  h = await openDb();
   const [person] = await h.db.insert(s.people).values({
     name: "Persistence fixture", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
     activityLevel: "light", dietFlags: [],
@@ -41,16 +41,16 @@ beforeEach(async () => {
   }).returning({ id: s.recipes.id });
   recipes = new Map([["fixture", recipe!.id]]);
 });
-afterEach(() => h.sqlite.close());
+afterEach(() => h.close());
 
 describe("atomic plan persistence", () => {
   it.each(["plan_setups", "plans", "plan_routines", "plan_slots", "plan_slot_portions"])("rolls back creation if %s fails", async (table) => {
-    h.sqlite.exec(`CREATE TRIGGER fail_insert BEFORE INSERT ON ${table} BEGIN SELECT RAISE(ABORT, 'injected persistence failure'); END`);
+    await h.failWrite(table, "insert", "fail_insert");
     await expect(create()).rejects.toThrow();
     for (const target of [s.planSetups, s.plans, s.planRoutines, s.planSlots, s.planSlotPortions]) {
       expect(await h.db.select().from(target)).toEqual([]);
     }
-    h.sqlite.exec("DROP TRIGGER fail_insert");
+    await h.dropFailure(table, "fail_insert");
     expect(await create()).toBeGreaterThan(0);
   });
 
@@ -112,7 +112,7 @@ describe("atomic plan persistence", () => {
       portions: await h.db.select().from(s.planSlotPortions),
       routines: await h.db.select().from(s.planRoutines),
     };
-    h.sqlite.exec(`CREATE TRIGGER fail_regenerate BEFORE ${operation} ON ${table} BEGIN SELECT RAISE(ABORT, 'injected regeneration failure'); END`);
+    await h.failWrite(table!, operation!, "fail_regenerate");
     await expect(persistRegeneratedPlan(h.db, id, 2, [slot("fixture", false, "2026-11-04")], recipes)).rejects.toThrow();
     expect(await h.db.select().from(s.plans)).toEqual(before.plans);
     expect(await h.db.select().from(s.planSlots)).toEqual(before.slots);
@@ -181,7 +181,7 @@ describe("atomic plan persistence", () => {
       plans: await h.db.select().from(s.plans), slots: await h.db.select().from(s.planSlots),
       portions: await h.db.select().from(s.planSlotPortions), routines: await h.db.select().from(s.planRoutines),
     };
-    h.sqlite.exec("CREATE TRIGGER fail_delete BEFORE DELETE ON plan_setups BEGIN SELECT RAISE(ABORT, 'injected setup deletion failure'); END");
+    await h.failWrite("plan_setups", "delete", "fail_delete");
     await expect(persistPlanDeletion(h.db, id)).rejects.toThrow();
     expect(await h.db.select().from(s.plans)).toEqual(before.plans);
     expect(await h.db.select().from(s.planSlots)).toEqual(before.slots);

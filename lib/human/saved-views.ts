@@ -25,13 +25,13 @@ export async function writeSavedView(db: Db, input: SavedViewInput): Promise<{ u
     ? (await db.select().from(s.savedViews).where(and(eq(s.savedViews.list, input.list), eq(s.savedViews.isDefault, true))))[0]
     : undefined;
   const uid = existing?.uid ?? newUid();
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     if (existing) {
-      tx.update(s.savedViews).set({ query: input.query, name: input.name ?? existing.name, uid, createdAt: existing.createdAt ?? at, updatedAt: at }).where(eq(s.savedViews.id, existing.id)).run();
+      await tx.update(s.savedViews).set({ query: input.query, name: input.name ?? existing.name, uid, createdAt: existing.createdAt ?? at, updatedAt: at }).where(eq(s.savedViews.id, existing.id));
     } else {
-      tx.insert(s.savedViews).values({ list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null }).run();
+      await tx.insert(s.savedViews).values({ list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null });
     }
-    markChanged(tx, SAVED_VIEWS_CLASS, at);
+    await markChanged(tx, SAVED_VIEWS_CLASS, at);
   });
   return { uid };
 }
@@ -41,9 +41,9 @@ export async function clearSavedView(db: Db, list: string): Promise<void> {
   const at = nowIso();
   const existing = (await db.select({ id: s.savedViews.id }).from(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true))))[0];
   if (!existing) return;
-  await withTx(db, (tx) => {
-    tx.delete(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true))).run();
-    markChanged(tx, SAVED_VIEWS_CLASS, at);
+  await withTx(db, async (tx) => {
+    await tx.delete(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true)));
+    await markChanged(tx, SAVED_VIEWS_CLASS, at);
   });
 }
 

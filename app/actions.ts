@@ -23,7 +23,7 @@ import { dueDateOfKey } from "@/lib/prep/night";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
 import type { GeneratedPlan, Slot } from "@/lib/planner/types";
 import { ACTIVITY_LEVELS, MEAL_SLOTS, PlanSetupSchema, SEXES } from "@/lib/schemas";
-import { getData, getDb, getSqlite } from "@/lib/server/context";
+import { getData, getDb } from "@/lib/server/context";
 import { getBlobStore } from "@/lib/blob";
 import { backupBeforeReset, CONFIRM_WORD, NEEDS_TYPED_CONFIRM, RESET_SCOPES, resetData } from "@/lib/server/reset";
 import type { ResetScope } from "@/lib/server/reset";
@@ -289,11 +289,11 @@ export async function swapSlot(planId: number, slotId: number, recipeSlug: strin
   const shares = slotShares(view.mealTypes);
   const portions = portionsFor(candidate, view.input.people, shares[slot.slot] ?? 0.25);
   const db = await getDb();
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     // A swapped meal is cooked fresh, so it is no longer a leftover.
-    tx.update(s.planSlots).set({ recipeId, isLeftover: false }).where(eq(s.planSlots.id, slotId)).run();
-    tx.delete(s.planSlotPortions).where(eq(s.planSlotPortions.planSlotId, slotId)).run();
-    for (const [pid, servings] of Object.entries(portions)) tx.insert(s.planSlotPortions).values({ planSlotId: slotId, personId: Number(pid), servings }).run();
+    await tx.update(s.planSlots).set({ recipeId, isLeftover: false }).where(eq(s.planSlots.id, slotId));
+    await tx.delete(s.planSlotPortions).where(eq(s.planSlotPortions.planSlotId, slotId));
+    for (const [pid, servings] of Object.entries(portions)) await tx.insert(s.planSlotPortions).values({ planSlotId: slotId, personId: Number(pid), servings });
   });
   refresh(planId);
   return { ok: true };
@@ -455,7 +455,7 @@ export async function resetScope(scope: string, typed: string): Promise<Result<{
   const sc = scope as ResetScope;
   if (NEEDS_TYPED_CONFIRM.includes(sc) && typed.trim() !== CONFIRM_WORD) return fail(`Type ${CONFIRM_WORD} to confirm`);
   try {
-    const backup = await backupBeforeReset(await getSqlite(), process.cwd(), sc);
+    const backup = await backupBeforeReset();
     await resetData(await getDb(), sc, getBlobStore());
     refresh();
     return { ok: true, backup: backup ? path.relative(process.cwd(), backup) : null };

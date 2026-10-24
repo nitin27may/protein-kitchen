@@ -3,8 +3,8 @@ import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMemoryStore } from "../lib/blob/memory";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { applyRenames } from "../lib/db/renames";
 import * as s from "../lib/db/schema";
 import { approveCandidate, copyHumanBlobs, deletePhoto, exportHumanData, importHumanData, rejectCandidate, setCoverPhoto, writeUploadedPhoto } from "../lib/human";
@@ -28,8 +28,8 @@ async function addRecipe(h: DbHandle, slug: string): Promise<number> {
 }
 const syncOf = async (cls: string) => (await a.db.select().from(s.syncState).where(eq(s.syncState.dataClass, cls)))[0];
 
-beforeEach(() => {
-  a = openDb(":memory:", migrations);
+beforeEach(async () => {
+  a = await openDb();
   store = createMemoryStore();
 });
 
@@ -156,7 +156,7 @@ describe("export and import", () => {
       expect(text).not.toMatch(/"id":/);
     }
 
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     const storeB = createMemoryStore();
     await addRecipe(b, "shifts-every-id");
     await addRecipe(b, "falafel-bowl");
@@ -178,7 +178,7 @@ describe("export and import", () => {
   it("is idempotent, and a copy refuses bytes that do not match the recorded sha256", async () => {
     await seedPhotos();
     const bundle = await exportHumanData(a.db);
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "falafel-bowl");
     await addRecipe(b, "other");
     await importHumanData(b.db, bundle, { renames: {} });
@@ -195,7 +195,7 @@ describe("export and import", () => {
   it("skips a recipe photo whose recipe is gone, unless a rename points at it", async () => {
     await seedPhotos();
     const bundle = await exportHumanData(a.db);
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "renamed-bowl");
     expect((await importHumanData(b.db, bundle, { renames: {} })).skipped.some((p) => p.startsWith("photos/recipes/falafel-bowl/"))).toBe(true);
     const ok = await importHumanData(b.db, bundle, { renames: { "falafel-bowl": "renamed-bowl" } });

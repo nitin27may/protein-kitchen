@@ -8,6 +8,13 @@
       "when": 1792810751332,
       "tag": "0000_hard_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792812123087,
+      "tag": "0001_damp_the_phantom",
+      "breakpoints": true
     }
   ]
 }

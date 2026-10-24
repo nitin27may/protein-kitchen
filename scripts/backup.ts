@@ -4,9 +4,12 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const file = process.env.DB_PATH ?? path.join(root, "db", "app.db");
+if (process.env.DATABASE_URL || !process.env.DB_PATH) {
+  throw new Error("This command backs up legacy SQLite only. Set DB_PATH explicitly and unset DATABASE_URL. Postgres backup is not implemented yet.");
+}
+const file = process.env.DB_PATH;
 if (!fs.existsSync(file)) {
-  console.error(`No database at ${file}. Run pnpm seed first.`);
+  console.error(`No legacy SQLite source at ${file}. Postgres seeding does not create a SQLite file.`);
   process.exit(1);
 }
 

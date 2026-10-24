@@ -51,7 +51,7 @@ interface NewPhoto {
 
 /**
  * Processes the image (location data dropped, WebP, capped), stores the bytes, then records the row. Image work and
- * blob writes run before the transaction, because a transaction callback cannot await. If the transaction fails the
+ * blob writes run before the transaction so database locks never span image or storage work. If the transaction fails the
  * blobs are removed again. Own uploads take the cover place from an approved candidate; a candidate never replaces an
  * own photo.
  */
@@ -66,9 +66,9 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
     const becomesCover = !cover || (input.origin === "upload" && cover.origin !== "upload");
     const position = existing.length ? Math.max(...existing.map((p) => p.position)) + 1 : 0;
     const credit = input.credit ?? {};
-    const id = await withTx(db, (tx) => {
-      if (becomesCover && cover) tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(eq(s.photos.id, cover.id)).run();
-      const row = tx
+    const id = await withTx(db, async (tx) => {
+      if (becomesCover && cover) await tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(eq(s.photos.id, cover.id));
+      const row = (await tx
         .insert(s.photos)
         .values({
           uid,
@@ -90,14 +90,13 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
           updatedAt: at,
           createdByPersonId: input.personId ?? null,
         })
-        .returning({ id: s.photos.id })
-        .get();
-      markChanged(tx, PHOTOS_CLASS, at);
+        .returning({ id: s.photos.id }))[0];
+      await markChanged(tx, PHOTOS_CLASS, at);
       if (input.decision) {
-        upsertDecision(tx, input.decision.candidateKey, input.decision.kind, input.decision.slug, "approved", at, input.personId ?? null);
-        markChanged(tx, PHOTO_DECISIONS_CLASS, at);
+        await upsertDecision(tx, input.decision.candidateKey, input.decision.kind, input.decision.slug, "approved", at, input.personId ?? null);
+        await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
       }
-      return row.id;
+      return row!.id;
     });
     return { id, uid };
   } catch (e) {
@@ -108,14 +107,13 @@ async function insertPhoto(db: Db, store: BlobStore, input: NewPhoto): Promise<{
 
 type TxLike = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-function upsertDecision(tx: TxLike, candidateKey: string, kind: "recipe" | "ingredient", slug: string, decision: "approved" | "rejected", at: string, personId: number | null): void {
-  const existing = tx
+async function upsertDecision(tx: TxLike, candidateKey: string, kind: "recipe" | "ingredient", slug: string, decision: "approved" | "rejected", at: string, personId: number | null): Promise<void> {
+  const existing = (await tx
     .select({ id: s.photoDecisions.id })
     .from(s.photoDecisions)
-    .where(and(eq(s.photoDecisions.candidateKey, candidateKey), eq(s.photoDecisions.subjectKind, kind), eq(s.photoDecisions.subjectSlug, slug)))
-    .get();
-  if (existing) tx.update(s.photoDecisions).set({ decision, updatedAt: at }).where(eq(s.photoDecisions.id, existing.id)).run();
-  else tx.insert(s.photoDecisions).values({ uid: newUid(), candidateKey, subjectKind: kind, subjectSlug: slug, decision, createdAt: at, updatedAt: at, createdByPersonId: personId }).run();
+    .where(and(eq(s.photoDecisions.candidateKey, candidateKey), eq(s.photoDecisions.subjectKind, kind), eq(s.photoDecisions.subjectSlug, slug))))[0];
+  if (existing) await tx.update(s.photoDecisions).set({ decision, updatedAt: at }).where(eq(s.photoDecisions.id, existing.id));
+  else await tx.insert(s.photoDecisions).values({ uid: newUid(), candidateKey, subjectKind: kind, subjectSlug: slug, decision, createdAt: at, updatedAt: at, createdByPersonId: personId });
 }
 
 /** A photo the person took. The only writer of uploads. */
@@ -148,9 +146,9 @@ export async function approveCandidate(
 /** Marks a candidate rejected. It never comes back to the review queue. */
 export async function rejectCandidate(db: Db, input: { candidateKey: string; kind: "recipe" | "ingredient"; slug: string; personId?: number | null }): Promise<void> {
   const at = nowIso();
-  await withTx(db, (tx) => {
-    upsertDecision(tx, input.candidateKey, input.kind, input.slug, "rejected", at, input.personId ?? null);
-    markChanged(tx, PHOTO_DECISIONS_CLASS, at);
+  await withTx(db, async (tx) => {
+    await upsertDecision(tx, input.candidateKey, input.kind, input.slug, "rejected", at, input.personId ?? null);
+    await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
   });
 }
 
@@ -161,10 +159,10 @@ export async function setCoverPhoto(db: Db, uid: string): Promise<boolean> {
   if (row.isCover) return true;
   const at = nowIso();
   const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
-  await withTx(db, (tx) => {
-    tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(and(siblings, eq(s.photos.isCover, true))).run();
-    tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, row.id)).run();
-    markChanged(tx, PHOTOS_CLASS, at);
+  await withTx(db, async (tx) => {
+    await tx.update(s.photos).set({ isCover: false, updatedAt: at }).where(and(siblings, eq(s.photos.isCover, true)));
+    await tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, row.id));
+    await markChanged(tx, PHOTOS_CLASS, at);
   });
   return true;
 }
@@ -178,18 +176,18 @@ export async function deletePhoto(db: Db, store: BlobStore, uid: string): Promis
   if (!row) return false;
   const at = nowIso();
   const siblings = row.recipeId !== null ? eq(s.photos.recipeId, row.recipeId) : eq(s.photos.ingredientSlug, row.ingredientSlug!);
-  await withTx(db, (tx) => {
-    tx.delete(s.photos).where(eq(s.photos.id, row.id)).run();
+  await withTx(db, async (tx) => {
+    await tx.delete(s.photos).where(eq(s.photos.id, row.id));
     if (row.isCover) {
-      const next = tx.select({ id: s.photos.id }).from(s.photos).where(siblings).orderBy(asc(s.photos.position), asc(s.photos.id)).get();
-      if (next) tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, next.id)).run();
+      const next = (await tx.select({ id: s.photos.id }).from(s.photos).where(siblings).orderBy(asc(s.photos.position), asc(s.photos.id)))[0];
+      if (next) await tx.update(s.photos).set({ isCover: true, updatedAt: at }).where(eq(s.photos.id, next.id));
     }
-    markChanged(tx, PHOTOS_CLASS, at);
+    await markChanged(tx, PHOTOS_CLASS, at);
     if (row.candidateKey) {
       const kind = row.recipeId !== null ? "recipe" : "ingredient";
-      const slug = row.recipeId !== null ? (tx.select({ slug: s.recipes.slug }).from(s.recipes).where(eq(s.recipes.id, row.recipeId)).get()?.slug ?? "") : row.ingredientSlug!;
-      upsertDecision(tx, row.candidateKey, kind, slug, "rejected", at, null);
-      markChanged(tx, PHOTO_DECISIONS_CLASS, at);
+      const slug = row.recipeId !== null ? ((await tx.select({ slug: s.recipes.slug }).from(s.recipes).where(eq(s.recipes.id, row.recipeId)))[0]?.slug ?? "") : row.ingredientSlug!;
+      await upsertDecision(tx, row.candidateKey, kind, slug, "rejected", at, null);
+      await markChanged(tx, PHOTO_DECISIONS_CLASS, at);
     }
   });
   await dropBoth(store, uid);
@@ -293,11 +291,11 @@ export const photosClass: HumanDataClass = {
     const hasCover = !!(await db.select({ id: s.photos.id }).from(s.photos).where(and(eq(s.photos.recipeId, toRecipeId), eq(s.photos.isCover, true))))[0];
     const start = top?.m === null || top?.m === undefined ? 0 : Number(top.m) + 1;
     const at = nowIso();
-    await withTx(db, (tx) => {
-      moving.forEach((p, i) => {
-        tx.update(s.photos).set({ recipeId: toRecipeId, position: start + i, isCover: hasCover ? false : p.isCover, updatedAt: at }).where(eq(s.photos.id, p.id)).run();
-      });
-      markChanged(tx, PHOTOS_CLASS, at);
+    await withTx(db, async (tx) => {
+      for (const [i, p] of moving.entries()) {
+        await tx.update(s.photos).set({ recipeId: toRecipeId, position: start + i, isCover: hasCover ? false : p.isCover, updatedAt: at }).where(eq(s.photos.id, p.id));
+      }
+      await markChanged(tx, PHOTOS_CLASS, at);
     });
     return true;
   },

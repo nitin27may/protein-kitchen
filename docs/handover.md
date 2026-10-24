@@ -2,9 +2,11 @@
 
 Written 2026-10-23 so the work can continue on another machine, or in a fresh session, without losing intent. Read this, then `CLAUDE.md`, then `docs/roadmap.md`. Nothing here contains a secret, and nothing here contains health data.
 
+**Step-12 update:** the application now uses awaited Postgres transactions, not SQLite. The original SQLite files are untouched import/rollback sources. No cloud migration or deployment has occurred. Requests/builds no longer seed; explicit guarded migration/seed commands prepare an isolated dev/test database. Settings reset is blocked until verified Postgres backup/restore exists. See the current setup below and the step-12 closeout in `roadmap.md`; older numbered implementation notes later in this handover are historical.
+
 ## 1. What this is
 
-A personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Next.js 16, React 19, Tailwind 4, drizzle on SQLite (`db/app.db`), pnpm 10, Node 22. Owner: Nitin, a senior architect. He wants direct, plain writing, no emojis, no filler phrases, code first.
+A personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Next.js 16, React 19, Tailwind 4, Drizzle on Postgres, pnpm 10, Node 22. Owner: Nitin, a senior architect. He wants direct, plain writing, no emojis, no filler phrases, code first.
 
 The product intent is in `PLAN.md`. The one rule that shapes everything: **macros live only on ingredients, every ingredient has a real source (CNF, then USDA, then IFCT), and nothing is estimated from memory.** Unknown means "list it as unresolved".
 
@@ -12,10 +14,10 @@ The product intent is in `PLAN.md`. The one rule that shapes everything: **macro
 
 1. `git clone` the private repo `nitin27may/protein-kitchen`. Install Node 22, pnpm 10 (`corepack enable`), `gh`, `sqlite3`.
 2. `pnpm install` (the `prepare` script turns on the secret-scan pre-commit hook in `.githooks/`).
-3. `pnpm seed` creates `db/app.db` from `/data` (it runs `pnpm validate` first).
-4. `pnpm dev` and open http://localhost:3000.
-5. Optional, for reminders: copy `.env.example` to `.env.local` and generate VAPID keys with `pnpm dlx web-push generate-vapid-keys`.
-6. Check: `pnpm typecheck && pnpm validate && pnpm test && NEXT_DIST_DIR=.next-build pnpm build`. About 555 tests should pass.
+3. Prepare a disposable local Postgres database or a reviewed isolated Neon development branch. Copy `.env.example` to `.env.local`, set `DATABASE_ENV=development` and the pooled `DATABASE_URL`. Do not reuse an old production pointer.
+4. Supply direct `DATABASE_URL_UNPOOLED`, `DATABASE_ENV` and, remotely, the reviewed exact `DATABASE_NONPRODUCTION_HOST` to `pnpm db:migrate:postgres`, then `pnpm seed`. CLI commands do not load `.env.local` automatically. Requests never create or seed a database.
+5. `pnpm dev` and open http://localhost:3000. Reminders additionally need VAPID keys from `pnpm dlx web-push generate-vapid-keys`.
+6. Check: `pnpm typecheck && pnpm validate && pnpm test:coverage && NEXT_DIST_DIR=.next-build pnpm build`. There are 698 tests; four native TCP checks require `POSTGRES_TEST_URL` naming a disposable loopback `protein_kitchen_test` database. CI supplies Postgres 17; normal local database tests use fresh PGlite fixtures.
 
 ### What is NOT in git (and so does not travel)
 | Thing | Where it is | How to move it |
@@ -31,7 +33,7 @@ If the old machine is gone and `db/app.db` was never copied, `pnpm seed` rebuild
 
 ### Accounts and tools already in place
 - GitHub: private repo `nitin27may/protein-kitchen`, `gh` logged in as nitin27may. CI in `.github/workflows/ci.yml` (jobs `ci` and `secrets`). Branch protection on `main`: no force-push, no deletion, checks `ci` and `secrets` required for PRs, the owner can still push directly. Dependabot is on.
-- Neon: project `lively-breeze-25685764`, org `org-fancy-dream-16320709`, branch `production`. Postgres, Neon Auth, private bucket `assets` and Realtime are provisioned. **The app does not use Neon yet.** It still opens SQLite in `lib/db/client.ts`. Never develop against `production`; create a `dev` branch first (step 14).
+- Neon: project `lively-breeze-25685764`, org `org-fancy-dream-16320709`, branch `production`. Previously recorded provisioning includes Postgres, Neon Auth, private bucket `assets` and Realtime. **No Neon application cutover has occurred.** The app now requires an explicitly configured Postgres target. Never develop against `production`; select/verify a `dev` branch first (step 14).
 - Vercel CLI logged in, project not linked, CLI outdated.
 - Fonts: Bricolage Grotesque and Atkinson Hyperlegible Next. Photos for ingredients come from Wikipedia and Commons with credits on `/credits`.
 
@@ -45,7 +47,7 @@ Data
 - Run `pnpm validate` after every data change.
 
 Process
-- Real DB is never touched in tests. Make a scratch copy: `sqlite3 db/app.db "VACUUM INTO '<scratch>/x.db'"`, run with `DB_PATH=<that file>`, delete it afterwards.
+- Real DB is never touched in tests. Unit tests own disposable PGlite engines; native integration accepts only loopback `protein_kitchen_test`. Browser checks use a separate synthetic Postgres database. `DB_PATH` is now legacy-source backup only, not an application setting.
 - Build with `NEXT_DIST_DIR=.next-build`. The owner's `pnpm dev` shares `.next` and a build corrupts it. My test servers run on port 3111 with scratch databases; the owner's dev server is on 3000.
 - Never use `git stash`. Never force-push. Run `/verify` (typecheck, lint, build, test) before claiming done and before committing code. Commits end with the co-author line in the session's system reminder.
 - Planning is done by Opus subagents (`model: "opus"`); coding by Sonnet.
@@ -57,7 +59,7 @@ Process
 ## 4. Architecture map
 
 - `data/` library (ingredients, recipes, components, routines, habits, techniques, images, ingredient notes, renames, validation overrides). `scripts/validate.ts` computes macros and enforces the rules. `scripts/seed.ts` upserts it into the DB.
-- `lib/db/` schema (`schema.ts`), client (SQLite), `tx.ts` (`withTx`, all DB calls async), `columns.ts` portable column helpers, `db/migrations/`.
+- `lib/db/` application schema (`schema.ts` re-exports `postgres/schema.ts`), guarded node-postgres pool, awaited `tx.ts`, content-version check; `db/postgres-migrations/`. Frozen `sqlite-schema.ts`, `columns.ts` and `db/migrations/` remain for source parity/import.
 - `lib/human/` the single write path and exporter for human-owned data: feedback, saved views, recipe links, person routines. Each class calls `markChanged` in `sync_state`, has a `registerExporter` line and a round-trip test (export, import into a fresh DB, export again, identical bytes). New human-owned tables get `uid`, `created_at`, `updated_at`, `created_by_person_id`.
 - `lib/planner/` generator and `feasibility.ts`. `lib/plan/phase.ts` plan phase. `lib/prep/night.ts` the one source of night-before tasks. `lib/filters/` filter logic. `lib/links/` link parsing. `lib/routines/` routine types and view helpers. `lib/server/reset.ts` Settings reset with backup first.
 - `components/ui.tsx` shared controls, `components/icons.tsx`, `components/today/*`, `components/routines/*`, `FilterToolbar`.

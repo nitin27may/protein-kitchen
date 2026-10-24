@@ -35,11 +35,11 @@ export async function migrateTickKeys(planId: number, tasks: readonly NightTask[
     .where(or(like(s.prepTaskState.taskKey, `night:${planId}:%`), like(s.prepTaskState.taskKey, "____-__-__:%")));
   const changes = rows.map((r) => ({ r, m: migrateTickKey(r.taskKey, { planId, tasks }) })).filter((x) => x.m.action !== "keep");
   if (changes.length === 0) return;
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     for (const { r, m } of changes) {
-      tx.delete(s.prepTaskState).where(and(eq(s.prepTaskState.date, r.date), eq(s.prepTaskState.taskKey, r.taskKey))).run();
+      await tx.delete(s.prepTaskState).where(and(eq(s.prepTaskState.date, r.date), eq(s.prepTaskState.taskKey, r.taskKey)));
       if (m.action === "rename" && r.done) {
-        tx.insert(s.prepTaskState).values({ date: m.date, taskKey: m.key, done: true }).onConflictDoUpdate({ target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done: true } }).run();
+        await tx.insert(s.prepTaskState).values({ date: m.date, taskKey: m.key, done: true }).onConflictDoUpdate({ target: [s.prepTaskState.date, s.prepTaskState.taskKey], set: { done: true } });
       }
     }
   });

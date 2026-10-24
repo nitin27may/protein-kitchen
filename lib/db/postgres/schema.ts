@@ -4,7 +4,12 @@ import { bool, isoDate, isoTimestamp, json } from "./columns";
 
 const id = () => integer("id").primaryKey().generatedByDefaultAsIdentity();
 
-// Parallel baseline while the application still uses SQLite. Parity tests prevent the two schemas drifting.
+export const libraryState = pgTable("library_state", {
+  key: text("key").primaryKey(),
+  version: text("version").notNull(),
+});
+
+// Application schema. The frozen SQLite schema is retained for source import and parity checks.
 export const ingredients = pgTable("ingredients", {
   id: id(),
   slug: text("slug").notNull(),

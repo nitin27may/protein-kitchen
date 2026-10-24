@@ -5,15 +5,17 @@ Personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Rea
 ## Commands
 
 ```
-pnpm dev        # Next.js dev server (set DB_PATH to use a scratch database, APP_TZ for the time zone)
+pnpm dev        # Next.js dev server (explicit isolated DATABASE_URL/DATABASE_ENV, APP_TZ for time zone)
 pnpm build      # production build
 pnpm typecheck  # tsc --noEmit
 pnpm validate   # validate all /data files, compute macros, print report
-pnpm seed       # upsert /data into db/app.db (runs validate first)
+pnpm seed       # guarded dev/test Postgres library seed (DATABASE_URL_UNPOOLED; validates first)
 pnpm test       # Vitest: nutrition maths, conversions, generator
-pnpm backup     # VACUUM INTO backups/app-<timestamp>.db
-sqlite3 db/app.db  # inspect data directly
+pnpm backup     # legacy SQLite only: explicit DB_PATH, DATABASE_URL must be unset
+pnpm db:migrate:postgres  # explicit direct dev/test connection; never runs at request/build time
 ```
+
+Database tests use disposable PGlite fixtures. Native TCP tests additionally require `POSTGRES_TEST_URL` pointing to a loopback-only `protein_kitchen_test` database. Existing SQLite files are import/rollback sources, never the application fallback. Settings reset stays blocked until Postgres backup/restore is verified.
 
 ## Golden rules for data
 

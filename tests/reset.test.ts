@@ -2,8 +2,8 @@ import path from "node:path";
 import { count, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { backupBeforeReset, resetCounts, resetData } from "../lib/server/reset";
@@ -16,7 +16,7 @@ let h: DbHandle;
 const n = async (table: any): Promise<number> => Number((await h.db.select({ n: count() }).from(table))[0]!.n);
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.join(root, "db", "migrations"));
+  h = await openDb();
   await seedDatabase(h.db, data);
   const [person] = await h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] }).returning({ id: s.people.id });
   const [setup] = await h.db.insert(s.planSetups).values({ personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["lunch"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id });
@@ -60,7 +60,8 @@ describe("resetData", () => {
     expect(await n(s.habits)).toBeGreaterThan(0);
   });
 
-  it("does not write a backup for an in-memory database", async () => {
-    expect(await backupBeforeReset(h.sqlite, root, "all")).toBeNull();
+  it("refuses a destructive application reset until Postgres recovery is verified", async () => {
+    await expect(backupBeforeReset()).rejects.toThrow("verified Postgres backup");
+    expect(await n(s.plans)).toBe(1);
   });
 });

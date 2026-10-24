@@ -26,11 +26,10 @@ export const sha256 = (text: string): string => createHash("sha256").update(text
 
 /**
  * Marks a data class as changed since its last export. Called inside the same transaction as the write.
- * Statements inside a better-sqlite3 transaction callback must run synchronously (`.run()`); on Postgres this
- * becomes an awaited call in an async callback.
+ * Awaited in the same Postgres transaction as the corresponding human-owned write.
  */
-export function markChanged(tx: Tx, dataClass: string, at: string): void {
-  tx.insert(s.syncState).values({ dataClass, changedAt: at }).onConflictDoUpdate({ target: s.syncState.dataClass, set: { changedAt: at } }).run();
+export async function markChanged(tx: Tx, dataClass: string, at: string): Promise<void> {
+  await tx.insert(s.syncState).values({ dataClass, changedAt: at }).onConflictDoUpdate({ target: s.syncState.dataClass, set: { changedAt: at } });
 }
 
 /** Stamps `exported_at` for the given data classes. Called by the sync job after a successful export. */

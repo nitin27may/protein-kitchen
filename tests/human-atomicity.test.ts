@@ -1,8 +1,8 @@
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import * as s from "../lib/db/schema";
 import { createMemoryStore } from "../lib/blob/memory";
 import { writeRecipeFeedback } from "../lib/human/feedback";
@@ -19,7 +19,7 @@ let store: ReturnType<typeof createMemoryStore>;
 const image = () => sharp({ create: { width: 64, height: 64, channels: 3, background: "#336699" } }).jpeg().toBuffer();
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.resolve(__dirname, "..", "db", "migrations"));
+  h = await openDb();
   store = createMemoryStore();
   const [recipe] = await h.db.insert(s.recipes).values({
     slug: "fixture", name: "Fixture", kind: "recipe", family: "test", mealSlots: [], cuisine: "test", isIndian: false,
@@ -36,7 +36,7 @@ beforeEach(async () => {
   }).returning({ id: s.habits.id });
   habitId = habit!.id;
 });
-afterEach(() => h.sqlite.close());
+afterEach(() => h.close());
 
 const snapshot = async () => ({
   feedback: await h.db.select().from(s.recipeFeedback),
@@ -65,18 +65,18 @@ const writes: Record<string, (update: boolean) => Promise<unknown>> = {
   photos: async () => writeUploadedPhoto(h.db, store, { subject: { kind: "recipe", recipeId }, bytes: await image() }),
 };
 
-function blockSync(operation: "insert" | "update") {
-  h.sqlite.exec(`CREATE TRIGGER fail_sync BEFORE ${operation} ON sync_state BEGIN SELECT RAISE(ABORT, 'injected sync failure'); END`);
+async function blockSync(operation: "insert" | "update") {
+  await h.failWrite("sync_state", operation, "fail_sync");
 }
 
 describe.each(Object.keys(writes))("human-owned %s atomicity", (name) => {
   it("does not save data if its new sync marker cannot be inserted", async () => {
     const before = await snapshot();
-    blockSync("insert");
+    await blockSync("insert");
     await expect(writes[name]!(false)).rejects.toThrow();
     expect(await snapshot()).toEqual(before);
     expect(store.size()).toBe(0);
-    h.sqlite.exec("DROP TRIGGER fail_sync");
+    await h.dropFailure("sync_state", "fail_sync");
     await writes[name]!(false);
     expect(await h.db.select().from(s.syncState)).toHaveLength(1);
   });
@@ -85,7 +85,7 @@ describe.each(Object.keys(writes))("human-owned %s atomicity", (name) => {
     await writes[name]!(false);
     const before = await snapshot();
     const blobs = await store.list();
-    blockSync("update");
+    await blockSync("update");
     await expect(writes[name]!(true)).rejects.toThrow();
     expect(await snapshot()).toEqual(before);
     expect(await store.list()).toEqual(blobs);
@@ -94,7 +94,7 @@ describe.each(Object.keys(writes))("human-owned %s atomicity", (name) => {
 
 describe("candidate approval atomicity", () => {
   it("rolls back photo, approval and both sync markers when the second marker fails", async () => {
-    h.sqlite.exec("CREATE TRIGGER fail_approval_sync BEFORE INSERT ON sync_state WHEN NEW.data_class = 'photo-decisions' BEGIN SELECT RAISE(ABORT, 'injected approval sync failure'); END");
+    await h.failWrite("sync_state", "insert", "fail_approval_sync", "NEW.data_class = 'photo-decisions'");
     const before = await snapshot();
     await expect(approveCandidate(h.db, store, {
       candidateKey: "commons:fixture", provider: "commons", subject: { kind: "recipe", recipeId },

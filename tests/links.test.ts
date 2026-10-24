@@ -2,8 +2,8 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { applyRenames } from "../lib/db/renames";
@@ -29,7 +29,7 @@ const syncOf = async (cls: string) => (await h.db.select().from(s.syncState).whe
 const recipeId = async (slug: string) => (await h.db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, slug)))[0]!.id;
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.join(root, "db", "migrations"));
+  h = await openDb();
   await seedDatabase(h.db, data);
 });
 
@@ -353,7 +353,7 @@ describe("export and import", () => {
     await fill(h.db);
     const first = await exportHumanData(h.db);
 
-    const b = openDb(":memory:", path.join(root, "db", "migrations"));
+    const b = await openDb();
     await seedDatabase(b.db, data);
     const report = await importHumanData(b.db, first, { renames: {} });
     expect(report.imported["recipe-links"]).toBe(3);
@@ -371,7 +371,7 @@ describe("export and import", () => {
   it("skips a file whose recipe is gone and has no rename, and follows a rename", async () => {
     await fill(h.db);
     const bundle = await exportHumanData(h.db);
-    const b = openDb(":memory:", path.join(root, "db", "migrations"));
+    const b = await openDb();
     await seedDatabase(b.db, data);
     const renamed = { ...bundle, files: { ...bundle.files } };
     renamed.files["links/old-name.json"] = bundle.files["links/palak-paneer.json"]!.replace('"palak-paneer"', '"old-name"');
@@ -394,7 +394,7 @@ describe("renames", () => {
   }
 
   it("keeps links when both recipe rows exist: they move to the new slug and the old row can go", async () => {
-    const c = openDb(":memory:", path.join(root, "db", "migrations"));
+    const c = await openDb();
     const oldId = await tinyRecipe(c.db, "old-bowl");
     const newId = await tinyRecipe(c.db, "new-bowl");
     await writeLink(c.db, newId, { kind: "recipe", url: "https://example.com/existing", title: "Existing" });
@@ -410,7 +410,7 @@ describe("renames", () => {
   });
 
   it("keeps links when the new slug is not seeded yet: the row is renamed in place", async () => {
-    const c = openDb(":memory:", path.join(root, "db", "migrations"));
+    const c = await openDb();
     const oldId = await tinyRecipe(c.db, "old-bowl");
     await writeLink(c.db, oldId, { kind: "video", url: "https://example.com/v1", title: "V1" });
     await applyRenames(c.db, { "old-bowl": "new-bowl" });

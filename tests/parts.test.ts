@@ -2,8 +2,8 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { buildGroceryList, expandRecipe } from "../lib/grocery/aggregate";
@@ -29,7 +29,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.join(root, "db", "migrations"));
+  h = await openDb();
   await seedDatabase(h.db, data);
   const [person] = await h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] }).returning({ id: s.people.id });
   const [setup] = await h.db.insert(s.planSetups).values({ personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["dinner"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id });

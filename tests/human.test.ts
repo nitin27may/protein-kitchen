@@ -1,8 +1,8 @@
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import * as s from "../lib/db/schema";
 import { applyRenames, RenamesSchema } from "../lib/db/renames";
 import { clearSavedView, exportHumanData, importHumanData, registerExporter, writeRecipeFeedback, writeSavedView } from "../lib/human";
@@ -25,8 +25,8 @@ async function addRecipe(h: DbHandle, slug: string, opts: { feedback?: boolean }
 const feedbackOf = async (h: DbHandle, id: number) => (await h.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, id)))[0];
 const syncOf = async (h: DbHandle, cls: string) => (await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, cls)))[0];
 
-beforeEach(() => {
-  a = openDb(":memory:", migrations);
+beforeEach(async () => {
+  a = await openDb();
 });
 
 describe("writeRecipeFeedback", () => {
@@ -120,7 +120,7 @@ describe("export and import", () => {
     await seedHuman(a);
     const first = await exportHumanData(a.db);
 
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "something-else-first"); // shifts every recipe id
     await addRecipe(b, "palak-paneer");
     await addRecipe(b, "rajma-masala");
@@ -140,7 +140,7 @@ describe("export and import", () => {
   it("is idempotent: importing twice changes nothing", async () => {
     await seedHuman(a);
     const bundle = await exportHumanData(a.db);
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     for (const slug of ["palak-paneer", "rajma-masala", "untouched-recipe"]) await addRecipe(b, slug);
     await importHumanData(b.db, bundle, { renames: {} });
     const once = await exportHumanData(b.db);
@@ -192,7 +192,7 @@ describe("export and import", () => {
     await writeRecipeFeedback(a.db, id, { rating: 3 });
     const bundle = await exportHumanData(a.db);
 
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "new-name");
     expect((await importHumanData(b.db, bundle, { renames: {} })).skipped).toEqual(["feedback/old-name.json"]);
     const report = await importHumanData(b.db, bundle, { renames: { "old-name": "new-name" } });

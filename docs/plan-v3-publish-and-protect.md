@@ -1,16 +1,18 @@
 # Publish and protect: Postgres, auth, GitHub backup, Vercel
 
-Status: foundations implemented; publishing not started. Updated 2026-10-23. Repo safety and the async facade are built; finishing the async conversion is in progress (roadmap step 12). The UI/photo work is built with owner checks still pending. The infrastructure and identity recommendations below still need confirmation before provisioning or changing existing services. See `roadmap.md` for current status; the PR numbers in this document are delivery labels, not GitHub pull request numbers.
+Status: step-12 async Postgres application port implemented and verified locally; publishing not started. Updated 2026-10-23. The UI/photo work is built with owner checks still pending. The infrastructure and identity recommendations below still need confirmation before provisioning or changing existing services. See `roadmap.md` for current status; the PR numbers in this document are delivery labels, not GitHub pull request numbers.
 
 ## Current delivery status
 
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. The local workflow update adds all-branch pushes, manual dispatch, a temporary build database and downloadable test results. It will take effect on GitHub only after it is committed and pushed.
 
-The app still connects through `better-sqlite3`. A separate Postgres schema/baseline now covers the 33 current application tables, with local PGlite migration/parity tests, a node-postgres pool, and a development/test-only migration command. The pool is not wired into application queries yet; auth/household schema, async transaction conversion, seed/import and TCP integration coverage remain open. `neon.ts` declares Auth, Realtime and a private assets bucket, but that file is not proof those services are deployed or wired into the app. Do not run `neon deploy` blindly: the recommendations below differ from that declaration. No Postgres application runtime, Vercel deployment pipeline or cloud cutover has been completed in this development pass.
+The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity, plus a new library-version table. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset refuses to run before verified Postgres recovery exists. Existing SQLite files were not touched or imported.
+
+PGlite behavior/round-trip coverage and four native Postgres 17 TCP checks pass locally, including concurrent regeneration; native synthetic browser checks cover plans, swaps, groceries, prep, routines, rejection and exports. Builds succeed with an unreachable database URL. CI now declares a disposable Postgres service, but remote runs require a push. Auth/household schema, safe Neon branch selection/import and deployment remain open. `neon.ts` is not proof of deployment; do not run `neon deploy` blindly.
 
 Next delivery gates, in order:
 
-1. Finish the async data-layer/transaction conversion alongside a Postgres adapter and schema baseline (roadmap 12-13).
+1. Step 12's async-driver/transaction work is verified locally; finish the remaining identity-schema portion of step 13 alongside its implementation.
 2. Select an isolated Neon development branch, add production-target guards, and rehearse SQLite import with counts and checksums (14). Do not use an existing production pointer for development.
 3. Implement authentication, authorization and household/account screens (15-17) before public access.
 4. Wire cloud photos, state sync and encrypted backup/restore (18-20).
@@ -18,11 +20,13 @@ Next delivery gates, in order:
 
 ## Execution plan from the current checkpoint
 
-Planning baseline: local commit `8974a0d`. The application is still SQLite-backed. Postgres has a generated baseline, pool and local tests, not a completed application adapter. Earlier photo/mobile fixes and candidate data remain uncommitted and must be preserved. Approval of this plan permits sequential implementation; it does not authorize deleting cloud services, purchasing plans, importing personal data into previews, or production cutover.
+Original planning baseline: local commit `8974a0d`. The local application adapter/transaction port and acceptance checks below are now implemented; photo/mobile work was saved in `6369e73` and atomic persistence/coverage in `15ad10b`. Remaining cloud/identity/recovery gates are unchanged. Approval of this plan does not authorize deleting cloud services, purchasing plans, importing personal data into previews, or production cutover.
 
 Execute one checkpoint at a time. Finish implementation and its acceptance checks, save a focused commit, update `roadmap.md`, then move to the next unblocked checkpoint. Do not stop merely to announce the next item. If an external service blocks a checkpoint, continue independent local work, state the blocker precisely, and never mark the blocked checkpoint complete. Start no unattended background work unless it has a concrete bounded task or a required service.
 
 ### Checkpoint 1: Complete the Postgres application port (roadmap 12-13)
+
+**Local implementation and acceptance verified.** The checklist below records the implemented scope, not outstanding async work. Native Postgres was installed for a private synthetic cluster because Docker was unavailable; no shared service or cloud database was used. Workflow changes remain local until pushed.
 
 Start with roadmap step 12's numbered work package and carry-forward register in `roadmap.md`. Do not treat this combined checkpoint as permission to skip step 12. Finish the async-boundary/atomicity work first; only the transaction implementation that requires a new driver crosses into step 13. The existing Postgres schema is supporting groundwork, not the next active task. Earlier photo/mobile changes are saved separately, and human/device/nutrition blockers retain their original status.
 

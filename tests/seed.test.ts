@@ -3,19 +3,20 @@ import { count, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
 import type { DataSet } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { recipeIdBySlug, seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { perServing } from "../lib/nutrition/macros";
+import { libraryVersion, verifyLibraryVersion } from "../lib/db/library-version";
 
 const root = path.resolve(__dirname, "..");
 let data: DataSet;
 let handle: DbHandle;
 
-beforeAll(() => {
+beforeAll(async () => {
   data = loadData(root);
-  handle = openDb(":memory:", path.join(root, "db", "migrations"));
+  handle = await openDb();
 });
 
 describe("seedDatabase", () => {
@@ -74,8 +75,27 @@ describe("seedDatabase", () => {
   });
 
   it("enforces foreign keys", async () => {
-    expect(() =>
-      handle.sqlite.prepare("INSERT INTO recipe_steps (recipe_id, step_no, text) VALUES (999999, 1, 'x')").run(),
-    ).toThrow();
+    await expect(handle.db.insert(s.recipeSteps).values({ recipeId: 999999, stepNo: 1, text: "x" })).rejects.toThrow();
+  });
+
+  it("refuses mismatched content without changing it or silently seeding", async () => {
+    await verifyLibraryVersion(handle.db, data);
+    const recipes = new Map(data.recipes);
+    const [slug, recipe] = [...recipes][0]!;
+    recipes.set(slug, { ...recipe, name: `${recipe.name} changed` });
+    const changed = { ...data, recipes };
+    await expect(verifyLibraryVersion(handle.db, changed)).rejects.toThrow("out of date");
+    expect(await handle.db.select().from(s.libraryState)).toEqual([{ key: "library", version: libraryVersion(data) }]);
+  });
+
+  it("rolls back all content and the version marker if a later seed write fails", async () => {
+    const recipes = new Map(data.recipes);
+    const [slug, recipe] = [...recipes][0]!;
+    recipes.set(slug, { ...recipe, name: `${recipe.name} changed` });
+    await handle.failWrite("recipe_steps", "insert", "fail_seed");
+    await expect(seedDatabase(handle.db, { ...data, recipes })).rejects.toThrow();
+    expect(await handle.db.select({ name: s.recipes.name }).from(s.recipes).where(eq(s.recipes.slug, slug))).toEqual([{ name: recipe.name }]);
+    await verifyLibraryVersion(handle.db, data);
+    await handle.dropFailure("recipe_steps", "fail_seed");
   });
 });

@@ -52,10 +52,10 @@ export async function writeRecipeFeedback(db: Db, recipeId: number, patch: Feedb
   const existing = (await db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, recipeId)))[0];
   const stamps = { uid: existing?.uid ?? newUid(), createdAt: existing?.createdAt ?? at, updatedAt: at };
 
-  await withTx(db, (tx) => {
-    if (existing) tx.update(s.recipeFeedback).set({ ...set, ...stamps }).where(eq(s.recipeFeedback.recipeId, recipeId)).run();
-    else tx.insert(s.recipeFeedback).values({ recipeId, ...set, ...stamps }).run();
-    markChanged(tx, FEEDBACK_CLASS, at);
+  await withTx(db, async (tx) => {
+    if (existing) await tx.update(s.recipeFeedback).set({ ...set, ...stamps }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    else await tx.insert(s.recipeFeedback).values({ recipeId, ...set, ...stamps });
+    await markChanged(tx, FEEDBACK_CLASS, at);
   });
 }
 
@@ -133,13 +133,13 @@ export const feedbackClass: HumanDataClass = {
     if (to && isTouched(to)) return false;
     const at = nowIso();
     const uid = from.uid ?? newUid();
-    await withTx(db, (tx) => {
+    await withTx(db, async (tx) => {
       // The uid is unique, so release it on the old row before the new row takes it.
-      tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null, uid: null, updatedAt: at }).where(eq(s.recipeFeedback.recipeId, fromRecipeId)).run();
+      await tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null, uid: null, updatedAt: at }).where(eq(s.recipeFeedback.recipeId, fromRecipeId));
       const values = { status: from.status, rating: from.rating, favourite: from.favourite, banned: from.banned, notes: from.notes, testedAt: from.testedAt, uid, createdAt: from.createdAt ?? at, updatedAt: at, createdByPersonId: from.createdByPersonId };
-      if (to) tx.update(s.recipeFeedback).set(values).where(eq(s.recipeFeedback.recipeId, toRecipeId)).run();
-      else tx.insert(s.recipeFeedback).values({ recipeId: toRecipeId, ...values }).run();
-      markChanged(tx, FEEDBACK_CLASS, at);
+      if (to) await tx.update(s.recipeFeedback).set(values).where(eq(s.recipeFeedback.recipeId, toRecipeId));
+      else await tx.insert(s.recipeFeedback).values({ recipeId: toRecipeId, ...values });
+      await markChanged(tx, FEEDBACK_CLASS, at);
     });
     return true;
   },

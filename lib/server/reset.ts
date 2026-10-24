@@ -1,7 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
 import { count as countRows, eq, isNotNull, or } from "drizzle-orm";
-import type Database from "better-sqlite3";
 import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
@@ -63,45 +60,45 @@ export async function resetCounts(db: Db): Promise<ResetCounts> {
   };
 }
 
-function clearPlans(tx: Tx) {
-  tx.delete(s.planProgress).run();
-  tx.delete(s.planPartState).run();
-  tx.delete(s.planRoutines).run();
-  tx.delete(s.planSlotPortions).run();
-  tx.delete(s.groceryState).run();
-  tx.delete(s.groceryManual).run();
-  tx.delete(s.planSlots).run();
-  tx.delete(s.plans).run();
-  tx.delete(s.planSetups).run();
-  tx.delete(s.prepTaskState).run();
+async function clearPlans(tx: Tx) {
+  await tx.delete(s.planProgress);
+  await tx.delete(s.planPartState);
+  await tx.delete(s.planRoutines);
+  await tx.delete(s.planSlotPortions);
+  await tx.delete(s.groceryState);
+  await tx.delete(s.groceryManual);
+  await tx.delete(s.planSlots);
+  await tx.delete(s.plans);
+  await tx.delete(s.planSetups);
+  await tx.delete(s.prepTaskState);
 }
 
-function clearGroceries(tx: Tx) {
-  tx.delete(s.groceryState).run();
-  tx.delete(s.groceryManual).run();
-  tx.delete(s.pantry).run();
+async function clearGroceries(tx: Tx) {
+  await tx.delete(s.groceryState);
+  await tx.delete(s.groceryManual);
+  await tx.delete(s.pantry);
 }
 
-function clearProgress(tx: Tx) {
-  tx.delete(s.habitLog).run();
-  tx.delete(s.reminderLog).run();
-  tx.delete(s.prepTaskState).run();
+async function clearProgress(tx: Tx) {
+  await tx.delete(s.habitLog);
+  await tx.delete(s.reminderLog);
+  await tx.delete(s.prepTaskState);
 }
 
-function clearRatings(tx: Tx) {
-  tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null }).run();
-  markChanged(tx, "recipe-feedback", nowIso());
+async function clearRatings(tx: Tx) {
+  await tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null });
+  await markChanged(tx, "recipe-feedback", nowIso());
 }
 
-function clearProfiles(tx: Tx) {
-  clearPlans(tx);
-  clearProgress(tx);
-  tx.delete(s.pushSubscriptions).run();
-  tx.delete(s.preferences).run();
+async function clearProfiles(tx: Tx) {
+  await clearPlans(tx);
+  await clearProgress(tx);
+  await tx.delete(s.pushSubscriptions);
+  await tx.delete(s.preferences);
   // Routine choices belong to a profile; deleting the people deletes them (the foreign key cascades), so mark the export.
-  tx.delete(s.personRoutines).run();
-  markChanged(tx, "person-routines", nowIso());
-  tx.delete(s.people).run();
+  await tx.delete(s.personRoutines);
+  await markChanged(tx, "person-routines", nowIso());
+  await tx.delete(s.people);
 }
 
 /**
@@ -109,25 +106,25 @@ function clearProfiles(tx: Tx) {
  * Runs in one transaction, so a failure leaves everything as it was.
  */
 export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStore): Promise<void> {
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     switch (scope) {
-      case "plans": return clearPlans(tx);
-      case "groceries": return clearGroceries(tx);
-      case "progress": return clearProgress(tx);
-      case "ratings": return clearRatings(tx);
-      case "profiles": return clearProfiles(tx);
+      case "plans": return await clearPlans(tx);
+      case "groceries": return await clearGroceries(tx);
+      case "progress": return await clearProgress(tx);
+      case "ratings": return await clearRatings(tx);
+      case "profiles": return await clearProfiles(tx);
       case "all":
-        clearProfiles(tx);
-        clearGroceries(tx);
-        clearRatings(tx);
-        tx.delete(s.savedViews).run();
-        markChanged(tx, "saved-views", nowIso());
-        tx.delete(s.recipeLinks).run();
-        markChanged(tx, "recipe-links", nowIso());
-        tx.delete(s.photos).run();
-        markChanged(tx, "photos", nowIso());
-        tx.delete(s.photoDecisions).run();
-        markChanged(tx, "photo-decisions", nowIso());
+        await clearProfiles(tx);
+        await clearGroceries(tx);
+        await clearRatings(tx);
+        await tx.delete(s.savedViews);
+        await markChanged(tx, "saved-views", nowIso());
+        await tx.delete(s.recipeLinks);
+        await markChanged(tx, "recipe-links", nowIso());
+        await tx.delete(s.photos);
+        await markChanged(tx, "photos", nowIso());
+        await tx.delete(s.photoDecisions);
+        await markChanged(tx, "photo-decisions", nowIso());
         return;
     }
   });
@@ -135,15 +132,7 @@ export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStor
   if (scope === "all" && photoStore) for (const key of await photoStore.list()) await photoStore.delete(key);
 }
 
-/** Copies the live database to backups/ before a reset. Returns the path, or null for an in-memory database. */
-export async function backupBeforeReset(sqlite: Database.Database, root: string, scope: ResetScope): Promise<string | null> {
-  if (sqlite.name === ":memory:" || sqlite.memory) return null;
-  const dir = path.join(root, "backups");
-  fs.mkdirSync(dir, { recursive: true });
-  const out = path.join(dir, `pre-reset-${scope}-${new Date().toISOString().replace(/[:.]/g, "-")}.db`);
-  sqlite.prepare("VACUUM INTO ?").run(out);
-  // "Everything" also deletes the photo files, so keep a copy of them beside the database backup.
-  const uploads = process.env.UPLOADS_DIR ?? path.join(root, "uploads");
-  if (scope === "all" && fs.existsSync(uploads)) fs.cpSync(uploads, out.replace(/\.db$/, "-uploads"), { recursive: true });
-  return out;
+/** Destructive application resets stay disabled until the Postgres backup/restore gate is implemented. */
+export async function backupBeforeReset(): Promise<string> {
+  throw new Error("Reset is disabled: a verified Postgres backup and restore procedure is required first.");
 }

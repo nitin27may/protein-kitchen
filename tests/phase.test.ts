@@ -1,8 +1,9 @@
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
 import type { DataSet } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
+import { openDb } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { buildGroceryList } from "../lib/grocery/aggregate";
@@ -217,12 +218,12 @@ describe("grocery progress against a real database", () => {
   let data: DataSet;
   let meals: { recipeSlug: string; servings: number }[];
   let planId: number;
-  let h: ReturnType<typeof openDb>;
+  let h: Awaited<ReturnType<typeof openDb>>;
 
   beforeAll(async () => {
     const root = path.resolve(__dirname, "..");
     data = loadData(root);
-    h = openDb(":memory:", path.join(root, "db", "migrations"));
+    h = await openDb();
     await seedDatabase(h.db, data);
     const [person] = await h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] }).returning({ id: s.people.id });
     const [setup] = await h.db.insert(s.planSetups).values({ personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["lunch", "dinner"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id });
@@ -234,42 +235,43 @@ describe("grocery progress against a real database", () => {
       ["falafel-bowl", "2026-11-03", "lunch", 2],
     ] as const;
     for (const [slug, date, slot, servings] of rows) {
-      const rid = h.sqlite.prepare("select id from recipes where slug = ?").get(slug) as { id: number };
-      const [sl] = await h.db.insert(s.planSlots).values({ planId, date, slot, recipeId: rid.id }).returning({ id: s.planSlots.id });
+      const [rid] = await h.db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, slug));
+      const [sl] = await h.db.insert(s.planSlots).values({ planId, date, slot, recipeId: rid!.id }).returning({ id: s.planSlots.id });
       await h.db.insert(s.planSlotPortions).values({ planSlotId: sl!.id, personId: person!.id, servings });
     }
     // The meals as a page would read them from the database.
-    meals = h.sqlite
-      .prepare("select r.slug as recipeSlug, sum(p.servings) as servings from plan_slots sl join recipes r on r.id = sl.recipe_id join plan_slot_portions p on p.plan_slot_id = sl.id where sl.plan_id = ? group by sl.id")
-      .all(planId) as { recipeSlug: string; servings: number }[];
+    meals = (await h.client.query<{ recipeSlug: string; servings: number }>(
+      'select r.slug as "recipeSlug", sum(p.servings) as servings from plan_slots sl join recipes r on r.id = sl.recipe_id join plan_slot_portions p on p.plan_slot_id = sl.id where sl.plan_id = $1 group by sl.id, r.slug',
+      [planId],
+    )).rows;
   });
 
-  const ticked = () => new Set((h.sqlite.prepare("select i.slug from grocery_state g join ingredients i on i.id = g.ingredient_id where g.plan_id = ? and g.checked = 1").all(planId) as { slug: string }[]).map((r) => r.slug));
+  const ticked = async () => new Set((await h.client.query<{ slug: string }>("select i.slug from grocery_state g join ingredients i on i.id = g.ingredient_id where g.plan_id = $1 and g.checked = true", [planId])).rows.map((r) => r.slug));
 
-  it("counts the groceries list without its pantry staples", () => {
+  it("counts the groceries list without its pantry staples", async () => {
     const lines = buildGroceryList(meals, data.recipes, data.ingredients).lines;
     const toBuy = lines.filter((l) => !l.isPantryStaple);
     expect(toBuy.length).toBeGreaterThan(0);
     expect(toBuy.length).toBeLessThan(lines.length);
-    expect(groceryProgressFrom(meals, data.recipes, data.ingredients, ticked())).toEqual({ total: toBuy.length, left: toBuy.length });
+    expect(groceryProgressFrom(meals, data.recipes, data.ingredients, await ticked())).toEqual({ total: toBuy.length, left: toBuy.length });
   });
 
   it("subtracts ticked items, reading the ticks from the database", async () => {
     const toBuy = buildGroceryList(meals, data.recipes, data.ingredients).lines.filter((l) => !l.isPantryStaple);
     for (const l of toBuy.slice(0, 3)) {
-      const id = h.sqlite.prepare("select id from ingredients where slug = ?").get(l.ingredient) as { id: number };
-      await h.db.insert(s.groceryState).values({ planId, ingredientId: id.id, checked: true });
+      const [id] = await h.db.select({ id: s.ingredients.id }).from(s.ingredients).where(eq(s.ingredients.slug, l.ingredient));
+      await h.db.insert(s.groceryState).values({ planId, ingredientId: id!.id, checked: true });
     }
-    expect(ticked().size).toBe(3);
-    expect(groceryProgressFrom(meals, data.recipes, data.ingredients, ticked())).toEqual({ total: toBuy.length, left: toBuy.length - 3 });
+    expect((await ticked()).size).toBe(3);
+    expect(groceryProgressFrom(meals, data.recipes, data.ingredients, await ticked())).toEqual({ total: toBuy.length, left: toBuy.length - 3 });
   });
 
   it("reaches zero left when everything is ticked, and ignores ticks on pantry items", async () => {
     const lines = buildGroceryList(meals, data.recipes, data.ingredients).lines;
     for (const l of lines) {
-      const id = h.sqlite.prepare("select id from ingredients where slug = ?").get(l.ingredient) as { id: number };
-      await h.db.insert(s.groceryState).values({ planId, ingredientId: id.id, checked: true }).onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked: true } });
+      const [id] = await h.db.select({ id: s.ingredients.id }).from(s.ingredients).where(eq(s.ingredients.slug, l.ingredient));
+      await h.db.insert(s.groceryState).values({ planId, ingredientId: id!.id, checked: true }).onConflictDoUpdate({ target: [s.groceryState.planId, s.groceryState.ingredientId], set: { checked: true } });
     }
-    expect(groceryProgressFrom(meals, data.recipes, data.ingredients, ticked())).toMatchObject({ left: 0 });
+    expect(groceryProgressFrom(meals, data.recipes, data.ingredients, await ticked())).toMatchObject({ left: 0 });
   });
 });

@@ -2,8 +2,8 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { withTx } from "../lib/db/tx";
@@ -30,14 +30,15 @@ const base = {
 };
 
 async function makePlan(over: Partial<Parameters<typeof insertPlanSetup>[1]> = {}): Promise<number> {
-  return withTx(h.db, (tx) => {
-    const setupId = insertPlanSetup(tx, { ...base, ...over });
-    return tx.insert(s.plans).values({ setupId, seed: 1, createdAt: "2026-11-01" }).returning({ id: s.plans.id }).get().id;
+  return withTx(h.db, async (tx) => {
+    const setupId = await insertPlanSetup(tx, { ...base, ...over });
+    const [plan] = await tx.insert(s.plans).values({ setupId, seed: 1, createdAt: "2026-11-01" }).returning({ id: s.plans.id });
+    return plan!.id;
   });
 }
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.join(root, "db", "migrations"));
+  h = await openDb();
   await seedDatabase(h.db, data);
   await h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] });
   planId = await makePlan();
@@ -72,8 +73,8 @@ describe("plan milestones", () => {
     expect(await h.db.select().from(s.planProgress)).toHaveLength(0);
   });
 
-  it("the database itself refuses a step outside the allowed three", () => {
-    expect(() => h.sqlite.prepare("insert into plan_progress (plan_id, step, done_at) values (?, 'cooking', 'x')").run(planId)).toThrow();
+  it("the database itself refuses a step outside the allowed three", async () => {
+    await expect(h.client.query("insert into plan_progress (plan_id, step, done_at) values ($1, 'cooking', '2026-11-01')", [planId])).rejects.toThrow();
   });
 
   it("keeps each plan's progress separate", async () => {

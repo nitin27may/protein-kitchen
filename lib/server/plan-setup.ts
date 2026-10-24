@@ -20,8 +20,8 @@ export interface PlanSetupValues {
 }
 
 /** Stores a plan's setup, including the optional shopping and prep weekdays. Runs inside the caller's transaction. */
-export function insertPlanSetup(tx: Tx, v: PlanSetupValues): number {
-  const row = tx
+export async function insertPlanSetup(tx: Tx, v: PlanSetupValues): Promise<number> {
+  const row = (await tx
     .insert(s.planSetups)
     .values({
       personIds: v.personIds,
@@ -36,7 +36,6 @@ export function insertPlanSetup(tx: Tx, v: PlanSetupValues): number {
       prepDay: isIsoWeekday(v.prepDay) ? v.prepDay : null,
       createdAt: v.createdAt,
     })
-    .returning({ id: s.planSetups.id })
-    .get();
-  return row.id;
+    .returning({ id: s.planSetups.id }))[0];
+  return row!.id;
 }

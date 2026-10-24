@@ -29,8 +29,8 @@ export async function writeLink(db: Db, recipeId: number, input: LinkRowInput, p
   const uid = newUid();
   const [top] = await db.select({ m: max(s.recipeLinks.position) }).from(s.recipeLinks).where(eq(s.recipeLinks.recipeId, recipeId));
   const position = top?.m === null || top?.m === undefined ? 0 : Number(top.m) + 1;
-  const id = await withTx(db, (tx) => {
-    const row = tx
+  const id = await withTx(db, async (tx) => {
+    const row = (await tx
       .insert(s.recipeLinks)
       .values({
         uid,
@@ -47,10 +47,9 @@ export async function writeLink(db: Db, recipeId: number, input: LinkRowInput, p
         updatedAt: at,
         createdByPersonId: personId ?? null,
       })
-      .returning({ id: s.recipeLinks.id })
-      .get();
-    markChanged(tx, LINKS_CLASS, at);
-    return row.id;
+      .returning({ id: s.recipeLinks.id }))[0];
+    await markChanged(tx, LINKS_CLASS, at);
+    return row!.id;
   });
   return { id, uid };
 }
@@ -68,9 +67,9 @@ export async function updateLinkRow(db: Db, id: number, patch: Partial<LinkRowIn
   if (patch.title !== undefined) set.title = patch.title;
   if (patch.source !== undefined) set.source = patch.source;
   if (patch.startSec !== undefined) set.startSec = patch.startSec;
-  await withTx(db, (tx) => {
-    tx.update(s.recipeLinks).set(set).where(eq(s.recipeLinks.id, id)).run();
-    markChanged(tx, LINKS_CLASS, at);
+  await withTx(db, async (tx) => {
+    await tx.update(s.recipeLinks).set(set).where(eq(s.recipeLinks.id, id));
+    await markChanged(tx, LINKS_CLASS, at);
   });
   return true;
 }
@@ -79,9 +78,9 @@ export async function deleteLinkRow(db: Db, id: number): Promise<boolean> {
   const existing = (await db.select({ id: s.recipeLinks.id }).from(s.recipeLinks).where(eq(s.recipeLinks.id, id)))[0];
   if (!existing) return false;
   const at = nowIso();
-  await withTx(db, (tx) => {
-    tx.delete(s.recipeLinks).where(eq(s.recipeLinks.id, id)).run();
-    markChanged(tx, LINKS_CLASS, at);
+  await withTx(db, async (tx) => {
+    await tx.delete(s.recipeLinks).where(eq(s.recipeLinks.id, id));
+    await markChanged(tx, LINKS_CLASS, at);
   });
   return true;
 }
@@ -99,9 +98,9 @@ export async function reorderLinks(db: Db, recipeId: number, orderedIds: number[
   const changed = order.filter((id, index) => byId.get(id)!.position !== index);
   if (changed.length === 0) return;
   const at = nowIso();
-  await withTx(db, (tx) => {
-    for (const id of changed) tx.update(s.recipeLinks).set({ position: order.indexOf(id), updatedAt: at }).where(eq(s.recipeLinks.id, id)).run();
-    markChanged(tx, LINKS_CLASS, at);
+  await withTx(db, async (tx) => {
+    for (const id of changed) await tx.update(s.recipeLinks).set({ position: order.indexOf(id), updatedAt: at }).where(eq(s.recipeLinks.id, id));
+    await markChanged(tx, LINKS_CLASS, at);
   });
 }
 
@@ -199,11 +198,11 @@ export const linksClass: HumanDataClass = {
     const [top] = await db.select({ m: max(s.recipeLinks.position) }).from(s.recipeLinks).where(eq(s.recipeLinks.recipeId, toRecipeId));
     const start = top?.m === null || top?.m === undefined ? 0 : Number(top.m) + 1;
     const at = nowIso();
-    await withTx(db, (tx) => {
-      moving.forEach((row, index) => {
-        tx.update(s.recipeLinks).set({ recipeId: toRecipeId, position: start + index, updatedAt: at }).where(eq(s.recipeLinks.id, row.id)).run();
-      });
-      markChanged(tx, LINKS_CLASS, at);
+    await withTx(db, async (tx) => {
+      for (const [index, row] of moving.entries()) {
+        await tx.update(s.recipeLinks).set({ recipeId: toRecipeId, position: start + index, updatedAt: at }).where(eq(s.recipeLinks.id, row.id));
+      }
+      await markChanged(tx, LINKS_CLASS, at);
     });
     return true;
   },

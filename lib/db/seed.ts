@@ -5,6 +5,7 @@ import { anchorIngredients, perServing, proteinByIngredient } from "../nutrition
 import type { RecipeTotals } from "../nutrition/macros";
 import { autoTags } from "../nutrition/tags";
 import type { Db } from "./client";
+import { libraryVersion } from "./library-version";
 import { applyRenames } from "./renames";
 import * as s from "./schema";
 import { withTx } from "./tx";
@@ -23,13 +24,11 @@ export interface SeedReport {
 /**
  * Rebuilds all content tables from /data. User state tables are never written.
  *
- * Two transactions with the renames between them: renames are async (they move human-owned rows between recipe
- * ids) and nothing async may run inside a transaction. Phase 1 upserts content, so a renamed recipe already has its
- * new row; then renames re-point ratings, links and photos; phase 2 creates missing feedback rows and rebuilds the
- * derived children. Every step is idempotent, so a failure between the two phases is fixed by running the seed again.
+ * Upserts content, moves renamed human data, rebuilds derived children and records the library version in one
+ * awaited transaction. Human writers use nested savepoints, so a failure restores the entire previous library.
  */
 export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
-  const phase1 = await withTx(db, (tx) => {
+  return withTx(db, async (tx) => {
     // Ingredients
     for (const ing of data.ingredients.values()) {
       const row = {
@@ -52,23 +51,23 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
         containsOnionGarlic: ing.contains_onion_garlic,
         isDairy: ing.is_dairy,
       };
-      tx.insert(s.ingredients).values(row).onConflictDoUpdate({ target: s.ingredients.slug, set: row }).run();
+      await tx.insert(s.ingredients).values(row).onConflictDoUpdate({ target: s.ingredients.slug, set: row });
     }
-    const ingId = new Map(tx.select({ id: s.ingredients.id, slug: s.ingredients.slug }).from(s.ingredients).all().map((r) => [r.slug, r.id]));
+    const ingId = new Map((await tx.select({ id: s.ingredients.id, slug: s.ingredients.slug }).from(s.ingredients)).map((r) => [r.slug, r.id]));
 
     for (const [slug, m] of Object.entries(data.micros)) {
       const id = ingId.get(slug);
       if (id === undefined) continue;
       const row = { ingredientId: id, source: m.source, sourceId: m.source_id, per100g: m.per100g, notReported: m.not_reported };
-      tx.insert(s.ingredientMicros).values(row).onConflictDoUpdate({ target: s.ingredientMicros.ingredientId, set: row }).run();
+      await tx.insert(s.ingredientMicros).values(row).onConflictDoUpdate({ target: s.ingredientMicros.ingredientId, set: row });
     }
 
     // Techniques
     for (const [slug, t] of data.techniques) {
       const row = { slug, title: t.title, bodyMd: t.body, tags: t.tags };
-      tx.insert(s.techniques).values(row).onConflictDoUpdate({ target: s.techniques.slug, set: row }).run();
+      await tx.insert(s.techniques).values(row).onConflictDoUpdate({ target: s.techniques.slug, set: row });
     }
-    const techId = new Map(tx.select({ id: s.techniques.id, slug: s.techniques.slug }).from(s.techniques).all().map((r) => [r.slug, r.id]));
+    const techId = new Map((await tx.select({ id: s.techniques.id, slug: s.techniques.slug }).from(s.techniques)).map((r) => [r.slug, r.id]));
 
     // Habits
     for (const h of data.habits) {
@@ -82,7 +81,7 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
         caution: h.caution,
         defaultOn: h.default_on,
       };
-      tx.insert(s.habits).values(row).onConflictDoUpdate({ target: s.habits.slug, set: row }).run();
+      await tx.insert(s.habits).values(row).onConflictDoUpdate({ target: s.habits.slug, set: row });
     }
 
     // Recipes (first pass, so components can reference each other by id)
@@ -103,32 +102,26 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
         tags: r.tags,
         fridgeDays: r.fridge_days,
       };
-      tx.insert(s.recipes).values(row).onConflictDoUpdate({ target: s.recipes.slug, set: row }).run();
+      await tx.insert(s.recipes).values(row).onConflictDoUpdate({ target: s.recipes.slug, set: row });
     }
-    const recId = new Map(tx.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes).all().map((r) => [r.slug, r.id]));
+    const recId = new Map((await tx.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes)).map((r) => [r.slug, r.id]));
     const seededIds = [...data.recipes.keys()].map((slug) => recId.get(slug)).filter((v): v is number => v !== undefined);
-    return { ingId, techId, recId, seededIds };
-  });
-
-  await applyRenames(db, data.renames);
-
-  return withTx(db, (tx) => {
-    const { ingId, techId, recId, seededIds } = phase1;
+    await applyRenames(tx, data.renames);
 
     // Feedback rows exist for every recipe but are never overwritten.
-    for (const id of seededIds) tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing().run();
+    for (const id of seededIds) await tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing();
 
     // Children are derived, so clear and rebuild.
     for (const table of [s.recipeItems, s.recipeSteps, s.recipeAdvancePrep, s.recipeMacros, s.recipeAnchors] as const) {
-      tx.delete(table).where(inArray(table.recipeId, seededIds)).run();
+      await tx.delete(table).where(inArray(table.recipeId, seededIds));
     }
 
     const memo = new Map<string, RecipeTotals>();
     let anchorRows = 0;
     for (const r of data.recipes.values()) {
       const id = recId.get(r.slug)!;
-      r.items.forEach((item, position) => {
-        tx.insert(s.recipeItems)
+      for (const [position, item] of r.items.entries()) {
+        await tx.insert(s.recipeItems)
           .values({
             recipeId: id,
             position,
@@ -138,22 +131,20 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
             displayQty: "ingredient" in item ? item.display_qty ?? null : null,
             displayUnit: "ingredient" in item ? item.display_unit ?? null : null,
             optional: item.optional ?? false,
-          })
-          .run();
-      });
-      r.steps.forEach((step, i) => {
-        tx.insert(s.recipeSteps)
+          });
+      }
+      for (const [i, step] of r.steps.entries()) {
+        await tx.insert(s.recipeSteps)
           .values({
             recipeId: id,
             stepNo: i + 1,
             text: step.text,
             techniqueId: step.technique ? techId.get(step.technique) ?? null : null,
             timerSec: step.timer_sec ?? null,
-          })
-          .run();
-      });
+          });
+      }
       for (const prep of r.advance_prep) {
-        tx.insert(s.recipeAdvancePrep)
+        await tx.insert(s.recipeAdvancePrep)
           .values({
             recipeId: id,
             kind: prep.kind,
@@ -161,12 +152,11 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
             grams: prep.grams ?? null,
             leadHours: prep.lead_hours,
             instruction: prep.instruction,
-          })
-          .run();
+          });
       }
 
       const m = perServing(r.slug, data.recipes, data.ingredients, memo);
-      tx.insert(s.recipeMacros)
+      await tx.insert(s.recipeMacros)
         .values({
           recipeId: id,
           kcal: m.kcal,
@@ -175,20 +165,22 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
           fatG: m.fat_g,
           fibreG: m.fibre_g,
           autoTags: r.kind === "recipe" ? autoTags(r, m, effectiveActiveMin(r, data.recipes)) : [],
-        })
-        .run();
+        });
 
       if (r.kind === "recipe") {
         const by = proteinByIngredient(r.slug, data.recipes, data.ingredients);
         const anchors = new Set(anchorIngredients(r.slug, data.recipes, data.ingredients));
         for (const [slug, protein] of by) {
           if (!anchors.has(slug)) continue;
-          tx.insert(s.recipeAnchors).values({ recipeId: id, ingredientId: ingId.get(slug)!, proteinG: protein / r.servings }).run();
+          await tx.insert(s.recipeAnchors).values({ recipeId: id, ingredientId: ingId.get(slug)!, proteinG: protein / r.servings });
           anchorRows++;
         }
       }
     }
 
+    const version = libraryVersion(data);
+    await tx.insert(s.libraryState).values({ key: "library", version })
+      .onConflictDoUpdate({ target: s.libraryState.key, set: { version } });
     const staleIngredients = [...ingId.keys()].filter((slug) => !data.ingredients.has(slug));
     const staleRecipes = [...recId.keys()].filter((slug) => !data.recipes.has(slug));
     return {
