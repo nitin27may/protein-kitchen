@@ -3,8 +3,61 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, recipes } from "../../lib/db/schema";
+import { authUsers, householdMembers, households, people, personRecipeFeedback, recipes, plans, planSetups } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
+import { persistNewPlan } from "../../lib/server/plan-persistence";
+
+test("owners cannot read another household's newer plan, prep, groceries or exports", async ({ page }) => {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  const householdId = `foreign-plan-${randomUUID()}`;
+  let personId: number | undefined;
+  let setupId: number | undefined;
+  let planId: number | undefined;
+  try {
+    await handle.db.insert(households).values({ id: householdId, name: "Unrelated synthetic plan household" });
+    const [person] = await handle.db.insert(people).values({
+      householdId, name: "Foreign private plan profile", sex: "other", birthDate: "2000-01-01",
+      heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+    }).returning({ id: people.id });
+    personId = person!.id;
+    const [recipe] = await handle.db.select({ id: recipes.id }).from(recipes).where(eq(recipes.slug, "tofu-burrito-bowl"));
+    planId = await persistNewPlan(handle.db, {
+      setup: {
+        householdId, personIds: [personId], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["dinner"],
+        cuisineBalance: 0.5, maxActiveMin: 20, healthFocus: { nutrientDense: false, lowSugar: true, light: true },
+        prepStyle: "leftovers", createdAt: new Date().toISOString(),
+      },
+      seed: 1942, slots: [{
+        date: "2026-11-04", slot: "dinner", recipeSlug: "tofu-burrito-bowl", servings: { [personId]: 1 },
+        locked: false, reasons: [],
+      }], routines: [], recipeIds: new Map([["tofu-burrito-bowl", recipe!.id]]),
+    });
+    setupId = (await handle.db.select().from(plans).where(eq(plans.id, planId)))[0]!.setupId;
+    for (const path of [`/plan/${planId}`, `/plan/${planId}/prep`]) {
+      expect((await page.goto(path))?.status()).toBe(404);
+      await expect(page.getByText("Foreign private plan profile", { exact: true })).toHaveCount(0);
+      const rsc = await page.request.get(path, { headers: { rsc: "1" } });
+      expect(await rsc.text()).not.toContain("Foreign private plan profile");
+    }
+    await page.goto(`/groceries?plan=${planId}`);
+    await expect(page.getByRole("heading", { name: "No list yet", exact: true })).toBeVisible();
+    for (const format of ["xlsx", "pdf"]) {
+      const response = await page.request.get(`/api/plan/${planId}/export?format=${format}`);
+      expect(response.status()).toBe(404);
+      expect(await response.json()).toMatchObject({ error: "Plan not found" });
+    }
+    await page.goto("/");
+    await expect(page.locator(`a[href="/plan/${planId}"]`)).toHaveCount(0);
+    await page.goto("/plan/new?step=who");
+    await expect(page.getByText("Foreign private plan profile", { exact: true })).toHaveCount(0);
+  } finally {
+    if (planId) await handle.db.delete(plans).where(eq(plans.id, planId));
+    if (setupId) await handle.db.delete(planSetups).where(eq(planSetups.id, setupId));
+    if (personId) await handle.db.delete(people).where(eq(people.id, personId));
+    await handle.db.delete(households).where(eq(households.id, householdId));
+    await handle.close();
+  }
+});
 
 test("profile Server Actions persist household ownership and reject foreign profile edits even for owners", async ({ page }) => {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));

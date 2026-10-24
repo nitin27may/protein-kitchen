@@ -10,6 +10,18 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 
 ## 1. What this is
 
+**Latest request-owned plan projections:** verified household scope now controls
+latest/list/detail plan queries, grocery/part/routine/milestone projections and
+batch-prep ticks. Selected profiles, portions and routine snapshots are checked
+before private payloads are returned. Foreign plan ids look missing in page and
+file-export flows. **Acceptance: 1,830 tests / 92 files and all 25 retained browser
+journeys**, typecheck and production build pass; prep/context/delivery retain
+100% gates. The new real-browser owner refusal case covers a foreign newer plan,
+detail/prep HTML and RSC, query-selected groceries, both export formats, home and
+setup privacy. This does not yet close unscoped mutations, feedback/photos/
+saved-view/export-job consumers or composite ownership keys; admission remains
+gated. Next: remaining plan/shopping mutations under transactional ownership.
+
 **Latest reminder isolation and CI slice:** the scheduler now selects each
 recipient's household-owned plan, validates selected profiles/portions/routines,
 and derives tasks in a read-only repeatable-read snapshot. It never uses the

@@ -145,6 +145,34 @@ or change protected-branch requirements.
 
 ## Current delivery status
 
+### Next H2 slice: request-owned plan projections
+
+Before opening admission, replace request-facing global latest-plan, plan-list
+and plan-view reads with verified household scope. Reuse the existing scoped
+header/list helpers; a foreign plan id must return the same missing result as a
+nonexistent id, including export and RSC callers. Validate every selected profile
+and portion before returning the full plan view. Routine snapshots, grocery
+checks, part modes, milestones and batch-prep ticks must verify the owned parent
+before reading children. Foreign/corrupt references must not be silently dropped
+or rendered. Keep library data unchanged and preserve household members' shared
+plan access; individual profile editing rules are unchanged.
+
+Acceptance: two-household backend cases for latest/list/view and child
+projections, revoked membership and malformed cross-parent references; actual
+browser requests for foreign plan detail/prep/export and parameterized groceries
+must not reveal the foreign household's plan. Retain valid same-household
+generation, swap, regeneration, prep and file-export flows, and rerun native
+coverage, types/build and the saved browser suite. This slice does not claim
+unconverted mutation/shared-state/photo/sync consumers are isolated; admission
+remains gated until those and the schema contract are complete.
+
+**Plan-read acceptance:** 1,830 tests / 92 files pass including native Postgres
+and all coverage gates; all 25 browser journeys, typecheck and production build
+pass. The retained foreign-household browser case checks a newer unrelated plan,
+detail/prep HTML and RSC, parameterized groceries, PDF/XLSX export, home and setup.
+Backend cases cover revoked verification/ownership, invalid selected profiles,
+foreign portions/routines and scoped child loaders. No deployment occurred.
+
 GitHub Actions already runs typecheck, validation, tests, build and secret scanning; the latest inspected main-branch run passed both `ci` and `secrets`. Committed local workflow changes add all-branch pushes, manual dispatch, disposable Postgres and browser jobs, and downloadable test results. They will take effect on GitHub only after a push.
 
 The application now uses the guarded node-postgres pool and awaited Drizzle transactions. All 33 legacy application tables retain parity with explicit additive Postgres-only fields; the schema now has 48 tables including households, library versioning, eight identity/rate-limit tables, separate personal recipe feedback and four operational sync/reminder tables. Human sync markers, plan writes, prep/reset internals and seed/renames are awaited; seed and renames share one atomic transaction. Requests check a content fingerprint instead of seeding. Settings reset stays blocked until the approved off-machine recovery/pre-reset failure gate exists. Existing SQLite files were not touched or imported.

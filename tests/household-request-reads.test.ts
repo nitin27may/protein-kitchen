@@ -4,7 +4,10 @@ import * as s from "../lib/db/schema";
 import { loadData } from "../lib/data/load";
 import { requireMember } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
-import { getPlanView, lastSetup, listPeople } from "../lib/server/queries";
+import {
+  getBatchPrepTicks, getPartModes, getPlanMilestones, getPlanRoutines, getPlanView, groceryChecks,
+  lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans,
+} from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
 import { persistNewPlan } from "../lib/server/plan-persistence";
 import { openDb, type DbHandle } from "./helpers/db";
@@ -63,6 +66,65 @@ it("loads only the verified request household's people and last setup", async ()
   await h.db.delete(s.plans).where(eq(s.plans.householdId, "b"));
   await h.db.delete(s.planSetups).where(eq(s.planSetups.householdId, "b"));
   expect(await lastSetup()).toBeUndefined();
+});
+
+it("selects only request-owned latest/list/detail plans, including when a foreign plan is newer", async () => {
+  const [foreign] = await h.db.select().from(s.plans).where(eq(s.plans.householdId, "b"));
+  expect(foreign!.id).toBeGreaterThan(planId);
+  expect(await latestPlanId()).toBe(planId);
+  expect((await listPlans()).map((row) => row.id)).toEqual([planId]);
+  expect((await getPlanView(planId, []))?.people.map((person) => person.id)).toEqual([1]);
+  expect(await getPlanView(foreign!.id, [])).toBeUndefined();
+  expect(await getPlanView(999, [])).toBeUndefined();
+  expect(await latestPlanMilestones()).toMatchObject({ planId, milestones: { reviewed: false, shopping: false, prep: false } });
+  await h.db.delete(s.plans).where(eq(s.plans.id, planId));
+  expect(await latestPlanId()).toBeUndefined();
+  expect(await latestPlanMilestones()).toBeNull();
+});
+
+it("checks the owned parent before reading grocery, part, routine, milestone and prep children", async () => {
+  const [foreign] = await h.db.select().from(s.plans).where(eq(s.plans.householdId, "b"));
+  await h.db.insert(s.groceryManual).values({ planId: foreign!.id, text: "Foreign private shopping", checked: true });
+  const readers = [groceryChecks, getPartModes, getPlanRoutines, getPlanMilestones, getBatchPrepTicks];
+  for (const reader of readers) {
+    await expect(reader(foreign!.id)).rejects.toThrow("not available in your household");
+    await expect(reader(999)).rejects.toThrow("not available in your household");
+    await expect(reader(planId)).resolves.toBeDefined();
+  }
+  await h.db.insert(s.prepTaskState).values([
+    { householdId: "a", date: "2026-11-03", taskKey: `prep:${planId}:own`, done: true },
+    { householdId: "b", date: "2026-11-03", taskKey: `prep:${planId}:foreign`, done: true },
+  ]);
+  expect(await getBatchPrepTicks(planId)).toEqual([{ taskKey: `prep:${planId}:own`, done: true }]);
+});
+
+it("refuses malformed selected profiles and portions instead of projecting partial household plans", async () => {
+  const [plan] = await h.db.select().from(s.plans).where(eq(s.plans.id, planId));
+  for (const personIds of [[], [1, 1], [1, 2], [999]]) {
+    await h.db.update(s.planSetups).set({ personIds }).where(eq(s.planSetups.id, plan!.setupId));
+    await expect(getPlanView(planId, [])).rejects.toThrow("profiles outside");
+    await expect(getPartModes(planId)).rejects.toThrow("profiles outside");
+  }
+  await h.db.update(s.planSetups).set({ personIds: [1] }).where(eq(s.planSetups.id, plan!.setupId));
+  const [slot] = await h.db.select().from(s.planSlots).where(eq(s.planSlots.planId, planId));
+  await h.db.insert(s.planSlotPortions).values({ planSlotId: slot!.id, personId: 2, servings: 1 });
+  await expect(getPlanView(planId, [])).rejects.toThrow("portions outside");
+});
+
+it("refuses a routine snapshot for a profile outside the plan's selected household profiles", async () => {
+  const [habit] = await h.db.insert(s.habits).values({
+    slug: "synthetic-routine", title: "Synthetic", category: "routine_drink", evidenceGrade: "practical",
+    evidenceNote: "Synthetic", defaultOn: false,
+  }).returning({ id: s.habits.id });
+  await h.db.insert(s.planRoutines).values({
+    planId, personId: 2, habitId: habit!.id, days: [1], timeOfDay: "morning", servings: 1,
+  });
+  await expect(getPlanRoutines(planId)).rejects.toThrow("routines outside");
+  await h.db.delete(s.planRoutines).where(eq(s.planRoutines.personId, 2));
+  await h.db.insert(s.planRoutines).values({
+    planId, personId: 1, habitId: habit!.id, days: [1], timeOfDay: "morning", servings: 1,
+  });
+  expect(await getPlanRoutines(planId)).toMatchObject([{ personId: 1, habitSlug: "synthetic-routine" }]);
 });
 
 it("rechecks ownership and verification instead of trusting a previously admitted request", async () => {
