@@ -6,6 +6,14 @@ const config: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   serverExternalPackages: ["better-sqlite3", "exceljs", "pdfmake", "sharp"],
   poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: [
+      { key: "Cache-Control", value: "private, no-store" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Referrer-Policy", value: "same-origin" },
+    ] }];
+  },
   // Photos are resized on the phone to a few hundred KB; the default 1 MB limit is too tight for a large one.
   experimental: { serverActions: { bodySizeLimit: "6mb" } },
   outputFileTracingIncludes: {

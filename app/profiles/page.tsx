@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
@@ -8,10 +9,11 @@ export const metadata: Metadata = { title: "Profiles" };
 export const dynamic = "force-dynamic";
 
 export default async function ProfilesPage() {
-  const people = await listPeople();
+  const member = await requirePageMember();
+  const people = (await listPeople()).filter((p) => member.role === "owner" || p.id === member.personId);
   return (
     <>
-      <PageTitle title="Profiles" sub="Each person has their own targets, likes and portions." action={people.length ? <LinkButton href="/profiles/new">Add person</LinkButton> : undefined} />
+      <PageTitle title="Profiles" sub="Each person has their own targets, likes and portions." action={people.length && member.role === "owner" ? <LinkButton href="/profiles/new">Add person</LinkButton> : undefined} />
       {people.length === 0 ? (
         <EmptyState title="No profiles yet" body="Add the first person so plans can be sized to their protein target." action={<LinkButton href="/profiles/new?next=/plan/new">Add a profile</LinkButton>} />
       ) : (

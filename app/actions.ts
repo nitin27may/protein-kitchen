@@ -19,7 +19,8 @@ import type { FeasibilityInput, FeasibilityResult, PlanStep } from "@/lib/planne
 import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
 import type { IsoWeekday, TimeOfDay } from "@/lib/routines/types";
 import { planRoutineRowsFor, savePersonRoutine } from "@/lib/server/routine-state";
-import { dueDateOfKey } from "@/lib/prep/night";
+import { loadNight } from "@/lib/server/prep";
+import { todayISO } from "@/lib/server/time";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
 import type { GeneratedPlan, Slot } from "@/lib/planner/types";
 import { MEAL_SLOTS, PlanSetupSchema } from "@/lib/schemas";
@@ -33,6 +34,8 @@ import { persistIngredientPreferences, persistNewPlan, persistPlanDeletion, pers
 import { writePlanStep } from "@/lib/server/plan-progress";
 import { clearDefaultView as clearDefaultViewRow, setDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
 import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
+import { actionDenial } from "@/lib/auth/access";
+import { manualItemExists, planExists, slotBelongsToPlan } from "@/lib/server/plan-access";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; fields?: Record<string, string> };
 
@@ -48,6 +51,8 @@ function refresh(planId?: number) {
 export type { PersonInputData } from "@/lib/schemas/person";
 
 export async function savePerson(input: PersonInputData): Promise<Result<{ id: number }>> {
+  const denied = await actionDenial(input?.id === undefined ? "owner" : { personId: input.id });
+  if (denied) return denied;
   const parsed = PersonInput.safeParse(input);
   if (!parsed.success) {
     const fields: Record<string, string> = {};
@@ -62,7 +67,8 @@ export async function savePerson(input: PersonInputData): Promise<Result<{ id: n
   const row = personRow(v);
   const db = await getDb();
   if (v.id) {
-    await db.update(s.people).set(row).where(eq(s.people.id, v.id));
+    const changed = await db.update(s.people).set(row).where(eq(s.people.id, v.id)).returning({ id: s.people.id });
+    if (!changed.length) return fail("Profile not found.");
     refresh();
     return { ok: true, id: v.id };
   }
@@ -72,7 +78,11 @@ export async function savePerson(input: PersonInputData): Promise<Result<{ id: n
 }
 
 export async function deletePerson(id: number): Promise<Result> {
+  const denied = await actionDenial("owner");
+  if (denied) return denied;
   const db = await getDb();
+  const [linked] = await db.select({ id: s.householdMembers.userId }).from(s.householdMembers).where(eq(s.householdMembers.personId, id)).limit(1);
+  if (linked) return fail("This profile is linked to an account. Manage that account before deleting its profile.");
   const [used] = await db.select({ id: s.planSlotPortions.planSlotId }).from(s.planSlotPortions).where(eq(s.planSlotPortions.personId, id)).limit(1);
   if (used) return fail("This profile is part of a saved plan. Delete those plans first.");
   await db.delete(s.people).where(eq(s.people.id, id));
@@ -111,6 +121,8 @@ async function savePrefs(personId: number, liked: string[], avoided: string[]) {
 }
 
 export async function createPlan(input: CreatePlanData): Promise<Result<{ planId: number; gaps: number }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const parsed = CreatePlanInput.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the plan setup");
   const v = parsed.data;
@@ -162,6 +174,8 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
  * reached. Reads only; nothing is saved, including the likes and avoids in `prefs`.
  */
 export async function previewFeasibility(input: FeasibilityInput): Promise<Result<{ result: FeasibilityResult }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const parsed = CreatePlanInput.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the plan setup");
   const v = parsed.data;
@@ -190,6 +204,8 @@ export async function previewFeasibility(input: FeasibilityInput): Promise<Resul
 
 /** Marks one of the three after-plan steps (reviewed, shopping, prep) done. Doing it again changes nothing. */
 export async function markPlanStep(planId: number, step: PlanStep): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const written = await writePlanStep(await getDb(), planId, step);
   if (!written.ok) return fail(written.error);
   refresh(planId);
@@ -199,6 +215,8 @@ export async function markPlanStep(planId: number, step: PlanStep): Promise<Resu
 // ---------- Plan editing ----------
 
 export async function regeneratePlan(planId: number): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const view = await getPlanView(planId);
   if (!view) return fail("Plan not found");
   const seed = Math.floor(Math.random() * 2 ** 31);
@@ -210,7 +228,11 @@ export async function regeneratePlan(planId: number): Promise<Result> {
 }
 
 export async function toggleLock(planId: number, slotId: number, locked: boolean): Promise<Result> {
-  await (await getDb()).update(s.planSlots).set({ locked }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
+  const denied = await actionDenial();
+  if (denied) return denied;
+  const db = await getDb();
+  if (!(await slotBelongsToPlan(db, planId, slotId))) return fail("Meal not found in this plan.");
+  await db.update(s.planSlots).set({ locked }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
   refresh(planId);
   return { ok: true };
 }
@@ -225,6 +247,8 @@ export interface SwapOption {
 }
 
 export async function getSwapOptions(planId: number, slotId: number): Promise<Result<{ options: SwapOption[]; current: string }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const view = await getPlanView(planId);
   const slot = view?.slots.find((x) => x.id === slotId);
   if (!view || !slot) return fail("Meal not found");
@@ -245,6 +269,8 @@ export async function getSwapOptions(planId: number, slotId: number): Promise<Re
 }
 
 export async function swapSlot(planId: number, slotId: number, recipeSlug: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const view = await getPlanView(planId);
   const slot = view?.slots.find((x) => x.id === slotId);
   const candidate = (await getCandidates()).find((c) => c.slug === recipeSlug);
@@ -257,7 +283,7 @@ export async function swapSlot(planId: number, slotId: number, recipeSlug: strin
   const db = await getDb();
   await withTx(db, async (tx) => {
     // A swapped meal is cooked fresh, so it is no longer a leftover.
-    await tx.update(s.planSlots).set({ recipeId, isLeftover: false }).where(eq(s.planSlots.id, slotId));
+    await tx.update(s.planSlots).set({ recipeId, isLeftover: false }).where(and(eq(s.planSlots.id, slotId), eq(s.planSlots.planId, planId)));
     await tx.delete(s.planSlotPortions).where(eq(s.planSlotPortions.planSlotId, slotId));
     for (const [pid, servings] of Object.entries(portions)) await tx.insert(s.planSlotPortions).values({ planSlotId: slotId, personId: Number(pid), servings });
   });
@@ -266,9 +292,13 @@ export async function swapSlot(planId: number, slotId: number, recipeSlug: strin
 }
 
 export async function setPortion(planId: number, slotId: number, personId: number, servings: number): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   if (!(servings >= 0.25 && servings <= 4)) return fail("Servings must be between 0.25 and 4");
+  const db = await getDb();
+  if (!(await slotBelongsToPlan(db, planId, slotId, personId))) return fail("That portion is not part of this plan.");
   const q = Math.round(servings * 4) / 4;
-  await (await getDb())
+  await db
     .update(s.planSlotPortions)
     .set({ servings: q })
     .where(and(eq(s.planSlotPortions.planSlotId, slotId), eq(s.planSlotPortions.personId, personId)));
@@ -277,7 +307,10 @@ export async function setPortion(planId: number, slotId: number, personId: numbe
 }
 
 export async function deletePlan(planId: number): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const db = await getDb();
+  if (!(await planExists(db, planId))) return fail("Plan not found.");
   await persistPlanDeletion(db, planId);
   refresh();
   return { ok: true };
@@ -289,6 +322,8 @@ export async function setRecipeFeedback(
   slug: string,
   patch: { favourite?: boolean; banned?: boolean; rating?: number | null; tested?: boolean; notes?: string | null },
 ): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const id = (await recipeIds()).bySlug.get(slug);
   if (id === undefined) return fail("Recipe not found");
   if (patch.rating !== undefined && patch.rating !== null && (patch.rating < 1 || patch.rating > 5)) return fail("Rating is 1 to 5");
@@ -303,6 +338,8 @@ export async function setRecipeFeedback(
 
 /** Adds a photo the person took to a recipe. The phone has already resized it; the server checks and re-encodes it. */
 export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ uid: string }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const slug = formData.get("recipe");
   const file = formData.get("photo");
   if (typeof slug !== "string" || !(file instanceof File)) return fail("Choose a photo first.");
@@ -314,6 +351,8 @@ export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ ui
 
 /** Approves a candidate photo. Only the subject and the candidate key come from the page; everything else is read on the server. */
 export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
   const r = await approveCandidateChecked(await getDb(), getBlobStore(), loadCandidates(process.cwd()), { kind, slug, key });
   if (!r.ok) return r;
@@ -325,6 +364,8 @@ export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug:
 }
 
 export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
   const r = await rejectCandidateChecked(await getDb(), loadCandidates(process.cwd()), { kind, slug, key });
   if (!r.ok) return r;
@@ -333,6 +374,8 @@ export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: 
 }
 
 export async function removePhoto(uid: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const result = await removePhotoChecked(await getDb(), getBlobStore(), uid);
   if (!result.ok) return result;
   if (result.recipeSlug) refreshRecipe(result.recipeSlug);
@@ -340,6 +383,8 @@ export async function removePhoto(uid: string): Promise<Result> {
 }
 
 export async function makeCoverPhoto(uid: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const result = await makeCoverChecked(await getDb(), uid);
   if (!result.ok) return result;
   if (result.recipeSlug) refreshRecipe(result.recipeSlug);
@@ -349,6 +394,9 @@ export async function makeCoverPhoto(uid: string): Promise<Result> {
 // ---------- Groceries ----------
 
 export async function setGroceryChecked(planId: number, ingredientSlug: string, checked: boolean): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  if (!(await planExists(await getDb(), planId))) return fail("Plan not found.");
   const ingredientId = (await ingredientIds()).bySlug.get(ingredientSlug);
   if (ingredientId === undefined) return fail("Unknown ingredient");
   await (await getDb())
@@ -359,6 +407,9 @@ export async function setGroceryChecked(planId: number, ingredientSlug: string, 
 }
 
 export async function addManualItem(planId: number, text: string): Promise<Result<{ id: number }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  if (!(await planExists(await getDb(), planId))) return fail("Plan not found.");
   const t = text.trim();
   if (!t) return fail("Type an item first");
   if (t.length > 120) return fail("That is too long");
@@ -368,11 +419,17 @@ export async function addManualItem(planId: number, text: string): Promise<Resul
 }
 
 export async function setManualChecked(id: number, checked: boolean): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  if (!(await manualItemExists(await getDb(), id))) return fail("Shopping item not found.");
   await (await getDb()).update(s.groceryManual).set({ checked }).where(eq(s.groceryManual.id, id));
   return { ok: true };
 }
 
 export async function removeManualItem(id: number): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  if (!(await manualItemExists(await getDb(), id))) return fail("Shopping item not found.");
   await (await getDb()).delete(s.groceryManual).where(eq(s.groceryManual.id, id));
   revalidatePath("/groceries");
   return { ok: true };
@@ -381,6 +438,8 @@ export async function removeManualItem(id: number): Promise<Result> {
 // ---------- Today card ----------
 
 export async function setHabitDone(date: string, personId: number, habitSlug: string, done: boolean): Promise<Result> {
+  const denied = await actionDenial({ personId });
+  if (denied) return denied;
   const db = await getDb();
   const [habit] = await db.select({ id: s.habits.id }).from(s.habits).where(eq(s.habits.slug, habitSlug)).limit(1);
   if (!habit) return fail("Unknown habit");
@@ -392,9 +451,18 @@ export async function setHabitDone(date: string, personId: number, habitSlug: st
 }
 
 export async function setPrepDone(date: string, taskKey: string, done: boolean): Promise<Result> {
-  // A night-before task is stored under its due evening whichever screen ticked it, so Today and the prep guide share the row.
-  const due = dueDateOfKey(taskKey);
-  if (due) date = due;
+  const denied = await actionDenial();
+  if (denied) return denied;
+  const match = /^(?:night|prep):([1-9]\d*):/.exec(taskKey);
+  if (!match || taskKey.length > 256 || !(await planExists(await getDb(), Number(match[1])))) return fail("Prep task not found in this plan.");
+  const planId = Number(match[1]);
+  const view = await getPlanView(planId);
+  if (!view) return fail("Plan not found.");
+  const night = await loadNight(view, todayISO());
+  const task = night.tasks.find((t) => t.key === taskKey);
+  const session = night.guide.sessions.find((se) => se.events.some((event) => `prep:${planId}:${event.id}` === taskKey));
+  if (!task && !session) return fail("Prep task not found in this plan.");
+  date = task?.dueDate ?? session!.date;
   await (await getDb())
     .insert(s.prepTaskState)
     .values({ date, taskKey, done })
@@ -403,6 +471,8 @@ export async function setPrepDone(date: string, taskKey: string, done: boolean):
 }
 
 export async function enableShake(planId: number): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const view = await getPlanView(planId);
   if (!view) return fail("Plan not found");
   if (view.mealTypes.includes("shake")) return { ok: true };
@@ -417,6 +487,8 @@ export async function enableShake(planId: number): Promise<Result> {
 
 /** Deletes user data for one scope after backing the database up. Content under /data is never touched. */
 export async function resetScope(scope: string, typed: string): Promise<Result<{ backup: string | null }>> {
+  const denied = await actionDenial("owner");
+  if (denied) return denied;
   if (!(RESET_SCOPES as readonly string[]).includes(scope)) return fail("Unknown reset option");
   const sc = scope as ResetScope;
   if (NEEDS_TYPED_CONFIRM.includes(sc) && typed.trim() !== CONFIRM_WORD) return fail(`Type ${CONFIRM_WORD} to confirm`);
@@ -440,6 +512,8 @@ const ViewInput = z.object({
 
 /** Makes this query the list's default view. Replaces the previous default for the list. */
 export async function saveDefaultView(list: string, query: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const parsed = ViewInput.safeParse({ list, query });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "That view cannot be saved");
   await setDefaultView(await getDb(), parsed.data.list, parsed.data.query);
@@ -448,6 +522,8 @@ export async function saveDefaultView(list: string, query: string): Promise<Resu
 }
 
 export async function clearDefaultView(list: string): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const parsed = ViewInput.shape.list.safeParse(list);
   if (!parsed.success) return fail("Unknown list");
   await clearDefaultViewRow(await getDb(), parsed.data);
@@ -463,6 +539,9 @@ export async function clearDefaultView(list: string): Promise<Result> {
  * read this.
  */
 export async function setPartMode(planId: number, componentSlug: string, mode: PartMode): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  if (!(await planExists(await getDb(), planId))) return fail("Plan not found.");
   const written = await writePartMode(await getDb(), getData().recipes, planId, componentSlug, mode);
   if (!written.ok) return fail(written.error);
   revalidatePath(`/plan/${planId}/prep`);
@@ -480,6 +559,8 @@ function refreshRecipe(slug: string) {
 
 /** Saves a link to a recipe page, video or article on a recipe or one of its parts. Human-owned data. */
 export async function addLink(input: LinkInput): Promise<Result<{ id: number }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const result = await addLinkChecked(await getDb(), getData().recipes, input);
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
@@ -487,6 +568,8 @@ export async function addLink(input: LinkInput): Promise<Result<{ id: number }>>
 }
 
 export async function updateLink(id: number, input: LinkInput): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const result = await updateLinkChecked(await getDb(), getData().recipes, id, input);
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
@@ -494,6 +577,8 @@ export async function updateLink(id: number, input: LinkInput): Promise<Result> 
 }
 
 export async function removeLink(id: number): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   const result = await removeLinkChecked(await getDb(), id);
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
@@ -501,6 +586,8 @@ export async function removeLink(id: number): Promise<Result> {
 }
 
 export async function moveLink(id: number, direction: "up" | "down"): Promise<Result> {
+  const denied = await actionDenial();
+  if (denied) return denied;
   if (direction !== "up" && direction !== "down") return fail("Direction must be up or down");
   const result = await moveLinkChecked(await getDb(), id, direction);
   if (!result.ok) return result;
@@ -520,6 +607,8 @@ export async function setPersonRoutine(
   habitSlug: string,
   patch: { active: boolean; days?: IsoWeekday[]; timeOfDay?: TimeOfDay; servings?: number },
 ): Promise<Result> {
+  const denied = await actionDenial({ personId });
+  if (denied) return denied;
   const catalog = catalogByHabit(getRoutineCatalog(getData()));
   const res = await savePersonRoutine(await getDb(), catalog, personId, habitSlug, patch);
   if (!res.ok) return fail(res.error);

@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import { servingWeightG } from "@/lib/nutrition/portion";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -17,6 +18,7 @@ export const metadata: Metadata = { title: "Your plan" };
 export const dynamic = "force-dynamic";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageMember();
   const { id } = await params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) notFound();

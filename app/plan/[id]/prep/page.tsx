@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PrepClient } from "@/components/PrepClient";
@@ -23,6 +24,7 @@ const shortLabel = (iso: string) => {
 };
 
 export default async function PrepPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageMember();
   const { id } = await params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) notFound();

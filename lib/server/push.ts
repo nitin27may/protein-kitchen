@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import webpush from "web-push";
 import * as s from "@/lib/db/schema";
 import { buildReminder, isReminderDue, localParts } from "@/lib/reminders/due";
@@ -32,6 +32,11 @@ export async function sendToPerson(personId: number, payload: { title: string; b
   const result: SendResult = { sent: 0, removed: 0, failed: 0 };
   if (!configure()) return result;
   const db = await getDb();
+  const [member] = await db.select({ id: s.householdMembers.userId }).from(s.householdMembers)
+    .innerJoin(s.authUsers, and(eq(s.authUsers.id, s.householdMembers.userId), eq(s.authUsers.emailVerified, true)))
+    .innerJoin(s.authSessions, and(eq(s.authSessions.userId, s.householdMembers.userId), gt(s.authSessions.expiresAt, new Date())))
+    .where(eq(s.householdMembers.personId, personId)).limit(1);
+  if (!member) return result;
   const subs = await db.select().from(s.pushSubscriptions).where(eq(s.pushSubscriptions.personId, personId));
   for (const sub of subs) {
     try {

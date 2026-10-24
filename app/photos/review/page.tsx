@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { ReviewClient } from "@/components/photos/ReviewClient";
 import { PageTitle } from "@/components/ui";
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Review photos" };
 export const dynamic = "force-dynamic";
 
 export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ kind?: string; q?: string; missing?: string }> }) {
+  await requirePageMember();
   const sp = await searchParams;
   const kind: SubjectKind | "all" = sp.kind === "recipe" || sp.kind === "ingredient" ? sp.kind : "all";
   const data = getData();

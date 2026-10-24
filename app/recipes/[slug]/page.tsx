@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RecipeDetail } from "@/components/RecipeDetail";
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function RecipePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ plan?: string }> }) {
+  const member = await requirePageMember();
   const { slug } = await params;
   const { plan } = await searchParams;
   const data = getData();
@@ -33,7 +35,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   if (!r) notFound();
   const m = perServing(slug, data.recipes, data.ingredients);
   const fb = (await feedbackMap()).get(slug);
-  const sex = (await listPeople())[0]?.sex ?? "male";
+  const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
   const photoIdx = await photoIndex(await getDb());
   const dn = (k: string) => {
     const ing = data.ingredients.get(k);

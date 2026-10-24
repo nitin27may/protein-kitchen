@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { RecipesClient } from "@/components/RecipesClient";
 import type { RecipeCardData } from "@/components/RecipesClient";
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
 
 export default async function RecipesPage() {
+  await requirePageMember();
   const data = getData();
   const fb = await feedbackMap();
   const photos = await photoIndex(await getDb());

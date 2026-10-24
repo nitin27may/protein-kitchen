@@ -27,7 +27,7 @@ export function AccountControls({ owner, profiles, invitations }: {
     {error ? <Banner tone="bad">{error}</Banner> : null}
     <Button variant="secondary" disabled={pending} onClick={() => void run(async () => {
       await authRequest("/sign-out", {});
-      setToken(""); router.replace("/sign-in"); router.refresh();
+      setToken(""); window.location.replace("/sign-in");
     })}>Sign out</Button>
     {owner ? <section className="space-y-4">
       <h2 className="text-xl font-semibold">Invite another cook</h2>

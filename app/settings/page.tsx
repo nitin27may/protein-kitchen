@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SettingsClient } from "@/components/SettingsClient";
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  await requirePageMember();
   const counts = await getResetCounts();
   return (
     <>

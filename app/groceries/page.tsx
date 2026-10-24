@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { GroceryClient } from "@/components/GroceryClient";
 import type { GroceryLineView } from "@/components/GroceryClient";
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Groceries" };
 export const dynamic = "force-dynamic";
 
 export default async function GroceriesPage({ searchParams }: { searchParams: Promise<{ plan?: string; w?: string }> }) {
+  await requirePageMember();
   const sp = await searchParams;
   const planId = sp.plan && Number.isInteger(Number(sp.plan)) ? Number(sp.plan) : await latestPlanId();
   const view = planId ? await getPlanView(planId) : undefined;

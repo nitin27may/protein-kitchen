@@ -12,6 +12,7 @@ import { Banner, PageTitle } from "@/components/ui";
 import { finishProfile } from "./actions";
 
 export const metadata = { title: "Join your household" };
+export const dynamic = "force-dynamic";
 export default async function Onboarding({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const next = safeAuthReturn((await searchParams).next);
   let user;

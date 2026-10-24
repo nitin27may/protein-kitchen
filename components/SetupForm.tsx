@@ -209,7 +209,7 @@ export function SetupForm({ people, ingredients, anchors, recipes, hasLastPlan, 
               {step === "food" ? <FoodStep {...stepProps} ingredients={ingredients} anchors={anchors} recipes={recipes} /> : null}
               {showRoutine ? (
                 <div hidden={step !== "routine"}>
-                  <RoutineStep {...stepProps} catalog={routines.catalog} chosen={routines.chosen} />
+                  <RoutineStep {...stepProps} catalog={routines.catalog} chosen={routines.chosen} editablePersonIds={routines.editablePersonIds} />
                 </div>
               ) : null}
               {actionBar}

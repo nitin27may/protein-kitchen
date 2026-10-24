@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { IngredientsClient } from "@/components/IngredientsClient";
 import type { IngredientCard } from "@/components/IngredientsClient";
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Ingredients" };
 export const dynamic = "force-dynamic";
 
 export default async function IngredientsPage() {
+  await requirePageMember();
   const data = getData();
   const photos = await photoIndex(await getDb());
   const cards: IngredientCard[] = [...data.ingredients.values()].map((i) => {

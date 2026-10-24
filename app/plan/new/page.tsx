@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SetupForm } from "@/components/SetupForm";
@@ -38,6 +39,7 @@ const ANCHORS: { slug: string; label: string }[] = [
 ];
 
 export default async function NewPlanPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+  const member = await requirePageMember();
   const { step } = await searchParams;
   const people = await listPeople();
   if (people.length === 0) redirect("/profiles/new?next=/plan/new");
@@ -77,7 +79,7 @@ export default async function NewPlanPage({ searchParams }: { searchParams: Prom
     recipes: (await getCandidates()).map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name)),
     hasLastPlan: !!last,
     initialStep: step ?? null,
-    routines: { catalog: getRoutineCatalog(data), chosen: chosenRoutines },
+    routines: { catalog: getRoutineCatalog(data), chosen: chosenRoutines, editablePersonIds: people.filter((p) => member.role === "owner" || p.id === member.personId).map((p) => p.id) },
     initial: {
       personIds,
       length,

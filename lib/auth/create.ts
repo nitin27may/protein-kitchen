@@ -5,7 +5,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP } from "better-auth/plugins";
 import { ZodError } from "zod";
-import { DrizzleQueryError } from "drizzle-orm";
+import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as schema from "../db/schema";
 import { authorizeSignup } from "./signup";
@@ -113,6 +113,11 @@ export function createAuth(db: Db, options: AuthOptions) {
       }, { status: 400, headers: { "Cache-Control": "private, no-store" } }));
       const state = { failed: false };
       return delivery.run(state, async () => {
+        const path = new URL(request.url).pathname;
+        const signingOut = request.method === "POST" && path === "/api/auth/sign-out";
+        const resetting = request.method === "POST" && path === "/api/auth/email-otp/reset-password";
+        const signingOutUser = signingOut ? (await auth.api.getSession({ headers: request.headers }))?.user.id : undefined;
+        const resetBody: unknown = resetting ? await request.clone().json().catch(() => null) : null;
         let response: Response;
         try {
           response = await auth.handler(request);
@@ -125,6 +130,22 @@ export function createAuth(db: Db, options: AuthOptions) {
         if (state.failed) return Response.json({
           message: "We could not send the email code. Please try again.",
         }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
+        if ((signingOut || resetting) && response.ok) {
+          const result: unknown = await response.clone().json();
+          if (result && typeof result === "object" && "success" in result && result.success === true) {
+            let userId = signingOutUser;
+            if (resetting && resetBody && typeof resetBody === "object" && "email" in resetBody && typeof resetBody.email === "string") {
+              const [user] = await db.select({ id: schema.authUsers.id }).from(schema.authUsers)
+                .where(eq(schema.authUsers.email, resetBody.email.trim().toLowerCase())).limit(1);
+              userId = user?.id;
+            }
+            if (userId) {
+              const profiles = db.select({ id: schema.householdMembers.personId }).from(schema.householdMembers)
+                .where(eq(schema.householdMembers.userId, userId));
+              await db.delete(schema.pushSubscriptions).where(inArray(schema.pushSubscriptions.personId, profiles));
+            }
+          }
+        }
         return response;
       });
     },

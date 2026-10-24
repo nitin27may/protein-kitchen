@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrizzleQueryError, eq, getTableName, sql } from "drizzle-orm";
 import { createAuth, type AuthCodeMail } from "../lib/auth/create";
-import { acceptInvitation, claimHousehold, issueInvitation, revokeInvitation } from "../lib/auth/household";
+import { acceptInvitation, claimHousehold, createMemberProfile, issueInvitation, revokeInvitation } from "../lib/auth/household";
 import * as s from "../lib/db/schema";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -51,8 +51,24 @@ async function verifiedOwner() {
 async function passwordLogin(email = "owner@example.test", value = password) {
   return call("/sign-in/email", { email, password: value });
 }
+async function addOwnerDevice(userId: string) {
+  const { id: personId } = await createMemberProfile(h.db, userId, {
+    name: "Synthetic cook", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+    activityLevel: "light", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: null, reminderTime: null,
+  });
+  await h.db.insert(s.pushSubscriptions).values({
+    personId, endpoint: "https://push.example.test/owner-device", p256dh: "synthetic-key", auth: "synthetic-auth", createdAt: new Date().toISOString(),
+  });
+}
 
 describe("real Better Auth HTTP signup, verification and sessions", () => {
+  it("rejects malformed reset JSON without creating or removing devices", async () => {
+    const response = await auth.handler(new Request(`${origin}/api/auth/email-otp/reset-password`, {
+      method: "POST", headers: { origin, "content-type": "application/json", "x-forwarded-for": "127.0.0.1" }, body: "{",
+    }));
+    expect(response.status).toBe(400);
+    expect(await h.db.select().from(s.pushSubscriptions)).toEqual([]);
+  });
   it("requires signup admission, verifies a hashed code and restores only a valid server session", async () => {
     expect((await signup("outsider@example.test", { "x-household-bootstrap": "" })).status).toBe(403);
     expect(await h.db.select().from(s.authUsers)).toEqual([]);
@@ -91,7 +107,7 @@ describe("real Better Auth HTTP signup, verification and sessions", () => {
   });
 
   it("resets a password with a single-use code and revokes all previous sessions", async () => {
-    await verifiedOwner();
+    await addOwnerDevice(await verifiedOwner());
     const first = await passwordLogin();
     const cookie = cookies(first);
     expect((await call("/email-otp/request-password-reset", { email: "owner@example.test" })).status).toBe(200);
@@ -99,10 +115,25 @@ describe("real Better Auth HTTP signup, verification and sessions", () => {
     const newPassword = "Synthetic-replacement-password-456!";
     const response = await call("/email-otp/reset-password", { email: "owner@example.test", otp: code, password: newPassword });
     expect(response.status, await response.clone().text()).toBe(200);
+    expect(await h.db.select().from(s.pushSubscriptions)).toEqual([]);
     expect(await (await call("/get-session", undefined, { cookie })).json()).toBeNull();
     expect((await passwordLogin()).status).toBe(401);
     expect((await passwordLogin("owner@example.test", newPassword)).status).toBe(200);
     expect((await call("/email-otp/reset-password", { email: "owner@example.test", otp: code, password })).status).not.toBe(200);
+  });
+
+  it("disables the linked account's reminders on successful logout, without touching another profile's device", async () => {
+    await addOwnerDevice(await verifiedOwner());
+    const [other] = await h.db.insert(s.people).values({
+      name: "Synthetic other profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70,
+      activityLevel: "light", dietFlags: [],
+    }).returning({ id: s.people.id });
+    await h.db.insert(s.pushSubscriptions).values({
+      personId: other!.id, endpoint: "https://push.example.test/other-device", p256dh: "synthetic-key", auth: "synthetic-auth", createdAt: new Date().toISOString(),
+    });
+    const signedIn = await passwordLogin();
+    expect((await call("/sign-out", {}, { cookie: cookies(signedIn) })).status).toBe(200);
+    expect(await h.db.select().from(s.pushSubscriptions)).toMatchObject([{ personId: other!.id }]);
   });
 
   it("logs in with an email code and rejects reuse without auto-registering unknown accounts", async () => {

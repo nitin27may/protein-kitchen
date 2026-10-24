@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import * as s from "@/lib/db/schema";
@@ -21,6 +22,7 @@ interface Row {
 
 /** Credits for approved photos from Wikimedia Commons and Openverse. Your own photos need none. */
 export default async function CreditsPage() {
+  await requirePageMember();
   const data = getData();
   const db = await getDb();
   const recipeNames = new Map((await db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes)).map((r) => [r.id, data.recipes.get(r.slug)?.name ?? r.slug]));

@@ -69,6 +69,8 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
   await expect(page).toHaveURL("http://127.0.0.1:3112/");
   await page.goto("/account");
   await expect(page.getByRole("link", { name: "Profile: Synthetic owner targets" })).toBeVisible();
+  const ownerProfile = await page.getByRole("link", { name: "Profile: Synthetic owner targets" }).getAttribute("href");
+  expect(ownerProfile).toMatch(/^\/profiles\/\d+$/);
   await page.getByLabel("Cook's email").fill(cook);
   await page.getByLabel("Reserve an existing profile (optional)").selectOption("300");
   await page.getByRole("button", { name: "Create invitation code" }).click();
@@ -90,6 +92,13 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await second.goto("/account");
     await expect(second.getByRole("link", { name: "Profile: Synthetic import fixture" })).toBeVisible();
     await expect(second.getByRole("heading", { name: "Invite another cook" })).toHaveCount(0);
+    await second.goto("/profiles");
+    await expect(second.getByRole("link", { name: "Add person", exact: true })).toHaveCount(0);
+    await expect(second.getByRole("main")).not.toContainText("Synthetic owner targets");
+    await second.goto(ownerProfile!);
+    await expect(second).toHaveURL(/\/account$/);
+    await second.goto("/profiles/new");
+    await expect(second).toHaveURL(/\/account$/);
     const plan = `/plan/${process.env.E2E_PREP_PLAN_ID}`;
     await page.goto(plan);
     await second.goto(plan);
@@ -114,6 +123,9 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await expect(page.getByRole("link", { name: "Profile: Synthetic owner targets" })).toBeVisible();
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/sign-in$/);
+    expect((await page.request.get(`/api/plan/${process.env.E2E_PREP_PLAN_ID}/export?format=pdf`)).status()).toBe(401);
     await page.goto("/account");
     await expect(page).toHaveURL(/\/sign-in$/);
     await page.getByLabel("Email", { exact: true }).fill(owner);

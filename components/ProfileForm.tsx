@@ -48,7 +48,10 @@ export interface ProfileRoutines {
   chosen: PersonRoutineView[];
 }
 
-export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null, saveAction = savePerson }: { initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null; saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>> }) {
+export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null, saveAction = savePerson, canDelete = false, deviceReminders = false }: {
+  initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null;
+  saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>>; canDelete?: boolean; deviceReminders?: boolean;
+}) {
   const router = useRouter();
   const [v, setV] = useState<ProfileInitial>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -175,7 +178,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           <Field label="Prep reminder time (optional)" htmlFor="reminder" hint="Reminders are per person. On iPhone they need the app added to the home screen.">
             <Input id="reminder" type="time" value={v.reminderTime} onChange={(e) => set("reminderTime", e.target.value)} className="sm:w-44" />
           </Field>
-          {v.id ? <div className="mt-4"><ReminderSettings personId={v.id} personName={v.name || "this person"} publicKey={vapidPublicKey} hasTime={initial.reminderTime !== ""} /></div> : null}
+          {v.id && deviceReminders ? <div className="mt-4"><ReminderSettings personId={v.id} personName={v.name || "this person"} publicKey={vapidPublicKey} hasTime={initial.reminderTime !== ""} /></div> : null}
         </SectionCard>
 
         {v.id && routines ? (
@@ -186,7 +189,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           </div>
         ) : null}
 
-        {v.id ? (
+        {v.id && canDelete ? (
           <SectionCard id="danger" title="Delete profile" description="Removes their preferences and ticks. Plans that include them must be deleted first.">
             {confirmDelete ? (
               <div className="space-y-3">

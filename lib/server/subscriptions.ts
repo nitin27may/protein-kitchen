@@ -8,11 +8,16 @@ export async function personExists(personId: number): Promise<boolean> {
   return Boolean(row);
 }
 
-/** Registers a device. An existing registration for the same endpoint is replaced, so re-enabling never duplicates. */
-export async function savePushSubscription(personId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<void> {
+/** An endpoint may be refreshed by its owner, never reassigned by another account. */
+export async function savePushSubscription(personId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<boolean> {
   const db = await getDb();
-  await db.delete(s.pushSubscriptions).where(eq(s.pushSubscriptions.endpoint, sub.endpoint));
-  await db.insert(s.pushSubscriptions).values({ personId, endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth, createdAt: new Date().toISOString() });
+  const rows = await db.insert(s.pushSubscriptions).values({ personId, ...sub, createdAt: new Date().toISOString() })
+    .onConflictDoUpdate({
+      target: s.pushSubscriptions.endpoint,
+      set: { p256dh: sub.p256dh, auth: sub.auth },
+      setWhere: eq(s.pushSubscriptions.personId, personId),
+    }).returning({ id: s.pushSubscriptions.id });
+  return rows.length === 1;
 }
 
 export async function hasPushSubscription(personId: number, endpoint: string): Promise<boolean> {
@@ -24,6 +29,6 @@ export async function hasPushSubscription(personId: number, endpoint: string): P
   return Boolean(row);
 }
 
-export async function deletePushSubscription(endpoint: string): Promise<void> {
-  await (await getDb()).delete(s.pushSubscriptions).where(eq(s.pushSubscriptions.endpoint, endpoint));
+export async function deletePushSubscription(endpoint: string, personId: number): Promise<void> {
+  await (await getDb()).delete(s.pushSubscriptions).where(and(eq(s.pushSubscriptions.endpoint, endpoint), eq(s.pushSubscriptions.personId, personId)));
 }

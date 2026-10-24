@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./member-fixture";
 import type { Page } from "@playwright/test";
 
 async function mutation(page: Page, action: () => Promise<unknown>) {
@@ -34,6 +34,7 @@ test("shopping progress is shared between independent browser contexts and persi
   await mutation(page, () => first.setChecked(!value));
   const other = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
+    await other.addCookies(await page.context().cookies());
     const second = await other.newPage();
     await second.goto("http://127.0.0.1:3112/groceries");
     await expect(second.getByRole("checkbox").first()).toBeChecked({ checked: !value });

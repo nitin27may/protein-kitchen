@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { IngredientTile } from "@/components/IngredientTile";
 import Link from "next/link";
@@ -31,12 +32,13 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 export default async function IngredientPage({ params }: { params: Promise<{ slug: string }> }) {
+  const member = await requirePageMember();
   const { slug } = await params;
   const data = getData();
   const ing = data.ingredients.get(slug);
   if (!ing) notFound();
 
-  const sex = (await listPeople())[0]?.sex ?? "male";
+  const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
   const photoIdx = await photoIndex(await getDb());
   const cover = (await photosOfIngredient(await getDb(), slug)).find((x) => x.isCover);
   const micros = data.micros[slug]?.per100g ?? {};
