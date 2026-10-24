@@ -57,25 +57,42 @@ export function planPhase(
   return daysLeft <= 1 ? { kind: "last-two-days", ...base } : { kind: "mid-plan", ...base };
 }
 
-export type PanelId = "hero" | "meals" | "tonight" | "basics" | "grocery" | "snack" | "links";
+export type PanelId = "hero" | "morning" | "meals" | "tonight" | "basics" | "grocery" | "snack" | "links";
 
 /**
  * Which panels go in the main column and which in the side column. On a phone the side column follows the main one,
  * so the order reads: phase card, then Morning or Tonight depending on the time, meals, groceries, basics, snack.
+ *
+ * `morning` is the morning routines panel. Before 11:00 it sits above the meals; later it drops below them, collapsed to
+ * its "x of y done" line. When the person has chosen no routines it is only a one-line prompt, so it goes to the top of the
+ * side column instead of leading the page.
  */
-export function layoutFor(kind: PlanPhase["kind"], part: DayPart): { main: PanelId[]; side: PanelId[] } {
+export function layoutFor(kind: PlanPhase["kind"], part: DayPart, hasRoutines = true): { main: PanelId[]; side: PanelId[] } {
+  const lead = (ids: PanelId[]): PanelId[] => ids.filter((id) => hasRoutines || id !== "morning");
+  const sidePrompt: PanelId[] = hasRoutines ? [] : ["morning"];
   switch (kind) {
     case "no-plan":
-      return { main: ["hero"], side: ["basics", "snack"] };
+      return part === "morning" ? { main: lead(["morning", "hero"]), side: [...sidePrompt, "basics", "snack"] } : { main: ["hero"], side: ["morning", "basics", "snack"] };
     case "starts-later":
-      return { main: ["hero", "grocery", "tonight"], side: ["basics", "snack", "links"] };
+      return part === "morning"
+        ? { main: lead(["morning", "hero", "grocery", "tonight"]), side: [...sidePrompt, "basics", "snack", "links"] }
+        : { main: ["hero", "grocery", "tonight"], side: ["morning", "basics", "snack", "links"] };
     default:
       return part === "morning"
-        ? { main: ["hero", "basics", "meals", "tonight"], side: ["grocery", "snack", "links"] }
+        ? { main: lead(["hero", "morning", "basics", "meals", "tonight"]), side: [...sidePrompt, "grocery", "snack", "links"] }
         : part === "evening"
-          ? { main: ["hero", "tonight", "meals"], side: ["grocery", "basics", "snack", "links"] }
-          : { main: ["hero", "meals", "tonight"], side: ["grocery", "basics", "snack", "links"] };
+          ? { main: lead(["hero", "tonight", "meals", "morning"]), side: [...(hasRoutines ? [] : ["morning" as PanelId]), "grocery", "basics", "snack", "links"] }
+          : { main: lead(["hero", "meals", "morning", "tonight"]), side: [...(hasRoutines ? [] : ["morning" as PanelId]), "grocery", "basics", "snack", "links"] };
   }
+}
+
+/**
+ * The next-steps strip (review and swap, what to buy, prep tonight) shows on Today while a plan is about to start or
+ * running and at least one step is not done. Never when there is no plan or all three are done.
+ */
+export function showNextSteps(kind: PlanPhase["kind"], milestones: { reviewed: boolean; shopping: boolean; prep: boolean } | null | undefined): boolean {
+  if (!milestones || kind === "no-plan") return false;
+  return !(milestones.reviewed && milestones.shopping && milestones.prep);
 }
 
 interface NightLike {

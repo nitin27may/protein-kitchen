@@ -6,7 +6,7 @@ import { openDb } from "../lib/db/client";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { buildGroceryList } from "../lib/grocery/aggregate";
-import { dayPart, daysBetween, firstOpenTask, groceryProgressFrom, groupNightTasks, layoutFor, planPhase, shopByDate } from "../lib/plan/phase";
+import { dayPart, daysBetween, firstOpenTask, groceryProgressFrom, groupNightTasks, layoutFor, planPhase, shopByDate, showNextSteps } from "../lib/plan/phase";
 import { localMinutes } from "../lib/server/time";
 
 const plan = { startDate: "2026-11-02", endDate: "2026-11-08" };
@@ -71,10 +71,10 @@ describe("day part", () => {
 
   it("orders the morning boundary 10:59 and 11:00 differently end to end", () => {
     const at = (iso: string) => layoutFor("mid-plan", dayPart(localMinutes(new Date(iso), "America/Toronto")));
-    expect(at("2026-10-23T14:59:00Z").main).toEqual(["hero", "basics", "meals", "tonight"]);
-    expect(at("2026-10-23T15:00:00Z").main).toEqual(["hero", "meals", "tonight"]);
-    expect(at("2026-10-23T20:59:00Z").main).toEqual(["hero", "meals", "tonight"]);
-    expect(at("2026-10-23T21:00:00Z").main).toEqual(["hero", "tonight", "meals"]);
+    expect(at("2026-10-23T14:59:00Z").main).toEqual(["hero", "morning", "basics", "meals", "tonight"]);
+    expect(at("2026-10-23T15:00:00Z").main).toEqual(["hero", "meals", "morning", "tonight"]);
+    expect(at("2026-10-23T20:59:00Z").main).toEqual(["hero", "meals", "morning", "tonight"]);
+    expect(at("2026-10-23T21:00:00Z").main).toEqual(["hero", "tonight", "meals", "morning"]);
   });
 });
 
@@ -86,17 +86,76 @@ describe("layoutFor", () => {
   });
 
   it("shows only the plan prompt and the basics when there is no plan", () => {
-    expect(layoutFor("no-plan", "day")).toEqual({ main: ["hero"], side: ["basics", "snack"] });
+    expect(layoutFor("no-plan", "day")).toEqual({ main: ["hero"], side: ["morning", "basics", "snack"] });
   });
 
   it("leads with groceries before the plan starts, and never shows meals", () => {
     const l = layoutFor("starts-later", "day");
     expect(l.main).toEqual(["hero", "grocery", "tonight"]);
+    expect(l.side).toContain("morning");
     expect([...l.main, ...l.side]).not.toContain("meals");
   });
 
   it("treats the last two days like mid-plan", () => {
     expect(layoutFor("last-two-days", "evening")).toEqual(layoutFor("mid-plan", "evening"));
+  });
+});
+
+describe("layoutFor with routines", () => {
+  it("puts the morning routine above the meals before 11:00 and below them after", () => {
+    const before = layoutFor("mid-plan", "morning", true).main;
+    const after = layoutFor("mid-plan", "day", true).main;
+    expect(before.indexOf("morning")).toBeLessThan(before.indexOf("meals"));
+    expect(after.indexOf("morning")).toBeGreaterThan(after.indexOf("meals"));
+  });
+
+  it("leaves tonight in front in the evening, with the routine card last in the main column", () => {
+    const evening = layoutFor("mid-plan", "evening", true).main;
+    expect(evening.indexOf("tonight")).toBeLessThan(evening.indexOf("meals"));
+    expect(evening[evening.length - 1]).toBe("morning");
+  });
+
+  it("moves the 'Add a morning routine' prompt to the side when nothing is chosen, so it does not lead the page", () => {
+    for (const part of ["morning", "day", "evening"] as const) {
+      for (const kind of ["no-plan", "starts-later", "mid-plan", "last-two-days"] as const) {
+        const l = layoutFor(kind, part, false);
+        expect(l.main).not.toContain("morning");
+        expect(l.side[0] === "morning" || l.side.includes("morning")).toBe(true);
+      }
+    }
+  });
+
+  it("with routines, leads a morning with them before a plan exists", () => {
+    expect(layoutFor("no-plan", "morning", true).main).toEqual(["morning", "hero"]);
+    expect(layoutFor("starts-later", "morning", true).main[0]).toBe("morning");
+  });
+
+  it("lists every panel exactly once", () => {
+    for (const hasRoutines of [true, false]) {
+      for (const part of ["morning", "day", "evening"] as const) {
+        for (const kind of ["no-plan", "starts-later", "mid-plan", "last-two-days"] as const) {
+          const l = layoutFor(kind, part, hasRoutines);
+          const all = [...l.main, ...l.side];
+          expect(new Set(all).size).toBe(all.length);
+        }
+      }
+    }
+  });
+});
+
+describe("showNextSteps", () => {
+  const open = { reviewed: true, shopping: false, prep: false };
+  it("shows while a plan is coming or running and a step is open", () => {
+    for (const kind of ["starts-later", "mid-plan", "last-two-days"] as const) expect(showNextSteps(kind, open)).toBe(true);
+  });
+  it("never shows without a plan, without milestones, or when all three are done", () => {
+    expect(showNextSteps("no-plan", open)).toBe(false);
+    expect(showNextSteps("mid-plan", null)).toBe(false);
+    expect(showNextSteps("mid-plan", undefined)).toBe(false);
+    expect(showNextSteps("mid-plan", { reviewed: true, shopping: true, prep: true })).toBe(false);
+  });
+  it("shows when only one step is left", () => {
+    expect(showNextSteps("mid-plan", { reviewed: true, shopping: true, prep: false })).toBe(true);
   });
 });
 
@@ -141,6 +200,16 @@ describe("shopByDate", () => {
   it("ignores a task due after the start, and never lands before today", () => {
     expect(shopByDate("2026-10-23", "2026-10-26", "2026-10-28")).toBe("2026-10-25");
     expect(shopByDate("2026-10-25", "2026-10-26", "2026-10-25")).toBe("2026-10-25");
+  });
+  it("uses the plan's shopping day: the last such weekday on or before the day before it starts", () => {
+    // The plan starts Monday 26 Oct, so shopping is due by Sunday 25 Oct.
+    expect(shopByDate("2026-10-23", "2026-10-26", null, 6)).toBe("2026-10-24"); // Saturday
+    expect(shopByDate("2026-10-23", "2026-10-26", null, 7)).toBe("2026-10-25"); // Sunday
+    expect(shopByDate("2026-10-23", "2026-10-26", null, 5)).toBe("2026-10-23"); // Friday, which is today
+    expect(shopByDate("2026-10-23", "2026-10-26", null, null)).toBe("2026-10-25"); // unset: unchanged
+  });
+  it("never lands before today even when the shopping day has passed", () => {
+    expect(shopByDate("2026-10-25", "2026-10-26", null, 6)).toBe("2026-10-25");
   });
 });
 

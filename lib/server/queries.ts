@@ -21,6 +21,8 @@ import { recipeLinksFor } from "./link-view";
 import { readPartModes } from "./part-state";
 import { readPlanMilestones } from "./plan-progress";
 import { readPersonRoutines, readPlanRoutines } from "./routine-state";
+import { readTodayRoutines } from "./today-routines";
+import type { TodayRoutine } from "./today-routines";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
@@ -236,6 +238,11 @@ export async function getPartModes(planId: number): Promise<PartModes> {
 /** Each routine one person chose (days, time of day, servings). The profile page lists them. */
 export async function getPersonRoutines(personId: number): Promise<PersonRoutineView[]> {
   return readPersonRoutines(await getDb(), personId);
+}
+
+/** A person's routines scheduled on `date`'s weekday, ticked or not, for the morning card on Today. */
+export async function getTodayRoutines(personId: number, date: string): Promise<TodayRoutine[]> {
+  return readTodayRoutines(await getDb(), personId, date);
 }
 
 /** What a plan took from its people's routine choices when it was generated. */

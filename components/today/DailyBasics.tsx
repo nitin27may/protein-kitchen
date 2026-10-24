@@ -19,8 +19,7 @@ const GRADE_LABEL: Record<HabitView["grade"], string> = {
 
 /**
  * The daily basics checklist. Collapsed to one line ("3 of 8 done") except in the morning, when it is what you came for.
- * Extension point for PR 8: a "Morning routine" group (soaked methi water and so on) goes above `daily`, and the
- * 'Add a morning routine' prompt is shown only once routines exist.
+ * Habits that are routines (methi water and so on) are not listed here; they have their own card, MorningRoutines.
  */
 export function DailyBasics({ date, personId, habits, defaultOpen }: { date: string; personId: number; habits: HabitView[]; defaultOpen: boolean }) {
   const [hs, setHs] = useState(habits);

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { DailyBasics } from "@/components/today/DailyBasics";
 import { GroceryStatusCard } from "@/components/today/GroceryStatusCard";
 import { MealsToday } from "@/components/today/MealsToday";
+import { MorningRoutines } from "@/components/today/MorningRoutines";
+import type { RoutineItem } from "@/components/today/MorningRoutines";
 import { PersonSwitch } from "@/components/today/PersonSwitch";
 import { PhaseCard } from "@/components/today/PhaseCard";
 import type { SetupSummary } from "@/components/today/PhaseCard";
@@ -12,13 +14,17 @@ import { TonightCard } from "@/components/today/TonightCard";
 import type { HabitView, MealView, PrepView, SnackView } from "@/components/today/types";
 import { Card, EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { SLOT_LABEL } from "@/lib/format";
-import { dayPart, firstOpenTask, groupNightTasks, layoutFor, planPhase, shopByDate } from "@/lib/plan/phase";
+import { dayPart, firstOpenTask, groupNightTasks, layoutFor, planPhase, shopByDate, showNextSteps } from "@/lib/plan/phase";
 import type { PanelId } from "@/lib/plan/phase";
+import { NextSteps } from "@/components/plan/NextSteps";
 import { addDays, formatDay } from "@/lib/planner/dates";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
+import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
+import { routineDayTotals, withoutRoutineHabits } from "@/lib/routines/schedule";
+import { summaryLine } from "@/lib/routines/view";
 import { getData } from "@/lib/server/context";
 import { loadNight } from "@/lib/server/prep";
-import { getCandidates, getHabitsFor, getPlanView, groceryProgress, lastSetup, latestPlanId, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
+import { getCandidates, getHabitsFor, getPersonRoutines, getPlanView, getTodayRoutines, groceryProgress, lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
 import { localMinutes, todayISO } from "@/lib/server/time";
 
 export const dynamic = "force-dynamic";
@@ -59,10 +65,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
 
   const grocery = view ? await groceryProgress(view) : undefined;
   const phase = planPhase(today, view, grocery, first ? { text: first.text, forName: first.forName, dueDate: first.dueDate } : undefined);
-  const layout = layoutFor(phase.kind, part);
 
-  // Daily basics for the chosen person.
-  const { habits: habitRows, doneIds: done } = await getHabitsFor(today, person.id);
+  // Morning routines: what the person chose, which fall on today's weekday, and whether each is ticked.
+  const catalog = getRoutineCatalog(data);
+  const options = catalogByHabit(catalog);
+  const chosen = await getPersonRoutines(person.id);
+  const chosenCount = chosen.filter((r) => r.active).length;
+  const routineItems: RoutineItem[] = (await getTodayRoutines(person.id, today)).flatMap((r) => {
+    const o = options.get(r.habitSlug);
+    return o ? [{ habitSlug: r.habitSlug, title: o.title, line: summaryLine(o), timeOfDay: r.timeOfDay, done: r.done, soakHours: o.soakHours, grade: o.grade, evidenceNote: o.evidenceNote, caution: o.caution }] : [];
+  });
+  const layout = layoutFor(phase.kind, part, chosenCount > 0);
+
+  // Daily basics for the chosen person. A habit that is now a routine is shown in the routine card, not twice.
+  const { habits: allHabitRows, doneIds: done } = await getHabitsFor(today, person.id);
+  const habitRows = withoutRoutineHabits(allHabitRows, catalog);
   const habits: HabitView[] = habitRows
     .map((h) => ({
       slug: h.slug,
@@ -117,17 +134,24 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const tomorrowFirst = mealsOn(tomorrow)[0];
   const preview = part === "evening" && tomorrowFirst ? { label: SLOT_LABEL[tomorrowFirst.slot] ?? tomorrowFirst.slot, name: tomorrowFirst.name } : null;
 
+  // What each person's routines add on the focus day: its own line, never part of the protein bar.
+  const routineChoices = (await Promise.all((view?.people ?? []).map(async (pp) => (await getPersonRoutines(pp.id)).filter((r) => r.active).map((r) => ({ habitSlug: r.habitSlug, days: r.days, servings: r.servings, personId: pp.id }))))).flat();
+  const routineTotals = routineDayTotals(routineChoices, [focusDate], options, data.recipes, data.ingredients)[focusDate] ?? {};
   const bars = (view?.people ?? []).map((pp) => ({
     id: pp.id,
     name: pp.name,
     proteinG: view?.days.find((d) => d.date === focusDate && Number(d.personId) === pp.id)?.proteinG ?? 0,
     targetG: proteinTargetOf(pp),
+    routines: routineTotals[pp.id] ? { proteinG: routineTotals[pp.id]!.protein_g, kcal: routineTotals[pp.id]!.kcal } : null,
   }));
 
   const lastSet = await lastSetup();
   const setup: SetupSummary | undefined = lastSet ? { days: lastSet.days, mealTypes: lastSet.mealTypes.map((m) => SLOT_LABEL[m]?.toLowerCase() ?? m), people: lastSet.personIds.length } : undefined;
   const plans = await listPlans(5);
-  const shopBy = view && phase.kind !== "no-plan" ? shopByDate(today, view.startDate, first?.dueDate) : null;
+  const shopBy = view && phase.kind !== "no-plan" ? shopByDate(today, view.startDate, first?.dueDate, view.shoppingDay) : null;
+
+  const latest = view ? await latestPlanMilestones() : null;
+  const strip = view && latest && latest.planId === view.id && showNextSteps(phase.kind, latest.milestones) ? { planId: view.id, milestones: latest.milestones } : null;
 
   const planHasMeals = phase.kind === "mid-plan" || phase.kind === "last-two-days";
   const panels: Record<PanelId, ReactNode> = {
@@ -136,6 +160,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
         {planHasMeals ? <ProteinBars people={bars} caption={isToday ? "Protein planned for today" : `Protein planned for ${formatDay(focusDate).long}`} /> : null}
       </PhaseCard>
     ),
+    morning: <MorningRoutines key={`${person.id}-${today}-${part === "morning"}`} date={today} personId={person.id} items={routineItems} chosenCount={chosenCount} defaultOpen={part === "morning"} />,
     grocery: grocery ? <GroceryStatusCard progress={grocery} shopBy={shopBy} today={today} /> : null,
     meals: planHasMeals ? <MealsToday title={isToday ? "Today's meals" : `Meals on ${formatDay(focusDate).long}`} meals={meals} planId={view?.id} /> : null,
     tonight: view ? <TonightCard tonight={grouped.tonight.map(toView)} overdue={grouped.overdue.map(toView)} preview={preview} today={today} /> : null,
@@ -164,7 +189,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
       <PageTitle title="Today" sub={`${formatDay(today).long}. ${person.name}: ${proteinTargetOf(person)} g protein a day`} action={<LinkButton href="/plan/new" variant={phase.kind === "no-plan" ? "secondary" : "primary"}>New plan</LinkButton>} />
       <PersonSwitch people={people.map((x) => ({ id: x.id, name: x.name }))} activeId={person.id} />
       <div className="space-y-4 px-4 pb-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="space-y-4">{render(layout.main)}</div>
+        <div className="space-y-4">
+          {strip ? <NextSteps planId={strip.planId} milestones={strip.milestones} /> : null}
+          {render(layout.main)}
+        </div>
         <aside aria-label="Shopping, basics and snacks" className="space-y-4">{render(layout.side)}</aside>
       </div>
     </>

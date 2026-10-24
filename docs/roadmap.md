@@ -15,6 +15,7 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 | 3 | Filters on picker, pin sheet, swap sheet, groceries | Done (picker and sheets not yet seen on screen) |
 | 4 | Composite meals data: components folder, water and store-bought hummus, effective time, falafel migration | Done |
 | 10a | Today dashboard by plan phase and time of day | Done |
+| 10b | Today with routines: morning routine card with ticks and evidence, 'Add a morning routine' prompt, routine protein line, shopping day in shop-by, next-steps strip | Done |
 | 9 | Step-by-step plan creation: five steps (who and when, meals and effort, food, daily routine, review) with a live 'Will this plan work?' check, shopping and prep day, next-steps strip after generating | Done |
 | 8 | Daily routines: methi, jeera, ajwain, jeera-methi, saunf, chia water and soaked almonds; evidence-graded, 6 g cap enforced by the validator; chosen per person, snapshotted into each plan; groceries and night-before soaks follow | Done |
 | 7 | Recipe and video links on a recipe, part or step; https only, tracking stripped, YouTube and Vimeo play in a click-to-load sheet; human-owned, exported with ratings | Done |
@@ -61,7 +62,7 @@ Decision: the cap on seed amounts per routine, and the default days.
 Scope: one flow with five steps: who and when (optionally shopping and prep days), meals and effort, food (likes, avoids, cuisine mix, healthy focus, pins), daily routine, review. Each step except the first can be skipped, and a repeat run opens on Review with last week's choices. The review shows what the planner can actually reach (eligible recipes per meal, protein each person can hit). After generating: a three-step strip, Review and swap, What to buy, Prep tonight.
 Done when: a repeat plan takes under a minute and ends on the grocery list.
 
-### Step 9. Today with routines (10b)
+### Step 9. Today with routines (10b) (done)
 Scope: add the morning routine card, and "Add a morning routine" when none chosen, into the Today screen from step 1.
 
 ### Step 10. Photos you take or approve (11 and 12)

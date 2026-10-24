@@ -2,7 +2,8 @@ import { perServing } from "../nutrition/macros";
 import type { Ingredient, Recipe } from "../schemas";
 import type { PlanMealRef } from "../grocery/aggregate";
 import type { RoutineInput } from "../prep/night";
-import type { IsoWeekday, PlanRoutineView, RoutineOption } from "./types";
+import { TIMES_OF_DAY } from "./types";
+import type { IsoWeekday, PersonRoutineView, PlanRoutineView, RoutineOption, TimeOfDay } from "./types";
 
 /** A routine soaked for fewer hours than this is a morning job, not a night-before task. */
 export const ROUTINE_NIGHT_MIN_LEAD_H = 4;
@@ -83,3 +84,25 @@ export function routineDayTotals(
   }
   return out;
 }
+
+/** The routines a person has chosen that fall on `date`, in time-of-day order (then habit slug, so the order is stable). */
+export function routinesForDate<T extends Pick<PersonRoutineView, "habitSlug" | "active" | "days" | "timeOfDay">>(chosen: readonly T[], date: string): T[] {
+  const weekday = isoWeekday(date);
+  return chosen
+    .filter((r) => r.active && r.days.includes(weekday))
+    .sort((a, b) => TIMES_OF_DAY.indexOf(a.timeOfDay) - TIMES_OF_DAY.indexOf(b.timeOfDay) || a.habitSlug.localeCompare(b.habitSlug));
+}
+
+/** Groups already-ordered items by time of day, in day order, leaving out empty groups. */
+export function groupByTimeOfDay<T extends { timeOfDay: TimeOfDay }>(items: readonly T[]): { time: TimeOfDay; items: T[] }[] {
+  return TIMES_OF_DAY.map((time) => ({ time, items: items.filter((i) => i.timeOfDay === time) })).filter((g) => g.items.length > 0);
+}
+
+/** The daily-basics habits without the ones that are now routines, so nothing is listed twice on Today. */
+export function withoutRoutineHabits<T extends { slug: string }>(habits: readonly T[], catalog: readonly Pick<RoutineOption, "habitSlug">[]): T[] {
+  const routineSlugs = new Set(catalog.map((o) => o.habitSlug));
+  return habits.filter((h) => !routineSlugs.has(h.slug));
+}
+
+/** Whether "Routines add about X g protein and Y kcal" is worth showing: a few kcal from seeds in water is not. */
+export const showRoutineLine = (t: { proteinG: number; kcal: number } | null | undefined): boolean => !!t && (t.kcal >= 10 || t.proteinG >= 0.5);
