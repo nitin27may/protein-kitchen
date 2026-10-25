@@ -13,7 +13,7 @@ let auth: ReturnType<typeof createAuth>;
 let mailbox: AuthLinkMail[];
 const options = {
   baseURL: origin, secret: "synthetic-email-link-session-secret-for-tests", isVercel: false,
-  bootstrapSecret: "synthetic-link-bootstrap-secret-for-tests", sendCode: async () => {},
+  sendCode: async () => {},
 };
 function provider(sendLink = async (mail: AuthLinkMail) => { mailbox.push(mail); }) {
   return createAuth(h.db, { ...options, sendLink });
@@ -69,17 +69,20 @@ describe("provider-backed single-use email links", () => {
     expect(cookies(replay)).toBe("");
     expect(await h.db.select().from(s.authSessions)).toHaveLength(1);
   });
-  it("gives the same send response to an unknown mailbox without creating an account", async () => {
+  it("gives the same send response to an unknown mailbox and creates the account only when its link is opened", async () => {
     await user();
     const known = await send();
     const missing = await send({ email: "missing@example.test" });
     expect(missing.status).toBe(known.status);
     expect(await missing.json()).toEqual(await known.json());
-    const refused = await call(latest().href);
-    expect(refused.headers.get("location")).toContain("new_user_signup_disabled");
-    expect(cookies(refused)).toBe("");
     expect(await h.db.select().from(s.authUsers)).toHaveLength(1);
-    expect(await h.db.select().from(s.authSessions)).toEqual([]);
+    const opened = await call(latest().href);
+    expect(opened.headers.get("location")).toBe(`${origin}/onboarding`);
+    expect(await (await call("/get-session", undefined, { cookie: cookies(opened) })).json()).toMatchObject({
+      user: { email: "missing@example.test", emailVerified: true },
+    });
+    expect(await h.db.select().from(s.authUsers)).toHaveLength(2);
+    expect(await h.db.select().from(s.householdMembers)).toEqual([]);
   });
   it("refuses expired tokens and consumes them without establishing a session", async () => {
     await user();
@@ -91,9 +94,12 @@ describe("provider-backed single-use email links", () => {
     expect(await h.db.select().from(s.authSessions)).toEqual([]);
   });
   it("revokes pre-verification account links and sessions before proving an unverified mailbox", async () => {
-    const signup = await call("/sign-up/email", { name: "Synthetic unverified", email, password: "Synthetic-preproof-password-123!" },
-      { "x-household-bootstrap": options.bootstrapSecret });
-    expect(signup.status).toBe(200);
+    expect((await call("/sign-up/email", { name: "Synthetic unverified", email, password: "Synthetic-preproof-password-123!" })).status).toBe(400);
+    // A legacy unverified password account created before open signup.
+    await h.db.insert(s.authUsers).values({ id: "legacy-unverified", email, emailVerified: false, name: "Synthetic unverified" });
+    await h.db.insert(s.authAccounts).values({
+      id: "legacy-credential", accountId: "legacy-unverified", providerId: "credential", userId: "legacy-unverified", password: "synthetic-hash",
+    });
     const [account] = await h.db.select().from(s.authUsers);
     expect(account!.emailVerified).toBe(false);
     expect(await h.db.select().from(s.authAccounts)).toHaveLength(1);

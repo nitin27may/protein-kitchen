@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { authConfiguration, AuthConfigurationError } from "../lib/auth/config";
+import { authConfiguration, AuthConfigurationError, householdOwnerEmail } from "../lib/auth/config";
 import { resendAuthSender } from "../lib/auth/mail";
 
 const configured = { BETTER_AUTH_URL: "https://kitchen.example.test", BETTER_AUTH_SECRET: "synthetic-test-session-secret-32chars" };
 describe("explicit server auth configuration", () => {
   it("uses a fixed origin, server secret and Vercel's trusted IP boundary", () => {
     expect(authConfiguration({ ...configured, VERCEL: "1" })).toEqual({
-      baseURL: configured.BETTER_AUTH_URL, secret: configured.BETTER_AUTH_SECRET, bootstrapSecret: undefined, isVercel: true,
+      baseURL: configured.BETTER_AUTH_URL, secret: configured.BETTER_AUTH_SECRET, bootstrapSecret: undefined, ownerEmail: undefined, isVercel: true,
     });
   });
   it.each(["localhost", "127.0.0.1", "[::1]"])("permits HTTP loopback only for local development (%s)", (host) => {
@@ -28,6 +28,22 @@ describe("explicit server auth configuration", () => {
   it("accepts a separate strong initial claim secret without exposing it publicly", () => {
     const bootstrap = "synthetic-bootstrap-secret-for-tests";
     expect(authConfiguration({ ...configured, HOUSEHOLD_BOOTSTRAP_SECRET: bootstrap }).bootstrapSecret).toBe(bootstrap);
+  });
+});
+
+describe("server-only household owner email", () => {
+  it("is optional, normalized and exposed only through the server configuration", () => {
+    expect(authConfiguration(configured).ownerEmail).toBeUndefined();
+    expect(authConfiguration({ ...configured, HOUSEHOLD_OWNER_EMAIL: "  Owner@Example.Test " }).ownerEmail).toBe("owner@example.test");
+    expect(householdOwnerEmail({ HOUSEHOLD_OWNER_EMAIL: "" })).toBeUndefined();
+  });
+  it("rejects a malformed value without echoing it", () => {
+    const value = "not-an-address-secret";
+    try { authConfiguration({ ...configured, HOUSEHOLD_OWNER_EMAIL: value }); expect.unreachable(); }
+    catch (error) {
+      expect(error).toBeInstanceOf(AuthConfigurationError);
+      expect((error as Error).message).not.toContain(value);
+    }
   });
 });
 

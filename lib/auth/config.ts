@@ -18,8 +18,18 @@ export function authConfiguration(env: Readonly<Record<string, string | undefine
   if (env.HOUSEHOLD_BOOTSTRAP_SECRET && env.HOUSEHOLD_BOOTSTRAP_SECRET.length < 32) {
     throw new AuthConfigurationError("HOUSEHOLD_BOOTSTRAP_SECRET must contain at least 32 characters, or be removed after claiming.");
   }
+  const ownerEmail = householdOwnerEmail(env);
   return {
-    secret, baseURL: url.origin, bootstrapSecret: env.HOUSEHOLD_BOOTSTRAP_SECRET,
+    secret, baseURL: url.origin, bootstrapSecret: env.HOUSEHOLD_BOOTSTRAP_SECRET, ownerEmail,
     isVercel: env.VERCEL === "1",
   };
+}
+
+/** Server-only. The value is never logged or echoed, including in configuration errors. */
+export function householdOwnerEmail(env: Readonly<Record<string, string | undefined>>) {
+  const raw = env.HOUSEHOLD_OWNER_EMAIL?.trim();
+  if (!raw) return undefined;
+  const parsed = z.string().email().max(254).safeParse(raw);
+  if (!parsed.success) throw new AuthConfigurationError("HOUSEHOLD_OWNER_EMAIL must be a valid email address.");
+  return parsed.data.toLowerCase();
 }

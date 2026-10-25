@@ -2,8 +2,8 @@ import { and, eq, getTableName, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from "vitest";
 import * as s from "../lib/db/schema";
 import { memberHouseholdAccess, refreshHouseholdAccess } from "../lib/auth/household-access";
-import { createSessionHousehold, resolveSessionHouseholdAccess, selectSessionHousehold, sessionHouseholds, type SessionIdentity } from "../lib/auth/household-session";
-import { createMemberProfile } from "../lib/auth/household";
+import { createSessionHousehold, defaultKitchenName, ensureAdmission, resolveSessionHouseholdAccess, selectSessionHousehold, sessionHouseholds, type SessionIdentity } from "../lib/auth/household-session";
+import { acceptEmailAssociation, createMemberProfile } from "../lib/auth/household";
 import { mutateHouseholdState } from "../lib/server/household-plans";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -274,4 +274,128 @@ it("rolls a failed session preference update back without changing session or me
   }
   expect(await selectSessionHousehold(h.db, identity, "a")).toEqual({ householdId: "a", profileComplete: true });
   expect(await resolveSessionHouseholdAccess(h.db, identity)).toMatchObject({ session: { selectionVersion: 1 } });
+});
+
+async function newcomer(id: string, name: string, email = `${id}@example.test`) {
+  await h.db.insert(s.authUsers).values({ id, name, email, emailVerified: true });
+  await h.db.insert(s.authSessions).values({
+    id: `${id}-session`, userId: id, token: `synthetic-${id}`, updatedAt: new Date(), expiresAt: new Date(Date.now() + 60_000),
+  });
+  return { userId: id, sessionId: `${id}-session` };
+}
+const memberships = (userId: string) => h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, userId));
+
+it("names the automatic kitchen after the name, else the email local-part", () => {
+  expect(defaultKitchenName("  Pat  ", "pat.smith@example.test")).toBe("Pat's kitchen");
+  expect(defaultKitchenName("", "pat.smith@example.test")).toBe("pat.smith's kitchen");
+  expect(defaultKitchenName(null, "x@example.test")).toBe("x's kitchen");
+  expect(defaultKitchenName("n".repeat(200), "x@example.test").length).toBeLessThanOrEqual(100);
+});
+
+it("selects an existing membership instead of creating anything", async () => {
+  const before = await h.db.select().from(s.households);
+  expect(await ensureAdmission(h.db, identity)).toEqual({ status: "selected", householdId: "a", profileComplete: true });
+  expect(await h.db.select().from(s.households)).toEqual(before);
+});
+
+it("creates an owned kitchen automatically, defaulting the name to the email local-part", async () => {
+  const fresh = await newcomer("fresh", "", "pat.smith@example.test");
+  const admitted = await ensureAdmission(h.db, fresh);
+  expect(admitted).toMatchObject({ status: "selected", profileComplete: false });
+  if (admitted.status !== "selected") throw new Error("Expected admission.");
+  expect(await h.db.select().from(s.households).where(eq(s.households.id, admitted.householdId))).toMatchObject([{ name: "pat.smith's kitchen" }]);
+  expect(await memberships("fresh")).toMatchObject([{ householdId: admitted.householdId, role: "owner", personId: null }]);
+  expect(await resolveSessionHouseholdAccess(h.db, fresh)).toMatchObject({ householdId: admitted.householdId, role: "owner" });
+  const named = await newcomer("named", "Asha");
+  const second = await ensureAdmission(h.db, named);
+  if (second.status !== "selected") throw new Error("Expected admission.");
+  expect(await h.db.select().from(s.households).where(eq(s.households.id, second.householdId))).toMatchObject([{ name: "Asha's kitchen" }]);
+});
+
+it("creates exactly one kitchen when admission runs concurrently", async () => {
+  const fresh = await newcomer("fresh", "Pat");
+  const results = await Promise.all([ensureAdmission(h.db, fresh), ensureAdmission(h.db, fresh), ensureAdmission(h.db, fresh)]);
+  expect(new Set(results.map((result) => result.status === "selected" ? result.householdId : "none")).size).toBe(1);
+  expect(results.every((result) => result.status === "selected")).toBe(true);
+  expect(await memberships("fresh")).toHaveLength(1);
+  expect(await h.db.select().from(s.households).where(eq(s.households.name, "Pat's kitchen"))).toHaveLength(1);
+});
+
+async function associate(email: string) {
+  await h.db.insert(s.householdInvitations).values({
+    id: "association", householdId: "a", email, tokenHash: null, invitedByUserId: "cook", expiresAt: new Date(Date.now() + 60_000),
+  });
+}
+
+it("holds for a pending association and lets the person start their own kitchen instead", async () => {
+  const fresh = await newcomer("fresh", "Pat");
+  await associate("fresh@example.test");
+  expect(await ensureAdmission(h.db, fresh)).toMatchObject({ status: "association", associations: [{ id: "association" }] });
+  expect(await memberships("fresh")).toEqual([]);
+  expect(await h.db.select().from(s.households)).toHaveLength(3);
+  const own = await createSessionHousehold(h.db, fresh, defaultKitchenName("Pat", "fresh@example.test"));
+  expect(await ensureAdmission(h.db, fresh)).toEqual({ status: "selected", householdId: own.householdId, profileComplete: false });
+});
+
+it("keeps an association acceptable when automatic creation won the race, without moving the selection", async () => {
+  const fresh = await newcomer("fresh", "Pat");
+  const [admitted] = await Promise.all([ensureAdmission(h.db, fresh), associate("fresh@example.test")]);
+  if (admitted.status === "association") {
+    // The association landed first and the person decides; nothing was created for them.
+    expect(await memberships("fresh")).toEqual([]);
+    return;
+  }
+  if (admitted.status !== "selected") throw new Error("Expected a selected kitchen.");
+  const own = admitted.householdId;
+  expect(await ensureAdmission(h.db, fresh)).toMatchObject({ status: "selected", householdId: own });
+  await acceptEmailAssociation(h.db, fresh, "association");
+  expect(await memberships("fresh")).toHaveLength(2);
+  expect(await sessionHouseholds(h.db, fresh)).toMatchObject({ selectedHouseholdId: own });
+});
+
+it("keeps an association acceptable after a kitchen already exists", async () => {
+  const fresh = await newcomer("fresh", "Pat");
+  const own = await ensureAdmission(h.db, fresh);
+  if (own.status !== "selected") throw new Error("Expected a selected kitchen.");
+  await associate("fresh@example.test");
+  expect(await ensureAdmission(h.db, fresh)).toMatchObject({ status: "selected", householdId: own.householdId });
+  await acceptEmailAssociation(h.db, fresh, "association");
+  expect(await memberships("fresh")).toHaveLength(2);
+  expect(await sessionHouseholds(h.db, fresh)).toMatchObject({ selectedHouseholdId: own.householdId });
+});
+
+it("binds the configured owner email to the memberless imported household only while bootstrap is empty", async () => {
+  const owner = await newcomer("owner", "Owner", "owner@example.test");
+  expect(await ensureAdmission(h.db, owner, { ownerEmail: "Owner@Example.test" })).toEqual({ status: "selected", householdId: "b", profileComplete: false });
+  expect(await memberships("owner")).toMatchObject([{ householdId: "b", role: "owner" }]);
+  expect(await h.db.select().from(s.householdBootstrap)).toMatchObject([{ id: 1, ownerUserId: "owner" }]);
+  expect(await h.db.select().from(s.households)).toHaveLength(3);
+
+  const late = await newcomer("late", "Late", "late@example.test");
+  const admitted = await ensureAdmission(h.db, late, { ownerEmail: "late@example.test" });
+  if (admitted.status !== "selected") throw new Error("Expected a kitchen.");
+  expect(admitted.householdId).not.toBe("b");
+  expect(await h.db.select().from(s.households)).toHaveLength(4);
+});
+
+it("never binds the imported household for another email or when no owner email is configured", async () => {
+  const stranger = await newcomer("stranger", "Stranger", "stranger@example.test");
+  const admitted = await ensureAdmission(h.db, stranger, { ownerEmail: "owner@example.test" });
+  if (admitted.status !== "selected") throw new Error("Expected a kitchen.");
+  expect(admitted.householdId).not.toBe("b");
+  expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
+  expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.householdId, "b"))).toEqual([]);
+  const other = await newcomer("other-owner", "Owner", "owner@example.test");
+  const second = await ensureAdmission(h.db, other);
+  if (second.status !== "selected") throw new Error("Expected a kitchen.");
+  expect(second.householdId).not.toBe("b");
+});
+
+it("falls through to a new kitchen when the imported household is ambiguous", async () => {
+  await h.db.insert(s.households).values({ id: "c", name: "Another memberless" });
+  const owner = await newcomer("owner", "Owner", "owner@example.test");
+  const admitted = await ensureAdmission(h.db, owner, { ownerEmail: "owner@example.test" });
+  if (admitted.status !== "selected") throw new Error("Expected a kitchen.");
+  expect(["b", "c"]).not.toContain(admitted.householdId);
+  expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
 });

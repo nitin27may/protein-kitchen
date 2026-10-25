@@ -195,6 +195,31 @@ export async function claimHousehold(db: Db, userId: string, submittedSecret: st
   });
 }
 
+/**
+ * Email proof replaces the claim secret: binds the verified owner email to the imported, memberless household.
+ * Returns null (never throws) when the email does not match, bootstrap is already used, or there is no single
+ * memberless household, so the caller falls through to automatic household creation. The configured email is
+ * never logged or returned.
+ */
+export async function claimHouseholdByOwnerEmail(db: Db, userId: string, ownerEmail: string | undefined) {
+  const configured = ownerEmail ? emailSchema.safeParse(ownerEmail) : null;
+  if (!configured?.success) return null;
+  return withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const user = await verifiedUser(tx, userId);
+    if (emailSchema.parse(user.email) !== configured.data) return null;
+    if ((await tx.select().from(householdBootstrap).limit(1)).length) return null;
+    if ((await tx.select().from(householdMembers).where(eq(householdMembers.userId, userId)).limit(1)).length) return null;
+    const orphans = await tx.select({ id: households.id }).from(households)
+      .leftJoin(householdMembers, eq(householdMembers.householdId, households.id))
+      .where(isNull(householdMembers.userId)).limit(2);
+    if (orphans.length !== 1) return null;
+    await tx.insert(householdBootstrap).values({ id: 1, ownerUserId: userId });
+    const [member] = await tx.insert(householdMembers).values({ householdId: orphans[0]!.id, userId, role: "owner" }).returning();
+    return member!;
+  });
+}
+
 export async function issueInvitation(db: Db, actorUserId: string, input: { email: string; personId?: number }, access?: HouseholdAccess) {
   const email = emailSchema.parse(input.email);
   if (input.personId !== undefined) z.number().int().positive().parse(input.personId);

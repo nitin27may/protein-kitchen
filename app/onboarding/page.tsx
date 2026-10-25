@@ -2,24 +2,26 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { verifiedSessionIdentity, verifiedSessionUser } from "@/lib/auth/access";
 import { HouseholdAccessError } from "@/lib/auth/household";
-import { AuthConfigurationError } from "@/lib/auth/config";
+import { AuthConfigurationError, householdOwnerEmail } from "@/lib/auth/config";
 import { safeAuthReturn } from "@/lib/auth/browser";
 import { getDb } from "@/lib/server/context";
 import { householdMembers, people } from "@/lib/db/schema";
-import { HouseholdEntry } from "@/components/auth/HouseholdEntry";
-import { CreateHousehold } from "@/components/auth/CreateHousehold";
+import { LinkProfile } from "@/components/auth/LinkProfile";
+import { StartOwnKitchen } from "@/components/auth/StartOwnKitchen";
+import { AcceptLegacyInvite } from "@/components/auth/AcceptLegacyInvite";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Banner, PageTitle } from "@/components/ui";
 import { finishProfile } from "./actions";
-import { resolveSessionHouseholdAccess, sessionHouseholds } from "@/lib/auth/household-session";
+import { ensureAdmission, resolveSessionHouseholdAccess, sessionHouseholds } from "@/lib/auth/household-session";
 import { HouseholdChooser } from "@/components/auth/HouseholdChooser";
 import { EmailAssociationPrompt } from "@/components/auth/EmailAssociationPrompt";
 import { pendingEmailAssociations } from "@/lib/auth/household";
 
-export const metadata = { title: "Set up your household" };
+export const metadata = { title: "Set up your account" };
 export const dynamic = "force-dynamic";
-export default async function Onboarding({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const next = safeAuthReturn((await searchParams).next);
+export default async function Onboarding({ searchParams }: { searchParams: Promise<{ next?: string; invite?: string }> }) {
+  const params = await searchParams;
+  const next = safeAuthReturn(params.next);
   let user;
   try { user = await verifiedSessionUser(); }
   catch (error) {
@@ -33,14 +35,21 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
   const associations = await pendingEmailAssociations(db, identity);
   const [member] = await db.select().from(householdMembers).where(eq(householdMembers.userId, user.id));
   if (!member) {
-    return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
-      <h1 className="text-2xl font-bold">Finish setting up your account</h1>
+    if (params.invite) return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
+      <h1 className="text-2xl font-bold">Join a household</h1>
       <p className="break-words">Signed in as {user.email}.</p>
-      <EmailAssociationPrompt associations={associations} />
-      <CreateHousehold />
-      <p className="text-sm text-muted">You can still join with an existing household invitation or initial setup key.</p>
-      <HouseholdEntry />
+      <AcceptLegacyInvite token={params.invite} />
     </section>;
+    const admission = await ensureAdmission(db, identity, { ownerEmail: householdOwnerEmail(process.env) });
+    if (admission.status === "association") {
+      return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
+        <h1 className="text-2xl font-bold">Finish setting up your account</h1>
+        <p className="break-words">Signed in as {user.email}.</p>
+        <EmailAssociationPrompt associations={associations} />
+        <StartOwnKitchen />
+      </section>;
+    }
+    redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   }
   let access;
   const choices = await sessionHouseholds(db, identity);
@@ -63,7 +72,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
     {profiles.length ? <section className="mx-4 mb-6 space-y-3 rounded-card border border-line p-4">
       <h2 className="text-lg font-semibold">Already have a profile?</h2>
       <p className="text-sm text-muted">Link it instead of creating a duplicate. Unavailable or reserved profiles cannot be linked.</p>
-      <HouseholdEntry profiles={profiles} />
+      <LinkProfile profiles={profiles} />
     </section> : null}
     <ProfileForm nextHref={next} saveAction={finishProfile}
       initial={{ name: user.name, sex: "other", birthDate: "", heightCm: "", weightKg: "", activityLevel: "moderate", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: "", reminderTime: "" }} />

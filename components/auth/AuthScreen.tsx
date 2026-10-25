@@ -1,33 +1,29 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Banner, Button, Field, Input, Segmented } from "@/components/ui";
+import { Banner, Button, Field, Input } from "@/components/ui";
 import { authRequest, safeAuthReturn } from "@/lib/auth/browser";
 
-type Stage = "password" | "sign-up" | "verify" | "code" | "reset" | "link";
+type Stage = "password" | "verify" | "code" | "reset" | "link";
 const titles: Record<Stage, string> = {
-  password: "Sign in", "sign-up": "Join your household", verify: "Verify your email",
-  code: "Sign in with a code", reset: "Reset your password", link: "Sign in with an email link",
+  password: "Sign in with a password", verify: "Verify your email",
+  code: "Sign in or create an account", reset: "Reset your password", link: "Sign in or create an account with an email link",
 };
 
 export function AuthScreen({ initial, next = "/", emailLinkError = false }: { initial: Stage; next?: string; emailLinkError?: boolean }) {
   const router = useRouter();
   const [stage, setStage] = useState(initial);
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [grant, setGrant] = useState("");
-  const [kind, setKind] = useState<"invitation" | "bootstrap">("invitation");
   const [sent, setSent] = useState(initial === "verify");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(emailLinkError ? "This email link is invalid, expired or already used. Request a new link to sign in." : "");
   const [notice, setNotice] = useState("");
 
   function change(nextStage: Stage, message = "") {
-    setStage(nextStage); setPassword(""); setOtp(""); setGrant(""); setError(""); setNotice(message);
+    setStage(nextStage); setPassword(""); setOtp(""); setError(""); setNotice(message);
     setSent(nextStage === "verify");
   }
   async function run(task: () => Promise<void>) {
@@ -42,7 +38,7 @@ export function AuthScreen({ initial, next = "/", emailLinkError = false }: { in
       email, type: stage === "verify" ? "email-verification" : "sign-in",
     });
     setSent(true);
-    setNotice("If this account can receive a code, it has been sent. Check your inbox. Codes expire after five minutes.");
+    setNotice("Check your email to continue. Codes expire after five minutes.");
   }
   function signedIn() {
     setPassword(""); setOtp("");
@@ -55,18 +51,13 @@ export function AuthScreen({ initial, next = "/", emailLinkError = false }: { in
         email, callbackURL: "/onboarding", newUserCallbackURL: "/onboarding",
         errorCallbackURL: "/sign-in?emailLinkError=1",
       });
-      setNotice("If this account can sign in, an email link has been sent. Open it in the browser you want to sign in to. It expires in five minutes and can be used once.");
-    } else if (stage === "sign-up") {
-      await authRequest("/sign-up/email", { name, email, password }, {
-        [kind === "bootstrap" ? "x-household-bootstrap" : "x-household-invitation"]: grant,
-      });
-      change("verify", "Check your inbox for a six-digit code. Keep your household key or invitation for onboarding.");
+      setNotice("Check your email to continue. Open the link in the browser you want to use. It expires in five minutes and can be used once.");
     } else if (stage === "password") {
       await authRequest("/sign-in/email", { email, password }); signedIn();
     } else if (!sent) await sendCode();
     else if (stage === "verify") {
       await authRequest("/email-otp/verify-email", { email, otp });
-      change("password", "Email verified. Sign in to finish joining your household.");
+      change("password", "Email verified. Sign in with your password.");
     } else if (stage === "code") {
       await authRequest("/sign-in/email-otp", { email, otp }); signedIn();
     } else {
@@ -75,32 +66,22 @@ export function AuthScreen({ initial, next = "/", emailLinkError = false }: { in
     }
   }
 
-  const needsPassword = stage === "password" || stage === "sign-up" || (stage === "reset" && sent);
+  const needsPassword = stage === "password" || (stage === "reset" && sent);
   const needsCode = sent && ["verify", "code", "reset"].includes(stage);
-  const label = stage === "link" ? "Send email link" : stage === "sign-up" ? "Create account" : stage === "password" ? "Sign in" :
-    !sent ? "Send code" : stage === "verify" ? "Verify email" : stage === "code" ? "Sign in with code" : "Update password";
+  const label = stage === "link" ? "Email me a link" : stage === "password" ? "Sign in" :
+    !sent ? "Email me a code" : stage === "verify" ? "Verify email" : stage === "code" ? "Continue" : "Update password";
   return (
     <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
       <h1 className="text-2xl font-bold">{titles[stage]}</h1>
-      <p className="text-muted">Separate accounts, one shared meal plan and shopping list. Your meal profile keeps your own targets.</p>
+      <p className="text-muted">{stage === "code" || stage === "link" ? `Enter your email and we will send you a ${stage === "code" ? "six-digit code" : "sign-in link"}. New here? It also creates your account and your kitchen. No invitation needed.` : "Separate accounts, one shared meal plan and shopping list. Your meal profile keeps your own targets."}</p>
       {error ? <Banner tone="bad">{error}</Banner> : null}
       {notice ? <Banner>{notice}</Banner> : null}
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void run(submit); }}>
         <fieldset disabled={pending} className="space-y-4">
-          {stage === "sign-up" ? <Field label="Account name" htmlFor="account-name">
-            <Input id="account-name" autoComplete="name" required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-          </Field> : null}
           <Field label="Email" htmlFor="account-email">
             <Input id="account-email" type="email" autoComplete="email" required maxLength={254} value={email}
               onChange={(e) => { setEmail(e.target.value); setOtp(""); }} />
           </Field>
-          {stage === "sign-up" ? <>
-            <Segmented label="How are you joining?" value={kind} onChange={setKind}
-              options={[{ value: "invitation", label: "Invited cook" }, { value: "bootstrap", label: "First owner" }]} />
-            <Field label={kind === "bootstrap" ? "Household bootstrap key" : "Invitation code"} htmlFor="admission">
-              <Input id="admission" type="password" autoComplete="off" required maxLength={256} value={grant} onChange={(e) => setGrant(e.target.value)} />
-            </Field>
-          </> : null}
           {needsCode ? <Field label="Six-digit email code" htmlFor="email-code">
             <Input id="email-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value)} />
           </Field> : null}
@@ -115,14 +96,16 @@ export function AuthScreen({ initial, next = "/", emailLinkError = false }: { in
       {needsCode ? <Button variant="secondary" className="w-full" disabled={pending || !email}
         onClick={() => void run(sendCode)}>Send a new code</Button> : null}
       <nav aria-label="Account options" className="flex flex-col items-start">
-        {stage !== "password" ? <Button variant="ghost" disabled={pending} onClick={() => change("password")}>Use a password</Button> : <>
-          <Button variant="ghost" disabled={pending} onClick={() => change("link")}>Use an email link</Button>
-          <Button variant="ghost" disabled={pending} onClick={() => change("code")}>Use an email code</Button>
+        {stage === "password" ? <>
+          <Button variant="ghost" disabled={pending} onClick={() => change("code")}>Use an email code instead</Button>
           <Button variant="ghost" disabled={pending} onClick={() => change("reset")}>Forgot password?</Button>
           <Button variant="ghost" disabled={pending} onClick={() => change("verify")}>Verify an existing account</Button>
+        </> : <>
+          {stage !== "code" ? <Button variant="ghost" disabled={pending} onClick={() => change("code")}>Use an email code</Button> : null}
+          {stage !== "link" ? <Button variant="ghost" disabled={pending} onClick={() => change("link")}>Email me a link instead</Button> : null}
+          <Button variant="ghost" disabled={pending} onClick={() => change("password")}>I have a password</Button>
         </>}
-        <Link href="/sign-up" className="inline-flex min-h-11 items-center px-4 text-primary">Have an invitation? Create an account</Link>
-        <p className="mt-2 text-sm text-muted">After a reload, enter your email again to resume. Codes and household keys are not saved in this browser.</p>
+        <p className="mt-2 text-sm text-muted">After a reload, enter your email again to resume. Codes are not saved in this browser.</p>
       </nav>
     </section>
   );
