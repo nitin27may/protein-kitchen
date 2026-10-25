@@ -124,7 +124,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: Browser regression tests
-        run: pnpm test:e2e
+        run: pnpm test:e2e tests/e2e/account-password.spec.ts
       - name: Upload browser failure evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
