@@ -3,6 +3,8 @@ import { requirePageMember, verifiedSessionUser } from "@/lib/auth/access";
 import { getDb } from "@/lib/server/context";
 import { memberHouseholdAccess } from "@/lib/auth/household-access";
 import { householdAccount } from "@/lib/server/household-account";
+import { accountHasPassword } from "@/lib/auth/password";
+import { PasswordControls } from "@/components/auth/PasswordControls";
 import { AccountControls } from "@/components/auth/AccountControls";
 import { LinkButton } from "@/components/ui";
 
@@ -25,6 +27,7 @@ export default async function Account() {
       <LinkButton href="/groceries" variant="secondary">Shared shopping list</LinkButton>
       <LinkButton href="/households" variant="secondary">Switch household</LinkButton>
     </div>
+    <PasswordControls hasPassword={await accountHasPassword(db, member.userId)} />
     <AccountControls owner={owner} invitations={invitations} incomingAssociations={incomingAssociations}
       members={members} currentUserId={member.userId} />
   </section>;

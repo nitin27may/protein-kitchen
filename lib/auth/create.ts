@@ -10,6 +10,7 @@ import type { Db } from "../db/client";
 import * as schema from "../db/schema";
 import { permitsUserCreation } from "./signup";
 import { accountDeletion } from "./account-deletion";
+import { accountHasPassword, revokeOtherSessions, takePasswordAttempt, type PasswordOutcome } from "./password";
 
 export interface AuthCodeMail {
   email: string;
@@ -37,6 +38,18 @@ export interface AuthOptions {
   isVercel: boolean;
   sendCode: (mail: AuthCodeMail) => Promise<void>;
   sendLink: (mail: AuthLinkMail) => Promise<void>;
+}
+
+function passwordFailure(error: unknown): PasswordOutcome {
+  if (error instanceof APIError) {
+    const code = error.body?.code;
+    if (code === "INVALID_PASSWORD") return { ok: false, reason: "wrong-current" };
+    if (code === "PASSWORD_ALREADY_SET") return { ok: false, reason: "already-set" };
+    if (error.status === "UNAUTHORIZED") return { ok: false, reason: "unauthenticated" };
+  }
+  // Never log the error object: provider errors can carry request context.
+  console.error("Password change failed.");
+  return { ok: false, reason: "unavailable" };
 }
 
 export function createAuth(db: Db, options: AuthOptions) {
@@ -133,7 +146,39 @@ export function createAuth(db: Db, options: AuthOptions) {
   });
   return {
     // Session checks only; auth mutations go through HTTP so rate limits always run.
-    api: { getSession: (input: { headers: Headers }) => auth.api.getSession(input) },
+    api: {
+      getSession: (input: { headers: Headers }) => auth.api.getSession(input),
+      /** Server-side only: Better Auth's setPassword has no HTTP route, so the limiter lives here. */
+      async setPassword(input: { headers: Headers; newPassword: string }): Promise<PasswordOutcome> {
+        const session = await auth.api.getSession({ headers: input.headers });
+        if (!session?.user.emailVerified) return { ok: false, reason: "unauthenticated" };
+        if (!await takePasswordAttempt(db, session.user.id)) return { ok: false, reason: "rate-limited" };
+        if (await accountHasPassword(db, session.user.id)) return { ok: false, reason: "already-set" };
+        try {
+          await auth.api.setPassword({ headers: input.headers, body: { newPassword: input.newPassword } });
+        } catch (error) {
+          return passwordFailure(error);
+        }
+        await revokeOtherSessions(db, session.user.id, session.session.id);
+        return { ok: true };
+      },
+      async changePassword(input: { headers: Headers; currentPassword: string; newPassword: string }): Promise<PasswordOutcome> {
+        const session = await auth.api.getSession({ headers: input.headers });
+        if (!session?.user.emailVerified) return { ok: false, reason: "unauthenticated" };
+        if (!await takePasswordAttempt(db, session.user.id)) return { ok: false, reason: "rate-limited" };
+        if (!await accountHasPassword(db, session.user.id)) return { ok: false, reason: "no-password" };
+        try {
+          // Other sessions are revoked below instead of by the provider, which would also end this one.
+          await auth.api.changePassword({
+            headers: input.headers, body: { currentPassword: input.currentPassword, newPassword: input.newPassword },
+          });
+        } catch (error) {
+          return passwordFailure(error);
+        }
+        await revokeOtherSessions(db, session.user.id, session.session.id);
+        return { ok: true };
+      },
+    },
     handler(request: Request) {
       if (!isIP(request.headers.get(ipHeader) ?? "")) return Promise.resolve(Response.json({
         message: "A valid connecting address is required for authentication.",

@@ -26,7 +26,7 @@ describe("lazy server auth initialization", () => {
     vi.mocked(getDb).mockResolvedValue(db);
     const sendCode = vi.fn<(mail: import("../lib/auth/create").AuthMail) => Promise<void>>().mockResolvedValue();
     vi.mocked(resendAuthSender).mockReturnValue(sendCode);
-    const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn() } };
+    const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn(), setPassword: vi.fn(), changePassword: vi.fn() } };
     vi.mocked(createAuth).mockReturnValue(provider);
     expect(await getAuth()).toBe(provider);
     expect(await getAuth()).toBe(provider);
@@ -50,7 +50,7 @@ describe("lazy server auth initialization", () => {
     await expect(getAuth()).rejects.toThrow("synthetic database startup failure");
     const db: Db = Object.create(null);
     vi.mocked(getDb).mockResolvedValue(db);
-    const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn() } };
+    const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn(), setPassword: vi.fn(), changePassword: vi.fn() } };
     vi.mocked(createAuth).mockReturnValue(provider);
     expect(await getAuth()).toBe(provider);
   });
@@ -61,7 +61,7 @@ describe("lazy server auth initialization", () => {
     vi.mocked(getDb).mockResolvedValue(db);
     const send = async () => {};
     vi.mocked(localTestAuthSender).mockReturnValue(send);
-    const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn() } };
+    const provider = { handler: vi.fn<(request: Request) => Promise<Response>>(), api: { getSession: vi.fn(), setPassword: vi.fn(), changePassword: vi.fn() } };
     vi.mocked(createAuth).mockReturnValue(provider);
     expect(await getAuth()).toBe(provider);
     expect(resendAuthSender).not.toHaveBeenCalled();
