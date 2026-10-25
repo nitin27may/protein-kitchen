@@ -47,14 +47,14 @@ describe("application authorization inventory", () => {
         const statements = page!.body!.statements;
         const guard = statements.findIndex((statement) => statement.getText().includes("await requirePageMember();"));
         expect(guard, "A household page must keep its membership guard after the anonymous prompt.").toBeGreaterThan(0);
-        expect(statements[0]!.getText()).toMatch(/^if \(!await optionalPageMember\(\)\) \{\s*return <AnonymousPrompt/);
+        expect(statements[0]!.getText()).toMatch(/^if \(!await optionalPageMember\(\) && !await hasSessionCookie\(\)\) \{\s*return <AnonymousPrompt/);
         const calls: string[] = [];
         const visit = (node: ts.Node) => {
           if (ts.isCallExpression(node)) calls.push(node.expression.getText());
           ts.forEachChild(node, visit);
         };
         for (const statement of statements.slice(0, guard)) visit(statement);
-        expect(calls).toEqual(["optionalPageMember"]);
+        expect(calls).toEqual(["optionalPageMember", "hasSessionCookie"]);
       } else if (file === "app/households/page.tsx") {
         const boundary = page!.body!.statements[0];
         expect(ts.isTryStatement(boundary!)).toBe(true);

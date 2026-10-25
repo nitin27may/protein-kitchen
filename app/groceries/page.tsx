@@ -1,5 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
+import { hasSessionCookie } from "@/lib/auth/session-cookie";
 import { AnonymousPrompt } from "@/components/AnonymousPrompt";
 import type { Metadata } from "next";
 import { GroceryClient } from "@/components/GroceryClient";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Groceries" };
 export const dynamic = "force-dynamic";
 
 export default async function GroceriesPage({ searchParams }: { searchParams: Promise<{ plan?: string; w?: string }> }) {
-  if (!await optionalPageMember()) {
+  if (!await optionalPageMember() && !await hasSessionCookie()) {
     return <AnonymousPrompt title="Groceries" heading="Your shopping list builds from a plan" body="Create a plan and the list is grouped by aisle, with pack sizes. Sign in to see lists you already saved." />;
   }
   await requirePageMember();
