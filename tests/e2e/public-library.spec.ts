@@ -3,7 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 const SHELL_PAGES = ["/", "/recipes", "/ingredients", "/recipes/tofu-burrito-bowl", "/ingredients/tofu-extra-firm", "/groceries", "/profiles", "/plan"];
 
 async function noHorizontalScroll(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  // On a mobile viewport innerWidth grows with the content, so it cannot detect overflow; the visual viewport can.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
 }
 
 /** Visible links and buttons in the shell and the page header area that are shorter than a 44 px tap target. */
@@ -121,6 +122,14 @@ test("the shell fits a 390 px phone: no overflow, 44 px tap targets, account slo
   await page.screenshot({ path: "test-results/library-recipe-phone.png", fullPage: true });
   await page.getByRole("link", { name: "Sign in / Create account" }).click();
   await expect(page.getByRole("heading", { name: /Sign in/ })).toBeVisible();
+});
+
+test("the signed-out header wraps instead of widening the page on a 320 px phone", async ({ page }) => {
+  // A wider layout viewport makes the browser scroll sideways and slide the fixed action bar away from its buttons.
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/recipes");
+  await expect(page.getByRole("link", { name: "Sign in / Create account" })).toBeVisible();
+  await noHorizontalScroll(page);
 });
 
 test("unknown subjects and routines return 404", async ({ page }) => {

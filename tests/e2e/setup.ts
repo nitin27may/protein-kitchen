@@ -1,4 +1,5 @@
 import path from "node:path";
+import { chromium, devices } from "@playwright/test";
 import { eq, getTableName, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { openPostgres } from "../../lib/db/postgres/client";
@@ -43,11 +44,35 @@ export async function prepareBrowserDatabase() {
   }
 }
 
+/**
+ * `next dev` compiles each route, and its client bundle, on first request, and a compile can reload connected pages.
+ * On a slow runner that happens in the middle of a journey: a form is reset or a click lands on a page that is about to
+ * reload. Visiting every route once before the first test moves all of that cost out of the tests.
+ */
+async function warmRoutes(baseURL: string, prepPlanId: number) {
+  const routes = [
+    "/recipes", "/recipes/besan-oat-muffins", "/ingredients", "/credits", "/sign-in", "/sign-up", "/reset-password", "/verify-email",
+    "/plan/new", "/plan/draft", "/plan", `/plan/${prepPlanId}`, `/plan/${prepPlanId}/prep`, "/groceries", "/onboarding", "/account",
+    "/households", "/profiles", "/profiles/new", "/settings", "/photos/review", "/api/anon-library",
+  ];
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ ...devices["Pixel 7"], baseURL });
+    const page = await context.newPage();
+    for (const route of routes) {
+      try { await page.goto(route, { waitUntil: "load", timeout: 90_000 }); await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => undefined); }
+      catch (error) { console.warn(`Warm-up of ${route} did not finish: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    await context.close();
+  } finally { await browser.close(); }
+}
+
 export default async function setup() {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   try {
     const [plan] = await handle.db.select({ id: s.plans.id }).from(s.plans).where(eq(s.plans.seed, 12345));
     if (!plan) throw new Error("Browser server did not prepare the deterministic prep fixture.");
     process.env.E2E_PREP_PLAN_ID = String(plan.id);
+    await warmRoutes(`http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, plan.id);
   } finally { await handle.close(); }
 }
