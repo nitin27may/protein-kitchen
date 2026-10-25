@@ -158,6 +158,8 @@ Still pending:
 
 ## Group 2: publish and protect (starts after step 10)
 
+**Direction change, 2026-10-25:** signup is open and email-first (no invitation or claim key), and anonymous visitors get the full app shell with on-device plan generation. Persisting actions ask for email signup. Details, matrix and acceptance criteria: "Open signup and anonymous app shell" in `plan-v3-publish-and-protect.md`.
+
 ### Active work package: step 12, including earlier carry-forward work
 
 **Step 12 is implemented locally**, including the supporting driver handoff from step 13. The Postgres baseline in `8974a0d` is now wired into application queries; the SQLite source and its migration history are preserved, not imported or modified. The detailed execution checkpoints are in `plan-v3-publish-and-protect.md`.
