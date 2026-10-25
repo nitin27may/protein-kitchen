@@ -9,7 +9,7 @@ import { AuthConfigurationError } from "@/lib/auth/config";
 import { acceptEmailAssociation, acceptInvitation, addEmailAssociation as createEmailAssociation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, declineEmailAssociation, emailAssociationRecipient, HouseholdAccessError, issueInvitation, removeHouseholdMember, revokeInvitation } from "@/lib/auth/household";
 import type { PersonInputData } from "@/lib/schemas/person";
 import { memberHouseholdAccess } from "@/lib/auth/household-access";
-import { resolveSessionHouseholdAccess, selectSessionHousehold } from "@/lib/auth/household-session";
+import { createSessionHousehold, resolveSessionHouseholdAccess, selectSessionHousehold } from "@/lib/auth/household-session";
 import { sendHouseholdAssociationNotice } from "@/lib/auth/server";
 
 async function attempt<T extends object>(task: () => Promise<T>): Promise<Result<T>> {
@@ -43,6 +43,14 @@ export async function joinHousehold(kind: "bootstrap" | "invitation", grant: str
     } else if (kind === "invitation") await acceptInvitation(db, user.id, grant);
     else throw new HouseholdAccessError("Choose how you are joining the household.");
     return {};
+  });
+}
+
+export async function createHousehold(name: string): Promise<Result<{ householdId: string }>> {
+  return attempt(async () => {
+    const identity = await verifiedSessionIdentity();
+    const created = await createSessionHousehold(await getDb(), identity, name);
+    return { householdId: created.householdId };
   });
 }
 

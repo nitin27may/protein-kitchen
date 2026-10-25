@@ -81,6 +81,34 @@ test("plan setup and reloaded plan controls wait for hydration rather than disca
   }
 });
 
+test("shopping and prep ticks wait for hydration and preserve their first saved change", async ({ page }) => {
+  for (const path of ["/groceries", `/plan/${process.env.E2E_PREP_PLAN_ID}/prep`]) {
+    let release = () => {};
+    const ready = new Promise<void>((resolve) => { release = resolve; });
+    const delayScripts = async (route: Route) => {
+      if (route.request().resourceType() === "script") await ready;
+      await route.continue();
+    };
+    await page.route("**/_next/static/**", delayScripts);
+    try {
+      await page.goto(path, { waitUntil: "commit" });
+      const checkbox = page.getByRole("checkbox").first();
+      await expect(checkbox).toBeVisible();
+      await expect(checkbox).toBeDisabled();
+      release();
+      await expect(checkbox).toBeEnabled();
+      await page.unroute("**/_next/static/**", delayScripts);
+      const checked = await checkbox.isChecked();
+      await mutation(page, () => checkbox.setChecked(!checked));
+      await page.reload();
+      await expect(checkbox).toBeChecked({ checked: !checked });
+    } finally {
+      release();
+      await page.unroute("**/_next/static/**", delayScripts);
+    }
+  }
+});
+
 test("shopping progress is shared between independent browser contexts and persists", async ({ page, browser }) => {
   await page.goto("/groceries");
   const first = page.getByRole("checkbox").first();

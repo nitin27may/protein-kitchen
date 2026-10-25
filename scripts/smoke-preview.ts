@@ -27,18 +27,23 @@ try {
   const page = await context.newPage();
   const errors: Error[] = [];
   page.on("pageerror", (error) => errors.push(error));
-  for (const path of ["/recipes", "/ingredients", "/techniques", "/sign-in"]) {
+  for (const path of ["/recipes", "/ingredients", "/recipes/tofu-burrito-bowl", "/ingredients/tofu-extra-firm", "/sign-in"]) {
     const response = await page.goto(new URL(path, origin).toString());
     assert.equal(response?.status(), 200, `Hosted ${path} must render successfully.`);
     await page.locator("h1").first().waitFor();
     assert.ok((await page.locator("body").innerText()).trim().length > 100, `${path} must have real content.`);
+    if (path === "/recipes/tofu-burrito-bowl") {
+      await page.locator("summary").filter({ hasText: "Oven and air fryer basics" }).click();
+      assert.ok(await page.getByText("Most roasting and baking problems come from the oven, not the recipe. All temperatures here are in Celsius.", { exact: true }).isVisible(),
+        "Hosted recipe techniques must expand with real instructions.");
+    }
   }
   await page.goto(new URL("/account", origin).toString());
   await page.waitForURL((url) => url.pathname === "/sign-in");
   assert.equal(errors.length, 0, "Hosted browser must have no uncaught application errors.");
   await page.goto(new URL("/recipes", origin).toString());
   if (process.env.PREVIEW_SMOKE_SCREENSHOT) await page.screenshot({ path: process.env.PREVIEW_SMOKE_SCREENSHOT, fullPage: false });
-  console.log("Protected preview browser passed: anonymous denial, four rendered routes, private-account redirect and no uncaught errors.");
+  console.log("Protected preview browser passed: anonymous denial, five rendered routes, expanded technique, private-account redirect and no uncaught errors.");
 } finally {
   await browser.close();
 }

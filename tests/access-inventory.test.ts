@@ -112,7 +112,7 @@ describe("application authorization inventory", () => {
   });
   it("admission and account actions resolve the session inside the explicit error boundary", () => {
     const actions = source("app/onboarding/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
-    expect(actions).toHaveLength(12);
+    expect(actions).toHaveLength(13);
     const management = new Set(["changeCookRole", "removeCook"]);
     for (const action of actions) {
       const statement = action.body?.statements[0];

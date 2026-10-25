@@ -7,6 +7,7 @@ import { safeAuthReturn } from "@/lib/auth/browser";
 import { getDb } from "@/lib/server/context";
 import { householdMembers, people } from "@/lib/db/schema";
 import { HouseholdEntry } from "@/components/auth/HouseholdEntry";
+import { CreateHousehold } from "@/components/auth/CreateHousehold";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Banner, PageTitle } from "@/components/ui";
 import { finishProfile } from "./actions";
@@ -15,7 +16,7 @@ import { HouseholdChooser } from "@/components/auth/HouseholdChooser";
 import { EmailAssociationPrompt } from "@/components/auth/EmailAssociationPrompt";
 import { pendingEmailAssociations } from "@/lib/auth/household";
 
-export const metadata = { title: "Join your household" };
+export const metadata = { title: "Set up your household" };
 export const dynamic = "force-dynamic";
 export default async function Onboarding({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const next = safeAuthReturn((await searchParams).next);
@@ -36,6 +37,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
       <h1 className="text-2xl font-bold">Finish setting up your account</h1>
       <p className="break-words">Signed in as {user.email}.</p>
       <EmailAssociationPrompt associations={associations} />
+      <CreateHousehold />
       <p className="text-sm text-muted">You can still join with an existing household invitation or initial setup key.</p>
       <HouseholdEntry />
     </section>;

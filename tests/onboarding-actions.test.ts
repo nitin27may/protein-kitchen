@@ -8,7 +8,7 @@ import { getDb } from "../lib/server/context";
 import * as s from "../lib/db/schema";
 import {
   acceptHouseholdEmailAssociation, addHouseholdEmailAssociation, cancelInvitation, changeCookRole,
-  chooseHousehold, declineHouseholdEmailAssociation, finishProfile, inviteCook, joinHousehold,
+  chooseHousehold, createHousehold, declineHouseholdEmailAssociation, finishProfile, inviteCook, joinHousehold,
   linkOwnProfile, removeCook, resendHouseholdAssociationNotice,
 } from "../app/onboarding/actions";
 import { resolveSessionHouseholdAccess } from "../lib/auth/household-session";
@@ -148,10 +148,50 @@ it("refuses anonymous operations before database access", async () => {
   vi.mocked(verifiedSessionUser).mockRejectedValue(new HouseholdAccessError("Sign in before continuing."));
   vi.mocked(requireMember).mockRejectedValue(new HouseholdAccessError("Sign in before continuing."));
   for (const action of [
-    () => joinHousehold("bootstrap", secret), () => finishProfile(input), () => inviteCook("cook@example.test"),
+    () => joinHousehold("bootstrap", secret), () => createHousehold("New household"), () => finishProfile(input), () => inviteCook("cook@example.test"),
     () => linkOwnProfile(1), () => cancelInvitation("missing"), () => changeCookRole("cook", "owner"), () => removeCook("cook"), () => chooseHousehold("fixture"),
   ]) expect(await action()).toEqual({ ok: false, error: "Sign in before continuing." });
   expect(getDb).not.toHaveBeenCalled();
+});
+
+it("creates only an empty household for the verified session and continues to its own profile without a grant", async () => {
+  vi.stubEnv("HOUSEHOLD_BOOTSTRAP_SECRET", "");
+  const before = await h.db.select().from(s.households);
+  const created = await createHousehold("  Synthetic new household  ");
+  expect(created).toMatchObject({ ok: true, householdId: expect.any(String) });
+  if (!created.ok) throw new Error(created.error);
+  expect(await h.db.select().from(s.households).where(eq(s.households.id, created.householdId)))
+    .toMatchObject([{ name: "Synthetic new household" }]);
+  expect(await h.db.select().from(s.householdMembers))
+    .toMatchObject([{ householdId: created.householdId, userId: "owner", role: "owner", personId: null }]);
+  expect(await h.db.select().from(s.people)).toEqual([]);
+  expect(await h.db.select().from(s.plans)).toEqual([]);
+  expect(await resolveSessionHouseholdAccess(h.db, { userId: "owner", sessionId: "owner-session" }))
+    .toMatchObject({ householdId: created.householdId, role: "owner" });
+  expect(await h.db.select().from(s.authSessions).where(eq(s.authSessions.id, "cook-session")))
+    .toMatchObject([{ activeHouseholdId: null, householdSelectionVersion: 0 }]);
+  for (const household of before) {
+    expect(await h.db.select().from(s.households).where(eq(s.households.id, household.id))).toEqual([household]);
+  }
+  expect(await finishProfile(input)).toMatchObject({ ok: true });
+  expect(await h.db.select().from(s.people)).toMatchObject([{ householdId: created.householdId, name: input.name }]);
+  expect(await createHousehold("Another household")).toMatchObject({ ok: false, error: expect.stringContaining("already has a household") });
+  expect(sendHouseholdAssociationNotice).not.toHaveBeenCalled();
+});
+
+it("refuses invalid names, unverified or expired identities and quarantined memberships before creating a household", async () => {
+  expect(await createHousehold(" ")).toMatchObject({ ok: false, fields: { form: "Enter a household name." } });
+  expect(await createHousehold("x".repeat(101))).toMatchObject({ ok: false, fields: { form: "Use at most 100 characters." } });
+  await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "owner"));
+  expect(await createHousehold("Unverified household")).toMatchObject({ ok: false });
+  await h.db.update(s.authUsers).set({ emailVerified: true }).where(eq(s.authUsers.id, "owner"));
+  await h.db.update(s.authSessions).set({ expiresAt: new Date(0) }).where(eq(s.authSessions.id, "owner-session"));
+  expect(await createHousehold("Expired household")).toMatchObject({ ok: false });
+  await h.db.update(s.authSessions).set({ expiresAt: new Date(Date.now() + 60_000) }).where(eq(s.authSessions.id, "owner-session"));
+  await h.db.insert(s.householdMembers).values({ userId: "owner", householdId: null, role: "owner" });
+  expect(await createHousehold("Quarantined household")).toMatchObject({ ok: false });
+  expect(await h.db.select().from(s.households)).toHaveLength(1);
+  expect(await h.db.select().from(s.people)).toEqual([]);
 });
 it("requires an owner session for role/removal management and preserves the final owner", async () => {
   await joinHousehold("bootstrap", secret);

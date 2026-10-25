@@ -6,6 +6,72 @@ Status: steps 12-17 implemented locally; step 18 private cloud-photo implementat
 
 User-directed change, 2026-10-24: public visitors browse recipes/ingredients/details with a top menu; signed-in people use the full application within their own household. Anyone can sign up without invitation/bootstrap codes or choosing a cook/owner role. A household adds members by email from day one. This supersedes the single-household-per-deployment and invite-only product assumptions below, not their existing privacy protections. **This section is an implementation plan, not completed functionality.**
 
+### Current hosted acceptance and next bounded slice, 2026-10-25
+
+Protected preview is live at
+https://protein-kitchen-preview-nitin27mays-projects.vercel.app,
+application SHA `9ce109234fe2d23d246998798614807c25a1f38a`,
+successful aggregate CI `40165492180`. Hosted browser acceptance verifies
+anonymous denial, five real routes, recipe technique expansion, private-account
+redirect and no uncaught errors. Vercel Authentication protects **all**
+deployments/aliases; implicit first-deployment production promotion is refused
+by the runner. The initial automatically classified bootstrap deployment was
+removed after creating/inspecting the real preview. Runtime uses isolated
+`protein_kitchen_hosted_preview`: all 20 migrations, library-only seed, empty
+non-library tables, private read-only empty storage, no development-branch
+expiry. Production Neon and blocked production release policy are unchanged.
+These facts supersede the historical deployment blockers below.
+
+**Status: H3 household creation UI accepted locally, not open signup.** Expose the already
+accepted `createSessionHousehold` primitive through a verified-session Server
+Action and hydration-safe onboarding form. A verified account with no
+membership may name a new empty household, automatically become its manager
+and continue to its own profile without a code or role selection. Keep pending
+association accept/decline visible; explain that creating does not join another
+household. Preserve legacy invitation/bootstrap compatibility and existing
+profile/household selection. Do not enable new-account signup, live mail,
+production deployment, household import, profile reassignment or extra-household
+creation for existing members.
+
+**Dependencies and permission boundaries:** accepted protected deployment,
+verified email/session identity, existing session-bound creation transaction,
+membership/session locking, existing profile action and H4 recipient consent.
+Recheck identity and membership on the server; hiding the form is not authority.
+An expired/unverified/anonymous session or any existing/quarantined membership
+must refuse without adopting legacy rows. Reuse the existing service; no schema,
+mail-provider or nutrition-data changes.
+
+**Acceptance before completion:** actual action tests for normalized name,
+automatic owner/session selection, profile continuation, invalid name,
+anonymous/unverified/expired identity and existing-membership refusal; retain
+the service's native contention/quarantine cases. Retained phone browser journey
+creates a household without entering a grant, handles failed submit/retry,
+finishes a profile, reloads, confirms selection and preserves an independent
+household. Run affected authorization/action tests, full serial coverage and
+browser acceptance, types, validation and database-free production build.
+This slice is developed after hosted acceptance; it is not part of the deployed
+application SHA until a later exact-commit deployment.
+
+Full browser acceptance exposed the same first-click readiness gap on shared
+shopping/prep checkboxes: the trace contained a GET but no mutation POST after a
+visible checkbox was clicked before hydration. Apply the existing shared
+hydration signal to grocery/pantry/manual-item and prep completion controls,
+without changing persistence or authorization. Retain a deliberately
+script-delayed browser case proving disabled-before/usable-after hydration and
+first-change persistence on both pages; do not hide the failure with a sleep or
+forced click.
+
+**Acceptance result:** 2,015 tests / 101 files including 42 native cases,
+38 retained browser journeys, all critical coverage gates, strict types,
+library validation and production build pass. The new browser covers disabled
+pre-hydration controls, server field errors, network failure with preserved
+input/retry, grant-free creation, duplicate replay refusal, profile completion,
+reload and unchanged independent household data. Actual workflow guard programs
+also execute against synthetic CLI fixtures and refuse partial protection,
+wrong project, unready output and implicit production classification.
+`PREVIEW_ALIAS` pins the auth origin and is assigned only after target checks.
+This candidate awaits its own exact-commit hosted acceptance.
+
 ### Required experience
 
 - Anonymous home is the public library/landing experience, with Recipes, Ingredients, Sign in and Create account in a responsive top menu. Do not show private Plan/Groceries/Profiles/Settings navigation to anonymous visitors. Direct private URLs still require authorization; hiding links is not enforcement.

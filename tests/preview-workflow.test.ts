@@ -43,12 +43,16 @@ describe("protected preview deployment contract", () => {
     const configuration = preview.indexOf("previewPreflight(runtime, true)");
     const schema = preview.indexOf("select hash, created_at from drizzle.__drizzle_migrations");
     const build = preview.indexOf("vercel build");
-    const deploy = preview.indexOf("vercel deploy --prebuilt");
+    const protection = preview.indexOf('project.ssoProtection?.deploymentType !== "all"');
+    const deploy = preview.indexOf('["deploy", "--prebuilt"');
     expect(configuration).toBeGreaterThan(0);
     expect(schema).toBeGreaterThan(configuration);
-    expect(build).toBeGreaterThan(schema);
+    expect(protection).toBeGreaterThan(schema);
+    expect(build).toBeGreaterThan(protection);
     expect(deploy).toBeGreaterThan(build);
     expect(preview).toContain("runtime[key] !== process.env[key]");
+    expect(preview).toContain('runtime.BETTER_AUTH_URL !== `https://${process.env.PREVIEW_ALIAS}`');
+    expect(preview).toContain('["alias", "set", url, process.env.PREVIEW_ALIAS');
     expect(preview).toContain("rows.length !== expected.length");
     expect(preview).toContain("row.hash !== expected[i].hash");
     expect(preview).not.toMatch(/db:migrate|pnpm seed|migrate\(handle/);
@@ -63,7 +67,7 @@ describe("protected preview deployment contract", () => {
 
   it("parses the actual inline deployment programs", () => {
     const programs = [...workflow.matchAll(/<<'JS'\n([\s\S]*?)\n          JS/g)];
-    expect(programs).toHaveLength(2);
+    expect(programs).toHaveLength(4);
     for (const [, program] of programs) {
       const result = spawnSync(process.execPath, ["--input-type=module", "--check"], {
         input: program, encoding: "utf8",
@@ -72,12 +76,62 @@ describe("protected preview deployment contract", () => {
     }
   });
 
+  it("executes the actual project protection guard and refuses partially protected aliases without leaking values", () => {
+    const directory = mkdtempSync(join(tmpdir(), "protein-kitchen-preview-protection-"));
+    try {
+      writeFileSync(join(directory, "vercel"), `#!${process.execPath}\nconsole.log(process.env.SYNTHETIC_PROJECT);\n`, { mode: 0o700 });
+      const program = [...workflow.matchAll(/<<'JS'\n([\s\S]*?)\n          JS/g)][2]![1]!;
+      for (const [project, success] of [
+        [{ id: "synthetic", ssoProtection: { deploymentType: "all" } }, true],
+        [{ id: "synthetic", ssoProtection: { deploymentType: "prod_deployment_urls_and_all_previews" } }, false],
+        [{ id: "wrong-project", ssoProtection: { deploymentType: "all" } }, false],
+        [{ id: "synthetic" }, false],
+      ] as const) {
+        const result = spawnSync(process.execPath, ["--input-type=module"], {
+          input: program, encoding: "utf8", env: {
+            NODE_ENV: "test", PATH: directory, VERCEL_PROJECT_ID: "synthetic", VERCEL_ORG_ID: "synthetic-team",
+            VERCEL_TOKEN: "PRIVATE_SYNTHETIC_VALUE", SYNTHETIC_PROJECT: JSON.stringify(project),
+          },
+        });
+        expect(result.status, result.stderr).toBe(success ? 0 : 1);
+        expect(result.stdout + result.stderr).not.toContain("PRIVATE_SYNTHETIC_VALUE");
+        if (!success) expect(result.stderr).toContain("Require Vercel Authentication on all deployments and aliases");
+      }
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+
+  it("executes the actual deploy program and refuses implicit production promotion or an unready result", () => {
+    const directory = mkdtempSync(join(tmpdir(), "protein-kitchen-preview-target-"));
+    try {
+      writeFileSync(join(directory, "vercel"), `#!${process.execPath}
+console.log(process.argv[2] === "deploy" ? JSON.stringify({ url: "https://synthetic.vercel.app" }) : process.env.SYNTHETIC_INSPECTION);
+`, { mode: 0o700 });
+      const program = [...workflow.matchAll(/<<'JS'\n([\s\S]*?)\n          JS/g)][3]![1]!;
+      for (const [inspection, success] of [
+        [{ id: "synthetic", readyState: "READY", target: null }, true],
+        [{ id: "synthetic", readyState: "READY", target: "production" }, false],
+        [{ id: "synthetic", readyState: "BUILDING", target: null }, false],
+      ] as const) {
+        const result = spawnSync(process.execPath, ["--input-type=module"], {
+          input: program, encoding: "utf8", env: {
+            NODE_ENV: "test", PATH: directory, VERCEL_TOKEN: "PRIVATE_SYNTHETIC_VALUE", PREVIEW_ALIAS: "synthetic.vercel.app",
+            SYNTHETIC_INSPECTION: JSON.stringify(inspection),
+          },
+        });
+        expect(result.status, result.stderr).toBe(success ? 0 : 1);
+        expect(result.stdout + result.stderr).not.toContain("PRIVATE_SYNTHETIC_VALUE");
+        if (success) expect(JSON.parse(result.stdout)).toMatchObject({ target: "preview", readyState: "READY" });
+        else expect(result.stderr).toContain("Refuse an unready deployment or implicit first-deployment production promotion");
+      }
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+
   it("the actual configuration guard refuses missing settings without exposing values", () => {
     const program = [...workflow.matchAll(/<<'JS'\n([\s\S]*?)\n          JS/g)][0]![1]!;
     const names = [
       "VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "DATABASE_URL",
       "DATABASE_URL_UNPOOLED", "NEON_PROJECT_ID", "NEON_DEVELOPMENT_BRANCH_ID",
-      "NEON_PRODUCTION_BRANCH_ID", "DATABASE_NONPRODUCTION_HOST", "DATABASE_DIRECT_NONPRODUCTION_HOST",
+      "NEON_PRODUCTION_BRANCH_ID", "DATABASE_NONPRODUCTION_HOST", "DATABASE_DIRECT_NONPRODUCTION_HOST", "PREVIEW_ALIAS",
     ];
     const env: NodeJS.ProcessEnv = {
       NODE_ENV: "test", ...Object.fromEntries(names.map((name) => [name, "PRIVATE_SYNTHETIC_VALUE"])),

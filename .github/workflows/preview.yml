@@ -43,6 +43,7 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      PREVIEW_ALIAS: ${{ vars.PREVIEW_ALIAS }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
       NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
@@ -67,7 +68,7 @@ jobs:
             "VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "DATABASE_URL",
             "DATABASE_URL_UNPOOLED", "NEON_PROJECT_ID", "NEON_DEVELOPMENT_BRANCH_ID",
             "NEON_PRODUCTION_BRANCH_ID", "DATABASE_NONPRODUCTION_HOST",
-            "DATABASE_DIRECT_NONPRODUCTION_HOST",
+            "DATABASE_DIRECT_NONPRODUCTION_HOST", "PREVIEW_ALIAS",
           ];
           const missing = required.filter((key) => !process.env[key]);
           if (missing.length) throw new Error(`Missing preview settings: ${missing.join(", ")}`);
@@ -106,6 +107,9 @@ jobs:
           if (!report.configurationValid || !report.liveBranchVerified) {
             throw new Error("Preview preflight refused deployment. No migration or upload occurred.");
           }
+          if (runtime.BETTER_AUTH_URL !== `https://${process.env.PREVIEW_ALIAS}`) {
+            throw new Error("The preview auth origin must match the reviewed GitHub preview alias.");
+          }
           const handle = await openVerifiedPostgres({
             ...runtimeTarget(runtime), connectionString: runtime.DATABASE_URL_UNPOOLED,
             nonProductionHost: runtime.DATABASE_DIRECT_NONPRODUCTION_HOST,
@@ -121,10 +125,37 @@ jobs:
             await handle.close();
           }
           JS
+      - name: Require protection on every deployment and alias
+        run: |
+          node --input-type=module <<'JS'
+          import { execFileSync } from "node:child_process";
+          const project = JSON.parse(execFileSync("vercel", ["api",
+            `/v9/projects/${encodeURIComponent(process.env.VERCEL_PROJECT_ID)}?teamId=${encodeURIComponent(process.env.VERCEL_ORG_ID)}`,
+            "--token", process.env.VERCEL_TOKEN,
+          ], { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
+          if (project.id !== process.env.VERCEL_PROJECT_ID || project.ssoProtection?.deploymentType !== "all") {
+            throw new Error("Require Vercel Authentication on all deployments and aliases before uploading.");
+          }
+          JS
       - name: Build accepted commit
         run: vercel build --token="$VERCEL_TOKEN"
       - name: Deploy protected preview
-        run: vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN"
+        run: |
+          node --input-type=module <<'JS'
+          import { execFileSync } from "node:child_process";
+          const run = (args) => JSON.parse(execFileSync("vercel", [...args, "--token", process.env.VERCEL_TOKEN],
+            { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
+          const deployment = run(["deploy", "--prebuilt", "--yes", "--target", "preview", "--skip-domain", "--json"]);
+          const url = deployment.url ?? deployment.deployment?.url;
+          if (!url) throw new Error("Vercel did not return a deployment URL.");
+          const inspected = run(["inspect", url, "--json"]);
+          if (inspected.readyState !== "READY" || inspected.target === "production") {
+            throw new Error("Refuse an unready deployment or implicit first-deployment production promotion.");
+          }
+          execFileSync("vercel", ["alias", "set", url, process.env.PREVIEW_ALIAS, "--token", process.env.VERCEL_TOKEN],
+            { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+          console.log(JSON.stringify({ url, id: inspected.id, target: "preview", readyState: inspected.readyState }));
+          JS
       - name: Remove pulled credentials
         if: ${{ always() }}
         run: |

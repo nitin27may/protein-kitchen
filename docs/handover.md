@@ -2,6 +2,75 @@
 
 Written 2026-10-23 so the work can continue on another machine, or in a fresh session, without losing intent. Read this, then `CLAUDE.md`, then `docs/roadmap.md`. Nothing here contains a secret, and nothing here contains health data.
 
+## Current delivery: protected preview live, 2026-10-25
+
+**Deployed and browser-verified:**
+https://protein-kitchen-preview-nitin27mays-projects.vercel.app
+(requires Vercel sign-in). Application commit
+`9ce109234fe2d23d246998798614807c25a1f38a`, successful exact-commit
+CI run `40165492180`, ready preview deployment
+`dpl_CZBnATqVheeEZgiL1ToBGxGHNnjJ`. Source came from a clean git archive;
+Vercel built Linux output. Nothing was merged to `main`.
+
+Runtime and GitHub preview URLs select **`protein_kitchen_hosted_preview`**,
+not either earlier rehearsal/preparation database. Its 20 migrations and
+library version match the reviewed source: 246 ingredients, 106 recipes/parts,
+all non-library tables empty. Private photo storage is empty with a
+branch-scoped read-only credential; three unused setup credentials were
+revoked. The development branch no longer expires. Production Neon was not
+modified; production GitHub deployment policy still permits zero branches.
+Mail, push, sync, vault and public self-service signup remain disabled/gated.
+
+Local acceptance: **2,011 tests / 101 files**, including 42 native cases,
+all **36 browser journeys**, critical coverage gates, types, validation and
+build. Exact-commit Linux CI passed all jobs. Its retained trace exposed a
+cross-session prep assertion racing the commit: `networkidle` had already
+occurred. Actual Server Action responses now synchronize shared checklist
+mutations without retries or skipped assertions. Hosted Playwright passed
+anonymous protection, five real list/detail/auth routes, expanded technique
+instructions, private-account redirect and no uncaught errors. Phone screenshot
+was inspected; the read-only smoke command is retained.
+
+**Vercel bootstrap caveat:** the platform classified the first explicit preview
+request as production. Standard protection left its assigned alias public
+(library only; no household data). Immediately changed Vercel Authentication
+to **all deployments/aliases**, verified anonymous denial, created and inspected
+a genuine preview, then removed the bootstrap production deployment. Do not
+weaken this setting. The workflow now checks all-deployment protection before
+upload and refuses implicit production classification/unready output.
+Techniques are embedded on recipe details, not a `/techniques` index; the smoke
+now expands the real recipe technique instead of asserting a nonexistent page.
+
+**Next bounded slice accepted locally:** a verified, membership-free account
+creates an empty household and continues to its own meal profile without a
+grant or role choice, using the existing transactional service. Pending email
+associations stay explicit choices; legacy join remains compatible. The
+hydration-safe form retains typed input on failure, shows server field errors,
+and rejects duplicate/expired/unverified/quarantined membership attempts.
+The retained phone journey proves retry, profile/reload, replay refusal and
+unchanged independent household data. This does not open signup or enable mail.
+
+Final next-slice acceptance: **2,015 tests / 101 files**, including 42 native
+cases, **38 retained browser journeys**, all critical coverage gates, strict
+types, library validation and production build. Full browsers uncovered a
+separate first-click hydration gap in shopping/prep controls (GET with no
+mutation POST in the trace). The existing hydration hook now gates grocery,
+pantry, manual-item and prep mutations; deliberate script-delayed cases prove
+first-change persistence on both pages. No arbitrary sleeps or forced clicks.
+The next-slice candidate still needs its own exact-commit CI/deployment before
+replacing the application SHA above.
+
+The reviewed GitHub `preview` variable `PREVIEW_ALIAS` pins the fixed alias
+above. The runner compares it with Vercel's auth origin and assigns it only
+after verifying a ready, non-production deployment. Workflow registration on
+the default branch remains a separate reviewed change; nothing was merged.
+
+## Earlier continuation records
+
+The following dated records are historical. Claims that this work is
+uncommitted/unpushed, runtime settings are absent, the branch expires, or no
+deployment/migration exists are superseded by the current delivery above.
+
 ## Deployment continuation: preview runtime and isolated schema ready
 
 Vercel preview now has 21 encrypted runtime settings, including generated
