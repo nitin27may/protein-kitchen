@@ -319,7 +319,8 @@ describe("real Better Auth HTTP signup, verification and sessions", () => {
       body: JSON.stringify({ email: "owner@example.test", type: "sign-in" }),
     }));
     expect(response.status).toBe(403);
-    expect(Object.keys(auth.api)).toEqual(["getSession"]);
+    // Only the two password wrappers (own per-user limiter, covered in account-password.test.ts) join getSession.
+    expect(Object.keys(auth.api)).toEqual(["getSession", "setPassword", "changePassword"]);
     expect(await h.db.select().from(s.authUsers)).toEqual([]);
   });
 

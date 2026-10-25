@@ -22,7 +22,7 @@ beforeEach(async () => {
   vi.mocked(redirect).mockImplementation((path) => { throw new Error(`redirect:${path}`); });
   vi.mocked(headers).mockResolvedValue(new Headers({ cookie: "synthetic" }));
   vi.mocked(getDb).mockResolvedValue(h.db);
-  vi.mocked(getAuth).mockResolvedValue({ handler: vi.fn(), api: { getSession: session } });
+  vi.mocked(getAuth).mockResolvedValue({ handler: vi.fn(), api: { getSession: session, setPassword: vi.fn(), changePassword: vi.fn() } });
   session.mockResolvedValue({ user: { id: "cook", emailVerified: true }, session: { id: "session" } });
   vi.stubEnv("BETTER_AUTH_URL", origin);
   vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-authorization-secret-32-characters");

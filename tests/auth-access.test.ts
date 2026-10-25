@@ -11,7 +11,7 @@ it("gets identity from request cookies and rejects absent or unverified sessions
   vi.mocked(headers).mockResolvedValue(requestHeaders);
   const session = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ user: { emailVerified: false } })
     .mockResolvedValueOnce({ user: { id: "verified", emailVerified: true } });
-  vi.mocked(getAuth).mockResolvedValue({ handler: vi.fn(), api: { getSession: session } });
+  vi.mocked(getAuth).mockResolvedValue({ handler: vi.fn(), api: { getSession: session, setPassword: vi.fn(), changePassword: vi.fn() } });
   await expect(verifiedSessionUser()).rejects.toThrow("Sign in");
   await expect(verifiedSessionUser()).rejects.toThrow("Verify your email");
   expect(await verifiedSessionUser()).toEqual({ id: "verified", emailVerified: true });
