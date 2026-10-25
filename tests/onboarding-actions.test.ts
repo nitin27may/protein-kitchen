@@ -287,3 +287,10 @@ it("returns configuration and field errors explicitly, and rethrows unexpected f
     expect(await h.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "cook")))
       .toMatchObject([{ householdId: "fixture", role: "member" }]);
   });
+
+it("refuses to start a kitchen for a verified session whose account row is gone", async () => {
+  vi.mocked(verifiedSessionIdentity).mockResolvedValue({ userId: "ghost", sessionId: "ghost-session" });
+  expect(await startOwnKitchen()).toEqual({ ok: false, error: "This household is not available to your verified account." });
+  expect(await h.db.select().from(s.households)).toHaveLength(1);
+  expect(await h.db.select().from(s.householdMembers)).toEqual([]);
+});
