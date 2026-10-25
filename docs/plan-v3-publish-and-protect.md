@@ -15,12 +15,12 @@ Decisions:
 1. **One environment.** Production only. Local development uses a throwaway loopback Postgres or PGlite. Local development never connects to Neon, and no development or preview Neon branch is kept.
 2. **Deploys only from GitHub Actions on `main`.** The deploy job runs in the `production` GitHub environment, which needs approval from the owner as required reviewer. The job refuses to run unless the exact SHA has a successful `acceptance` check.
 3. **Deploy order.** Snapshot the Neon production branch as `pre-deploy-<timestamp>`, then: migrate, seed, `pnpm db:check:production` (pre-deploy phase), `vercel build --prod`, deploy as a candidate (not yet serving the production domain), smoke test the candidate, promote, smoke test production.
-4. **Rollback.** Vercel instant rollback restores the previous deployment. Restore the Neon `pre-deploy-*` snapshot only for data damage, because a code rollback cannot undo new database writes. Migrations stay expand-only so the previous deployment works against the new schema.
+4. **Rollback.** Vercel instant rollback restores the previous deployment (on the Hobby plan only the previous production deployment, not an arbitrary older one). Restore the Neon `pre-deploy-*` snapshot branch only for data damage, because a code rollback cannot undo new database writes. Migrations stay expand-only so the previous deployment works against the new schema.
 5. **Migration rehearsal.** `rehearse-migration.yml` runs the pending migrations against a Neon branch of production that expires in 1 day, in the `production-rehearsal` environment, then deletes it. It never touches the production branch.
 6. **Preview retired.** `preview.yml`, the `preview` GitHub environment, `pnpm deploy:preflight` and the 21 Vercel Preview variables are removed or left unused. Vercel Preview and Development environments stay empty.
 7. **Vercel protection.** Standard Protection. The site is public; preview URLs are not used. `PRODUCTION_PROTECTION_BYPASS` lets the workflow smoke test the candidate before promotion.
-8. **Neon plan.** Paid plan with 7-day history, so point-in-time restore exists. The free plan's 6 hours is not enough for a launch with real household data.
-9. **Mail limits.** Per recipient: 3 messages per 15 minutes and 10 per day. Plus a global daily cap (`MAIL_DAILY_CAP`). While launch is friends-only, `SIGNUP_ALLOWLIST` restricts who can sign up; it is removed when signup opens.
+8. **Neon plan: free (owner decision, 2026-10-25).** The project history retention is 6 hours (21600 s), so built-in point-in-time restore only covers damage noticed within 6 hours. The `pre-deploy-*` snapshot branches (7-day expiry, newest few kept, pruned strictly) are the real recovery path beyond 6 hours, and they only capture the state at deploy time. Free-tier storage and branch limits must be respected: production is about 32 MB today, and every snapshot, rehearsal and other branch counts against the limits. The prune step must fail loudly (non-zero exit, workflow failure) if a limit is hit or a prune fails, never skip silently. The nightly encrypted `pg_dump` is the missing safety net, so it moves from "after launch" to "soon after launch" (see Backups on the free plan below).
+9. **Mail limits.** Per recipient: 3 messages per 15 minutes and 10 per day. Plus a global daily cap (`MAIL_DAILY_CAP`), which stays at 60 because the Resend free tier allows 100 messages per day. While launch is friends-only, `SIGNUP_ALLOWLIST` restricts who can sign up; it is removed when signup opens.
 10. **Owner data.** The owner's legacy SQLite data is imported into the owner's own household through a new household-targeted in-app importer, enabled only by `LEGACY_IMPORT_ENABLED=true` for the import window. The first person to sign up never claims legacy data, and no bootstrap secret exists in production.
 11. **Features OFF at launch.** Reminders (`REMINDER_SCHEDULER_ENABLED=false`), state sync (`STATE_SYNC_ENABLED=false`), vault (`VAULT_ENABLED=false`) and library photo review (`PHOTO_REVIEW_ENABLED=false`). Their code stays; their credentials are absent from Vercel.
 12. **Photos after launch.** Library photos are reviewed after launch, not before.
@@ -94,7 +94,25 @@ Settings the owner applies:
 - Vercel deployment protection: Standard.
 - GitHub `production` environment: required reviewer is the owner, deployment branches limited to `main`, administrator bypass off.
 - GitHub `main` branch protection: pull request required and the `acceptance` status check required. In `.github/workflows/ci.yml` the workflow is named `ci` and `acceptance` is the aggregate job; it needs `ci`, `browser` and `secrets` to succeed, so requiring `acceptance` covers all three. Do not require the three individually (an upstream skip would then show as missing rather than failed). Check the exact context name in the repository's branch protection UI after the first run on the PR.
-- Neon: paid plan with 7-day history; Neon Auth and Realtime stay off.
+- Neon: free plan with 6 hours of history (see decision 8). Neon Auth and Realtime stay off; the owner turns Neon Auth off in the console (an empty `neon_auth` schema exists on both branches).
+- Owner checks in the Neon console, reported back before launch (UNVERIFIED, see Free-plan unknowns below): whether a branch can be marked Protected on the free plan, and whether Neon object-storage buckets are available on the free plan.
+
+### Backups on the free plan
+
+- Branch snapshots (`pre-deploy-*`) cover deploy-time damage only. They do not cover damage that happens between deploys and is noticed after 6 hours.
+- Soon after launch (no longer "after launch"): a nightly `pg_dump` that is encrypted (age) before it leaves the runner. The repository is now PUBLIC, so GitHub Actions workflow artifacts are downloadable by other people. A plaintext dump must never be uploaded as an artifact. Upload only the encrypted file, to private storage, and keep the age private key with the owner only.
+- Until that job exists, the risk is stated plainly: data lost and noticed more than 6 hours later, between deploys, is not recoverable.
+
+### Free-plan unknowns (owner to check in the Neon console and report)
+
+- Protected branch: UNVERIFIED on the free plan. If unavailable, production protection comes from the production guards (`PRODUCTION_CONTEXT_REFUSED` and the pins) plus GitHub `production` environment approval.
+- Neon object-storage bucket: UNVERIFIED on the free plan. If unavailable, the photo store needs another route (to be decided; library photos are not part of launch, household uploads are).
+- Neon Auth: the owner turns it off in the console. An empty `neon_auth` schema exists on both branches.
+
+### Facts verified read-only on 2026-10-25
+
+- Project "Meal Planner" has two branches. `production` (br-restless-breeze-b4717mzi, endpoint ep-proud-mud-...) has no application tables and no migration ledger. `dev-step14-rehearsal` is old: 2 migrations applied and rehearsal data; it is deleted after launch.
+- The owner's old `.env.local` pointed at the PRODUCTION endpoint. Before anyone runs `pnpm dev`, local development must be moved to a local Postgres (`DATABASE_URL` and `DATABASE_ENV` for a loopback database). Treat that file as unsafe until then.
 
 ### Privacy page content (placeholder)
 
@@ -122,7 +140,7 @@ Each gate must pass before the next starts. Any failure is a no-go until fixed.
 3. **Browsers and devices.** Safari, the installed iPhone home-screen app (its own cookie store) and Android Chrome each sign in, stay signed in across a restart and sign out.
 4. **Hosted smoke as a person.** Plan, shopping list, export, a household upload and the public pages as a signed-in person and as an anonymous visitor.
 5. **Legacy import.** Take a verified copy of the SQLite database and uploads, set `LEGACY_IMPORT_ENABLED=true`, import into the owner's household, verify counts and checksums, set it back to `false`.
-6. **Backup restore drill.** Restore the latest Neon snapshot or point-in-time state into a throwaway branch and read the data back. Delete the branch.
+6. **Backup restore drill.** Restore the latest `pre-deploy-*` snapshot branch into a throwaway branch and read the data back (point-in-time restore only reaches back 6 hours on the free plan, so it is not the drill target). Delete the branch. Also confirm the prune step stays within the free-tier branch and storage limits.
 7. **Rollback drill.** Deploy a harmless change, roll back with Vercel instant rollback, confirm the previous version serves.
 8. **Friends.** Add friends' addresses to `SIGNUP_ALLOWLIST` in small batches. Watch mail volume against the caps. Remove the allowlist only by a later owner decision.
 
@@ -130,7 +148,7 @@ Each gate must pass before the next starts. Any failure is a no-go until fixed.
 
 1. Confirm the checklists above are complete and `main` has a green `acceptance` check for the SHA to deploy.
 2. Start the deploy workflow on `main`; approve the `production` environment as owner.
-3. The job snapshots `pre-deploy-<timestamp>`, migrates, seeds, runs `pnpm db:check:production`, builds, deploys a candidate and smoke tests it.
+3. The job snapshots `pre-deploy-<timestamp>` (7-day expiry), prunes older snapshots to the newest few and fails loudly if a free-tier limit is hit, migrates, seeds, runs `pnpm db:check:production`, builds, deploys a candidate and smoke tests it.
 4. Promote, then smoke test the production origin.
 5. Work through the go/no-go gates in order.
 6. Watch Vercel logs and Resend sending for the first hour of each gate.
@@ -138,16 +156,18 @@ Each gate must pass before the next starts. Any failure is a no-go until fixed.
 ### Rollback
 
 - **Bad code, data intact:** Vercel instant rollback to the previous deployment. No database action.
-- **Data damage:** stop writes by rolling back and, if needed, restoring the Neon `pre-deploy-*` snapshot (or point-in-time within 7 days) to a new branch, checking it, then repointing. Writes made after the snapshot are lost; say so to users.
+- **Data damage:** stop writes by rolling back and, if needed, restore to a new branch, check it, then repoint. Within 6 hours of the damage, use Neon point-in-time restore (project history retention is 6 hours). Beyond 6 hours, the only source is the newest `pre-deploy-*` snapshot branch (or, once it exists, the latest encrypted nightly dump). Writes made after the snapshot are lost; say so to users.
+- **Vercel rollback limit:** on Hobby, instant rollback only returns to the previous production deployment. Two bad deploys in a row means fixing forward or redeploying a known-good SHA through the workflow.
 - **Bad migration:** migrations are expand-only, so roll back code first and fix forward. Restore only if data is damaged.
 - **Mail abuse:** lower `MAIL_DAILY_CAP` or set `SIGNUP_ALLOWLIST`, redeploy.
-- Delete expired snapshots after `SNAPSHOT_RETENTION_DAYS` (default per the workflow).
+- Prune snapshots strictly: delete expired `pre-deploy-*` branches and keep only the newest few, after `SNAPSHOT_RETENTION_DAYS` (default per the workflow, 7). The prune step fails the workflow loudly if it cannot prune or if a free-tier limit is hit; it never continues quietly.
 
 ### Gotchas
 
 - Vercel instant rollback does not undo migrations or data.
 - `DATABASE_URL` is pooled for runtime and `DATABASE_URL_UNPOOLED` is direct for migrations; only the former exists in Vercel.
-- The 7-day history is a Neon plan feature; confirm it is active before the first deploy.
+- Free plan: history retention is 6 hours (21600 s). Do not describe point-in-time restore as a 7-day safety net anywhere.
+- Free-tier storage and branch limits apply to the snapshots, the 1-day rehearsal branch and `production` together. Production is about 32 MB today. A pre-deploy snapshot is a full branch, so the number kept must stay small.
 - `AUTH_EMAIL_FROM` must be a bare address, not `Name <addr>`.
 
 ## Stage scope: single production environment and production guards (2026-10-25)
@@ -1922,7 +1942,7 @@ Verified in the code: `app/actions.ts` has no auth anywhere; `swapSlot`, `setPor
 6. One household per deployment, no `household_id`. A `household_members` table links login users to roles and optionally to a profile. A profile can exist without a login. No email column on `people`: the login email lives on the auth user, and pending emails on `invitations`.
 7. Ratings and favourites per person; `tested` and `banned` stay household-wide.
 8. Library content is git-first. Human-owned data created in the app (feedback, links, photo approvals, saved views, routine choices) is exported nightly and on demand to a separate private state repo through a GitHub App. Each data class syncs in one direction only.
-9. Health data (profiles, weights, plans) never goes to git in plaintext. It stays in Neon (Launch plan recommended for 7-day point-in-time restore) plus a nightly age-encrypted dump to a private vault repo. The age private key lives only with the owner.
+9. Health data (profiles, weights, plans) never goes to git in plaintext. It stays in Neon (free plan, 6-hour history; see the Launch stage) plus a nightly age-encrypted dump to a private vault repo, scheduled soon after launch. The age private key lives only with the owner.
 10. Photos: originals stay in the Neon bucket; WebP derivatives mirror to the state repo. Keep a `BlobStore` interface so Vercel Blob can replace it.
 11. Reminders run from an external scheduler, evening window only, calling a cron endpoint; Vercel Hobby cron is once a day, and an all-day schedule would use up the free compute hours.
 12. Preview deployments copy production data, so they need Vercel Deployment Protection, a unique auth secret each, and push and uploads off.
@@ -1965,11 +1985,11 @@ Group 2 (PRs 14 to 22) is about 95 hours.
 - Neon preview branches copy production data.
 - Seeding at build writes to production before promotion, so migrations must be expand-only.
 - Postgres `count(*)` returns a bigint string; ids differ between databases, so exports use slugs and uids.
-- Free-plan point-in-time restore is 6 hours, so the vault is the real backup until a paid plan.
+- Free-plan point-in-time restore is 6 hours (the owner stays on the free plan), so `pre-deploy-*` snapshot branches and the nightly encrypted dump are the real backups.
 - Better Auth may need zod 4 while the app uses zod 3. Check before PR 16.
 - Phones must re-subscribe to push on the new domain with new VAPID keys.
 - Not verified yet: the `neon checkout` create flag, bucket credentials on preview branches, Vercel's exact client-IP header, whether GitHub rulesets work on this private repo.
 
 ## Go-live checklist (short)
 
-See "Launch: single production environment" at the top of this document for the full gates. In short: the owner-supplied values are entered and the must-be-absent variables are absent; `main` is protected with the `acceptance` check; the `production` environment requires the owner and `main` only; Preview variables are deleted; Vercel protection is Standard; Neon is on the paid plan with 7-day history and Neon Auth is off; a `pre-deploy-*` snapshot is taken before each migration; the soft-launch gates (owner only, real email, Safari/iPhone app/Android, hosted smoke, legacy import, restore drill, rollback drill) pass before friends are added; the privacy page has the owner's contact address, processor list and backup retention.
+See "Launch: single production environment" at the top of this document for the full gates. In short: the owner-supplied values are entered and the must-be-absent variables are absent; `main` is protected with the `acceptance` check; the `production` environment requires the owner and `main` only; Preview variables are deleted; Vercel protection is Standard; Neon is on the free plan (6-hour history, so snapshots are the recovery path) and the owner has turned Neon Auth off; the Protected branch and object-storage bucket checks are reported; a `pre-deploy-*` snapshot is taken before each migration and pruned strictly, failing loudly at a free-tier limit; local dev no longer points at the production endpoint; the soft-launch gates (owner only, real email, Safari/iPhone app/Android, hosted smoke, legacy import, restore drill, rollback drill) pass before friends are added; the privacy page has the owner's contact address, processor list and backup retention.
