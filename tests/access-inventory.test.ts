@@ -107,7 +107,7 @@ describe("application authorization inventory", () => {
   }
   it("all legacy actions check membership first, including read-only previews", () => {
     const actions = source("app/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
-    expect(actions).toHaveLength(33);
+    expect(actions).toHaveLength(35);
     for (const action of actions) expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
   });
   it("private-state action checks current owner permission before reading configuration", () => {
