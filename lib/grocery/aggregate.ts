@@ -8,6 +8,10 @@ import type { PartResolver } from "../parts/resolve";
 export type { PartMode } from "../parts/mode";
 export type { PartResolver } from "../parts/resolve";
 
+/** The parts of a recipe the grocery maths reads, so a trimmed library payload can stand in for the full one. */
+export type GroceryRecipe = Pick<Recipe, "servings" | "items">;
+export type GroceryIngredient = Pick<Ingredient, "name" | "display_name" | "aisle" | "state" | "pack_size_g" | "is_pantry_staple">;
+
 export interface PlanMealRef {
   recipeSlug: string;
   /** Total servings cooked for this meal, across everyone eating it. */
@@ -43,7 +47,7 @@ export interface GroceryList {
 export function expandRecipe(
   slug: string,
   servings: number,
-  recipes: ReadonlyMap<string, Recipe>,
+  recipes: ReadonlyMap<string, GroceryRecipe>,
   stack: readonly string[] = [],
   resolve?: PartResolver,
 ): Map<string, number> {
@@ -87,8 +91,8 @@ export function roundUpPurchase(grams: number, packSizeG: number | null): { buyG
 
 export function buildGroceryList(
   meals: readonly PlanMealRef[],
-  recipes: ReadonlyMap<string, Recipe>,
-  ingredients: ReadonlyMap<string, Ingredient>,
+  recipes: ReadonlyMap<string, GroceryRecipe>,
+  ingredients: ReadonlyMap<string, GroceryIngredient>,
   /** The plan's part modes. A part marked "have" is left off the list; "buy" swaps in the ready-made ingredient. */
   partModes?: PartModes,
   /** The plan's routines (methi water, soaked almonds) as meal references: servings across all scheduled days and people. */
