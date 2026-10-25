@@ -1,5 +1,10 @@
 # Handover: Protein Kitchen
 
+**Latest consolidated handover:** [2026-10-25 delivery and integration](handover-2026-10-25.md).
+It covers all implemented work, the deployed SHA, preserved main changes,
+acceptance, operational boundaries and remaining stages. The records below
+retain their original point-in-time history.
+
 Written 2026-10-23 so the work can continue on another machine, or in a fresh session, without losing intent. Read this, then `CLAUDE.md`, then `docs/roadmap.md`. Nothing here contains a secret, and nothing here contains health data.
 
 ## Current delivery: protected preview live, 2026-10-25
