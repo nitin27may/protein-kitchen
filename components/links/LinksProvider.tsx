@@ -27,6 +27,8 @@ interface LinksContextValue {
   remove: (link: OwnedLink) => void;
   move: (link: OwnedLink, direction: "up" | "down") => void;
   busy: boolean;
+  /** True for a visitor without an account: links are hidden and cannot be added. */
+  readOnly: boolean;
 }
 
 const Ctx = createContext<LinksContextValue | null>(null);
@@ -41,7 +43,7 @@ export function useLinks(): LinksContextValue {
  * Holds the links for one recipe page, the single video sheet and the single editor, so a link on the recipe, on a
  * part or on a step all open the same ones. Saves go through server actions and then refresh the page data.
  */
-export function LinksProvider({ recipeSlug, links, parts, mealStepCount, children }: { recipeSlug: string; links: OwnedLink[]; parts: LinkTargetPart[]; mealStepCount: number; children: ReactNode }) {
+export function LinksProvider({ recipeSlug, links, parts, mealStepCount, readOnly = false, children }: { recipeSlug: string; links: OwnedLink[]; parts: LinkTargetPart[]; mealStepCount: number; readOnly?: boolean; children: ReactNode }) {
   const router = useRouter();
   const [playing, setPlaying] = useState<OwnedLink | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -70,6 +72,7 @@ export function LinksProvider({ recipeSlug, links, parts, mealStepCount, childre
       parts,
       partName,
       busy,
+      readOnly,
       play: (link) => setPlaying(link),
       openAdd: (preset) => {
         setSeq((n) => n + 1);
@@ -82,7 +85,7 @@ export function LinksProvider({ recipeSlug, links, parts, mealStepCount, childre
       remove: (link) => run(() => removeLink(link.id)),
       move: (link, direction) => run(() => moveLink(link.id, direction)),
     }),
-    [recipeSlug, links, parts, partName, busy, run, seq],
+    [recipeSlug, links, parts, partName, busy, readOnly, run, seq],
   );
 
   return (

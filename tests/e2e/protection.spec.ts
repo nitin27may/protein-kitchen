@@ -98,7 +98,7 @@ test("shared links survive editing and reload while captured actions refuse fore
     const replay = async (request: import("@playwright/test").Request, args: unknown[]) => {
       const response = await page.request.post(path, {
         headers: {
-          origin: "http://127.0.0.1:3112", "content-type": request.headers()["content-type"]!,
+          origin: `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, "content-type": request.headers()["content-type"]!,
           "next-action": request.headers()["next-action"]!,
         }, data: JSON.stringify(args),
       });
@@ -201,7 +201,7 @@ test("routine choices persist on reload and captured actions cannot change a for
     await page.reload();
     await expect(savedToggle).toBeChecked({ checked: !original });
     const headers = {
-      origin: "http://127.0.0.1:3112", "content-type": captured.headers()["content-type"]!,
+      origin: `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, "content-type": captured.headers()["content-type"]!,
       "next-action": captured.headers()["next-action"]!,
     };
     const replay = await page.request.post(path, { headers, data: JSON.stringify([foreignPersonId, habit, patch]) });
@@ -257,7 +257,7 @@ test("owners cannot read or mutate another household's newer plan, prep, groceri
     await page.waitForLoadState("networkidle");
     const replay = await page.request.post(`/plan/${process.env.E2E_PREP_PLAN_ID}`, {
       headers: {
-        origin: "http://127.0.0.1:3112", "content-type": captured.headers()["content-type"]!,
+        origin: `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, "content-type": captured.headers()["content-type"]!,
         "next-action": captured.headers()["next-action"]!,
       },
       data: JSON.stringify([planId, foreignSlot!.id, true]),
@@ -324,7 +324,7 @@ test("profile Server Actions persist household ownership and reject foreign prof
     const request = await outgoing;
     await page.waitForLoadState("networkidle");
     const [profile] = z.tuple([z.object({ id: z.number(), name: z.string() }).passthrough()]).parse(JSON.parse(request.postData()!));
-    const headers = { origin: "http://127.0.0.1:3112", "content-type": request.headers()["content-type"]!, "next-action": request.headers()["next-action"]! };
+    const headers = { origin: `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, "content-type": request.headers()["content-type"]!, "next-action": request.headers()["next-action"]! };
     const foreignAttempt = await page.request.post(`/profiles/${account!.personId}`, {
       headers, data: JSON.stringify([{ ...profile, id: foreign!.id, name: "Must never persist" }]),
     });
@@ -374,8 +374,18 @@ test("anonymous pages, server components, photo bytes and exports never disclose
   try {
     const page = await anonymous.newPage();
     expect(await anonymous.cookies()).toEqual([]);
-    for (const url of ["/profiles", "/groceries", "/photos/review", `/plan/${process.env.E2E_PREP_PLAN_ID}/prep`]) {
-      await page.goto(`http://127.0.0.1:3112${url}`);
+    const base = `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`;
+    // Household pages render an anonymous shell with no fixture data; account-only pages still redirect.
+    for (const url of ["/profiles", "/groceries"]) {
+      await page.goto(`${base}${url}`);
+      await expect(page).toHaveURL(new RegExp(`${url}$`));
+      await expect(page.getByRole("main").getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+      const html = await page.content();
+      expect(html).not.toContain("Synthetic import fixture");
+      expect(html).not.toContain("Synthetic item");
+    }
+    for (const url of ["/photos/review", `/plan/${process.env.E2E_PREP_PLAN_ID}/prep`]) {
+      await page.goto(`${base}${url}`);
       await expect(page).toHaveURL(/\/sign-in$/);
       await expect(page.getByRole("heading", { name: "Sign in or create an account", exact: true })).toBeVisible();
     }
@@ -386,12 +396,12 @@ test("anonymous pages, server components, photo bytes and exports never disclose
       "/photos/00000000-0000-4000-8000-000000000001/thumb",
       "/api/push/subscribe?personId=300&endpoint=private",
     ]) {
-      const response = await anonymous.request.get(`http://127.0.0.1:3112${url}`);
+      const response = await anonymous.request.get(`${base}${url}`);
       expect(response.status()).toBe(401);
       expect(response.headers()["cache-control"]).toContain("no-store");
       expect(await response.text()).not.toContain("Synthetic import fixture");
     }
-    const rsc = await anonymous.request.get("http://127.0.0.1:3112/profiles", { headers: { RSC: "1" } });
+    const rsc = await anonymous.request.get(`${base}/profiles`, { headers: { RSC: "1" } });
     expect(rsc.headers()["cache-control"]).toContain("no-store");
     expect(await rsc.text()).not.toContain("Synthetic import fixture");
   } finally { await anonymous.close(); }
@@ -418,7 +428,7 @@ test("captured feedback actions cannot select another person's rating, even for 
     await page.getByRole("button", { name: "Favourite", exact: true }).click();
     const request = await captured;
     await expect(page.getByRole("button", { name: "Favourite", exact: true })).toBeEnabled();
-    const headers = { origin: "http://127.0.0.1:3112", "content-type": request.headers()["content-type"]!, "next-action": request.headers()["next-action"]! };
+    const headers = { origin: `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, "content-type": request.headers()["content-type"]!, "next-action": request.headers()["next-action"]! };
     const forged = await page.request.post("/recipes/tofu-burrito-bowl", {
       headers, data: JSON.stringify(["tofu-burrito-bowl", { rating: 1, personId: foreign!.id }]),
     });
@@ -464,7 +474,7 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       expect(body).toBeTruthy();
       const [profile] = z.tuple([z.object({ id: z.number(), name: z.string() }).passthrough()]).parse(JSON.parse(body!));
       expect(profile.id).toBe(personId);
-      const headers = { origin: "http://127.0.0.1:3112", "content-type": submitted.headers()["content-type"]!, "next-action": submitted.headers()["next-action"]! };
+      const headers = { origin: `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`, "content-type": submitted.headers()["content-type"]!, "next-action": submitted.headers()["next-action"]! };
       const foreignAttempt = await page.request.post(`/profiles/${personId}`, {
         headers, data: JSON.stringify([{ ...profile, id: foreign!.id, name: "Must never be saved" }]),
       });

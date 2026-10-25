@@ -9,6 +9,8 @@ import { fixtureConfiguration as state, githubFixture } from "../tests/helpers/g
 import { pushProvider } from "../tests/helpers/push-provider";
 import webpush from "web-push";
 
+/** Parallel worktrees can run browser tests side by side by choosing different ports. */
+const port = process.env.E2E_PORT ?? "3112";
 const target = e2eTarget(process.env.POSTGRES_E2E_URL);
 await prepareBrowserDatabase();
 const fixture = githubFixture(Date.now);
@@ -46,7 +48,7 @@ const env: NodeJS.ProcessEnv = {
   VAPID_PUBLIC_KEY: vapid.publicKey, VAPID_PRIVATE_KEY: vapid.privateKey, UPLOADS_DIR: path.resolve("test-results/uploads"),
   VAPID_SUBJECT: "mailto:synthetic@example.test", REMINDER_SCHEDULER_ENABLED: "true", REMINDER_SCHEDULER_SECRET: reminderSecret,
   REMINDER_TEST_PUSH_URL: pushFixture.endpoint, REMINDER_TEST_PUSH_SECRET: pushSecret, APP_TZ: "UTC",
-  BETTER_AUTH_URL: "http://127.0.0.1:3112", BETTER_AUTH_SECRET: randomBytes(32).toString("base64url"),
+  BETTER_AUTH_URL: `http://127.0.0.1:${port}`, BETTER_AUTH_SECRET: randomBytes(32).toString("base64url"),
   HOUSEHOLD_BOOTSTRAP_SECRET: "synthetic-browser-bootstrap-key-for-tests", HOUSEHOLD_OWNER_EMAIL: "ui-owner@example.test", AUTH_TEST_MAILBOX: "1", RESEND_API_KEY: "",
   BLOB_STORE: "filesystem", STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views",
   STATE_SYNC_HOUSEHOLD_ID: "00000000-0000-4000-8000-000000000001",
@@ -57,7 +59,7 @@ const env: NodeJS.ProcessEnv = {
 };
 delete env.VERCEL_ENV;
 delete env.VERCEL;
-const child = spawn("pnpm", ["dev", "--hostname", "127.0.0.1", "--port", "3112"], { env, stdio: "inherit" });
+const child = spawn("pnpm", ["dev", "--hostname", "127.0.0.1", "--port", port], { env, stdio: "inherit" });
 child.on("error", (error) => { console.error("Browser test server failed to start.", error); process.exitCode = 1; });
 child.on("exit", async (code) => {
   process.exitCode = code ?? 1;

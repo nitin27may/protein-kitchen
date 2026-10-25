@@ -27,7 +27,6 @@ export default defineConfig({
         "lib/auth/household-session.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-plans.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/household-migration.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
-        "components/PublicLibrary.tsx": { statements: 100, branches: 95, functions: 100, lines: 100 },
         "lib/auth/public-access.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/deployment/preflight.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/household.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

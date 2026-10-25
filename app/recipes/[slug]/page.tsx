@@ -1,22 +1,11 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
-import { PublicRecipe } from "@/components/PublicLibrary";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RecipeDetail } from "@/components/RecipeDetail";
-import type { DetailItem, DetailProps } from "@/components/RecipeDetail";
-import { displayName } from "@/lib/schemas";
-import { isLight, isLowSugar, qualityPerServing } from "@/lib/nutrition/quality";
-import { storageAdvice } from "@/lib/recipes/storage";
-import { expandRecipe } from "@/lib/grocery/aggregate";
-import { effectiveActiveMin, makeAheadMin } from "@/lib/data/rules";
+import { libraryRecipeDetail } from "@/lib/library/anonymous";
+import { recipeDetailFromLibrary } from "@/lib/library/recipe-detail";
 import { collectLinks, flattenParts } from "@/lib/recipes/linkview";
-import { partsOf, usedIn } from "@/lib/recipes/parts";
-import { anchorIngredients, perServing } from "@/lib/nutrition/macros";
-import { microsPerServing } from "@/lib/nutrition/micros";
-import { TARGETS, targetFor } from "@/lib/nutrition/dri";
-import { autoTags } from "@/lib/nutrition/tags";
-import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { getData } from "@/lib/server/context";
 import { getPhotoIndex, getRecipePhotos } from "@/lib/server/queries";
 import { feedbackMap, getCandidates, getPartModes, getRecipeLinks, listPeople, listPlans, recipeIds } from "@/lib/server/queries";
@@ -35,57 +24,32 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const r = data.recipes.get(slug);
   if (!r) notFound();
   if (!await optionalPageMember()) {
-    if (r.kind === "routine") notFound();
-    return <PublicRecipe data={data} slug={slug} />;
+    const detail = libraryRecipeDetail(data, slug);
+    if (!detail) notFound();
+    return <RecipeDetail {...detail} />;
   }
   const member = await requirePageMember();
-  const m = perServing(slug, data.recipes, data.ingredients);
   const fb = (await feedbackMap(member.personId)).get(slug);
   const history = (await feedbackMap()).get(slug);
   const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
   const photoIdx = await getPhotoIndex();
-  const dn = (k: string) => {
-    const ing = data.ingredients.get(k);
-    return ing ? displayName(ing) : k;
-  };
-
-  const items: DetailItem[] = r.items.map((it) => {
-    if ("ingredient" in it) {
-      const ing = data.ingredients.get(it.ingredient);
-      return { kind: "ingredient", name: ing ? displayName(ing) : it.ingredient, state: ing?.state, image: photoIdx.ingredients.get(it.ingredient) ?? null, aisle: ing?.aisle, grams: it.grams };
-    }
-    const sub = data.recipes.get(it.component)!;
-    const yieldG = sub.items.reduce((a, b) => a + b.grams, 0);
-    const parts = [...expandRecipe(it.component, (it.grams * sub.servings) / yieldG, data.recipes)].map(([k, g]) => ({
-      name: dn(k),
-      state: data.ingredients.get(k)?.state ?? "ready",
-      grams: g,
-    }));
-    return { kind: "component", name: sub.name, grams: it.grams, parts };
-  });
-
-  const keys = TARGETS.filter((t) => t.key !== "fibre_g").map((t) => t.key);
-  const micro = microsPerServing(slug, data.recipes, data.ingredients, data.micros, keys);
-  const nutrients: DetailProps["nutrients"] = [
-    { label: "Fibre", unit: "g", amount: m.fibre_g, target: targetFor("fibre_g", sex) ?? null, partial: false },
-    ...micro
-      .filter((n) => n.amount > 0 || n.missingFrom.length === 0)
-      .map((n) => {
-        const t = TARGETS.find((x) => x.key === n.key)!;
-        return { label: t.label, unit: t.unit, amount: n.amount, target: targetFor(n.key, sex) ?? null, partial: n.missingFrom.length > 0 };
-      }),
-  ];
 
   // The plan in the URL (when it exists) is where Make / Buy / Have choices are read from and saved to.
   const requested = Number(plan);
   const planId = Number.isInteger(requested) && requested > 0 && (await listPlans(500)).some((pl) => pl.id === requested) ? requested : null;
   const partModes = planId ? await getPartModes(planId) : {};
 
+  const base = recipeDetailFromLibrary(data, slug, {
+    sex,
+    targetLabel: sex === "other" ? "male values" : `${sex} values`,
+    ingredientPhotos: photoIdx.ingredients,
+    dense: (await getCandidates()).find((c) => c.slug === slug)?.nutrientDense ?? false,
+  });
+
   // Links saved on this page, plus the whole-page links saved on each part's own page (so a part's video shows in every meal).
-  const parts = partsOf(r, data.recipes, data.ingredients, r.servings);
   const [ownLinks, partLinkEntries] = await Promise.all([
     getRecipeLinks(slug),
-    Promise.all(flattenParts(parts).map(async (pt) => [pt.slug, await getRecipeLinks(pt.slug)] as const)),
+    Promise.all(flattenParts(base.parts).map(async (pt) => [pt.slug, await getRecipeLinks(pt.slug)] as const)),
   ]);
   const links = collectLinks(slug, ownLinks, Object.fromEntries(partLinkEntries.map(([s, ls]) => [s, ls.filter((l) => l.partSlug === null)])));
 
@@ -93,46 +57,16 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const photos = recipeId === undefined ? [] : await getRecipePhotos(recipeId);
   const cover = photos.find((x) => x.isCover);
 
-  const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
-  const candidate = (await getCandidates()).find((c) => c.slug === slug);
-  const techniqueRefs = r.steps.map((s) => s.technique).filter((t): t is string => !!t);
-  const props: DetailProps = {
-    slug,
-    name: r.name,
-    image: cover?.url ?? null,
-    photos,
-    thumbs: recipeThumbs(slug, data.recipes, data.ingredients, photoIdx.ingredients),
-    baseServings: r.servings,
-    prepMin: r.prep_min,
-    activeMin: r.active_min,
-    totalMin: r.total_min,
-    fridgeDays: r.fridge_days,
-    equipment: r.equipment,
-    cuisine: r.cuisine.replace(/-/g, " "),
-    macros: { protein: m.protein_g, kcal: m.kcal, carbs: m.carbs_g, fat: m.fat_g, fibre: m.fibre_g },
-    tags: autoTags(r, m, effectiveActiveMin(r, data.recipes)),
-    anchors: anchorIngredients(slug, data.recipes, data.ingredients).map((a) => dn(a)),
-    items,
-    advancePrep: r.advance_prep.map((a) => ({ text: `${a.instruction}${a.grams ? ` (${a.grams} g)` : ""}, about ${a.lead_hours} hours ahead` })),
-    steps: r.steps.map((s) => {
-      const t = s.technique ? data.techniques.get(s.technique) : undefined;
-      return { text: s.text, cue: s.cue ?? null, tip: s.tip ?? null, timerSec: s.timer_sec ?? null, technique: s.technique && t ? { slug: s.technique, title: t.title, body: t.body } : null };
-    }),
-    storage: storageAdvice(r),
-    nutrients,
-    quality: { freeSugarG: quality.freeSugarG, totalSugarG: quality.totalSugarG, sodiumMg: quality.sodiumMg, satFatG: quality.satFatG, kcal: quality.kcal, score: quality.score, partial: quality.partial, lowSugar: isLowSugar(quality), light: isLight(quality, r.meal_slots[0] ?? "dinner"), dense: candidate?.nutrientDense ?? false },
-    targetFor: sex === "other" ? "male values" : `${sex} values`,
-    feedback: { favourite: fb?.favourite ?? false, banned: fb?.banned ?? false, rating: fb?.rating ?? null, tested: fb?.tested ?? false },
-    earlierFeedback: history && (history.rating !== null || history.favourite) ? { rating: history.rating, favourite: history.favourite } : null,
-    techniques: [...new Set(techniqueRefs)].map((t) => ({ slug: t, title: data.techniques.get(t)?.title ?? t })),
-    kind: r.kind === "component" ? "component" : "recipe",
-    parts,
-    partModes,
-    planId,
-    makeAheadMin: makeAheadMin(r, data.recipes),
-    mealAdvancePrep: r.advance_prep.map((a) => ({ leadHours: a.lead_hours, instruction: a.instruction })),
-    usedIn: r.kind === "component" ? usedIn(slug, data.recipes) : [],
-    links,
-  };
-  return <RecipeDetail {...props} />;
+  return (
+    <RecipeDetail
+      {...base}
+      image={cover?.url ?? null}
+      photos={photos}
+      feedback={{ favourite: fb?.favourite ?? false, banned: fb?.banned ?? false, rating: fb?.rating ?? null, tested: fb?.tested ?? false }}
+      earlierFeedback={history && (history.rating !== null || history.favourite) ? { rating: history.rating, favourite: history.favourite } : null}
+      partModes={partModes}
+      planId={planId}
+      links={links}
+    />
+  );
 }
