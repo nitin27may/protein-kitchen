@@ -64,6 +64,26 @@ async function requireAnotherOwner(tx: Tx, householdId: string, userId: string) 
   if (!other) throw new HouseholdAccessError("Keep at least one verified owner with a completed profile.");
 }
 
+export const householdNameSchema = z.string().trim().min(1, "Enter a household name.").max(100, "Use at most 100 characters.");
+
+/**
+ * Renames one household. The actor must be an owner of exactly that household; the id is checked against
+ * the actor's own membership row, so a guessed id from another household is indistinguishable from a missing one.
+ */
+export async function renameHousehold(db: Db, actorUserId: string, householdId: string, name: string) {
+  const householdName = householdNameSchema.parse(name);
+  z.string().min(1).max(128).parse(householdId);
+  return withTx(db, async (tx) => {
+    await verifiedUser(tx, actorUserId);
+    const [member] = await tx.select().from(householdMembers)
+      .where(and(eq(householdMembers.userId, actorUserId), eq(householdMembers.householdId, householdId))).for("update");
+    if (!member) throw new HouseholdAccessError("This household is not available to your verified account.");
+    if (member.role !== "owner") throw new HouseholdAccessError("Only a household owner can rename the household.");
+    await tx.update(households).set({ name: householdName, updatedAt: new Date() }).where(eq(households.id, householdId));
+    return { householdId, name: householdName };
+  });
+}
+
 export async function changeMemberRole(db: Db, actorUserId: string, targetUserId: string, role: "owner" | "member", access?: HouseholdAccess) {
   z.string().min(1).max(128).parse(targetUserId);
   z.enum(["owner", "member"]).parse(role);
