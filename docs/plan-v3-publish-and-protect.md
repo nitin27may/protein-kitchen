@@ -1830,3 +1830,20 @@ Group 2 (PRs 14 to 22) is about 95 hours.
 ## Go-live checklist (short)
 
 All of PRs 0 to 21 merged with CI green including the restore round trip; domain and email DNS verified; environment variables set as Sensitive; previews protected; Neon Auth off; final SQLite backup taken and the import verified by counts and checksums; owner signs up and claims the household; one member invited and checked against the role table; IDOR checks by hand; a reminder received on Android and on an installed iPhone app; first state sync and vault backup succeeded; restore drill done into a throwaway branch; the old homelab instance kept read-only for two weeks.
+
+## Shell account state and 320 px header (PR A)
+
+Scope: the app shell tells three states apart (visitor, signed in but profile unfinished, member) through `shellAccount()` in `lib/auth/public-access.ts`. `optionalPageMember` stays as is for page guards.
+
+- Dependencies: `requireMember` throws `AccessDenied` 403 for a session with no profile and 401 for an expired session. No schema or data changes.
+- Permission boundaries: no new access. The setup state only shows "Finish setting up" and "Sign out"; every page guard is unchanged. The member shell is shown only when `requireMember` succeeds.
+- Changes: sidebar and phone header per state; shared `SignOutButton`; Settings gets the colour theme control (members no longer have it in the phone header); "No invitation needed." removed from the sign-in copy.
+
+Acceptance cases:
+
+1. After code sign-up, on `/onboarding` at 1280 px the Account group has "Finish setting up" and "Sign out" and no "Create account" or "Sign in"; at 375 px the header shows "Sign out".
+2. Signing out lands on `/sign-in`, and `/account` then redirects to sign in.
+3. After the profile is saved, the sidebar shows "Your account".
+4. `/sign-in` and `/sign-up` contain no text matching /invitation|household key/i.
+5. Signed in at 320, 375 and 390 px on `/`, `/recipes`, `/groceries`, `/account`, `/settings`: no horizontal overflow (measured against the visual viewport), header at most 56 px, no tap target under 44 px.
+6. `shellAccount` unit cases: no cookie (auth untouched), member, 401, 403, other errors rethrown.
