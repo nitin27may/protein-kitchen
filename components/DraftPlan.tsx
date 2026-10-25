@@ -9,9 +9,8 @@ import { PlanClient } from "@/components/PlanClient";
 import type { DraftBindings, PlanSlotView } from "@/components/PlanClient";
 import { Banner, Button, Card, EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { aisleLabel, grams } from "@/lib/format";
-import { applyOutcome } from "@/lib/auth/signup-gate";
 import {
-  anonProteinTargetG, browserStores, clearAllAnonState, draftToPlannedSlots, type AnonDraft, type AnonProfile,
+  anonProteinTargetG, browserStores, clearAllAnonState, type AnonDraft, type AnonProfile,
 } from "@/lib/plan/anon-draft";
 import { draftDays, draftSwapOptions, enableDraftShake, regenerateDraft, setDraftPortion, swapDraftSlot, toggleDraftLock, type DraftEdit } from "@/lib/plan/anon-edit";
 import { deviceGroceryLines } from "@/lib/plan/anon-groceries";

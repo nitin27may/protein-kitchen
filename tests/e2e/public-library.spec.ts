@@ -45,9 +45,9 @@ test("a visitor gets the member shell on desktop, with an account slot and the s
   await expect(page.locator('main a[href^="/recipes/"]').first()).toBeVisible();
   expect(await page.locator('main a[href^="/recipes/"]').count()).toBeGreaterThan(1);
 
-  // Filters work without an account but nothing offers to save a view.
+  // Filters work without an account; saving a default view is visible and asks for an email.
   await page.getByRole("button", { name: /Filters/ }).click();
-  await expect(page.getByRole("dialog").getByText("Save as my default")).toHaveCount(0);
+  await expect(page.getByRole("dialog").getByText("Save as my default")).toBeVisible();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Yours" })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
@@ -56,8 +56,9 @@ test("a visitor gets the member shell on desktop, with an account slot and the s
   await expect(page).toHaveURL(/\/recipes\/tofu-burrito-bowl$/);
   await expect(page.getByRole("heading", { name: "Per serving", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Method|Putting it together/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Favourite|Cooked and tested|Never suggest/ })).toHaveCount(0);
-  await expect(page.getByText(/Add a photo|Add a link|Watch and read/)).toHaveCount(0);
+  // The controls stay visible; using one asks for an email instead of saving.
+  await expect(page.getByRole("button", { name: "Favourite", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Add a link" })).toBeEnabled();
   await expect(page.getByRole("link", { name: "Create an account to cook and save" })).toBeVisible();
   const content = await page.content();
   expect(content).not.toContain("Synthetic");

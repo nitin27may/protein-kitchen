@@ -32,7 +32,8 @@ vi.mock("../lib/server/context", () => ({
 let data: DataSet;
 beforeAll(() => { data = loadData(process.cwd()); });
 const html = (node: React.ReactElement) => renderToStaticMarkup(node);
-const PRIVATE = /\/photos\/|Favourite|Cooked and tested|Never suggest|Upload|Add a photo|Add a link|Watch and read|Save as my default|Earlier household|male values|female values|Synthetic/;
+// Controls (Favourite, Add a link, Save as my default) are visible to visitors on purpose and ask for an email; only data must not appear.
+const PRIVATE = /\/photos\/|Earlier household|male values|female values|Synthetic|Draft: not cooked yet/;
 
 describe("library loaders", () => {
   it("list meals and parts but not routines, with no household state", () => {
@@ -139,7 +140,7 @@ describe("library-mode rendering", () => {
       const macros = perServing(recipe.slug, data.recipes, data.ingredients);
       expect(out).toContain(`${Math.round(macros.protein_g)}<span`);
       expect(out).toContain("Per serving");
-      expect(out).toContain("Create account");
+      expect(out).toContain("Create an account to cook and save");
       expect(out).toMatch(/Method|Putting it together/);
       expect(out).not.toMatch(PRIVATE);
       expect(out).not.toContain("Draft: not cooked yet");
