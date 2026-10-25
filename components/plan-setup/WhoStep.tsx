@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { PlusIcon } from "@/components/icons";
 import { Chip, Field, Input, SectionCard, Segmented, Select } from "@/components/ui";
 import { addDays } from "@/lib/planner/dates";
@@ -13,7 +14,7 @@ import type { StepProps } from "./types";
 const dayOption = (value: string): IsoWeekday | null => (value === "" ? null : (Number(value) as IsoWeekday));
 
 /** Step 1: who is eating, which days the plan covers, and (optionally) when you shop and when you prep. */
-export function WhoStep({ draft, setDraft, people, problems }: StepProps) {
+export function WhoStep({ draft, setDraft, people, problems, whoSection }: StepProps & { /** Replaces the people picker, for a visitor with one device-only profile. */ whoSection?: ReactNode }) {
   const end = draftEnd(draft);
   const dayCount = draftDayCount(draft);
   const dates = dateProblem(draft);
@@ -23,7 +24,7 @@ export function WhoStep({ draft, setDraft, people, problems }: StepProps) {
 
   return (
     <div className="space-y-4">
-      <SectionCard id="who" title="Who is eating" description="Protein targets come from each profile.">
+      {whoSection ?? <SectionCard id="who" title="Who is eating" description="Protein targets come from each profile.">
         <div className="flex flex-wrap gap-2" role="group" aria-label="People">
           {people.map((p) => <Chip key={p.id} on={draft.personIds.includes(p.id)} onClick={() => toggle(p.id)}>{p.name}</Chip>)}
           <a href="/profiles/new?next=/plan/new" className="inline-flex min-h-11 items-center gap-1 rounded-full border border-dashed border-strong px-3.5 text-sm font-semibold text-primary hover:bg-primarysoft lg:min-h-9"><PlusIcon className="size-4" />Add person</a>
@@ -34,7 +35,7 @@ export function WhoStep({ draft, setDraft, people, problems }: StepProps) {
             <li key={p.id}><strong className="text-fg">{p.name}</strong>: {p.proteinTarget} g protein{p.kcalTarget ? `, ${p.kcalTarget} kcal` : ""} a day. <a className="inline-flex min-h-11 items-center px-1 font-semibold text-primary underline-offset-2 hover:underline" href={`/profiles/${p.id}`}>Edit</a></li>
           ))}
         </ul>
-      </SectionCard>
+      </SectionCard>}
 
       <SectionCard id="len" title="When" description="Plans start on a Monday by default.">
         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">

@@ -6,6 +6,7 @@ import { loadData } from "../lib/data/load";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { AnonProfileSchema, savePendingIntent, serializePendingIntent, type AnonDraft, type AnonStores } from "../lib/plan/anon-draft";
+import { draftSwapOptions, swapDraftSlot, toggleDraftLock } from "../lib/plan/anon-edit";
 import { generateAnonPlan } from "../lib/plan/anon-generate";
 import { hydrateAnonLibrary } from "../lib/plan/anon-library";
 import { anonLibrary } from "../lib/server/anon-library";
@@ -82,6 +83,41 @@ describe("importAnonymousDraft", () => {
     expect(stored.map((r) => r.slug)).not.toContain("not-a-real-recipe");
     const portions = await h.db.select().from(s.planSlotPortions);
     expect(portions.every((p) => p.servings <= 2)).toBe(true);
+  });
+
+  it("keeps the meals chosen on the device: a swap and a lock are saved as the person left them", async () => {
+    const draft = makeDraft();
+    const lib = hydrateAnonLibrary(JSON.parse(anonLibrary(data).body));
+    const swapped = swapDraftSlot(draft, profile, lib, { date: draft.slots[0]!.date, slot: draft.slots[0]!.slot }, draftSwapOptions(draft, profile, lib, { date: draft.slots[0]!.date, slot: draft.slots[0]!.slot })[0]!.slug);
+    if (!swapped.ok) throw new Error(swapped.error);
+    const locked = toggleDraftLock(swapped.draft, { date: draft.slots[1]!.date, slot: draft.slots[1]!.slot }, true);
+    if (!locked.ok) throw new Error(locked.error);
+    const result = await importAnonymousDraft(locked.draft);
+    expect(result).toMatchObject({ ok: true, changed: false });
+    if (!result.ok) return;
+    const rows = await h.db.select({ date: s.planSlots.date, slot: s.planSlots.slot, slug: s.recipes.slug, locked: s.planSlots.locked })
+      .from(s.planSlots).innerJoin(s.recipes, eq(s.recipes.id, s.planSlots.recipeId)).where(eq(s.planSlots.planId, result.planId));
+    const key = (x: { date: string; slot: string }) => `${x.date}|${x.slot}`;
+    const stored = new Map(rows.map((r) => [key(r), r]));
+    for (const slot of locked.draft.slots) expect(stored.get(key(slot))).toMatchObject({ slug: slot.recipeSlug, locked: slot.locked });
+    expect(stored.get(key(draft.slots[0]!))!.slug).not.toBe(draft.slots[0]!.recipeSlug);
+  });
+
+  it("refuses a device swap to a recipe the household banned, a shake in a meal slot or an avoided ingredient", async () => {
+    const draft = makeDraft();
+    const lib = hydrateAnonLibrary(JSON.parse(anonLibrary(data).body));
+    const ref = { date: draft.slots[0]!.date, slot: draft.slots[0]!.slot };
+    const pick = draftSwapOptions(draft, profile, lib, ref)[0]!.slug;
+    const swapped = swapDraftSlot(draft, profile, lib, ref, pick);
+    if (!swapped.ok) throw new Error(swapped.error);
+    expect(await setRecipeFeedback(pick, { banned: true })).toEqual({ ok: true });
+    const result = await importAnonymousDraft(swapped.draft);
+    expect(result).toMatchObject({ ok: true, changed: true });
+    const stored = await h.db.select({ slug: s.recipes.slug }).from(s.planSlots).innerJoin(s.recipes, eq(s.recipes.id, s.planSlots.recipeId));
+    expect(stored.map((r) => r.slug)).not.toContain(pick);
+    const shake = lib.candidates.find((c) => c.family === "shakes")!.slug;
+    const forged = { ...swapped.draft, slots: swapped.draft.slots.map((x, i) => (i === 0 ? { ...x, recipeSlug: shake } : x)) };
+    expect(await importAnonymousDraft(forged)).toMatchObject({ ok: true, changed: true });
   });
 
   it("flags a library change but still saves the server version", async () => {

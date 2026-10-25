@@ -3,6 +3,7 @@
 import { IngredientTile } from "@/components/IngredientTile";
 import { useState, useTransition } from "react";
 import { setRecipeFeedback } from "@/app/actions";
+import { useRequireAccount } from "@/components/auth/RequireAccount";
 import { Markdown } from "@/components/Markdown";
 import { LinksCard } from "@/components/links/LinksCard";
 import { LinksProvider } from "@/components/links/LinksProvider";
@@ -94,8 +95,19 @@ export function RecipeDetail(p: DetailProps) {
   const [pending, start] = useTransition();
   const factor = servings / p.baseServings;
   const anonymous = p.mode === "anonymous";
+  const gate = useRequireAccount();
 
   function update(patch: Parameters<typeof setRecipeFeedback>[1], optimistic: Partial<typeof fb>) {
+    if (anonymous) {
+      // The visitor keeps the page as it is; signup finishes the action afterwards.
+      const intent = patch.rating !== undefined && patch.rating !== null ? { kind: "rate" as const, slug: p.slug, value: patch.rating }
+        : patch.banned ? { kind: "ban" as const, slug: p.slug }
+        : patch.tested ? { kind: "tested" as const, slug: p.slug }
+        : patch.favourite ? { kind: "favourite" as const, slug: p.slug }
+        : { kind: "other" as const, action: "saving your feedback" };
+      gate.require({ intent });
+      return;
+    }
     const before = fb;
     setFb((c) => ({ ...c, ...optimistic }));
     setError(null);
@@ -190,21 +202,15 @@ export function RecipeDetail(p: DetailProps) {
             </Banner>
           ) : null}
 
-          {anonymous ? (
-            <section aria-labelledby="notes" className="space-y-2 rounded-card border border-line bg-surface p-4">
-              <h2 id="notes" className="text-base font-semibold">Make it yours</h2>
-              <p className="text-sm text-muted">Ratings, favourites, photos, links and notes are saved to your account.</p>
-              <div className="flex flex-wrap gap-2"><LinkButton href="/sign-up" size="sm">Create account</LinkButton><LinkButton href="/sign-in" variant="secondary" size="sm">Sign in</LinkButton></div>
-            </section>
-          ) : (
           <section aria-labelledby="notes" className="space-y-3 rounded-card border border-line bg-surface p-4">
             <h2 id="notes" className="text-base font-semibold">Your recipe feedback</h2>
-            <p className="text-sm text-muted">Favourites and ratings are yours. Cooked status and hidden recipes are shared with your household.</p>
+            <p className="text-sm text-muted">{anonymous ? "Ratings, favourites, photos and links are saved to your account. Tap one and we will ask for your email first, then save it." : "Favourites and ratings are yours. Cooked status and hidden recipes are shared with your household."}</p>
             {p.earlierFeedback ? <p className="text-sm text-muted">Earlier household feedback (no author recorded): {p.earlierFeedback.favourite ? "favourite" : ""}{p.earlierFeedback.favourite && p.earlierFeedback.rating !== null ? ", " : ""}{p.earlierFeedback.rating !== null ? `${p.earlierFeedback.rating}/5` : ""}. This is not your personal rating.</p> : null}
             <div className="flex flex-wrap gap-2">
               <Chip disabled={pending} on={fb.favourite} onClick={() => update({ favourite: !fb.favourite }, { favourite: !fb.favourite })}>Favourite</Chip>
               <Chip disabled={pending} on={fb.tested} onClick={() => update({ tested: !fb.tested }, { tested: !fb.tested })}>Cooked and tested</Chip>
             </div>
+            {anonymous ? <PhotoUpload recipeSlug={p.slug} label="Add a photo of what you made" /> : null}
             {fb.tested && !p.photos.some((x) => x.origin === "upload") ? (
               <div>
                 <p className="mb-1 text-sm text-muted">Made it? A photo becomes the picture for this recipe.</p>
@@ -234,7 +240,6 @@ export function RecipeDetail(p: DetailProps) {
               <Button variant="ghost" size="sm" onClick={() => setConfirmBan(true)}>Never suggest this</Button>
             )}
           </section>
-          )}
         </aside>
 
         {/* Right: the cooking content, using the full width. */}

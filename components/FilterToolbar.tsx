@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { clearDefaultView, saveDefaultView } from "@/app/actions";
+import { useRequireAccount } from "@/components/auth/RequireAccount";
 import { Sheet } from "@/components/Sheet";
 import { ActiveFilters, Banner, Button, FilterButton, FilterSection, ListToolbar, PresetChips, SearchField, SortMenu } from "@/components/ui";
 import { activeChips, activeFilterCount, applyFilters, facetCounts, isDefaultState, presetIsActive, visibleCount } from "@/lib/filters";
@@ -17,7 +18,7 @@ export function FilterToolbar<T>({ list, def, items, savedDefault, canSaveView =
   def: FilterDef<T>;
   items: readonly T[];
   savedDefault: string | null;
-  /** False for a visitor without an account: the saved-view controls are not shown. */
+  /** False hides the saved-view controls. A visitor without an account sees them and is asked to sign up when they save. */
   canSaveView?: boolean;
   noun: { one: string; many: string };
   searchLabel: string;
@@ -25,6 +26,7 @@ export function FilterToolbar<T>({ list, def, items, savedDefault, canSaveView =
   children: (shown: T[], tools: { clear: () => void }) => React.ReactNode;
 }) {
   const f = useUrlFilters(def, savedDefault);
+  const gate = useRequireAccount();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [note, setNote] = useState<string | null>(null);
@@ -38,11 +40,13 @@ export function FilterToolbar<T>({ list, def, items, savedDefault, canSaveView =
   const nounFor = (n: number) => (n === 1 ? noun.one : noun.many);
   const savedIsCurrent = savedDefault !== null && savedDefault === f.query;
 
-  const saveDefault = () =>
+  const saveDefault = () => {
+    if (gate.require({ intent: { kind: "other", action: "saving your default view" } })) return;
     start(async () => {
       const r = await saveDefaultView(list, f.query);
       setNote(r.ok ? "Saved. This view opens first next time." : r.error);
     });
+  };
   const removeDefault = () =>
     start(async () => {
       const r = await clearDefaultView(list);

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { moveLink, removeLink } from "@/app/actions";
+import { useRequireAccount } from "@/components/auth/RequireAccount";
 import { LinkEditor } from "@/components/links/LinkEditor";
 import type { EditorScope } from "@/components/links/LinkEditor";
 import { VideoSheet } from "@/components/links/VideoSheet";
@@ -45,6 +46,7 @@ export function useLinks(): LinksContextValue {
  */
 export function LinksProvider({ recipeSlug, links, parts, mealStepCount, readOnly = false, children }: { recipeSlug: string; links: OwnedLink[]; parts: LinkTargetPart[]; mealStepCount: number; readOnly?: boolean; children: ReactNode }) {
   const router = useRouter();
+  const gate = useRequireAccount();
   const [playing, setPlaying] = useState<OwnedLink | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +77,7 @@ export function LinksProvider({ recipeSlug, links, parts, mealStepCount, readOnl
       readOnly,
       play: (link) => setPlaying(link),
       openAdd: (preset) => {
+        if (gate.require({ intent: { kind: "other", action: "adding a link" } })) return;
         setSeq((n) => n + 1);
         setEditor({ key: seq + 1, link: null, preset: preset ?? null });
       },
@@ -85,7 +88,7 @@ export function LinksProvider({ recipeSlug, links, parts, mealStepCount, readOnl
       remove: (link) => run(() => removeLink(link.id)),
       move: (link, direction) => run(() => moveLink(link.id, direction)),
     }),
-    [recipeSlug, links, parts, partName, busy, readOnly, run, seq],
+    [recipeSlug, links, parts, partName, busy, readOnly, run, seq, gate],
   );
 
   return (

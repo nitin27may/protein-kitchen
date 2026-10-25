@@ -101,6 +101,8 @@ export const PendingIntentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tested"), slug: slugField, ...IntentBase }).strict(),
   z.object({ kind: z.literal("tick-grocery"), ingredient: slugField, ...IntentBase }).strict(),
   z.object({ kind: z.literal("save-profile"), ...IntentBase }).strict(),
+  /** Anything else that needs an account (notes, links, photos, saved views, manual items). Not replayed: the person is returned to the page. */
+  z.object({ kind: z.literal("other"), action: z.string().trim().min(1).max(60), ...IntentBase }).strict(),
 ]);
 
 export type PendingIntent = z.output<typeof PendingIntentSchema>;

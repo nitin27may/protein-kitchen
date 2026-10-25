@@ -9,7 +9,9 @@ const publicPages = new Set(["app/sign-in/page.tsx", "app/sign-up/page.tsx", "ap
 const admissionPages = new Set(["app/onboarding/page.tsx"]);
 const libraryPages = new Set(["app/page.tsx", "app/recipes/page.tsx", "app/recipes/[slug]/page.tsx", "app/ingredients/page.tsx", "app/ingredients/[slug]/page.tsx"]);
 // Household pages that show a visitor without an account a prompt instead of redirecting. No data is read before the guard.
-const anonymousShellPages = new Set(["app/groceries/page.tsx", "app/profiles/page.tsx", "app/plan/page.tsx"]);
+const anonymousShellPages = new Set(["app/groceries/page.tsx", "app/profiles/page.tsx", "app/plan/page.tsx", "app/plan/new/page.tsx"]);
+// Reads the plan draft from the visitor's own browser. The server part may use library files only.
+const devicePages = new Set(["app/plan/draft/page.tsx"]);
 // The only functions a library page may call before its membership guard: no database, no household, no photos.
 const libraryLoaders = ["libraryRecipeCards", "libraryIngredientCards", "libraryRecipeDetail", "libraryIngredientDetail", "libraryHighlights"];
 const source = (file: string) => ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -25,7 +27,7 @@ function firstCall(node: ts.FunctionDeclaration) {
   }
 }
 describe("application authorization inventory", () => {
-  for (const file of files.filter((file) => file.endsWith("/page.tsx") && !publicPages.has(file) && !admissionPages.has(file))) {
+  for (const file of files.filter((file) => file.endsWith("/page.tsx") && !publicPages.has(file) && !admissionPages.has(file) && !devicePages.has(file))) {
     it(`${file} checks membership before its loader`, () => {
       const page = source(file).statements.find((node): node is ts.FunctionDeclaration =>
         ts.isFunctionDeclaration(node) && !!exported(node) && !!node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword));
@@ -47,7 +49,7 @@ describe("application authorization inventory", () => {
         const statements = page!.body!.statements;
         const guard = statements.findIndex((statement) => statement.getText().includes("await requirePageMember();"));
         expect(guard, "A household page must keep its membership guard after the anonymous prompt.").toBeGreaterThan(0);
-        expect(statements[0]!.getText()).toMatch(/^if \(!await optionalPageMember\(\) && !await hasSessionCookie\(\)\) \{\s*return <AnonymousPrompt/);
+        expect(statements[0]!.getText()).toMatch(/^if \(!await optionalPageMember\(\) && !await hasSessionCookie\(\)\) \{\s*return <(?:AnonymousPrompt|AnonymousPlan|AnonymousGroceries|AnonymousProfiles|AnonymousNewPlan)\b/);
         const calls: string[] = [];
         const visit = (node: ts.Node) => {
           if (ts.isCallExpression(node)) calls.push(node.expression.getText());
@@ -167,6 +169,14 @@ describe("application authorization inventory", () => {
         : action.name!.getText() === "joinHousehold" ? "await verifiedSessionUser()" : "await verifiedSessionIdentity()";
       expect(task.body.statements[0]?.getText()).toContain(guard);
       if (management.has(action.name!.getText())) expect(task.body.statements[1]?.getText()).toBe('checkPermission(actor, "owner");');
+    }
+  });
+  it("device pages read only library files on the server and no household, database or session code", () => {
+    for (const file of devicePages) {
+      const text = readFileSync(file, "utf8");
+      const imports = [...text.matchAll(/from "([^"]+)"/g)].map((m) => m[1]!);
+      for (const spec of imports) expect(spec, `${file} imports ${spec}`).not.toMatch(/auth\/|server\/queries|server\/household|db\/|server\/photo|server\/export/);
+      expect(text).not.toMatch(/requirePageMember|optionalPageMember|getDb|headers\(/);
     }
   });
 });

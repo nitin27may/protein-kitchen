@@ -17,12 +17,16 @@ const IDLE: FeasibilityState = { status: "idle", result: null, message: null };
  * (debounce), ignores answers that arrive after newer choices, and keeps the last answer on screen while it checks.
  * Pass `null` when the choices are not complete enough to check.
  */
-export function useFeasibility(input: FeasibilityInput | null, key: string, delayMs = 400): FeasibilityState {
+export type FeasibilityCheck = (input: FeasibilityInput) => Promise<{ ok: true; result: FeasibilityResult } | { ok: false; error: string }>;
+
+export function useFeasibility(input: FeasibilityInput | null, key: string, delayMs = 400, check: FeasibilityCheck = previewFeasibility): FeasibilityState {
   const [state, setState] = useState<FeasibilityState>(IDLE);
   const seq = useRef(0);
   const last = useRef<FeasibilityResult | null>(null);
   const inputRef = useRef(input);
   inputRef.current = input;
+  const checkRef = useRef(check);
+  checkRef.current = check;
 
   useEffect(() => {
     const current = inputRef.current;
@@ -33,7 +37,7 @@ export function useFeasibility(input: FeasibilityInput | null, key: string, dela
     }
     setState({ status: "loading", result: last.current, message: null });
     const timer = setTimeout(() => {
-      previewFeasibility(current)
+      checkRef.current(current)
         .then((res) => {
           if (mine !== seq.current) return;
           if (res.ok) {

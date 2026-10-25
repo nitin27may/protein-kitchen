@@ -40,6 +40,7 @@ export async function replayIntent(intent: PendingIntent, handlers: IntentHandle
     case "tested":
     case "tick-grocery":
     case "save-profile":
+    case "other":
       return unsupported(intent.kind);
     default: {
       const never: never = intent;

@@ -5,7 +5,10 @@ import { BottomNav } from "@/components/BottomNav";
 import { Sidebar } from "@/components/Sidebar";
 import { RegisterSW } from "@/components/RegisterSW";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PendingIntentReplay } from "@/components/auth/PendingIntentReplay";
+import { RequireAccountProvider } from "@/components/auth/RequireAccount";
 import { optionalPageMember } from "@/lib/auth/public-access";
+import { hasSessionCookie } from "@/lib/auth/session-cookie";
 import "./globals.css";
 
 const body = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--nf-body", display: "swap" });
@@ -28,6 +31,8 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const signedIn = (await optionalPageMember()) !== null;
+  // A session cookie without a finished profile (mid-onboarding) is not a visitor: the gate must not offer signup again.
+  const anonymous = !signedIn && !await hasSessionCookie();
   return (
     <html lang="en" suppressHydrationWarning className={`${body.variable} ${display.variable}`}>
       <head>
@@ -38,6 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-control focus:bg-surface focus:p-3">
           Skip to content
         </a>
+        <RequireAccountProvider anonymous={anonymous}>
         <div className="lg:flex">
           <Sidebar signedIn={signedIn} />
           <div className="min-w-0 flex-1">
@@ -71,6 +77,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </div>
         <BottomNav />
+        {signedIn ? <PendingIntentReplay /> : null}
+        </RequireAccountProvider>
         <RegisterSW />
       </body>
     </html>

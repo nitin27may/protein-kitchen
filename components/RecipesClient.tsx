@@ -12,7 +12,7 @@ export type { RecipeCardData } from "@/lib/filters/recipes";
 export function RecipesClient({ recipes, savedDefault, mode = "member" }: { recipes: RecipeCardData[]; savedDefault: string | null; mode?: "member" | "anonymous" }) {
   const anonymous = mode === "anonymous";
   return (
-    <FilterToolbar list="recipes" def={anonymous ? anonymousRecipeFilters : recipeFilters} items={recipes} savedDefault={anonymous ? null : savedDefault} canSaveView={!anonymous}
+    <FilterToolbar list="recipes" def={anonymous ? anonymousRecipeFilters : recipeFilters} items={recipes} savedDefault={anonymous ? null : savedDefault} canSaveView
       noun={{ one: "recipe", many: "recipes" }} searchLabel="Search recipes" searchPlaceholder="Search recipes, ingredients or cuisines">
       {(shown) => (
         <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
