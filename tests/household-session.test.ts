@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from "vitest";
 import * as s from "../lib/db/schema";
 import { memberHouseholdAccess, refreshHouseholdAccess } from "../lib/auth/household-access";
 import { createSessionHousehold, defaultKitchenName, ensureAdmission, resolveSessionHouseholdAccess, selectSessionHousehold, sessionHouseholds, type SessionIdentity } from "../lib/auth/household-session";
-import { acceptEmailAssociation, createMemberProfile } from "../lib/auth/household";
+import { acceptEmailAssociation, createMemberProfile, HouseholdAccessError } from "../lib/auth/household";
 import { mutateHouseholdState } from "../lib/server/household-plans";
 import { openDb, type DbHandle } from "./helpers/db";
 
@@ -290,6 +290,8 @@ it("names the automatic kitchen after the name, else the email local-part", () =
   expect(defaultKitchenName("", "pat.smith@example.test")).toBe("pat.smith's kitchen");
   expect(defaultKitchenName(null, "x@example.test")).toBe("x's kitchen");
   expect(defaultKitchenName("n".repeat(200), "x@example.test").length).toBeLessThanOrEqual(100);
+  expect(defaultKitchenName("   ", "  @example.test")).toBe("My's kitchen");
+  expect(defaultKitchenName(undefined, "")).toBe("My's kitchen");
 });
 
 it("selects an existing membership instead of creating anything", async () => {
@@ -398,4 +400,36 @@ it("falls through to a new kitchen when the imported household is ambiguous", as
   if (admitted.status !== "selected") throw new Error("Expected a kitchen.");
   expect(["b", "c"]).not.toContain(admitted.householdId);
   expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
+});
+
+it("asks the person to choose when several households exist and none is selected, or the selection is gone", async () => {
+  await joinSecond();
+  expect(await ensureAdmission(h.db, identity)).toEqual({ status: "choose" });
+  await h.db.update(s.authSessions).set({ activeHouseholdId: "foreign" }).where(eq(s.authSessions.id, "one"));
+  expect(await ensureAdmission(h.db, identity)).toEqual({ status: "choose" });
+  await h.db.update(s.authSessions).set({ activeHouseholdId: "b" }).where(eq(s.authSessions.id, "one"));
+  expect(await ensureAdmission(h.db, identity)).toEqual({ status: "selected", householdId: "b", profileComplete: false });
+});
+
+it("surfaces the refusal when creation fails for a reason another request cannot have fixed", async () => {
+  const fresh = await newcomer("quarantined", "Pat");
+  await h.db.insert(s.householdMembers).values({ userId: "quarantined", householdId: null, role: "owner" });
+  await expect(ensureAdmission(h.db, fresh)).rejects.toThrow("already has a household membership");
+  expect(await h.db.select().from(s.households)).toHaveLength(3);
+});
+
+it("rethrows a storage failure during automatic creation and creates nothing", async () => {
+  const fresh = await newcomer("fresh", "Pat");
+  await h.db.execute(sql`create function reject_household_insert() returns trigger language plpgsql as $$ begin raise exception 'Synthetic household failure'; end $$`);
+  await h.db.execute(sql`create trigger reject_household_insert before insert on households for each row execute function reject_household_insert()`);
+  try {
+    const failure: unknown = await ensureAdmission(h.db, fresh).then(() => null, (error: unknown) => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(HouseholdAccessError);
+  } finally {
+    await h.db.execute(sql`drop trigger reject_household_insert on households`);
+    await h.db.execute(sql`drop function reject_household_insert()`);
+  }
+  expect(await memberships("fresh")).toEqual([]);
+  expect(await h.db.select().from(s.households)).toHaveLength(3);
 });

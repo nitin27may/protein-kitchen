@@ -833,24 +833,27 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
     expect(await handle.db.select().from(s.householdMembers)).toMatchObject([{ personId: profiles[0]!.id }]);
   });
 
-  it("atomically enforces shared HTTP signup limits across concurrent auth instances", async () => {
+  it("atomically enforces the shared email-code limit across concurrent auth instances", async () => {
+    const sent: string[] = [];
     const options = {
       secret: "synthetic-native-auth-session-secret",
-      baseURL: "http://localhost:3112", isVercel: false, sendCode: async () => {}, sendLink: async () => {},
+      baseURL: "http://localhost:3112", isVercel: false,
+      sendCode: async (mail: { email: string }) => { sent.push(mail.email); }, sendLink: async () => {},
     };
     const instances = [createAuth(handle.db, options), createAuth(handle.db, options)];
     const results = await Promise.all(Array.from({ length: 8 }, (_, index) => instances[index % 2]!.handler(new Request(
-      "http://localhost:3112/api/auth/sign-up/email", {
+      "http://localhost:3112/api/auth/email-otp/send-verification-otp", {
         method: "POST", headers: {
           origin: "http://localhost:3112", "content-type": "application/json", "x-forwarded-for": "127.0.0.1",
         },
-        body: JSON.stringify({ name: "Synthetic cook", email: `${index}@example.test`, password: "Synthetic-password-123!" }),
+        body: JSON.stringify({ email: `${index}@example.test`, type: "sign-in" }),
       },
     ))));
-    expect(results.filter((r) => r.status === 403)).toHaveLength(3);
-    expect(results.filter((r) => r.status === 429)).toHaveLength(5);
-    expect(await handle.db.select().from(s.authUsers)).toEqual([]);
-    expect(await handle.db.select().from(s.authRateLimits)).toMatchObject([{ count: 3 }]);
+    // The rule allows 5 per minute per address; the shared database counter must admit exactly 5 of 8.
+    expect(results.filter((r) => r.status === 200)).toHaveLength(5);
+    expect(results.filter((r) => r.status === 429)).toHaveLength(3);
+    expect(sent).toHaveLength(5);
+    expect(await handle.db.select().from(s.authRateLimits)).toMatchObject([{ count: 5 }]);
   });
 
   it("seeds the library and preserves human exports through a native reseed", async () => {

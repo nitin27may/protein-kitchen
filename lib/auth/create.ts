@@ -8,7 +8,7 @@ import { emailOTP, magicLink } from "better-auth/plugins";
 import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as schema from "../db/schema";
-import { permitsUserCreation } from "./signup";
+import { assertUserCreation } from "./signup";
 import { accountDeletion } from "./account-deletion";
 import { accountHasPassword, revokeOtherSessions, takePasswordAttempt, type PasswordOutcome } from "./password";
 
@@ -109,9 +109,7 @@ export function createAuth(db: Db, options: AuthOptions) {
     },
     databaseHooks: {
       user: { create: { before: async (user, context) => {
-        if (!permitsUserCreation(context?.path) || user.emailVerified !== true) {
-          throw new APIError("FORBIDDEN", { message: "An account is created only by proving ownership of its email address." });
-        }
+        assertUserCreation(context?.path, user.emailVerified);
         return { data: user };
       } } },
     },
@@ -121,8 +119,8 @@ export function createAuth(db: Db, options: AuthOptions) {
         try {
           await options.sendLink({ email, url, type: "sign-in-link" });
         } catch {
-          const state = delivery.getStore();
-          if (state) state.failed = "link";
+          // Delivery only runs inside handler(), which always opens the store.
+          delivery.getStore()!.failed = "link";
           console.error("Authentication link delivery failed.");
           const identifier = `magic-link:${createHash("sha256").update(token).digest("base64url")}`;
           await db.delete(schema.authVerifications).where(eq(schema.authVerifications.identifier, identifier));
@@ -136,8 +134,7 @@ export function createAuth(db: Db, options: AuthOptions) {
         try {
           await options.sendCode(mail);
         } catch {
-          const state = delivery.getStore();
-          if (state) state.failed = "code";
+          delivery.getStore()!.failed = "code";
           console.error("Authentication code delivery failed.");
           throw new APIError("SERVICE_UNAVAILABLE", { message: "We could not send the email code. Please try again." });
         }
