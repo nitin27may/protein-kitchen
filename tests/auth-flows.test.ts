@@ -228,7 +228,7 @@ describe("real Better Auth HTTP signup, verification and sessions", () => {
   });
 
   it("removes password signup and creates no user from any other unproven path", async () => {
-    for (const headers of [{}, { "x-household-bootstrap": bootstrap }]) {
+    for (const headers of [{} as Record<string, string>, { "x-household-bootstrap": bootstrap }]) {
       const response = await call("/sign-up/email", { name: "Synthetic cook", email: "owner@example.test", password }, headers);
       expect(response.status).toBe(400);
     }

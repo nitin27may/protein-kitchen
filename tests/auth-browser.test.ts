@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { authRequest, safeAuthReturn } from "../lib/auth/browser";
+import { authRequest, legacyInviteToken, safeAuthReturn } from "../lib/auth/browser";
 
 afterEach(() => vi.unstubAllGlobals());
 describe("browser auth transport", () => {
-  it("uses same-origin uncached HTTP mutations and optional admission headers", async () => {
+  it("uses same-origin uncached HTTP mutations and optional headers", async () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json({}));
     vi.stubGlobal("fetch", fetcher);
     await authRequest("/sign-out", {});
-    await authRequest("/sign-up/email", { email: "synthetic@example.test" }, { "x-household-invitation": "synthetic" });
-    expect(fetcher).toHaveBeenLastCalledWith("/api/auth/sign-up/email", {
+    await authRequest("/sign-in/email-otp", { email: "synthetic@example.test" }, { "x-synthetic-header": "synthetic" });
+    expect(fetcher).toHaveBeenLastCalledWith("/api/auth/sign-in/email-otp", {
       method: "POST", credentials: "same-origin", cache: "no-store",
-      headers: { "content-type": "application/json", "x-household-invitation": "synthetic" },
+      headers: { "content-type": "application/json", "x-synthetic-header": "synthetic" },
       body: '{"email":"synthetic@example.test"}',
     });
   });
@@ -51,5 +51,13 @@ describe("safe local auth return paths", () => {
   });
   it.each(["/plan/300?view=week", "/groceries", "/recipes/tofu#steps", "/account"])("preserves %s", (value) => {
     expect(safeAuthReturn(value)).toBe(value);
+  });
+});
+
+describe("legacy invitation token carry-through", () => {
+  it("keeps only a 43-character URL-safe token", () => {
+    const token = "a".repeat(43);
+    expect(legacyInviteToken(token)).toBe(token);
+    for (const bad of [undefined, "", "short", `${token}x`, `${"a".repeat(42)}/`]) expect(legacyInviteToken(bad)).toBeUndefined();
   });
 });

@@ -11,7 +11,7 @@ const titles: Record<Stage, string> = {
   code: "Sign in or create an account", reset: "Reset your password", link: "Sign in or create an account with an email link",
 };
 
-export function AuthScreen({ initial, next = "/", emailLinkError = false }: { initial: Stage; next?: string; emailLinkError?: boolean }) {
+export function AuthScreen({ initial, next = "/", invite, emailLinkError = false }: { initial: Stage; next?: string; invite?: string; emailLinkError?: boolean }) {
   const router = useRouter();
   const [stage, setStage] = useState(initial);
   const [email, setEmail] = useState("");
@@ -42,7 +42,7 @@ export function AuthScreen({ initial, next = "/", emailLinkError = false }: { in
   }
   function signedIn() {
     setPassword(""); setOtp("");
-    router.push(`/onboarding?next=${encodeURIComponent(safeAuthReturn(next))}`);
+    router.push(`/onboarding?next=${encodeURIComponent(safeAuthReturn(next))}${invite ? `&invite=${encodeURIComponent(invite)}` : ""}`);
     router.refresh();
   }
   async function submit() {

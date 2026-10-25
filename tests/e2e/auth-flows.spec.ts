@@ -21,39 +21,47 @@ async function code(type: "email-verification" | "sign-in" | "forget-password") 
   )).otp;
 }
 
-test("real auth routes verify signup, restore sessions, sign in by code and revoke both browsers on reset", async ({ page, browser }) => {
+test("real auth routes create a verified account from a code, restore sessions, sign in by password and revoke both browsers on reset", async ({ page, browser }) => {
   await page.goto("/");
-  const signedUp = await call(page, "/sign-up/email", { name: "Synthetic browser cook", email, password }, {
-    "x-household-bootstrap": "synthetic-browser-bootstrap-key-for-tests",
-  });
-  expect(signedUp.status).toBe(200);
-  expect((await call(page, "/email-otp/verify-email", { email, otp: await code("email-verification") })).status).toBe(200);
-  expect((await call(page, "/sign-in/email", { email, password })).status).toBe(200);
+  const address = { "x-forwarded-for": "127.0.0.51" };
+  expect((await call(page, "/sign-up/email", { name: "Synthetic browser cook", email, password }, address)).status).toBe(400);
+  expect((await call(page, "/get-session")).body).toBeNull();
+  expect((await call(page, "/sign-in/email-otp", { email, otp: "000000" }, address)).status).not.toBe(200);
+  expect((await call(page, "/get-session")).body).toBeNull();
+  const requested = await call(page, "/email-otp/send-verification-otp", { email, type: "sign-in" }, address);
+  expect(requested.status).toBe(200);
+  expect((await call(page, "/sign-in/email-otp", { email, otp: await code("sign-in") }, address)).status).toBe(200);
   await page.reload();
   const session = await call(page, "/get-session");
   expect(session.cache).toBe("private, no-store");
   expect(session.body).toMatchObject({ user: { email, emailVerified: true } });
+  // A password is optional and set later, through the emailed reset code.
+  expect((await call(page, "/email-otp/request-password-reset", { email }, address)).status).toBe(200);
+  expect((await call(page, "/email-otp/reset-password", { email, otp: await code("forget-password"), password }, address)).status).toBe(200);
+  expect((await call(page, "/get-session")).body).toBeNull();
+  expect((await call(page, "/sign-in/email", { email, password }, address)).status).toBe(200);
   const other = await browser.newContext();
   try {
     const second = await other.newPage();
     await second.goto("http://127.0.0.1:3112/");
-    expect((await call(second, "/sign-in/email", { email, password })).status).toBe(200);
-    expect((await call(page, "/email-otp/send-verification-otp", { email, type: "sign-in" })).status).toBe(200);
-    expect((await call(page, "/sign-in/email-otp", { email, otp: await code("sign-in") })).status).toBe(200);
-    expect((await call(page, "/email-otp/request-password-reset", { email })).status).toBe(200);
+    expect((await call(second, "/sign-in/email", { email, password }, { "x-forwarded-for": "127.0.0.52" })).status).toBe(200);
+    expect((await call(page, "/email-otp/request-password-reset", { email }, address)).status).toBe(200);
     const replacement = "Synthetic-browser-replacement-456!";
-    expect((await call(page, "/email-otp/reset-password", { email, otp: await code("forget-password"), password: replacement })).status).toBe(200);
+    expect((await call(page, "/email-otp/reset-password", { email, otp: await code("forget-password"), password: replacement }, address)).status).toBe(200);
     expect((await call(page, "/get-session")).body).toBeNull();
     expect((await call(second, "/get-session")).body).toBeNull();
-    expect((await call(page, "/sign-in/email", { email, password })).status).toBe(401);
-    expect((await call(page, "/sign-in/email", { email, password: replacement })).status).toBe(200);
+    expect((await call(page, "/sign-in/email", { email, password }, address)).status).toBe(401);
+    expect((await call(page, "/sign-in/email", { email, password: replacement }, address)).status).toBe(200);
     expect((await call(page, "/sign-out", {})).status).toBe(200);
     expect((await call(page, "/get-session")).body).toBeNull();
   } finally { await other.close(); }
 });
 
-test("an uninvited signup never creates a usable session", async ({ page }) => {
+test("a request for a code answers identically for a known and a new address and creates nothing", async ({ page }) => {
   await page.goto("/");
-  expect((await call(page, "/sign-up/email", { name: "Synthetic outsider", email: "browser-outsider@example.test", password })).status).toBe(403);
+  const address = { "x-forwarded-for": "127.0.0.53" };
+  const known = await call(page, "/email-otp/send-verification-otp", { email, type: "sign-in" }, address);
+  const fresh = await call(page, "/email-otp/send-verification-otp", { email: "browser-newcomer@example.test", type: "sign-in" }, address);
+  expect(fresh).toEqual(known);
   expect((await call(page, "/get-session")).body).toBeNull();
 });

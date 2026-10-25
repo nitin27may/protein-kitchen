@@ -1,4 +1,4 @@
-type AuthPath = "/sign-up/email" | "/sign-in/email" | "/sign-in/email-otp" | "/sign-in/magic-link" | "/sign-out" | "/delete-household-account" |
+type AuthPath = "/sign-in/email" | "/sign-in/email-otp" | "/sign-in/magic-link" | "/sign-out" | "/delete-household-account" |
   "/email-otp/send-verification-otp" | "/email-otp/verify-email" |
   "/email-otp/request-password-reset" | "/email-otp/reset-password";
 
@@ -24,6 +24,11 @@ export async function authRequest(path: AuthPath, body: object, headers: Record<
       throw new Error("The server did not confirm account deletion. Sign in again to check your account.");
     }
   }
+}
+
+/** Legacy invitation tokens are 43 URL-safe characters; anything else is dropped. */
+export function legacyInviteToken(value?: string) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : undefined;
 }
 
 export function safeAuthReturn(value?: string) {

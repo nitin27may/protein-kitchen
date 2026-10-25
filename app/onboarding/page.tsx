@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { verifiedSessionIdentity, verifiedSessionUser } from "@/lib/auth/access";
 import { HouseholdAccessError } from "@/lib/auth/household";
 import { AuthConfigurationError, householdOwnerEmail } from "@/lib/auth/config";
-import { safeAuthReturn } from "@/lib/auth/browser";
+import { legacyInviteToken, safeAuthReturn } from "@/lib/auth/browser";
 import { getDb } from "@/lib/server/context";
 import { householdMembers, people } from "@/lib/db/schema";
 import { LinkProfile } from "@/components/auth/LinkProfile";
@@ -35,10 +35,11 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
   const associations = await pendingEmailAssociations(db, identity);
   const [member] = await db.select().from(householdMembers).where(eq(householdMembers.userId, user.id));
   if (!member) {
-    if (params.invite) return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
+    const invite = legacyInviteToken(params.invite);
+    if (invite) return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
       <h1 className="text-2xl font-bold">Join a household</h1>
       <p className="break-words">Signed in as {user.email}.</p>
-      <AcceptLegacyInvite token={params.invite} />
+      <AcceptLegacyInvite token={invite} />
     </section>;
     const admission = await ensureAdmission(db, identity, { ownerEmail: householdOwnerEmail(process.env) });
     if (admission.status === "association") {
