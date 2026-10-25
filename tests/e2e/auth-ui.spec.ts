@@ -217,7 +217,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await saveFeedback(page, () => page.getByRole("button", { name: "Clear your rating", exact: true }).click());
     await second.reload();
     await expect(second.getByRole("radio", { name: "2", exact: true })).toHaveAttribute("aria-checked", "true");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
     await page.screenshot({ path: "test-results/personal-feedback-phone.png", fullPage: true });
     await page.goto("/recipes?yours=favourites");
     await expect(page.getByRole("main").locator('a[href="/recipes/tofu-burrito-bowl"]')).toBeVisible();
@@ -270,7 +270,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await expect(second.getByRole("link", { name: "Profile: Synthetic import fixture" })).toBeVisible();
     expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) })))
       .toEqual({ local: [], session: [] });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
     await page.screenshot({ path: "test-results/auth-account-phone.png", fullPage: true });
     await cookControls.getByRole("button", { name: "Remove cook", exact: true }).click();
     await cookControls.getByRole("button", { name: "Confirm removal", exact: true }).click();
@@ -366,7 +366,7 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     await page.getByRole("button", { name: "Delete my account", exact: true }).click();
     await page.getByLabel("Current password", { exact: true }).fill(replacement);
     await page.getByLabel("Type DELETE to confirm", { exact: true }).fill("DELETE");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
     await page.screenshot({ path: "test-results/account-deletion-phone.png", fullPage: true });
     const linkSent = await page.request.post("/api/auth/sign-in/magic-link", {
       headers: { origin: "http://127.0.0.1:3112", "x-forwarded-for": "127.0.0.31" },
@@ -429,7 +429,7 @@ test("signup and sign-in show actionable failures and support retry without stor
   }));
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("not configured");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
 });
 
 test("an emailed link signs in only its opening browser, survives reload and rejects replay with an actionable retry", async ({ page, browser }) => {
@@ -477,7 +477,7 @@ test("an emailed link signs in only its opening browser, survives reload and rej
     await page.goto(retry.url);
     await expect(page.getByRole("heading", { name: "Your meal profile", exact: true })).toBeVisible();
     expect(await (await second.request.get("/api/auth/get-session")).json()).toMatchObject({ user: { email } });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
   } finally {
     await other.close();
     await handle.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, id));

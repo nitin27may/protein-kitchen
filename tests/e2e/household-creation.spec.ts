@@ -25,7 +25,7 @@ test("a new person signs up by email code, gets a kitchen with no household form
     await expect(page.getByLabel("Invitation code")).toHaveCount(0);
     await expect(page.getByLabel("Household name")).toHaveCount(0);
     await expect(page.getByRole("radio")).toHaveCount(0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
     await page.screenshot({ path: "test-results/signup-phone.png", fullPage: true });
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByRole("button", { name: "Email me a code", exact: true }).click();

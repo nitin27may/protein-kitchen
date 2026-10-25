@@ -74,7 +74,7 @@ test("plan setup and reloaded plan controls wait for hydration rather than disca
     await expect(page.getByRole("button", { name: "Locked", exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("button", { name: "Locked", exact: true })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
   } finally {
     release();
     await page.unroute("**/_next/static/**", delayScripts);
@@ -146,7 +146,7 @@ test("household chooser retries failures, completes only the selected profile an
     await expect(choice).toBeVisible();
     const bounds = await choice.boundingBox();
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
     await page.route("**/onboarding", async (route) => {
       if (route.request().method() === "POST") await route.abort("failed");
       else await route.continue();
@@ -446,7 +446,7 @@ test("private photo upload, reload and deletion preserve actual WebP bytes and r
   try {
     expect((await anonymous.request.get(`http://127.0.0.1:3112${url}`)).status()).toBe(401);
   } finally { await anonymous.close(); }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
   await page.screenshot({ path: "test-results/private-photo-phone.png", fullPage: true });
   await photos.getByRole("button", { name: "Delete", exact: true }).click();
   await page.route("**/recipes/tofu-burrito-bowl", (route) => route.request().method() === "POST" ? route.abort("failed") : route.continue());
