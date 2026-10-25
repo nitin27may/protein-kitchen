@@ -1,4 +1,6 @@
 import type { DatabaseEnvironment, PostgresTarget } from "./target";
+import { requireProductionRuntimeContext } from "./production-guard";
+import { productionPooledTarget } from "./production-target";
 import { validatePostgresTarget } from "./target";
 
 const environments: readonly string[] = ["development", "test", "preview", "production"];
@@ -15,7 +17,12 @@ export function runtimeTarget(env: Readonly<Record<string, string | undefined>>)
     runtimeEnvironment: runtime as DatabaseEnvironment,
     databaseEnvironment: env.DATABASE_ENV as DatabaseEnvironment,
     nonProductionHost: env.DATABASE_NONPRODUCTION_HOST,
+    productionHost: env.DATABASE_PRODUCTION_HOST,
   };
+  if (target.runtimeEnvironment === "production" && target.databaseEnvironment === "production") {
+    requireProductionRuntimeContext(env);
+    return productionPooledTarget(env);
+  }
   validatePostgresTarget(target);
   return target;
 }

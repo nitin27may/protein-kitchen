@@ -1,3 +1,5 @@
+import { ProductionGuardError } from "./production-guard";
+
 export type DatabaseEnvironment = "development" | "test" | "preview" | "production";
 
 export interface PostgresTarget {
@@ -6,6 +8,8 @@ export interface PostgresTarget {
   databaseEnvironment: DatabaseEnvironment;
   /** Exact endpoint host reviewed as non-production; never infer it from a branch display name. */
   nonProductionHost?: string;
+  /** Exact production endpoint host (pooled for runtime, direct for migrations); a production target is refused without it. */
+  productionHost?: string;
 }
 
 export function validatePostgresTarget(target: PostgresTarget): URL {
@@ -22,6 +26,12 @@ export function validatePostgresTarget(target: PostgresTarget): URL {
     throw new Error("Postgres database environment must match the runtime environment.");
   }
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (target.runtimeEnvironment === "production") {
+    if (!target.productionHost) throw new ProductionGuardError("PRODUCTION_PIN_MISSING", "Production requires an explicit reviewed host pin.");
+    if (local || url.hostname !== target.productionHost) {
+      throw new ProductionGuardError("PRODUCTION_HOST_MISMATCH", "The production connection host does not match its reviewed pin.");
+    }
+  }
   if (target.runtimeEnvironment !== "production" && !local && url.hostname !== target.nonProductionHost) {
     throw new Error("Remote non-production Postgres requires an explicitly reviewed non-production endpoint host.");
   }

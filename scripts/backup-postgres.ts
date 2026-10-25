@@ -3,16 +3,14 @@ import { getBlobStore } from "../lib/blob";
 import { createEncryptedBackup } from "../lib/backup/create";
 import { assertAgeRecipient, BackupError, postgresDump } from "../lib/backup/process";
 import { postgresMigrationTarget } from "../lib/db/postgres/migration-target";
-import { openPostgres } from "../lib/db/postgres/client";
-import { verifyNonProductionBranch } from "../lib/db/postgres/verify-branch";
+import { openVerifiedPostgres } from "../lib/db/postgres/verified-client";
 
 async function main() {
   if (process.env.VERCEL || process.env.VERCEL_ENV) throw new Error("Run encrypted backup on an approved local/runner host, never a Vercel request or preview.");
   const recipient = process.env.BACKUP_AGE_RECIPIENT;
   assertAgeRecipient(recipient ?? "");
   const target = postgresMigrationTarget(process.env);
-  await verifyNonProductionBranch(target, process.env);
-  const handle = openPostgres(target);
+  const handle = await openVerifiedPostgres(target, process.env);
   try {
     const result = await createEncryptedBackup(handle.db, getBlobStore(), {
       recipient: recipient!, outputRoot: process.env.BACKUP_OUTPUT_DIR || path.resolve("backups"),

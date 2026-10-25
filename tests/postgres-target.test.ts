@@ -14,8 +14,8 @@ describe("Postgres connection safety", () => {
   });
 
   describe("Postgres migration target", () => {
-    it.each([undefined, "production", "preview", "typo"])("refuses environment %s before opening a connection", (DATABASE_ENV) => {
-      expect(() => postgresMigrationTarget({ DATABASE_ENV })).toThrow("Production and preview are not enabled");
+    it.each([undefined, "preview", "typo"])("refuses environment %s before opening a connection", (DATABASE_ENV) => {
+      expect(() => postgresMigrationTarget({ DATABASE_ENV })).toThrow("Preview is not enabled");
     });
 
     it("does not fall back to a possibly production application URL", () => {
@@ -48,8 +48,11 @@ describe("Postgres connection safety", () => {
     expect(() => validatePostgresTarget({ ...dev, runtimeEnvironment, databaseEnvironment: "production" })).toThrow("must match");
   });
 
-  it("allows an explicitly selected production target only in production", () => {
-    expect(validatePostgresTarget({ ...dev, runtimeEnvironment: "production", databaseEnvironment: "production" }).hostname)
+  it("allows an explicitly selected production target only in production, and only with its host pin", () => {
+    const production = { ...dev, runtimeEnvironment: "production", databaseEnvironment: "production" } as const;
+    expect(() => validatePostgresTarget(production)).toThrow("PRODUCTION_PIN_MISSING");
+    expect(() => validatePostgresTarget({ ...production, productionHost: "another.example.neon.tech" })).toThrow("PRODUCTION_HOST_MISMATCH");
+    expect(validatePostgresTarget({ ...production, productionHost: new URL(remote).hostname }).hostname)
       .toBe(new URL(remote).hostname);
   });
 
