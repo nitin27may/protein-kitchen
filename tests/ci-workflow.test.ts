@@ -8,6 +8,7 @@ const acceptance = workflow.slice(workflow.indexOf("\n  acceptance:"));
 describe("credential-free CI acceptance gate", () => {
   it("installs matching native recovery clients from the signed PostgreSQL repository on a fixed Ubuntu release", () => {
     expect(workflow).toContain("runs-on: ubuntu-24.04");
+    expect(workflow).toContain("timeout-minutes: 45");
     expect(workflow).toContain("signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc");
     expect(workflow).toContain("https://apt.postgresql.org/pub/repos/apt noble-pgdg main");
     expect(workflow).toContain("age postgresql-client-17");

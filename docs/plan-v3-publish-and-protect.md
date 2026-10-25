@@ -215,6 +215,17 @@ feedback initialization for the isolated preview seed and prove every
 non-library table stays empty. Keep the first synthetic preview database
 untouched and use a fresh empty hosted-preview database rather than deleting
 human-owned-class rows to repair the rehearsal.
+The first complete hosted browser attempt exposed fixed-navigation overlap
+when scrolling a feedback control into view, and a plan assertion that treated
+streamed HTTP headers as completed mutation work. Reserve top/bottom scroll
+padding matching the existing navigation and wait for terminal plan navigation
+with a bounded 60-second assertion instead of treating streamed headers as
+completion. Dev-server RSC streams can remain open after rendering, so do not
+wait on `Response.finished()` as the completion signal. Keep real pointer clicks and all
+journeys; the subsequent auth failure depended on the interrupted prior
+password-reset journey. The native coverage job was making steady progress
+without failed cases when its 15-minute job deadline cancelled it: raise that
+bounded runner deadline to 45 minutes rather than omitting database tests.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 

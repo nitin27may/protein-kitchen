@@ -103,6 +103,8 @@ html {
   color: var(--fg);
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 4.5rem;
+  scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
 h1, h2, h3, .font-display {

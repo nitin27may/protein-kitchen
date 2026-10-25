@@ -23,10 +23,11 @@ async function currentSession(page: Page, db: ReturnType<typeof openPostgres>["d
 }
 
 test("plan generation, swap and locked regeneration survive reload", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto("/plan/new");
   await expect(page.getByRole("button", { name: "Generate plan", exact: true })).toBeVisible();
   await mutation(page, () => page.getByRole("button", { name: "Generate plan", exact: true }).click());
-  await expect(page).toHaveURL(/\/plan\/\d+(\?.*)?$/);
+  await expect(page).toHaveURL(/\/plan\/\d+(\?.*)?$/, { timeout: 60_000 });
   await page.getByRole("button", { name: "Swap", exact: true }).first().click();
   const pick = page.getByRole("button", { name: "Pick this", exact: true }).first();
   await expect(pick).toBeVisible();
