@@ -7,7 +7,11 @@ retain their original point-in-time history.
 
 Written 2026-10-23 so the work can continue on another machine, or in a fresh session, without losing intent. Read this, then `CLAUDE.md`, then `docs/roadmap.md`. Nothing here contains a secret, and nothing here contains health data.
 
-## Current delivery: protected preview live, 2026-10-25
+## Launch direction, 2026-10-25 (supersedes the preview records)
+
+There is one hosted environment, production, on Vercel with one Neon project. The protected preview below is retired: do not extend it, and do not use `pnpm deploy:preflight` or `preview.yml` for new work. Local development uses throwaway loopback Postgres or PGlite only and never connects to Neon. Deploys come only from GitHub Actions on `main` with owner approval. Reminders, state sync, vault and photo review are off at launch; the owner's legacy data is imported through a household-targeted in-app importer. See the "Launch: single production environment" stage in `plan-v3-publish-and-protect.md` for decisions, the owner-supplied values checklist (names only), go/no-go gates, runbook and rollback. Sections below are point-in-time history.
+
+## Current delivery: protected preview live, 2026-10-25 (retired)
 
 **Deployed and browser-verified:**
 https://protein-kitchen-preview-nitin27mays-projects.vercel.app
