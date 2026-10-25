@@ -442,6 +442,16 @@ it("projects only the selected household's account administration without creden
     .toEqual([{ id: "foreign", canResend: false }, { id: "incoming", canResend: true }]);
 });
 
+it("names members by account name, else profile name, else the email local-part", async () => {
+  await h.db.update(s.authUsers).set({ name: "   " }).where(eq(s.authUsers.id, "a"));
+  await h.db.update(s.authUsers).set({ name: "  Asha  " }).where(eq(s.authUsers.id, "unverified"));
+  await h.db.update(s.authUsers).set({ name: "" }).where(eq(s.authUsers.id, "pending"));
+  await h.db.insert(s.authUsers).values({ id: "coded", name: "", email: "coded.cook@example.test", emailVerified: true });
+  await h.db.insert(s.householdMembers).values({ householdId: "a", userId: "coded", personId: null, role: "member" });
+  const names = Object.fromEntries((await householdAccount(h.db, a)).members.map((member) => [member.userId, member.name]));
+  expect(names).toEqual({ a: "Synthetic profile", unverified: "Asha", pending: "pending", coded: "coded.cook" });
+});
+
 it("withholds household member/email/invitation administration from members and refuses stale or incomplete scopes", async () => {
   await h.db.update(s.householdMembers).set({ role: "member" }).where(eq(s.householdMembers.userId, "a"));
   await expect(householdAccount(h.db, a)).rejects.toThrow("access changed");

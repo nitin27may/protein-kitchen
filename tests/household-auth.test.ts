@@ -448,6 +448,14 @@ describe("owner-email claim of the imported household", () => {
     expect(await claimHouseholdByOwnerEmail(h.db, id, "owner@example.test")).toBeNull();
     expect(await h.db.select().from(s.householdMembers)).toEqual([]);
   });
+  it("never claims for an account that already belongs to a household, even when an empty one exists", async () => {
+    await h.db.insert(s.households).values([{ id: "migrated", name: "Existing household" }, { id: "own", name: "Own" }]);
+    const id = await user("member-owner", "member-owner@example.test");
+    await h.db.insert(s.householdMembers).values({ householdId: "own", userId: id, role: "owner" });
+    expect(await claimHouseholdByOwnerEmail(h.db, id, "member-owner@example.test")).toBeNull();
+    expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
+    expect(await h.db.select().from(s.householdMembers)).toHaveLength(1);
+  });
   it("leaves a household that already has members alone", async () => {
     await owner();
     const id = await user("other-owner", "other-owner@example.test");
