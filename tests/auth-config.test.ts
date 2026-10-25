@@ -80,4 +80,18 @@ describe("explicit, awaited auth code delivery", () => {
       text: `Sign in to Protein Kitchen:\n${url}\n\nThis link can be used once and expires in five minutes. If you did not request it, ignore this email.`,
     });
   });
+  it("notifies an email address without exposing household identity or an acceptance token", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ id: "synthetic-association-id" }));
+    const url = "https://kitchen.example.test/sign-in";
+    await resendAuthSender(mailEnv, request)({
+      email: mail.email, type: "household-association", url,
+    });
+    const body = JSON.parse(String(request.mock.calls[0]![1]!.body));
+    expect(body).toMatchObject({
+      to: [mail.email], subject: "A Protein Kitchen household is ready for you",
+      text: expect.stringContaining(url),
+    });
+    expect(body.text).not.toContain("household name");
+    expect(body.text).not.toContain("token");
+  });
 });

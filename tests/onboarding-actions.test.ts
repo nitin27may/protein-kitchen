@@ -6,15 +6,21 @@ import { AuthConfigurationError } from "../lib/auth/config";
 import { claimHousehold, HouseholdAccessError } from "../lib/auth/household";
 import { getDb } from "../lib/server/context";
 import * as s from "../lib/db/schema";
-import { cancelInvitation, changeCookRole, chooseHousehold, finishProfile, inviteCook, joinHousehold, linkOwnProfile, removeCook } from "../app/onboarding/actions";
+import {
+  acceptHouseholdEmailAssociation, addHouseholdEmailAssociation, cancelInvitation, changeCookRole,
+  chooseHousehold, declineHouseholdEmailAssociation, finishProfile, inviteCook, joinHousehold,
+  linkOwnProfile, removeCook, resendHouseholdAssociationNotice,
+} from "../app/onboarding/actions";
 import { resolveSessionHouseholdAccess } from "../lib/auth/household-session";
 import { openDb, type DbHandle } from "./helpers/db";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("../lib/auth/server", () => ({ sendHouseholdAssociationNotice: vi.fn() }));
 vi.mock("../lib/auth/access", async (original) => ({
   ...await original<typeof import("../lib/auth/access")>(), verifiedSessionUser: vi.fn(), verifiedSessionIdentity: vi.fn(), requireMember: vi.fn(),
 }));
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
+import { sendHouseholdAssociationNotice } from "../lib/auth/server";
 let h: DbHandle;
 const secret = "synthetic-onboarding-bootstrap-key-only";
 const input = {
@@ -87,6 +93,56 @@ it("allows an owner to link their existing profile and revoke an invitation", as
   const [row] = await h.db.select().from(s.householdInvitations);
   expect(await cancelInvitation(row!.id)).toEqual({ ok: true });
   expect(await cancelInvitation(row!.id)).toMatchObject({ ok: false });
+});
+it("adds email associations without returning a grant and surfaces notification failures for retry", async () => {
+  await joinHousehold("bootstrap", secret);
+  vi.mocked(sendHouseholdAssociationNotice).mockResolvedValue(undefined);
+  expect(await addHouseholdEmailAssociation({ email: "invalid" })).toMatchObject({ ok: false });
+  expect(await resendHouseholdAssociationNotice("missing")).toMatchObject({ ok: false });
+  const result = await addHouseholdEmailAssociation({
+    email: "  NEXT@example.test ", displayName: "Pat", relationship: "partner",
+  });
+  expect(result).toMatchObject({ ok: true, emailSent: true });
+  expect("token" in result).toBe(false);
+  expect(sendHouseholdAssociationNotice).toHaveBeenCalledWith("next@example.test");
+  const [association] = await h.db.select().from(s.householdInvitations);
+  expect(association).toMatchObject({
+    email: "next@example.test", tokenHash: null, displayName: "Pat", relationship: "partner",
+    acceptedAt: null, declinedAt: null, revokedAt: null,
+  });
+
+  vi.mocked(sendHouseholdAssociationNotice).mockRejectedValueOnce(new Error("synthetic private mail failure"));
+  const retryable = await addHouseholdEmailAssociation({ email: "another@example.test" });
+  expect(retryable).toMatchObject({ ok: true, emailSent: false });
+  const [retryAssociation] = await h.db.select().from(s.householdInvitations)
+    .where(eq(s.householdInvitations.email, "another@example.test"));
+  vi.mocked(sendHouseholdAssociationNotice).mockRejectedValueOnce(new Error("synthetic retry failure"));
+  expect(await resendHouseholdAssociationNotice(retryAssociation!.id)).toEqual({
+    ok: false, error: "The email could not be sent. Try again.",
+  });
+  expect(await resendHouseholdAssociationNotice(retryAssociation!.id)).toEqual({ ok: true });
+  expect(sendHouseholdAssociationNotice).toHaveBeenCalledWith("another@example.test");
+});
+it("accepts and declines associations through the verified onboarding actions", async () => {
+  await joinHousehold("bootstrap", secret);
+  await h.db.insert(s.households).values({ id: "second", name: "Synthetic second household" });
+  await h.db.insert(s.authUsers).values({
+    id: "inviter", name: "Synthetic inviter", email: "inviter@example.test", emailVerified: true,
+  });
+  await h.db.insert(s.householdMembers).values({ householdId: "second", userId: "inviter", role: "owner" });
+  await h.db.insert(s.householdInvitations).values([
+    {
+      id: "accept-association", householdId: "second", email: "owner@example.test",
+      tokenHash: null, invitedByUserId: "inviter", expiresAt: new Date(Date.now() + 60_000),
+    },
+    {
+      id: "decline-association", householdId: "second", email: "cook@example.test",
+      tokenHash: null, invitedByUserId: "inviter", expiresAt: new Date(Date.now() + 60_000),
+    },
+  ]);
+  expect(await acceptHouseholdEmailAssociation("accept-association")).toEqual({ ok: true });
+  vi.mocked(verifiedSessionIdentity).mockResolvedValue({ userId: "cook", sessionId: "cook-session" });
+  expect(await declineHouseholdEmailAssociation("decline-association")).toEqual({ ok: true });
 });
 it("refuses anonymous operations before database access", async () => {
   vi.mocked(verifiedSessionUser).mockRejectedValue(new HouseholdAccessError("Sign in before continuing."));

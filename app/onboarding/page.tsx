@@ -12,6 +12,8 @@ import { Banner, PageTitle } from "@/components/ui";
 import { finishProfile } from "./actions";
 import { resolveSessionHouseholdAccess, sessionHouseholds } from "@/lib/auth/household-session";
 import { HouseholdChooser } from "@/components/auth/HouseholdChooser";
+import { EmailAssociationPrompt } from "@/components/auth/EmailAssociationPrompt";
+import { pendingEmailAssociations } from "@/lib/auth/household";
 
 export const metadata = { title: "Join your household" };
 export const dynamic = "force-dynamic";
@@ -26,20 +28,26 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
     return <div className="p-4"><Banner tone="bad">Authentication is not configured on this instance.</Banner></div>;
   }
   const db = await getDb();
-  const [member] = await db.select().from(householdMembers).where(eq(householdMembers.userId, user.id));
-  if (!member) return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
-    <h1 className="text-2xl font-bold">Finish joining your household</h1>
-    <p className="break-words">Signed in as {user.email}. Re-enter your invitation or initial household key to confirm membership.</p>
-    <HouseholdEntry />
-  </section>;
-  let access;
   const identity = await verifiedSessionIdentity();
+  const associations = await pendingEmailAssociations(db, identity);
+  const [member] = await db.select().from(householdMembers).where(eq(householdMembers.userId, user.id));
+  if (!member) {
+    return <section className="mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8">
+      <h1 className="text-2xl font-bold">Finish setting up your account</h1>
+      <p className="break-words">Signed in as {user.email}.</p>
+      <EmailAssociationPrompt associations={associations} />
+      <p className="text-sm text-muted">You can still join with an existing household invitation or initial setup key.</p>
+      <HouseholdEntry />
+    </section>;
+  }
+  let access;
   const choices = await sessionHouseholds(db, identity);
   try { access = await resolveSessionHouseholdAccess(db, identity); }
   catch (error) {
     if (!(error instanceof HouseholdAccessError)) throw error;
     if (choices.households.length) return <div className="mx-auto max-w-xl space-y-5 px-4 pb-28 pt-8">
       <h1 className="text-2xl font-bold">Choose a household</h1>
+      <EmailAssociationPrompt associations={associations} />
       <HouseholdChooser {...choices} />
     </div>;
     return <div className="p-4"><Banner tone="bad">Your household ownership needs an operator migration before onboarding can continue.</Banner></div>;
@@ -49,6 +57,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
     .where(eq(people.householdId, access.householdId)) : [];
   return <>
     <PageTitle title="Your meal profile" sub="Your own portions and targets, on the household's shared plan." />
+    {associations.length ? <div className="mx-4 mb-6"><EmailAssociationPrompt associations={associations} /></div> : null}
     {profiles.length ? <section className="mx-4 mb-6 space-y-3 rounded-card border border-line p-4">
       <h2 className="text-lg font-semibold">Already have a profile?</h2>
       <p className="text-sm text-muted">Link it instead of creating a duplicate. Unavailable or reserved profiles cannot be linked.</p>

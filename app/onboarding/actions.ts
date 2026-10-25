@@ -6,10 +6,11 @@ import type { Result } from "@/app/actions";
 import { getDb } from "@/lib/server/context";
 import { checkPermission, requireMember, verifiedSessionIdentity, verifiedSessionUser } from "@/lib/auth/access";
 import { AuthConfigurationError } from "@/lib/auth/config";
-import { acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, HouseholdAccessError, issueInvitation, removeHouseholdMember, revokeInvitation } from "@/lib/auth/household";
+import { acceptEmailAssociation, acceptInvitation, addEmailAssociation as createEmailAssociation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, declineEmailAssociation, emailAssociationRecipient, HouseholdAccessError, issueInvitation, removeHouseholdMember, revokeInvitation } from "@/lib/auth/household";
 import type { PersonInputData } from "@/lib/schemas/person";
 import { memberHouseholdAccess } from "@/lib/auth/household-access";
 import { resolveSessionHouseholdAccess, selectSessionHousehold } from "@/lib/auth/household-session";
+import { sendHouseholdAssociationNotice } from "@/lib/auth/server";
 
 async function attempt<T extends object>(task: () => Promise<T>): Promise<Result<T>> {
   try {
@@ -71,6 +72,59 @@ export async function inviteCook(email: string, personId?: number): Promise<Resu
     const access = await resolveSessionHouseholdAccess(db, identity);
     const invitation = await issueInvitation(db, identity.userId, { email, personId }, access);
     return { token: invitation.token, email: invitation.email };
+  });
+}
+
+export async function addHouseholdEmailAssociation(input: {
+  email: string; displayName?: string; relationship?: string;
+}): Promise<Result<{ id: string; emailSent: boolean }>> {
+  const result = await attempt(async () => {
+    const identity = await verifiedSessionIdentity();
+    const db = await getDb();
+    const access = await resolveSessionHouseholdAccess(db, identity);
+    return createEmailAssociation(db, identity.userId, input, access);
+  });
+  if (!result.ok) return result;
+  try {
+    await sendHouseholdAssociationNotice(result.email);
+    return { ok: true, id: result.id, emailSent: true };
+  } catch {
+    console.error("Household association email delivery failed.");
+    revalidatePath("/", "layout");
+    return { ok: true, id: result.id, emailSent: false };
+  }
+}
+
+export async function resendHouseholdAssociationNotice(id: string): Promise<Result> {
+  const result = await attempt(async () => {
+    const identity = await verifiedSessionIdentity();
+    const db = await getDb();
+    const access = await resolveSessionHouseholdAccess(db, identity);
+    return { email: await emailAssociationRecipient(db, identity.userId, id, access) };
+  });
+  if (!result.ok) return result;
+  try {
+    await sendHouseholdAssociationNotice(result.email);
+    return { ok: true };
+  } catch {
+    console.error("Household association email delivery failed.");
+    return { ok: false, error: "The email could not be sent. Try again." };
+  }
+}
+
+export async function acceptHouseholdEmailAssociation(id: string): Promise<Result> {
+  return attempt(async () => {
+    const identity = await verifiedSessionIdentity();
+    await acceptEmailAssociation(await getDb(), identity, id);
+    return {};
+  });
+}
+
+export async function declineHouseholdEmailAssociation(id: string): Promise<Result> {
+  return attempt(async () => {
+    const identity = await verifiedSessionIdentity();
+    await declineEmailAssociation(await getDb(), identity, id);
+    return {};
   });
 }
 

@@ -104,23 +104,27 @@ export const householdInvitations = pgTable("household_invitations", {
   householdId: householdId(),
   id: text("id").primaryKey(),
   email: text("email").notNull(),
-  tokenHash: text("token_hash").notNull().unique(),
+  tokenHash: text("token_hash").unique(),
   invitedByUserId: text("invited_by_user_id").notNull().references(() => authUsers.id, { onDelete: "restrict" }),
   personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
+  displayName: text("display_name"),
+  relationship: text("relationship"),
   expiresAt: authTime("expires_at").notNull(),
   createdAt: authTime("created_at").defaultNow().notNull(),
   acceptedAt: authTime("accepted_at"),
   acceptedByUserId: text("accepted_by_user_id").references(() => authUsers.id, { onDelete: "set null" }),
+  declinedAt: authTime("declined_at"),
   revokedAt: authTime("revoked_at"),
 }, (t) => [
   index("household_invitations_household_idx").on(t.householdId),
   foreignKey({ name: "household_invitations_profile_household_fk", columns: [t.householdId, t.personId], foreignColumns: [people.householdId, people.id] }),
   check("household_invitations_email_check", sql`${t.email} = lower(trim(${t.email}))`),
   check("household_invitations_expiry_check", sql`${t.expiresAt} > ${t.createdAt}`),
-  uniqueIndex("household_invitations_pending_email_uq").on(t.email)
-    .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+  check("household_invitations_relationship_check", sql`${t.relationship} is null or length(trim(${t.relationship})) between 1 and 40`),
+  uniqueIndex("household_invitations_pending_email_uq").on(t.householdId, t.email)
+    .where(sql`${t.householdId} is not null and ${t.acceptedAt} is null and ${t.declinedAt} is null and ${t.revokedAt} is null`),
   uniqueIndex("household_invitations_pending_person_uq").on(t.personId)
-    .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+    .where(sql`${t.acceptedAt} is null and ${t.declinedAt} is null and ${t.revokedAt} is null`),
 ]);
 
 export const libraryState = pgTable("library_state", {

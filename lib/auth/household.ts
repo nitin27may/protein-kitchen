@@ -13,7 +13,7 @@ export class HouseholdAccessError extends Error {
   override name = "HouseholdAccessError";
 }
 
-const pending = () => and(isNull(householdInvitations.acceptedAt), isNull(householdInvitations.revokedAt));
+const pending = () => and(isNull(householdInvitations.acceptedAt), isNull(householdInvitations.declinedAt), isNull(householdInvitations.revokedAt));
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 
 // One deployment-wide lock also covers the not-yet-created bootstrap row.
@@ -228,6 +228,145 @@ export async function issueInvitation(db: Db, actorUserId: string, input: { emai
   });
   // Deliver outside the transaction; callers must surface delivery failure, never log the token.
   return { ...invitation, token };
+}
+
+export async function addEmailAssociation(db: Db, actorUserId: string, input: {
+  email: string; displayName?: string; relationship?: string;
+}, access?: HouseholdAccess) {
+  const email = emailSchema.parse(input.email);
+  const displayName = input.displayName ? z.string().trim().min(1).max(60).parse(input.displayName) : null;
+  const relationship = input.relationship ? z.string().trim().min(1).max(40).parse(input.relationship) : null;
+  return withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const actor = await requireOwner(tx, actorUserId, access);
+    const [existing] = await tx.select({ id: householdMembers.userId }).from(householdMembers)
+      .innerJoin(authUsers, eq(authUsers.id, householdMembers.userId))
+      .where(and(eq(householdMembers.householdId, actor.householdId), sql`lower(trim(${authUsers.email})) = ${email}`));
+    if (existing) throw new HouseholdAccessError("That account is already in this household.");
+    const now = new Date();
+    await tx.update(householdInvitations).set({ revokedAt: now }).where(and(
+      pending(), eq(householdInvitations.householdId, actor.householdId), eq(householdInvitations.email, email),
+      lte(householdInvitations.expiresAt, now),
+    ));
+    const [pendingAssociation] = await tx.select({ id: householdInvitations.id }).from(householdInvitations)
+      .where(and(
+        pending(), eq(householdInvitations.householdId, actor.householdId), eq(householdInvitations.email, email),
+        gt(householdInvitations.expiresAt, now),
+      ));
+    if (pendingAssociation) throw new HouseholdAccessError("That email already has a pending association.");
+    const [row] = await tx.insert(householdInvitations).values({
+      householdId: actor.householdId, id: randomUUID(), email, tokenHash: null,
+      invitedByUserId: actorUserId, personId: null, displayName, relationship,
+      createdAt: now, expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+    }).returning({ id: householdInvitations.id, email: householdInvitations.email });
+    return row!;
+  });
+}
+
+export async function pendingEmailAssociations(db: Db, identity: { userId: string; sessionId: string }) {
+  return withTx(db, async (tx) => {
+    const user = await verifiedUser(tx, identity.userId);
+    const [session] = await tx.select({ id: authSessions.id }).from(authSessions).where(and(
+      eq(authSessions.id, identity.sessionId), eq(authSessions.userId, identity.userId), gt(authSessions.expiresAt, sql`now()`),
+    ));
+    if (!session) throw new HouseholdAccessError("Your session has expired. Sign in again before continuing.");
+    return tx.select({
+      id: householdInvitations.id, expiresAt: householdInvitations.expiresAt,
+    }).from(householdInvitations).where(and(
+      isNull(householdInvitations.tokenHash), eq(householdInvitations.email, emailSchema.parse(user.email)),
+      pending(), gt(householdInvitations.expiresAt, sql`now()`),
+    )).orderBy(householdInvitations.createdAt);
+  });
+}
+
+export async function acceptEmailAssociation(db: Db, identity: { userId: string; sessionId: string }, invitationId: string) {
+  z.string().min(1).max(128).parse(invitationId);
+  return withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const user = await verifiedUser(tx, identity.userId);
+    const [session] = await tx.select().from(authSessions).where(and(
+      eq(authSessions.id, identity.sessionId), eq(authSessions.userId, identity.userId), gt(authSessions.expiresAt, sql`now()`),
+    )).for("update");
+    if (!session) throw new HouseholdAccessError("Your session has expired. Sign in again before continuing.");
+    const [invitation] = await tx.select().from(householdInvitations)
+      .where(eq(householdInvitations.id, invitationId)).for("update");
+    if (!invitation || invitation.tokenHash !== null || invitation.householdId === null ||
+        invitation.email !== emailSchema.parse(user.email) || invitation.acceptedAt || invitation.declinedAt ||
+        invitation.revokedAt || invitation.expiresAt.getTime() <= Date.now()) {
+      throw new HouseholdAccessError("This household association is no longer available.");
+    }
+    const [ownerMembership] = await tx.select({ userId: householdMembers.userId }).from(householdMembers)
+      .where(and(
+        eq(householdMembers.userId, invitation.invitedByUserId),
+        eq(householdMembers.householdId, invitation.householdId),
+        eq(householdMembers.role, "owner"),
+      ));
+    if (!ownerMembership) throw new HouseholdAccessError("This household association is no longer available.");
+    await verifiedUser(tx, invitation.invitedByUserId);
+    const existingMemberships = await tx.select().from(householdMembers)
+      .where(eq(householdMembers.userId, identity.userId)).for("update");
+    if (existingMemberships.some((membership) => membership.householdId === null)) {
+      throw new HouseholdAccessError("Your legacy household membership needs an operator migration before joining another household.");
+    }
+    if (existingMemberships.some((membership) => membership.householdId === invitation.householdId)) {
+      throw new HouseholdAccessError("This household association is no longer available.");
+    }
+    const now = new Date();
+    const [member] = await tx.insert(householdMembers).values({
+      householdId: invitation.householdId, userId: identity.userId, role: "member", personId: null, createdAt: now, updatedAt: now,
+    }).returning();
+    await tx.update(householdInvitations).set({ acceptedAt: now, acceptedByUserId: identity.userId })
+      .where(eq(householdInvitations.id, invitation.id));
+    const previousSelection = session.activeHouseholdId === null && existingMemberships.length === 1
+      ? existingMemberships[0]!.householdId
+      : session.activeHouseholdId;
+    const selectionIsValid = previousSelection === null ||
+      existingMemberships.some((membership) => membership.householdId === previousSelection);
+    if (!selectionIsValid) throw new HouseholdAccessError("Choose an available household before accepting this association.");
+    const nextSelection = previousSelection ?? (existingMemberships.length === 0 ? invitation.householdId : null);
+    if (nextSelection !== session.activeHouseholdId) {
+      await tx.update(authSessions).set({
+        activeHouseholdId: nextSelection,
+        householdSelectionVersion: sql`${authSessions.householdSelectionVersion} + 1`,
+        updatedAt: now,
+      }).where(eq(authSessions.id, session.id));
+    }
+    return member!;
+  });
+}
+
+export async function declineEmailAssociation(db: Db, identity: { userId: string; sessionId: string }, invitationId: string) {
+  z.string().min(1).max(128).parse(invitationId);
+  await withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const user = await verifiedUser(tx, identity.userId);
+    const [session] = await tx.select({ id: authSessions.id }).from(authSessions).where(and(
+      eq(authSessions.id, identity.sessionId), eq(authSessions.userId, identity.userId), gt(authSessions.expiresAt, sql`now()`),
+    )).for("update");
+    if (!session) throw new HouseholdAccessError("Your session has expired. Sign in again before continuing.");
+    const [declined] = await tx.update(householdInvitations).set({ declinedAt: new Date() })
+      .where(and(
+        eq(householdInvitations.id, invitationId), isNull(householdInvitations.tokenHash),
+        eq(householdInvitations.email, emailSchema.parse(user.email)), pending(),
+        gt(householdInvitations.expiresAt, sql`now()`),
+      )).returning({ id: householdInvitations.id });
+    if (!declined) throw new HouseholdAccessError("This household association is no longer available.");
+  });
+}
+
+export async function emailAssociationRecipient(db: Db, actorUserId: string, invitationId: string, access?: HouseholdAccess) {
+  z.string().min(1).max(128).parse(invitationId);
+  return withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const actor = await requireOwner(tx, actorUserId, access);
+    const [association] = await tx.select({ email: householdInvitations.email }).from(householdInvitations)
+      .where(and(
+        eq(householdInvitations.id, invitationId), eq(householdInvitations.householdId, actor.householdId),
+        isNull(householdInvitations.tokenHash), pending(), gt(householdInvitations.expiresAt, sql`now()`),
+      ));
+    if (!association) throw new HouseholdAccessError("This household association is no longer available.");
+    return association.email;
+  });
 }
 
 export async function acceptInvitation(db: Db, userId: string, token: string) {

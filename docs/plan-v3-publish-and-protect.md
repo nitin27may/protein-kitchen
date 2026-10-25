@@ -32,7 +32,154 @@ Current `household_bootstrap` is a deployment singleton, `household_members` is 
 
 Each stage requires its own bounded implementation plan, verification and saved tests. Do not claim self-service signup safe until tenant enforcement and verified admission are complete. This work takes priority over deployment of the old invite-only product; existing cloud provisioning/content consent gates still apply.
 
+### Next bounded slice: H4 email associations and recipient confirmation
+
+**Status: implemented and accepted locally.** This is the first H4 vertical slice and
+does not open public signup. It replaces copyable invitation grants with a
+household-scoped pending email association that an already-registered,
+email-verified recipient can explicitly accept or decline. Future signup must
+reuse the same pending association in a later H3 slice.
+
+**Dependencies:** H1/H2 household ownership and session-bound household
+selection are implemented locally. The current authenticated email-link flow,
+profile onboarding and account controls are available. Preserve the
+single-use-provider-link behavior and the existing signup gate until recipient
+associations and fresh-account onboarding are both complete.
+
+**Scope:**
+
+1. Evolve `household_invitations` in a new forward-only Postgres migration:
+   allow legacy `token_hash` values to be null for new associations; replace
+   deployment-wide pending-email uniqueness with `(household_id, email)`; keep
+   pending-email uniqueness within each household and pending-profile
+   reservation for legacy rows; add optional display name and relationship
+   label columns. Preserve existing rows, accepted/revoked timestamps and the
+   old schema's ability to migrate without rewriting household data.
+2. Add transactional owner operations to add an email association and revoke
+   it, and recipient operations to list only associations matching the
+   verified session email, then explicitly accept or decline one. Normalize
+   addresses identically at insertion and comparison. Accepting may add a
+   second membership; it must not link a profile, move data, merge households,
+   change existing memberships, or change the active household selection.
+   Decline/replay/revoke/expired and wrong-email requests fail generically.
+   Serialize conflicting accept/revoke operations and keep at least one
+   verified owner.
+3. Replace the owner-facing invitation-code form with add-by-email and
+   pending/revoked/accepted state. Show the recipient only a generic
+   association prompt before acceptance (no household name, sender identity,
+   profile name or member list); acceptance routes through explicit selection
+   before any private household content is loaded. Preserve account actions and
+   profile privacy. Send a notification using the existing mail transport;
+   use the same response regardless of whether the address already has an
+   account, never include a membership token, and surface delivery failures.
+4. Retain legacy grant acceptance only as a compatibility path for already
+   issued invitations during this stage; do not issue new copyable codes from
+   the UI. Do not loosen `authorizeSignup`, expose bootstrap secrets, enable
+   signup, or claim future-account association support yet.
+
+**Permission boundaries:** association creation/revocation requires a verified
+owner in the selected household. Listing/acceptance/decline requires the
+verified account's own current session and normalized email. An association id
+or selected-household id alone grants no access. A recipient with an existing
+membership may accept another household without affecting their current
+selection or household data. No unauthenticated endpoint returns association
+existence or household details.
+
+**Acceptance:** migration replay and populated/empty-target tests; native
+Postgres and PGlite tests for same email in two households, same-household
+duplicate refusal, wrong-email refusal, concurrent accept/revoke, acceptance
+with preserved existing membership and session selection, generic decline,
+and account-removal cleanup. Retain Playwright coverage for owner add/revoke,
+verified recipient prompt without private household details, accept/decline,
+selection of the newly joined household, and reload. Run the full serial native
+coverage, all retained browser cases, typecheck, data validation and
+database-free production build. No live mail credential, remote schema change,
+deployment or production transfer is in scope.
+
+**Local acceptance:** 1,976 tests across 98 files, including 42 native Postgres
+cases, and all 36 retained Playwright journeys pass. Typecheck, data validation,
+production build and unchanged critical coverage gates pass. Overall coverage:
+statements 72.81%, branches 62.73%, functions 62.84%, lines 74.12%.
+Migration `0019` adds tokenless, household-scoped associations and decline/label
+fields without changing human-owned rows. Native accept/accept and accept/revoke
+races admit exactly one winner while preserving existing session selection.
+The browser covers add/revoke, notification delivery, undisclosed recipient
+confirmation, first-household acceptance and decline from incomplete-profile
+onboarding in an existing household. Signup and household-creation UI stay gated.
+
+**Deployment request follow-up:** the user subsequently requested deployment to
+Vercel and Neon after the changes work, then continuation to the next stage.
+The account inventory is read-only so far: the existing Meal Planner Neon project
+has distinct production and development-rehearsal branches; no Protein Kitchen
+Vercel project is linked or present in the authenticated team's project list.
+Local configuration still lacks the server-side branch-verification API key,
+mail credentials/from address and private cloud-photo credentials. GitHub has
+no configured deployment environments or secret names. Do not reinterpret the
+request as permission to bypass preflight, use the production branch as a
+development fixture, replace self-managed auth, or publish incomplete signup.
+Complete acceptance first, then D2-D5 prerequisites and protected hosted
+verification; production cutover remains subject to D7's exact-target and
+recovery requirements.
+
+**D2 setup update:** the user explicitly authorized a new Vercel project and
+GitHub Neon configuration. Created/linked `protein-kitchen` with Next.js,
+Node 22, pnpm and authenticated previews. Reused existing Neon branches;
+transferred pooled/direct URL secrets plus separate project-scoped API keys
+to GitHub `preview` and `production`, with branch/project/host and Vercel IDs
+as environment variables. No SQL migration, source upload or deployment ran.
+Preview is restricted to the current trusted work branch. Required reviewers
+are unsupported by this private repository's plan; production is therefore
+fail-closed with no permitted deployment branches, not silently downgraded.
+The existing rehearsal branch expires on 2026-10-31. Runtime Vercel settings,
+mail/private storage, protected migration workflow and hosted acceptance remain
+pending. Local `.env.local` was not populated with the new GitHub API keys.
+
 ### Delivery extension: GitHub Actions, Vercel, Neon, notifications and release
+
+**Next bounded D3/D5 slice: protected preview runner.** Add a manual-only
+workflow on the trusted work branch, requiring successful credential-free CI
+for the identical push SHA before any deployment credential is used. Pull the
+existing Vercel preview settings, compare its database/branch pins with the
+GitHub preview environment, then run the unchanged live preview preflight.
+Refuse pending or divergent migration hashes using a read-only ledger check;
+do not bypass the development-only migration command or apply SQL in this
+slice. Build and upload only prebuilt output after every gate passes. Pin
+actions and CLI versions, serialize deployments, never upload pulled settings
+as artifacts, and delete temporary environment/build output on exit. Production,
+mail/push enablement, source-data transfer and automatic deployment from PRs
+remain excluded. Retain workflow-contract tests for triggers, exact-SHA CI
+checks, secret boundaries and gate ordering. Missing Vercel runtime variables
+must block the runner explicitly, not produce a successful placeholder deploy.
+
+**Runner slice accepted locally:** `.github/workflows/preview.yml` implements
+the bounded contract above without SQL writes or production deployment.
+The 58 targeted workflow/CI/preflight tests pass; retained cases parse both
+actual inline programs, execute missing-setting refusals and run the actual
+runtime verifier against an isolated invalid fixture, proving refusal before
+database access without printing secret values. Typecheck, YAML/shell syntax
+and patch checks pass. Changes remain uncommitted/unpushed; this is not a
+registered or executed hosted workflow. Register manual dispatch through a
+reviewed default-branch change and obtain exact-SHA push CI. Vercel runtime
+settings, the separately protected preview migration contract, private storage
+and hosted acceptance remain pending; no environment-label bypass is allowed.
+
+**D4/D5 continuation scope before implementation:** configure only the existing
+schema-only development rehearsal branch and Vercel preview target. Create a
+private empty photo bucket and branch-scoped read-only runtime storage
+credential; generate a preview-only auth secret and project-scoped metadata
+key, transferring values via stdin without exposing them. Keep mail, push,
+sync and vault disabled and production untouched. Use a fixed preview alias.
+Add a separate operator preview migration command rather than relaxing the
+development/test command: require explicit preview mode, exact branch
+acknowledgement and live pooled/direct branch verification; serialize with an
+advisory lock; require the existing ledger to be an exact prefix of reviewed
+migrations and reject any target containing human-owned state before writes.
+Use transactional Drizzle migrations, verify final ledger parity, and never
+seed/import household state. Retain target/refusal/ledger tests, run accepted
+CI for the published work-branch SHA, then deploy that SHA to protected preview
+and verify actual protected/public-library responses through authenticated
+Vercel access. No production cutover, signup/mail acceptance claim, source
+import, reset, release or unrelated product slice is included.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 

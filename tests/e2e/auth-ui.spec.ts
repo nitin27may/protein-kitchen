@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { openPostgres } from "../../lib/db/postgres/client";
 import * as s from "../../lib/db/schema";
+import { issueInvitation } from "../../lib/auth/household";
 import { e2eTarget } from "./target";
 
 const password = "Synthetic-ui-password-for-tests-123!";
@@ -43,6 +44,14 @@ async function join(page: Page, grant: string, firstOwner = false) {
   if (firstOwner) await page.getByRole("radio", { name: "First owner", exact: true }).click();
   await page.getByLabel(firstOwner ? "Household bootstrap key" : "Invitation code", { exact: true }).fill(grant);
   await page.getByRole("button", { name: "Join household", exact: true }).click();
+}
+async function legacyInvitation(email: string, personId?: number) {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  try {
+    const [account] = await handle.db.select({ id: s.authUsers.id }).from(s.authUsers).where(eq(s.authUsers.email, owner));
+    if (!account) throw new Error("Expected the synthetic owner account.");
+    return (await issueInvitation(handle.db, account.id, { email, personId })).token;
+  } finally { await handle.close(); }
 }
 async function signIn(page: Page, email: string, secret: string) {
   await page.goto("/sign-in?next=%2Faccount");
@@ -103,21 +112,20 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
   await ownerControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("at least one verified owner");
   await ownerControls.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.getByLabel("Cook's email").fill(cook);
-  await page.getByLabel("Reserve an existing profile (optional)").selectOption("300");
-  await page.getByRole("button", { name: "Create invitation code" }).click();
-  const grant = await page.getByTestId("invitation-code").innerText();
+  const grant = await legacyInvitation(cook, 300);
+  await page.reload();
   expect(grant).toMatch(/^[\w-]{43}$/);
   const other = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": "127.0.0.22" } });
   try {
     const second = await other.newPage();
     await signup(second, cook, grant);
-    await page.getByRole("button", { name: "Revoke invitation", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Revoke invitation", exact: true })).toHaveCount(0);
+    const cookInvitation = page.getByText(cook, { exact: false }).locator("xpath=..");
+    await cookInvitation.getByRole("button", { name: "Revoke", exact: true }).click();
+    await expect(cookInvitation).toHaveCount(0);
     await join(second, grant);
     await expect(second.getByRole("main").getByRole("alert")).toContainText("invalid or no longer available");
-    await page.getByRole("button", { name: "Create invitation code" }).click();
-    const replacementGrant = await page.getByTestId("invitation-code").innerText();
+    const replacementGrant = await legacyInvitation(cook, 300);
+    await page.reload();
     expect(replacementGrant).not.toBe(grant);
     await join(second, replacementGrant);
     await expect(second).toHaveURL("http://127.0.0.1:3112/");
@@ -295,10 +303,7 @@ test("confirmed member and original-owner deletion preserve shared meals and den
   await expect(page.getByLabel("Current password", { exact: true })).toHaveValue("");
   await page.getByRole("button", { name: "Cancel account deletion", exact: true }).click();
   await expect(page.getByLabel("Current password", { exact: true })).toHaveCount(0);
-  await page.getByLabel("Cook's email").fill(cook);
-  await page.getByLabel("Reserve an existing profile (optional)").selectOption("300");
-  await page.getByRole("button", { name: "Create invitation code", exact: true }).click();
-  const grant = await page.getByTestId("invitation-code").innerText();
+  const grant = await legacyInvitation(cook, 300);
   const other = await browser.newContext({ storageState: { cookies: [], origins: [] }, extraHTTPHeaders: { "x-forwarded-for": "127.0.0.32" } });
   try {
     const second = await other.newPage();
@@ -335,10 +340,7 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     await page.reload();
     await expect(page.getByRole("group", { name: "Cook Synthetic UI cook", exact: true })).toHaveCount(0);
     const successor = "ui-successor@example.test";
-    await page.getByLabel("Cook's email").fill(successor);
-    await page.getByLabel("Reserve an existing profile (optional)").selectOption("300");
-    await page.getByRole("button", { name: "Create invitation code", exact: true }).click();
-    const nextGrant = await page.getByTestId("invitation-code").innerText();
+    const nextGrant = await legacyInvitation(successor, 300);
     await other.clearCookies();
     await signup(second, successor, nextGrant);
     await join(second, nextGrant);

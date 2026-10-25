@@ -2,6 +2,150 @@
 
 Written 2026-10-23 so the work can continue on another machine, or in a fresh session, without losing intent. Read this, then `CLAUDE.md`, then `docs/roadmap.md`. Nothing here contains a secret, and nothing here contains health data.
 
+## Deployment continuation: preview runtime and isolated schema ready
+
+Vercel preview now has 21 encrypted runtime settings, including generated
+preview-only auth material, live Neon branch verification, fixed preview
+origin, and private read-only storage. Values were transferred through
+authenticated API stdin; none are in the repository. Vercel CLI `env add`
+silently exited at its branch prompt despite `--yes`, so persistence was
+verified through the API and a fresh pull rather than trusting exit status.
+Production configuration and its blocked GitHub environment are unchanged.
+
+The old rehearsal `neondb` contains non-library rows and was **not modified**.
+Created a separate empty `protein_kitchen_preview` database on the verified
+schema-only development branch. The new explicit `pnpm db:migrate:preview`
+operator command applied and verified all **20 migrations** there, without
+seeding/importing household state or relabeling the environment. It requires
+`PREVIEW_MIGRATION_BRANCH` to match the explicit development branch, unchanged
+live preview preflight, a direct verified endpoint, a session advisory lock,
+exact ledger prefix, and empty non-library tables. It verifies final parity and
+destroys the lock session on failure/success. The old dev/test command still
+rejects preview and production. Target and actual-runner refusal/cleanup tests
+are retained.
+
+Created private bucket `protein-kitchen-preview-photos` only on the development
+branch, with a branch-scoped `storage:read` runtime credential. No photo was
+uploaded. Both GitHub preview URLs now select the new dedicated database.
+The latest live preflight passes configuration and both branch checks.
+Next: publish the work branch, obtain successful exact-SHA CI, deploy only
+protected preview and verify actual hosted responses. No production release,
+household import, mail/push enablement or hosted signup claim is authorized.
+The development branch still expires on 2026-10-31.
+
+## Latest delivery slice: protected preview runner
+
+Implemented `.github/workflows/preview.yml` locally. It is manual-only and
+serialized, requires successful push CI and its aggregate `acceptance` job for
+the exact branch/SHA before accessing preview credentials, and checks out that
+same SHA. Pinned tools pull Vercel preview settings, compare database/branch
+pins against GitHub, run the unchanged live preflight, and read the migration
+ledger to refuse pending or divergent schema before building/uploading.
+It never migrates, seeds, enables mail/push, or deploys production. Pulled
+credentials and generated deployment output are removed even after failure.
+
+**Validation:** 58 targeted tests across workflow, CI and preview-preflight
+contracts pass, as do typecheck, YAML/shell syntax checks and patch whitespace.
+Retained tests execute both actual inline Node programs, missing-setting
+refusals, and the actual runtime verifier with an isolated invalid fixture;
+the latter refuses before opening a database and does not print secret values.
+This supplements, not replaces, the full H4 acceptance below.
+
+The workflow and H4 changes remain uncommitted/unpushed. Register the manual
+workflow through a reviewed default-branch change before expecting dispatch,
+and obtain successful exact-SHA CI for the selected preview branch. Vercel
+runtime configuration is still absent; GitHub secrets alone do not populate it.
+The separately tested protected preview migration contract, isolated private
+storage, stable HTTPS auth origin/secret and hosted acceptance remain pending.
+No application deployment or remote SQL migration has occurred. Do not switch
+the database environment label to evade the existing dev/test migration guard,
+or unblock production to work around unavailable required reviewers.
+
+## Latest hosted setup: project and GitHub configuration
+
+The user authorized a new Vercel project and transfer of Neon configuration
+into GitHub. Created and linked `nitin27mays-projects/protein-kitchen`;
+framework Next.js, Node 22, `pnpm build`, frozen-lockfile install and Vercel
+Authentication for preview/deployment URLs are verified. `.vercel/` is ignored.
+Vercel link refreshed the ignored local OIDC token; `.env.local` remains
+owner-readable only. No application was deployed or database migrated.
+
+Reused the existing Meal Planner Neon project, with separate development and
+production branches. Both GitHub `preview` and `production` environments now
+contain `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and `NEON_API_KEY` secrets.
+API keys are separate and scoped to this Neon project, not the whole account.
+Project/branch IDs, `DATABASE_ENV`, Vercel project/team IDs and preview host
+pins are environment variables, not secrets. Connection pairs and stored
+names/scopes were verified without exposing credentials; CLI OAuth credentials
+were not copied to GitHub.
+
+`preview` permits only `nitin27may-handover-status-review`. GitHub rejected
+required reviewers because the current private-repository billing plan does
+not support them. `production` therefore has a custom branch policy with
+**zero permitted branches**; secrets are staged but deployments are blocked.
+Do not remove this restriction to work around the missing approval mechanism.
+Existing CI has no deployment job and does not consume these environment
+secrets. The development rehearsal branch expires on 2026-10-31; replace or
+explicitly renew the target before relying on it for a lasting preview.
+
+Remaining deployment work is protected migration and runner publication, Vercel
+runtime configuration (GitHub secrets do not configure it), auth origin/mail,
+private cloud-photo configuration, hosted acceptance and production approval.
+The earlier missing-project/GitHub-secret blockers below are superseded by
+this setup; local mail/storage/API-key configuration is still unchanged.
+
+## Latest local acceptance: H4 email associations
+
+The email-association slice is implemented in the existing worktree and remains
+uncommitted. Owners add a normalized email with optional display/relationship
+labels, receive explicit notification delivery/retry feedback, and can revoke
+pending associations. Verified recipients explicitly accept or decline without
+receiving household details beforehand. Incomplete-profile onboarding also
+shows pending associations. Acceptance preserves existing memberships, profiles
+and session selection; a first membership selects its new household. Legacy
+invitation acceptance stays available, but the owner UI no longer issues codes.
+Public signup remains gated; fresh-account signup and create-household UI are
+still unfinished.
+
+Migration `0019` preserves legacy invitation rows, permits tokenless
+associations, adds decline/label fields and scopes pending-email uniqueness to
+the household. There are now **20 migrations / 48 tables**. No remote migration,
+database transfer, push or deployment occurred.
+
+**Final serial acceptance:** **1,976 tests / 98 files**, including **42 native
+Postgres cases**, all **36 retained Playwright journeys**, typecheck, library
+validation and production build pass. Every existing critical coverage gate
+passes; the four changed critical association/account/action modules have 100%
+statement/branch/function/line coverage in the targeted run. Overall coverage:
+statements 72.81%, branches 62.73%, functions 62.84%, lines 74.12%.
+Browser failures were caused by stale owner pages after direct legacy fixture
+creation and an unscoped Revoke locator; retained tests now reload and target
+the intended email row. Native cases prove concurrent accept/accept and
+accept/revoke serialize with one winner and unchanged prior selection.
+
+**Deployment follow-up requested, but blocked:** both CLIs authenticate. The
+Vercel project and GitHub environments/secrets now exist as recorded above;
+the earlier missing-project and missing-GitHub-secret findings are resolved.
+The ignored local configuration lacks `NEON_API_KEY`, `RESEND_API_KEY`,
+`AUTH_EMAIL_FROM`, and private cloud-photo credentials/configuration. Existing
+Neon CLI OAuth is not a configured application branch-verification API key.
+Do not manufacture credentials, use a different project's Vercel deployment,
+relax preflight, or treat a local build as hosted acceptance.
+
+Resume with D2-D5's exact protected target, environment/credential contracts and
+hosted migration safeguards before deploying. The subsequent product slice is
+H3 ordinary code-free signup and create-household/profile UI, reusing these
+verified associations; do not enable signup ahead of its own acceptance.
+
+Acceptance logs for this continuation are preserved under
+`/Users/nks/.copilot/session-state/ec719ee4-dbb6-432a-a90c-9fae990917c8/files/`:
+`protein-kitchen-coverage.log`, `protein-kitchen-playwright.log`,
+`protein-kitchen-validate.log`, `protein-kitchen-build.log`, and the targeted
+`protein-kitchen-association-coverage.log`. The owned disposable Postgres
+fixture was stopped after acceptance. Use the explicit recovery-tool
+paths in the older command block below; a native run without `AGE_KEYGEN_TEST_BIN`
+fails with `spawn age-keygen ENOENT` on this machine.
+
 ## Resume here: 2026-10-24 session handoff
 
 The user requested this handoff before starting another session. **Continue in

@@ -71,10 +71,10 @@ describe("household ownership expansion migration", () => {
       }).returning({ id: schema.people.id });
       await db.insert(schema.authUsers).values({ id: "fixture", name: "Fixture", email: "fixture@example.test", emailVerified: true });
       await db.insert(schema.householdMembers).values({ householdId: "b", userId: "fixture", personId: person!.id, role: "owner" });
-      await db.insert(schema.householdInvitations).values({
-        householdId: "b", id: "fixture", email: "future@example.test", tokenHash: "fixture", invitedByUserId: "fixture", personId: person!.id,
-        createdAt: new Date("2026-11-01T12:00:00.000Z"), expiresAt: new Date("2026-11-08T12:00:00.000Z"),
-      });
+      await db.execute(sql`insert into household_invitations
+        (household_id, id, email, token_hash, invited_by_user_id, person_id, created_at, expires_at)
+        values ('b', 'fixture', 'future@example.test', 'fixture', 'fixture', ${person!.id},
+          '2026-11-01T12:00:00.000Z', '2026-11-08T12:00:00.000Z')`);
       const [setup] = await db.insert(schema.planSetups).values({
         householdId: "a", personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["dinner"],
         cuisineBalance: 0.5, createdAt: "2026-11-01T12:00:00.000Z",

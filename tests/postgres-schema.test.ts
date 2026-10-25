@@ -303,7 +303,7 @@ describe("Postgres migration on PGlite", () => {
     );
     expect(result.rows.map((r) => r.table_name).sort()).toEqual(Object.values(pg).map(getTableName).sort());
     const journal = await client.query("select * from drizzle.__drizzle_migrations");
-    expect(journal.rows).toHaveLength(19);
+    expect(journal.rows).toHaveLength(20);
   });
 
   it("upgrades existing sync timestamps without treating a local export as remote acknowledgement", async () => {

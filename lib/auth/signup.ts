@@ -19,6 +19,7 @@ export async function authorizeSignup(db: Db, email: string, headers: Headers | 
     const [invitation] = await db.select({ id: householdInvitations.id }).from(householdInvitations).where(and(
       eq(householdInvitations.tokenHash, tokenHash(token)),
       eq(householdInvitations.email, normalized), isNull(householdInvitations.acceptedAt),
+      isNull(householdInvitations.declinedAt),
       isNull(householdInvitations.revokedAt), gt(householdInvitations.expiresAt, new Date()),
     )).limit(1);
     if (invitation) return normalized;

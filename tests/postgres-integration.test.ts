@@ -23,7 +23,10 @@ import { persistNewPlan, persistRegeneratedPlan } from "../lib/server/plan-persi
 import { createSqliteSource } from "./helpers/sqlite-source";
 import { readSqliteSnapshot } from "../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../lib/human/sqlite-restore";
-import { acceptInvitation, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember } from "../lib/auth/household";
+import {
+  acceptEmailAssociation, acceptInvitation, addEmailAssociation, changeMemberRole, claimHousehold,
+  createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember, revokeInvitation,
+} from "../lib/auth/household";
 import { createAuth, type AuthLinkMail } from "../lib/auth/create";
 import { createHash, randomUUID } from "node:crypto";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -746,6 +749,39 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       const pendingLinks = await handle.db.select({ id: s.authVerifications.id }).from(s.authVerifications);
       expect(pendingLinks.map((row) => row.id).sort()).toEqual(users.map((row) => row.id).sort());
     }
+  });
+
+  it.each(["accept", "revoke"])("serializes email association acceptance against concurrent %s on native Postgres", async (operation) => {
+    await handle.db.insert(s.authUsers).values(["owner", "recipient"].map((id) => ({
+      id, name: "Synthetic association cook", email: `${id}@example.test`, emailVerified: true,
+    })));
+    await handle.db.insert(s.households).values([
+      { id: "target", name: "Target household" }, { id: "existing", name: "Existing household" },
+    ]);
+    await handle.db.insert(s.householdMembers).values([
+      { householdId: "target", userId: "owner", role: "owner" },
+      { householdId: "existing", userId: "recipient", role: "owner" },
+    ]);
+    const identity = { userId: "recipient", sessionId: "recipient-session" };
+    await handle.db.insert(s.authSessions).values({
+      id: identity.sessionId, userId: identity.userId, token: "synthetic-association-session",
+      activeHouseholdId: "existing", expiresAt: new Date(Date.now() + 60_000), updatedAt: new Date(),
+    });
+    const association = await addEmailAssociation(handle.db, "owner", { email: "recipient@example.test" });
+    const results = await Promise.allSettled([
+      acceptEmailAssociation(handle.db, identity, association.id),
+      operation === "accept"
+        ? acceptEmailAssociation(handle.db, identity, association.id)
+        : revokeInvitation(handle.db, "owner", association.id),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const [row] = await handle.db.select().from(s.householdInvitations).where(eq(s.householdInvitations.id, association.id));
+    expect(Boolean(row!.acceptedAt)).not.toBe(Boolean(row!.revokedAt));
+    const members = await handle.db.select().from(s.householdMembers).where(eq(s.householdMembers.userId, "recipient"));
+    expect(members.filter((member) => member.householdId === "target")).toHaveLength(row!.acceptedAt ? 1 : 0);
+    expect(members.find((member) => member.householdId === "existing")).toMatchObject({ role: "owner" });
+    expect(await handle.db.select().from(s.authSessions).where(eq(s.authSessions.id, identity.sessionId)))
+      .toMatchObject([{ activeHouseholdId: "existing", householdSelectionVersion: 0 }]);
   });
 
   it("atomically consumes one invitation and reserves each meal profile for one account", async () => {

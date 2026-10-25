@@ -417,7 +417,9 @@ it("rolls back failed profile writes and personal-feedback cleanup, then deletes
 it("projects only the selected household's account administration without credentials or invitation tokens", async () => {
   await h.db.insert(s.householdInvitations).values([
     { id: "local", householdId: "a", email: "local@example.test" },
+    { id: "local-association", householdId: "a", email: "association@example.test", tokenHash: null },
     { id: "foreign", householdId: "b", email: "foreign@example.test" },
+    { id: "incoming", householdId: "b", email: "a@example.test", tokenHash: null, invitedByUserId: "b" },
     { id: "expired", householdId: "a", email: "expired@example.test", createdAt: new Date(Date.now() - 20000), expiresAt: new Date(Date.now() - 10000) },
     { id: "revoked", householdId: "a", email: "revoked@example.test", revokedAt: new Date() },
     { id: "accepted", householdId: "a", email: "accepted@example.test", acceptedAt: new Date() },
@@ -427,13 +429,17 @@ it("projects only the selected household's account administration without creden
   const result = await householdAccount(h.db, a);
   expect(result).toMatchObject({
     owner: true, profile: { id: a.personId }, profiles: [{ id: a.personId }],
-    invitations: [{ id: "local", email: "local@example.test" }],
+    incomingAssociations: [{ id: "incoming" }],
   });
+  expect(result.invitations.map(({ id, canResend }) => ({ id, canResend })).sort((x, y) => x.id.localeCompare(y.id)))
+    .toEqual([{ id: "local", canResend: false }, { id: "local-association", canResend: true }]);
   expect(result.members.map((member) => member.userId).sort()).toEqual(["a", "pending", "unverified"]);
   expect(result.members.find((member) => member.userId === "pending")?.profileName).toBeNull();
   expect(JSON.stringify(result)).not.toContain("secret-");
   expect(JSON.stringify(result)).not.toContain("foreign@example.test");
-  expect((await householdAccount(h.db, b)).invitations).toEqual([{ id: "foreign", email: "foreign@example.test" }]);
+  expect((await householdAccount(h.db, b)).invitations.map(({ id, canResend }) => ({ id, canResend }))
+    .sort((x, y) => x.id.localeCompare(y.id)))
+    .toEqual([{ id: "foreign", canResend: false }, { id: "incoming", canResend: true }]);
 });
 
 it("withholds household member/email/invitation administration from members and refuses stale or incomplete scopes", async () => {
@@ -441,7 +447,8 @@ it("withholds household member/email/invitation administration from members and 
   await expect(householdAccount(h.db, a)).rejects.toThrow("access changed");
   const member = await resolveHouseholdAccess(h.db, "a", "a");
   expect(await householdAccount(h.db, member)).toEqual({
-    owner: false, profile: { id: a.personId, name: "Synthetic profile" }, profiles: [], invitations: [], members: [],
+    owner: false, profile: { id: a.personId, name: "Synthetic profile" }, profiles: [],
+    invitations: [], incomingAssociations: [], members: [],
   });
   const pending = await resolveHouseholdAccess(h.db, "pending", "a");
   await expect(householdAccount(h.db, pending)).rejects.toThrow("Finish your household profile");

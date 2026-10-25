@@ -2,38 +2,42 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { cancelInvitation, changeCookRole, inviteCook, removeCook } from "@/app/onboarding/actions";
+import { addHouseholdEmailAssociation, cancelInvitation, changeCookRole, removeCook, resendHouseholdAssociationNotice } from "@/app/onboarding/actions";
 import { authRequest } from "@/lib/auth/browser";
 import { Banner, Button, Field, Input, Select } from "@/components/ui";
+import { EmailAssociationPrompt } from "./EmailAssociationPrompt";
 
-export function AccountControls({ owner, profiles, invitations, members, currentUserId }: {
-  owner: boolean; profiles: { id: number; name: string }[];
-  invitations: { id: string; email: string }[];
+export function AccountControls({ owner, invitations, incomingAssociations, members, currentUserId }: {
+  owner: boolean;
+  invitations: { id: string; email: string; displayName: string | null; relationship: string | null; canResend: boolean }[];
+  incomingAssociations: { id: string }[];
   members: { userId: string; role: "owner" | "member"; name: string; email: string; profileName: string | null }[];
   currentUserId: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [person, setPerson] = useState("");
-  const [token, setToken] = useState("");
-  const [tokenEmail, setTokenEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [relationship, setRelationship] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmation, setConfirmation] = useState<{ userId: string; role?: "owner" | "member" } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   async function run(task: () => Promise<void>) {
-    setPending(true); setError("");
+    setPending(true); setError(""); setNotice("");
     try { await task(); }
     catch (error) { setError(error instanceof Error ? error.message : "The request failed. Try again."); }
     finally { setPending(false); }
   }
   return <div className="space-y-5">
     {error ? <Banner tone="bad">{error}</Banner> : null}
+    {notice ? <Banner>{notice}</Banner> : null}
+    <EmailAssociationPrompt associations={incomingAssociations} />
     <Button variant="secondary" disabled={pending} onClick={() => void run(async () => {
       await authRequest("/sign-out", {});
-      setToken(""); window.location.replace("/sign-in");
+      window.location.replace("/sign-in");
     })}>Sign out</Button>
     <section className="space-y-3">
       <h2 className="text-xl font-semibold">Download your account</h2>
@@ -63,7 +67,7 @@ export function AccountControls({ owner, profiles, invitations, members, current
         void run(async () => {
           try {
             await authRequest("/delete-household-account", { password: deletePassword, confirmation: deleteConfirmation });
-            setToken(""); window.location.replace("/sign-in");
+            window.location.replace("/sign-in");
           } finally { setDeletePassword(""); }
         });
       }}>
@@ -96,7 +100,7 @@ export function AccountControls({ owner, profiles, invitations, members, current
             <Button variant={confirmation.role ? "primary" : "danger"} loading={pending} onClick={() => void run(async () => {
               const result = confirmation.role ? await changeCookRole(member.userId, confirmation.role) : await removeCook(member.userId);
               if (!result.ok) { setError(result.error); return; }
-              setConfirmation(null); setToken(""); router.refresh();
+              setConfirmation(null); router.refresh();
             })}>{confirmation.role ? "Confirm role change" : "Confirm removal"}</Button>
             <Button variant="secondary" onClick={() => setConfirmation(null)}>Cancel</Button>
           </div>
@@ -109,41 +113,54 @@ export function AccountControls({ owner, profiles, invitations, members, current
       </fieldset>)}
     </section> : null}
     {owner ? <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Invite another cook</h2>
-      <p>They get their own login and targets, and use this household's existing plans, shopping list and prep.</p>
-      <p className="text-sm text-muted">No invitation email is sent yet. Share the one-time code privately with the named recipient. It expires in seven days.</p>
+      <h2 className="text-xl font-semibold">Add a household member by email</h2>
+      <p>They can review the association after signing in and verifying this email address. Their profile and household access remain separate until they accept.</p>
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void run(async () => {
-        const result = await inviteCook(email, person ? Number(person) : undefined);
+        const result = await addHouseholdEmailAssociation({
+          email, displayName: displayName || undefined, relationship: relationship || undefined,
+        });
         if (!result.ok) { setError(result.error); return; }
-        setToken(result.token); setTokenEmail(result.email); router.refresh();
+        setEmail(""); setDisplayName(""); setRelationship("");
+        setNotice(result.emailSent ? "Association created and notification email sent." : "Association created, but the notification email could not be sent. Resend it below.");
+        router.refresh();
       }); }}>
         <fieldset disabled={pending} className="space-y-4">
-          <Field label="Cook's email" htmlFor="invite-email">
-            <Input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Field label="Member's email" htmlFor="association-email">
+            <Input id="association-email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <Field label="Reserve an existing profile (optional)" htmlFor="invite-profile">
-            <Select id="invite-profile" value={person} onChange={(e) => setPerson(e.target.value)}>
-              <option value="">They will create their own profile</option>
-              {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <Field label="Display name (optional)" htmlFor="association-name">
+            <Input id="association-name" maxLength={60} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </Field>
+          <Field label="Relationship (optional)" htmlFor="association-relationship" hint="For display only; it does not change permissions.">
+            <Select id="association-relationship" value={relationship} onChange={(e) => setRelationship(e.target.value)}>
+              <option value="">No label</option>
+              <option value="partner">Partner</option>
+              <option value="spouse">Spouse</option>
+              <option value="roommate">Roommate</option>
+              <option value="family">Family member</option>
+              <option value="friend">Friend</option>
+              <option value="other">Other</option>
             </Select>
           </Field>
-          <Button type="submit" loading={pending}>Create invitation code</Button>
+          <Button type="submit" loading={pending}>Add email association</Button>
         </fieldset>
       </form>
-      {token ? <Banner title={`Invitation for ${tokenEmail}`}>
-        <p>Copy this code now. It cannot be read back from the database.</p>
-        <code data-testid="invitation-code" className="mt-2 block break-all select-all">{token}</code>
-        <Button variant="secondary" onClick={() => setToken("")}>Hide code</Button>
-      </Banner> : null}
       {invitations.length ? <div className="space-y-2">
-        <h3 className="font-semibold">Pending invitations</h3>
+        <h3 className="font-semibold">Pending household associations</h3>
         {invitations.map((i) => <div key={i.id} className="flex flex-wrap items-center justify-between gap-2">
-          <span className="break-all">{i.email}</span>
+          <span className="min-w-0 break-all">{i.email}{i.displayName ? ` · ${i.displayName}` : ""}{i.relationship ? ` · ${i.relationship}` : ""}</span>
+          <div className="flex flex-wrap gap-2">
+          {i.canResend ? <Button variant="secondary" disabled={pending} onClick={() => void run(async () => {
+            const result = await resendHouseholdAssociationNotice(i.id);
+            if (!result.ok) { setError(result.error); return; }
+            setNotice("Notification email sent.");
+          })}>Resend notification</Button> : null}
           <Button variant="secondary" disabled={pending} onClick={() => void run(async () => {
             const result = await cancelInvitation(i.id);
             if (!result.ok) { setError(result.error); return; }
-            setToken(""); router.refresh();
-          })}>Revoke invitation</Button>
+            router.refresh();
+          })}>Revoke</Button>
+          </div>
         </div>)}
       </div> : null}
     </section> : null}

@@ -25,7 +25,13 @@ export interface AuthLinkMail {
   type: "sign-in-link";
 }
 
-export type AuthMail = AuthCodeMail | AuthLinkMail;
+export interface AuthAssociationMail {
+  email: string;
+  url: string;
+  type: "household-association";
+}
+
+export type AuthMail = AuthCodeMail | AuthLinkMail | AuthAssociationMail;
 
 export interface AuthOptions {
   secret: string;

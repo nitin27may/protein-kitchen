@@ -20,7 +20,7 @@ afterEach(() => { vi.unstubAllEnvs(); });
 
 describe("lazy server auth initialization", () => {
   it("does not open a database on import and caches the configured provider after first use", async () => {
-    const { getAuth } = await import("../lib/auth/server");
+    const { getAuth, sendHouseholdAssociationNotice } = await import("../lib/auth/server");
     expect(getDb).not.toHaveBeenCalled();
     const db: Db = Object.create(null);
     vi.mocked(getDb).mockResolvedValue(db);
@@ -30,8 +30,14 @@ describe("lazy server auth initialization", () => {
     vi.mocked(createAuth).mockReturnValue(provider);
     expect(await getAuth()).toBe(provider);
     expect(await getAuth()).toBe(provider);
+    await sendHouseholdAssociationNotice("synthetic-recipient@example.test");
     expect(getDb).toHaveBeenCalledOnce();
     expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode, sendLink: sendCode, baseURL: "https://kitchen.example.test" }));
+    expect(sendCode).toHaveBeenCalledWith({
+      email: "synthetic-recipient@example.test",
+      url: "https://kitchen.example.test/sign-in",
+      type: "household-association",
+    });
   });
   it("does not open a pool on missing configuration and retries a failed startup", async () => {
     const { getAuth } = await import("../lib/auth/server");

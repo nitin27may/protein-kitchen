@@ -20,10 +20,13 @@ export function resendAuthSender(env: Readonly<Record<string, string | undefined
       redirect: "error", signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
         from: sender.data, to: [mail.email],
-        subject: mail.type === "sign-in-link" ? "Your Protein Kitchen sign-in link" : subjects[mail.type],
+        subject: mail.type === "sign-in-link" ? "Your Protein Kitchen sign-in link" :
+          mail.type === "household-association" ? "A Protein Kitchen household is ready for you" : subjects[mail.type],
         text: mail.type === "sign-in-link"
           ? `Sign in to Protein Kitchen:\n${mail.url}\n\nThis link can be used once and expires in five minutes. If you did not request it, ignore this email.`
-          : `Your Protein Kitchen code is ${mail.otp}.\n\nIt expires in five minutes. If you did not request this code, ignore this email.`,
+          : mail.type === "household-association"
+            ? `Someone added this email address to a Protein Kitchen household. Sign in and verify this email address if prompted to review and accept or decline the association:\n${mail.url}\n\nIf you do not have an account yet, the association will remain pending until account creation is available. The household's details are shown only after you explicitly accept. If you did not expect this, you can ignore this email.`
+            : `Your Protein Kitchen code is ${mail.otp}.\n\nIt expires in five minutes. If you did not request this code, ignore this email.`,
       }),
     });
     if (!response.ok) throw new Error("Email provider rejected authentication delivery.");

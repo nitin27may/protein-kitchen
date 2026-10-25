@@ -13,7 +13,7 @@ export default async function Account() {
   const user = await verifiedSessionUser();
   const db = await getDb();
   const access = await memberHouseholdAccess(db, member);
-  const { profile, owner, profiles, invitations, members } = await householdAccount(db, access);
+  const { profile, owner, invitations, incomingAssociations, members } = await householdAccount(db, access);
   if (!profile) redirect("/onboarding?next=%2Faccount");
   return <section className="mx-auto max-w-xl space-y-6 px-4 pb-28 pt-8">
     <h1 className="text-2xl font-bold">Your account</h1>
@@ -25,6 +25,7 @@ export default async function Account() {
       <LinkButton href="/groceries" variant="secondary">Shared shopping list</LinkButton>
       <LinkButton href="/households" variant="secondary">Switch household</LinkButton>
     </div>
-    <AccountControls owner={owner} profiles={profiles} invitations={invitations} members={members} currentUserId={member.userId} />
+    <AccountControls owner={owner} invitations={invitations} incomingAssociations={incomingAssociations}
+      members={members} currentUserId={member.userId} />
   </section>;
 }
