@@ -60,7 +60,13 @@ describe("application authorization inventory", () => {
     }
     expect(readFileSync("components/PublicLibrary.tsx", "utf8")).not.toMatch(/getDb|photoIndex|feedbackMap|setRecipeFeedback|getRecipeLinks|listPeople|listPlans/);
   });
-  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts")) {
+  it("the anonymous library route is public, GET-only, and cannot reach the database or a session", () => {
+    const text = readFileSync("app/api/anon-library/route.ts", "utf8");
+    const exports = source("app/api/anon-library/route.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(exports.map((node) => node.name?.getText())).toEqual(["GET"]);
+    expect(text).not.toMatch(/getDb|requireMember|routeAccess|headers\(|cookies\(|request/i);
+  });
+  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts" && file !== "app/api/anon-library/route.ts")) {
     const statements = source(file).statements;
     it(`${file} uses explicit, reviewable HTTP handler declarations`, () => {
       const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
