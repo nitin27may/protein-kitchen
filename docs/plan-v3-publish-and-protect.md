@@ -226,6 +226,10 @@ journeys; the subsequent auth failure depended on the interrupted prior
 password-reset journey. The native coverage job was making steady progress
 without failed cases when its 15-minute job deadline cancelled it: raise that
 bounded runner deadline to 45 minutes rather than omitting database tests.
+Full local rerun also exposed a reminder fixture comparing the current day
+against hard-coded October 25, which collided when the clock reached that
+date. Make both days of that calendar-independence case explicit; preserve
+live-clock dispatcher cases and all admission assertions.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 

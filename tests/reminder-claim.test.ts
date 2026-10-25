@@ -54,8 +54,8 @@ describe("atomic daily reminder admission", () => {
     expect(await h.db.select().from(s.reminderLog)).toEqual([reminder()]);
   });
   it("preserves historical claims and admits a different calendar day independently", async () => {
-    await h.db.insert(s.reminderLog).values(reminder());
-    expect(await claimReminder(h.db, reminder())).toBe(false);
+    await h.db.insert(s.reminderLog).values(reminder(1, "2026-10-24"));
+    expect(await claimReminder(h.db, reminder(1, "2026-10-24"))).toBe(false);
     expect(await claimReminder(h.db, reminder(1, "2026-10-25"))).toBe(true);
   });
   it("keeps separate cooks independent on the same day", async () => {
