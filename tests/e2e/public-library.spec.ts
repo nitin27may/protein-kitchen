@@ -88,7 +88,7 @@ test("anonymous HTML for shell pages carries no household or profile fixture dat
   const anonymous = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   try {
     for (const url of SHELL_PAGES) {
-      for (const headers of [{}, { RSC: "1" }]) {
+      for (const headers of [{}, { RSC: "1" }] as Record<string, string>[]) {
         const response = await anonymous.request.get(url, { headers });
         expect(response.status(), url).toBe(200);
         const body = await response.text();
