@@ -180,7 +180,7 @@ export function SetupForm({ people, ingredients, anchors, recipes, hasLastPlan, 
   );
 
   return (
-    <div className="px-4 pb-32 lg:pb-10">
+    <fieldset disabled={!hydrated} className="min-w-0 px-4 pb-32 lg:pb-10">
       <Stepper steps={STEPS} current={step} onSelect={(id) => go(id as WizardStep)} label="Plan setup steps" />
 
       <div className="mt-4">
@@ -209,7 +209,7 @@ export function SetupForm({ people, ingredients, anchors, recipes, hasLastPlan, 
               {step === "food" ? <FoodStep {...stepProps} ingredients={ingredients} anchors={anchors} recipes={recipes} /> : null}
               {showRoutine ? (
                 <div hidden={step !== "routine"}>
-                  <RoutineStep {...stepProps} catalog={routines.catalog} chosen={routines.chosen} />
+                  <RoutineStep {...stepProps} catalog={routines.catalog} chosen={routines.chosen} editablePersonIds={routines.editablePersonIds} />
                 </div>
               ) : null}
               {actionBar}
@@ -218,6 +218,6 @@ export function SetupForm({ people, ingredients, anchors, recipes, hasLastPlan, 
           </div>
         )}
       </div>
-    </div>
+    </fieldset>
   );
 }

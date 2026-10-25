@@ -30,12 +30,18 @@ export function ReviewClient({ items, kind, q, missingOnly, waiting }: { items: 
 
   function decide(item: ReviewItem, key: string, action: "approve" | "reject") {
     setError(null);
-    setBusyKey(key);
+    const candidateId = `${item.kind}:${item.slug}:${key}:${action}`;
+    setBusyKey(candidateId);
     start(async () => {
-      const r = action === "approve" ? await approvePhotoCandidate(item.kind, item.slug, key) : await rejectPhotoCandidate(item.kind, item.slug, key);
-      setBusyKey(null);
-      if (!r.ok) setError(r.error);
-      router.refresh();
+      try {
+        const r = action === "approve" ? await approvePhotoCandidate(item.kind, item.slug, key) : await rejectPhotoCandidate(item.kind, item.slug, key);
+        if (!r.ok) setError(r.error);
+        else router.refresh();
+      } catch {
+        setError("The photo decision could not be saved. Check your connection and try again.");
+      } finally {
+        setBusyKey(null);
+      }
     });
   }
 
@@ -106,8 +112,8 @@ export function ReviewClient({ items, kind, q, missingOnly, waiting }: { items: 
                         {c.author}, {c.licence_url ? <a href={c.licence_url} target="_blank" rel="noreferrer" className="underline">{c.licence}</a> : c.licence}, via {c.provider === "commons" ? "Wikimedia Commons" : "Openverse"}. <a href={c.source_url} target="_blank" rel="noreferrer" className="underline">Open the source page</a>
                       </p>
                       <div className="flex gap-2">
-                        <Button size="sm" loading={busyKey === c.key && pending} disabled={pending} onClick={() => decide(item, c.key, "approve")}>Approve</Button>
-                        <Button size="sm" variant="secondary" disabled={pending} onClick={() => decide(item, c.key, "reject")}>Reject</Button>
+                        <Button size="sm" loading={busyKey === `${item.kind}:${item.slug}:${c.key}:approve` && pending} disabled={pending} onClick={() => decide(item, c.key, "approve")}>Approve</Button>
+                        <Button size="sm" variant="secondary" loading={busyKey === `${item.kind}:${item.slug}:${c.key}:reject` && pending} disabled={pending} onClick={() => decide(item, c.key, "reject")}>Reject</Button>
                       </div>
                     </div>
                   </li>

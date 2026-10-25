@@ -2,8 +2,8 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { writePersonRoutine } from "../lib/human/routines";
@@ -84,7 +84,7 @@ describe("today's routines against a real database", () => {
     writePersonRoutine(h.db, personId, await habitId(slug), { active: true, days: [1, 2, 3, 4, 5, 6, 7], timeOfDay: "waking", servings: 1, ...over });
 
   beforeEach(async () => {
-    h = openDb(":memory:", path.join(root, "db", "migrations"));
+    h = await openDb();
     await seedDatabase(h.db, data);
     const [p] = await h.db.insert(s.people).values({ name: "Test", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", proteinGPerKg: 1.5, dietFlags: [] }).returning({ id: s.people.id });
     personId = p!.id;

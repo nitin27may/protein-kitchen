@@ -214,9 +214,9 @@ export function SearchField({ id, value, onChange, placeholder, label, className
       <label htmlFor={id} className="sr-only">{label}</label>
       <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted" />
       <input id={id} type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete="off"
-        className={`${inputClass} pl-10 pr-10 [&::-webkit-search-cancel-button]:hidden`} />
+        className={`${inputClass} pl-10 pr-12 [&::-webkit-search-cancel-button]:hidden`} />
       {value ? (
-        <button type="button" onClick={() => onChange("")} aria-label="Clear search" className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-control text-muted hover:bg-surface2 hover:text-fg">
+        <button type="button" onClick={() => onChange("")} aria-label="Clear search" className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-control text-muted hover:bg-surface2 hover:text-fg">
           <XIcon className="size-4" />
         </button>
       ) : null}
@@ -229,7 +229,7 @@ export function ResultCount({ shown, total, noun, onClear }: { shown: number; to
   return (
     <p className="flex items-center gap-3 text-sm text-muted" aria-live="polite">
       <span>{filtered ? `${shown} of ${total}` : total} {noun}</span>
-      {filtered && onClear ? <button type="button" onClick={onClear} className="min-h-9 font-semibold text-primary underline-offset-2 hover:underline">Clear filters</button> : null}
+      {filtered && onClear ? <button type="button" onClick={onClear} className="min-h-11 font-semibold text-primary underline-offset-2 hover:underline">Clear filters</button> : null}
     </p>
   );
 }

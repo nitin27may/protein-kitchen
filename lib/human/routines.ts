@@ -36,11 +36,11 @@ export async function writePersonRoutine(db: Db, personId: number, habitId: numb
   const at = nowIso();
   const [row] = await db.select().from(s.personRoutines).where(and(eq(s.personRoutines.personId, personId), eq(s.personRoutines.habitId, habitId)));
   const uid = row?.uid ?? newUid();
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     const values = { days: input.days, timeOfDay: input.timeOfDay, servings: input.servings, active: input.active, uid, createdAt: row?.createdAt ?? at, updatedAt: at };
-    if (row) tx.update(s.personRoutines).set(values).where(and(eq(s.personRoutines.personId, personId), eq(s.personRoutines.habitId, habitId))).run();
-    else tx.insert(s.personRoutines).values({ ...values, personId, habitId, createdByPersonId: createdByPersonId ?? null }).run();
-    markChanged(tx, PERSON_ROUTINES_CLASS, at);
+    if (row) await tx.update(s.personRoutines).set(values).where(and(eq(s.personRoutines.personId, personId), eq(s.personRoutines.habitId, habitId)));
+    else await tx.insert(s.personRoutines).values({ ...values, personId, habitId, createdByPersonId: createdByPersonId ?? null });
+    await markChanged(tx, PERSON_ROUTINES_CLASS, at);
   });
   return { uid };
 }

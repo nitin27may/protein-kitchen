@@ -9,6 +9,7 @@ import { markChanged, newUid, nowIso, stableJson } from "./util";
 export const SAVED_VIEWS_CLASS = "saved-views";
 
 export interface SavedViewInput {
+  householdId?: string;
   list: string;
   name?: string;
   query: string;
@@ -22,28 +23,35 @@ export async function writeSavedView(db: Db, input: SavedViewInput): Promise<{ u
   const at = nowIso();
   const isDefault = input.isDefault ?? true;
   const existing = isDefault
-    ? (await db.select().from(s.savedViews).where(and(eq(s.savedViews.list, input.list), eq(s.savedViews.isDefault, true))))[0]
+    ? (await db.select().from(s.savedViews).where(and(
+      input.householdId === undefined ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, input.householdId),
+      eq(s.savedViews.list, input.list), eq(s.savedViews.isDefault, true),
+    )))[0]
     : undefined;
   const uid = existing?.uid ?? newUid();
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     if (existing) {
-      tx.update(s.savedViews).set({ query: input.query, name: input.name ?? existing.name, uid, createdAt: existing.createdAt ?? at, updatedAt: at }).where(eq(s.savedViews.id, existing.id)).run();
+      await tx.update(s.savedViews).set({ query: input.query, name: input.name ?? existing.name, uid, createdAt: existing.createdAt ?? at, updatedAt: at }).where(eq(s.savedViews.id, existing.id));
     } else {
-      tx.insert(s.savedViews).values({ list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null }).run();
+      await tx.insert(s.savedViews).values({ householdId: input.householdId ?? null, list: input.list, name: input.name ?? "Default", query: input.query, isDefault, uid, createdAt: at, updatedAt: at, createdByPersonId: input.createdByPersonId ?? null });
     }
-    markChanged(tx, SAVED_VIEWS_CLASS, at);
+    await markChanged(tx, SAVED_VIEWS_CLASS, at, input.householdId);
   });
   return { uid };
 }
 
 /** Removes the list's default view. */
-export async function clearSavedView(db: Db, list: string): Promise<void> {
+export async function clearSavedView(db: Db, list: string, householdId?: string): Promise<void> {
   const at = nowIso();
-  const existing = (await db.select({ id: s.savedViews.id }).from(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true))))[0];
+  const predicate = and(
+    householdId === undefined ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, householdId),
+    eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true),
+  );
+  const existing = (await db.select({ id: s.savedViews.id }).from(s.savedViews).where(predicate))[0];
   if (!existing) return;
-  await withTx(db, (tx) => {
-    tx.delete(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.isDefault, true))).run();
-    markChanged(tx, SAVED_VIEWS_CLASS, at);
+  await withTx(db, async (tx) => {
+    await tx.delete(s.savedViews).where(predicate);
+    await markChanged(tx, SAVED_VIEWS_CLASS, at, householdId);
   });
 }
 
@@ -61,10 +69,13 @@ const PREFIX = "saved-views/";
 
 export const savedViewsClass: HumanDataClass = {
   name: SAVED_VIEWS_CLASS,
+  householdScoped: true,
   prefix: PREFIX,
 
-  async exportFiles(db) {
-    const rows = await db.select().from(s.savedViews);
+  async exportFiles(db, scope) {
+    const rows = await db.select().from(s.savedViews).where(scope
+      ? scope.householdId === null ? isNull(s.savedViews.householdId) : eq(s.savedViews.householdId, scope.householdId)
+      : undefined);
     const files: Record<string, string> = {};
     for (const r of rows) {
       const at = nowIso();

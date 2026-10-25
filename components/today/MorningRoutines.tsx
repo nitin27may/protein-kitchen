@@ -100,7 +100,7 @@ export function MorningRoutines({ date, personId, items, chosenCount, defaultOpe
                       </span>
                     </label>
                     <details className="pb-1 pl-10">
-                      <summary className="min-h-9 cursor-pointer text-sm font-semibold text-primary">About this</summary>
+                      <summary className="min-h-11 cursor-pointer text-sm font-semibold text-primary">About this</summary>
                       <div className="mt-1 space-y-2">
                         <EvidenceBadge grade={r.grade} />
                         <p className="text-sm">{r.evidenceNote}</p>

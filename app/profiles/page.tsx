@@ -1,17 +1,24 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { ageFrom } from "@/lib/format";
-import { listPeople, proteinTargetOf } from "@/lib/server/queries";
+import { proteinTargetOf } from "@/lib/server/queries";
+import { getDb } from "@/lib/server/context";
+import { memberHouseholdAccess } from "@/lib/auth/household-access";
+import { householdPeople } from "@/lib/server/household-plans";
 
 export const metadata: Metadata = { title: "Profiles" };
 export const dynamic = "force-dynamic";
 
 export default async function ProfilesPage() {
-  const people = await listPeople();
+  const member = await requirePageMember();
+  const db = await getDb();
+  const access = await memberHouseholdAccess(db, member);
+  const people = (await householdPeople(db, access)).filter((p) => access.role === "owner" || p.id === access.personId);
   return (
     <>
-      <PageTitle title="Profiles" sub="Each person has their own targets, likes and portions." action={people.length ? <LinkButton href="/profiles/new">Add person</LinkButton> : undefined} />
+      <PageTitle title="Profiles" sub="Each person has their own targets, likes and portions." action={people.length && member.role === "owner" ? <LinkButton href="/profiles/new">Add person</LinkButton> : undefined} />
       {people.length === 0 ? (
         <EmptyState title="No profiles yet" body="Add the first person so plans can be sized to their protein target." action={<LinkButton href="/profiles/new?next=/plan/new">Add a profile</LinkButton>} />
       ) : (
@@ -31,7 +38,7 @@ export default async function ProfilesPage() {
                   <div><dt className="text-sm text-muted">Protein a day</dt><dd className="font-display text-2xl font-bold tabular-nums">{proteinTargetOf(p)} g</dd></div>
                   <div><dt className="text-sm text-muted">Calories</dt><dd className="font-display text-2xl font-bold tabular-nums">{p.kcalTarget ?? "--"}</dd></div>
                 </dl>
-                <p className="mt-2 text-sm text-muted">{p.reminderTime ? `Prep reminder at ${p.reminderTime}` : "No prep reminder"}</p>
+                <p className="mt-2 text-sm text-muted">{p.reminderTime ? `Prep reminder at ${p.reminderTime} (${p.reminderTimezone || "household time"})` : "No prep reminder"}</p>
               </Link>
             </li>
           ))}

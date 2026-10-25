@@ -1,3 +1,6 @@
+import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { PublicCatalog } from "@/components/PublicLibrary";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { DailyBasics } from "@/components/today/DailyBasics";
@@ -22,8 +25,8 @@ import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
 import { routineDayTotals, withoutRoutineHabits } from "@/lib/routines/schedule";
 import { summaryLine } from "@/lib/routines/view";
-import { getData, getDb } from "@/lib/server/context";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getData } from "@/lib/server/context";
+import { getPhotoIndex } from "@/lib/server/queries";
 import { loadNight } from "@/lib/server/prep";
 import { getCandidates, getHabitsFor, getPersonRoutines, getPlanView, getTodayRoutines, groceryProgress, lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
 import { localMinutes, todayISO } from "@/lib/server/time";
@@ -33,6 +36,9 @@ export const dynamic = "force-dynamic";
 const SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack", "shake"];
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  const publicMember = await optionalPageMember();
+  if (!publicMember) return <PublicCatalog data={getData()} kind="recipes" />;
+  const member = await requirePageMember();
   const { p } = await searchParams;
   const people = await listPeople();
   if (people.length === 0) {
@@ -48,9 +54,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     );
   }
 
-  const person = people.find((x) => String(x.id) === p) ?? people[0]!;
+  const person = member.role === "owner"
+    ? people.find((x) => String(x.id) === p) ?? people.find((x) => x.id === member.personId)!
+    : people.find((x) => x.id === member.personId)!;
   const data = getData();
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
   const now = new Date();
   const today = todayISO(now);
   const part = dayPart(localMinutes(now));
@@ -189,7 +197,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   return (
     <>
       <PageTitle title="Today" sub={`${formatDay(today).long}. ${person.name}: ${proteinTargetOf(person)} g protein a day`} action={<LinkButton href="/plan/new" variant={phase.kind === "no-plan" ? "secondary" : "primary"}>New plan</LinkButton>} />
-      <PersonSwitch people={people.map((x) => ({ id: x.id, name: x.name }))} activeId={person.id} />
+      <PersonSwitch people={people.filter((x) => member.role === "owner" || x.id === member.personId).map((x) => ({ id: x.id, name: x.name }))} activeId={person.id} />
       <div className="space-y-4 px-4 pb-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="space-y-4">
           {strip ? <NextSteps planId={strip.planId} milestones={strip.milestones} /> : null}

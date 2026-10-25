@@ -1,10 +1,10 @@
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryStore } from "../lib/blob/memory";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { applyRenames } from "../lib/db/renames";
 import * as s from "../lib/db/schema";
 import { approveCandidate, copyHumanBlobs, deletePhoto, exportHumanData, importHumanData, rejectCandidate, setCoverPhoto, writeUploadedPhoto } from "../lib/human";
@@ -28,8 +28,8 @@ async function addRecipe(h: DbHandle, slug: string): Promise<number> {
 }
 const syncOf = async (cls: string) => (await a.db.select().from(s.syncState).where(eq(s.syncState.dataClass, cls)))[0];
 
-beforeEach(() => {
-  a = openDb(":memory:", migrations);
+beforeEach(async () => {
+  a = await openDb();
   store = createMemoryStore();
 });
 
@@ -57,6 +57,28 @@ describe("writeUploadedPhoto", () => {
     // A recipe id that does not exist breaks the foreign key inside the transaction.
     await expect(writeUploadedPhoto(a.db, store, { subject: { kind: "recipe", recipeId: 9999 }, bytes: await jpeg() })).rejects.toThrow();
     expect(store.size()).toBe(0);
+  });
+  it("cleans up the master when thumbnail upload fails before the database transaction", async () => {
+    const id = await addRecipe(a, "falafel-bowl");
+    const put = store.put.bind(store);
+    vi.spyOn(store, "put").mockImplementation(async (key, bytes, type) => {
+      if (key.endsWith("/thumb.webp")) throw new Error("synthetic thumbnail upload failure");
+      await put(key, bytes, type);
+    });
+    await expect(writeUploadedPhoto(a.db, store, { subject: { kind: "recipe", recipeId: id }, bytes: await jpeg() })).rejects.toThrow("thumbnail upload failure");
+    expect(store.size()).toBe(0);
+    expect(await a.db.select().from(s.photos)).toEqual([]);
+    expect(await syncOf("photos")).toBeUndefined();
+  });
+  it("reports original and cleanup failures and attempts both object deletions", async () => {
+    const id = await addRecipe(a, "falafel-bowl");
+    vi.spyOn(store, "put").mockRejectedValue(new Error("synthetic upload failure"));
+    const remove = vi.spyOn(store, "delete").mockRejectedValue(new Error("synthetic cleanup failure"));
+    const failure = await writeUploadedPhoto(a.db, store, { subject: { kind: "recipe", recipeId: id }, bytes: await jpeg() }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect(failure instanceof AggregateError && failure.errors[0].message).toBe("synthetic upload failure");
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(await a.db.select().from(s.photos)).toEqual([]);
   });
 
   it("makes the first photo the cover, and moves cover and order with later ones", async () => {
@@ -156,7 +178,7 @@ describe("export and import", () => {
       expect(text).not.toMatch(/"id":/);
     }
 
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     const storeB = createMemoryStore();
     await addRecipe(b, "shifts-every-id");
     await addRecipe(b, "falafel-bowl");
@@ -178,7 +200,7 @@ describe("export and import", () => {
   it("is idempotent, and a copy refuses bytes that do not match the recorded sha256", async () => {
     await seedPhotos();
     const bundle = await exportHumanData(a.db);
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "falafel-bowl");
     await addRecipe(b, "other");
     await importHumanData(b.db, bundle, { renames: {} });
@@ -195,7 +217,7 @@ describe("export and import", () => {
   it("skips a recipe photo whose recipe is gone, unless a rename points at it", async () => {
     await seedPhotos();
     const bundle = await exportHumanData(a.db);
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "renamed-bowl");
     expect((await importHumanData(b.db, bundle, { renames: {} })).skipped.some((p) => p.startsWith("photos/recipes/falafel-bowl/"))).toBe(true);
     const ok = await importHumanData(b.db, bundle, { renames: { "falafel-bowl": "renamed-bowl" } });
@@ -268,6 +290,23 @@ describe("photo review", () => {
     expect(await rejectCandidateChecked(a.db, file(), { kind: "recipe", slug: "falafel-bowl", key: "commons:File:Falafel.jpg" })).toMatchObject({ ok: true });
     expect((await pendingReview(a.db, file(), names)).map((i) => i.slug)).toEqual(["tofu-extra-firm"]);
     expect(await rejectCandidateChecked(a.db, file(), { kind: "recipe", slug: "falafel-bowl", key: "commons:nope" })).toMatchObject({ ok: false });
+  });
+
+  it("rejects a shared candidate per subject and safely retries the same rejection", async () => {
+    const { pendingReview, rejectCandidateChecked } = await import("../lib/server/photo-review");
+    const candidates = file();
+    const shared = candidates.recipes["falafel-bowl"]![0]!;
+    candidates.ingredients["tofu-extra-firm"] = [shared];
+    const input = { kind: "recipe" as const, slug: "falafel-bowl", key: shared.key };
+
+    expect(await rejectCandidateChecked(a.db, candidates, input)).toMatchObject({ ok: true });
+    expect(await rejectCandidateChecked(a.db, candidates, input)).toMatchObject({ ok: true });
+    expect(await a.db.select().from(s.photoDecisions)).toHaveLength(1);
+    expect((await pendingReview(a.db, candidates, names)).map((i) => i.slug)).toEqual(["tofu-extra-firm"]);
+
+    expect(await rejectCandidateChecked(a.db, candidates, { ...input, kind: "ingredient", slug: "tofu-extra-firm" })).toMatchObject({ ok: true });
+    expect(await pendingReview(a.db, candidates, names)).toEqual([]);
+    expect(await a.db.select().from(s.photoDecisions)).toHaveLength(2);
   });
 
   it("approves from the server's own list: licence rechecked, image fetched from the listed URL, never a client URL", async () => {

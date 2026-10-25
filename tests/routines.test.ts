@@ -5,8 +5,8 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadData } from "../lib/data/load";
 import { ROUTINE_CAPPED_AISLES, routineHabitTextProblems, routineLinkProblems, routineRecipeProblems } from "../lib/data/rules";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import { seedDatabase } from "../lib/db/seed";
 import * as s from "../lib/db/schema";
 import { buildGroceryList } from "../lib/grocery/aggregate";
@@ -42,7 +42,7 @@ const choice = (over: Partial<PlanRoutineView> = {}): PlanRoutineView => ({ plan
 const gramsOf = (list: ReturnType<typeof buildGroceryList>) => new Map(list.lines.map((l) => [l.ingredient, l.grams]));
 
 beforeEach(async () => {
-  h = openDb(":memory:", path.join(root, "db", "migrations"));
+  h = await openDb();
   await seedDatabase(h.db, data);
 });
 
@@ -327,7 +327,7 @@ describe("person routines in the human-data export", () => {
     expect(text).not.toMatch(/1991|Asha|person_id|habit_id/);
     expect(first.manifest.tables["person-routines"]!.count).toBe(1);
 
-    const other = openDb(":memory:", path.join(root, "db", "migrations"));
+    const other = await openDb();
     await seedDatabase(other.db, data);
     await other.db.insert(s.people).values({ name: "Someone else", sex: "female", birthDate: "1980-01-01", heightCm: 170, weightKg: 60, activityLevel: "light", proteinGPerKg: 1.2, dietFlags: [] });
     await other.db.insert(s.people).values({ name: "Asha", sex: "female", birthDate: "1991-07-14", heightCm: 165, weightKg: 58, activityLevel: "light", proteinGPerKg: 1.2, dietFlags: [] });
@@ -343,7 +343,7 @@ describe("person routines in the human-data export", () => {
     const a = await person("Asha", "1991-07-14");
     await savePersonRoutine(h.db, byHabit, a, "soaked-methi-seeds", { active: true });
     const bundle = await exportHumanData(h.db);
-    const fresh = openDb(":memory:", path.join(root, "db", "migrations"));
+    const fresh = await openDb();
     await seedDatabase(fresh.db, data);
     const report = await importHumanData(fresh.db, bundle);
     expect(report.imported["person-routines"]).toBe(0);
@@ -376,7 +376,7 @@ describe("resetting routines", () => {
   });
   it("profiles and everything clear the choices with the people and mark the export", async () => {
     for (const scope of ["profiles", "all"] as const) {
-      h = openDb(":memory:", path.join(root, "db", "migrations"));
+      h = await openDb();
       await seedDatabase(h.db, data);
       await setup();
       await resetData(h.db, scope);

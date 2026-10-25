@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import * as s from "@/lib/db/schema";
@@ -5,6 +6,7 @@ import { PageTitle } from "@/components/ui";
 import { needsCredit } from "@/lib/photos/candidates";
 import { getData, getDb } from "@/lib/server/context";
 import { displayName } from "@/lib/schemas";
+import { getCreditedPhotos } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Photo credits" };
 export const dynamic = "force-dynamic";
@@ -21,10 +23,11 @@ interface Row {
 
 /** Credits for approved photos from Wikimedia Commons and Openverse. Your own photos need none. */
 export default async function CreditsPage() {
+  await requirePageMember();
   const data = getData();
   const db = await getDb();
   const recipeNames = new Map((await db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes)).map((r) => [r.id, data.recipes.get(r.slug)?.name ?? r.slug]));
-  const all = (await db.select().from(s.photos)).filter((p) => p.origin !== "upload");
+  const all = await getCreditedPhotos();
   const toRow = (p: (typeof all)[number]): Row => ({
     key: p.uid,
     name: p.recipeId !== null ? (recipeNames.get(p.recipeId) ?? "Recipe") : (data.ingredients.get(p.ingredientSlug!) ? displayName(data.ingredients.get(p.ingredientSlug!)!) : p.ingredientSlug!),

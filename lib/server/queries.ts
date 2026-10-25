@@ -26,8 +26,71 @@ import type { TodayRoutine } from "./today-routines";
 import { resetCounts } from "./reset";
 import type { ResetCounts } from "./reset";
 import { defaultViewQuery } from "./saved-views";
+import { householdFeedback, personalFeedback, planningFeedback } from "./feedback";
+import { requireMember } from "../auth/access";
+import { memberHouseholdAccess } from "../auth/household-access";
+import { householdPeople, householdPerson, householdPlan, householdPlans } from "./household-plans";
+import { HouseholdAccessError } from "../auth/household";
+import type { Db } from "../db/client";
+import { creditedPhotos, photoIndex, photosOfRecipe, photosOfIngredient } from "./photo-index";
+import { pendingReview, type ReviewFilter } from "./photo-review";
+import type { CandidateFile } from "../photos/candidates";
 
 export type PersonRow = typeof s.people.$inferSelect;
+
+async function requestHousehold(db: Db) {
+  const member = await requireMember();
+  return memberHouseholdAccess(db, member);
+}
+
+export async function getPhotoIndex() {
+  const db = await getDb();
+  return photoIndex(db, (await requestHousehold(db)).householdId);
+}
+
+export async function getRecipePhotos(recipeId: number) {
+  const db = await getDb();
+  return photosOfRecipe(db, recipeId, (await requestHousehold(db)).householdId);
+}
+
+export async function getIngredientPhotos(slug: string) {
+  const db = await getDb();
+  return photosOfIngredient(db, slug, (await requestHousehold(db)).householdId);
+}
+
+export async function getCreditedPhotos() {
+  const db = await getDb();
+  return (await creditedPhotos(db, (await requestHousehold(db)).householdId)).filter((p) => p.origin !== "upload");
+}
+
+export async function getPhotoReview(file: CandidateFile, names: Parameters<typeof pendingReview>[2], filter: ReviewFilter = {}) {
+  const db = await getDb();
+  return pendingReview(db, file, names, filter, (await requestHousehold(db)).householdId);
+}
+
+async function requestPlan(db: Db, planId: number) {
+  const access = await requestHousehold(db);
+  const row = await householdPlan(db, access, planId);
+  if (!row) throw new HouseholdAccessError("This plan is not available in your household.");
+  await selectedPeople(db, row.setup.personIds, access.householdId);
+  return { ...row, access };
+}
+
+async function requestPerson(db: Db, personId: number) {
+  const person = await householdPerson(db, await requestHousehold(db), personId);
+  if (!person) throw new HouseholdAccessError("This profile is not available in your household.");
+  return person;
+}
+
+async function selectedPeople(db: Db, ids: readonly number[], householdId: string): Promise<PersonRow[]> {
+  const people = ids.length ? await db.select().from(s.people).where(and(
+    inArray(s.people.id, ids), eq(s.people.householdId, householdId),
+  )).orderBy(s.people.id) : [];
+  if (!people.length || new Set(ids).size !== ids.length || people.length !== ids.length) {
+    throw new HouseholdAccessError("This plan contains profiles outside its household.");
+  }
+  return people;
+}
 
 export function proteinTargetOf(p: PersonRow): number {
   if (p.proteinTargetG) return p.proteinTargetG;
@@ -35,16 +98,19 @@ export function proteinTargetOf(p: PersonRow): number {
 }
 
 export async function listPeople(): Promise<PersonRow[]> {
-  return (await getDb()).select().from(s.people).orderBy(s.people.id);
+  const db = await getDb();
+  return householdPeople(db, await requestHousehold(db));
 }
 
 export async function getPerson(id: number): Promise<PersonRow | undefined> {
-  const [row] = await (await getDb()).select().from(s.people).where(eq(s.people.id, id)).limit(1);
-  return row;
+  const db = await getDb();
+  return householdPerson(db, await requestHousehold(db), id);
 }
 
 export async function getPrefs(personId: number): Promise<{ liked: string[]; avoided: string[] }> {
-  const rows = await (await getDb())
+  const db = await getDb();
+  await requestPerson(db, personId);
+  const rows = await db
     .select({ kind: s.preferences.kind, slug: s.ingredients.slug })
     .from(s.preferences)
     .innerJoin(s.ingredients, eq(s.ingredients.id, s.preferences.ingredientId))
@@ -67,22 +133,18 @@ export async function toPersonTarget(p: PersonRow): Promise<PersonTarget> {
   };
 }
 
-export async function feedbackMap(): Promise<Map<string, Feedback>> {
-  const rows = await (await getDb())
-    .select({
-      slug: s.recipes.slug,
-      favourite: s.recipeFeedback.favourite,
-      banned: s.recipeFeedback.banned,
-      rating: s.recipeFeedback.rating,
-      status: s.recipeFeedback.status,
-    })
-    .from(s.recipeFeedback)
-    .innerJoin(s.recipes, eq(s.recipes.id, s.recipeFeedback.recipeId));
-  return new Map(rows.map((r) => [r.slug, { favourite: r.favourite, banned: r.banned, rating: r.rating, tested: r.status === "tested" }]));
+export async function feedbackMap(personId?: number): Promise<Map<string, Feedback>> {
+  const db = await getDb();
+  const access = await requestHousehold(db);
+  if (personId !== undefined) await selectedPeople(db, [personId], access.householdId);
+  return personId === undefined ? householdFeedback(db, access.householdId) : personalFeedback(db, personId, access.householdId);
 }
 
-export async function getCandidates(): Promise<Candidate[]> {
-  return buildCandidates(getData(), await feedbackMap());
+export async function getCandidates(personIds: readonly number[] = []): Promise<Candidate[]> {
+  const db = await getDb();
+  const access = await requestHousehold(db);
+  if (personIds.length) await selectedPeople(db, personIds, access.householdId);
+  return buildCandidates(getData(), await planningFeedback(db, personIds, access.householdId));
 }
 
 export async function recipeIds(): Promise<{ bySlug: Map<string, number>; byId: Map<number, string> }> {
@@ -120,37 +182,30 @@ export interface PlanView {
 }
 
 export async function latestPlanId(): Promise<number | undefined> {
-  const [row] = await (await getDb()).select({ id: s.plans.id }).from(s.plans).orderBy(desc(s.plans.id)).limit(1);
-  return row?.id;
+  return (await listPlans(1))[0]?.id;
 }
 
 export async function listPlans(limit = 10): Promise<{ id: number; startDate: string; endDate: string; createdAt: string }[]> {
-  return (await getDb())
-    .select({ id: s.plans.id, startDate: s.planSetups.startDate, endDate: s.planSetups.endDate, createdAt: s.plans.createdAt })
-    .from(s.plans)
-    .innerJoin(s.planSetups, eq(s.planSetups.id, s.plans.setupId))
-    .orderBy(desc(s.plans.id))
-    .limit(limit);
+  const db = await getDb();
+  return householdPlans(db, await requestHousehold(db), limit);
 }
 
 export async function getPlanView(planId: number, candidates?: Candidate[]): Promise<PlanView | undefined> {
+  if (!Number.isSafeInteger(planId) || planId <= 0) return undefined;
   const db = await getDb();
-  const [row] = await db
-    .select({ plan: s.plans, setup: s.planSetups })
-    .from(s.plans)
-    .innerJoin(s.planSetups, eq(s.planSetups.id, s.plans.setupId))
-    .where(eq(s.plans.id, planId))
-    .limit(1);
+  const access = await requestHousehold(db);
+  const row = await householdPlan(db, access, planId);
   if (!row) return undefined;
-  const cands = candidates ?? (await getCandidates());
-  const people = row.setup.personIds.length
-    ? await db.select().from(s.people).where(inArray(s.people.id, row.setup.personIds)).orderBy(s.people.id)
-    : [];
+  const people = await selectedPeople(db, row.setup.personIds, access.householdId);
+  const cands = candidates ?? (await getCandidates(row.setup.personIds));
   const rid = await recipeIds();
   const slotRows = await db.select().from(s.planSlots).where(eq(s.planSlots.planId, planId)).orderBy(s.planSlots.date, s.planSlots.id);
   const portionRows = slotRows.length
     ? await db.select().from(s.planSlotPortions).where(inArray(s.planSlotPortions.planSlotId, slotRows.map((r) => r.id)))
     : [];
+  if (portionRows.some((portion) => !row.setup.personIds.includes(portion.personId))) {
+    throw new HouseholdAccessError("This plan contains portions outside its selected profiles.");
+  }
   const slots: StoredSlot[] = slotRows.map((r) => ({
     id: r.id,
     date: r.date,
@@ -197,7 +252,9 @@ export async function getPlanView(planId: number, candidates?: Candidate[]): Pro
 }
 
 export async function lastSetup(): Promise<{ personIds: number[]; mealTypes: Slot[]; cuisineBalance: number; maxActiveMin: number | null; days: number; healthFocus: { nutrientDense: boolean; lowSugar: boolean; light: boolean } | null; prepStyle: "variety" | "leftovers" | "batch" | null } | undefined> {
-  const [r] = await (await getDb()).select().from(s.planSetups).orderBy(desc(s.planSetups.id)).limit(1);
+  const db = await getDb();
+  const access = await requestHousehold(db);
+  const [r] = await db.select().from(s.planSetups).where(eq(s.planSetups.householdId, access.householdId)).orderBy(desc(s.planSetups.id)).limit(1);
   if (!r) return undefined;
   const days = datesBetween(r.startDate, r.endDate).length;
   return { personIds: r.personIds, mealTypes: r.mealTypes as Slot[], cuisineBalance: r.cuisineBalance, maxActiveMin: r.maxActiveMin, days, healthFocus: r.healthFocus, prepStyle: r.prepStyle };
@@ -205,6 +262,7 @@ export async function lastSetup(): Promise<{ personIds: number[]; mealTypes: Slo
 
 export async function groceryChecks(planId: number): Promise<{ checked: Set<string>; manual: { id: number; text: string; checked: boolean }[] }> {
   const db = await getDb();
+  await requestPlan(db, planId);
   const ids = await ingredientIds();
   const rows = await db.select().from(s.groceryState).where(and(eq(s.groceryState.planId, planId), eq(s.groceryState.checked, true)));
   const manual = await db.select().from(s.groceryManual).where(eq(s.groceryManual.planId, planId));
@@ -222,32 +280,48 @@ export interface SavedView {
 }
 
 export async function getSavedViews(list: string): Promise<SavedView[]> {
-  return (await getDb()).select({ id: s.savedViews.id, name: s.savedViews.name, query: s.savedViews.query, isDefault: s.savedViews.isDefault }).from(s.savedViews).where(eq(s.savedViews.list, list)).orderBy(s.savedViews.id);
+  const db = await getDb();
+  const access = await requestHousehold(db);
+  return db.select({ id: s.savedViews.id, name: s.savedViews.name, query: s.savedViews.query, isDefault: s.savedViews.isDefault })
+    .from(s.savedViews).where(and(eq(s.savedViews.list, list), eq(s.savedViews.householdId, access.householdId))).orderBy(s.savedViews.id);
 }
 
 /** The query string saved as this list's default view, or null. */
 export async function getDefaultViewQuery(list: string): Promise<string | null> {
-  return defaultViewQuery(await getDb(), list);
+  const db = await getDb();
+  return defaultViewQuery(db, list, (await requestHousehold(db)).householdId);
 }
 
 /** How each part of a meal is provided for one plan; a part not in the result is made. */
 export async function getPartModes(planId: number): Promise<PartModes> {
-  return readPartModes(await getDb(), planId);
+  const db = await getDb();
+  await requestPlan(db, planId);
+  return readPartModes(db, planId);
 }
 
 /** Each routine one person chose (days, time of day, servings). The profile page lists them. */
 export async function getPersonRoutines(personId: number): Promise<PersonRoutineView[]> {
-  return readPersonRoutines(await getDb(), personId);
+  const db = await getDb();
+  await requestPerson(db, personId);
+  return readPersonRoutines(db, personId);
 }
 
 /** A person's routines scheduled on `date`'s weekday, ticked or not, for the morning card on Today. */
 export async function getTodayRoutines(personId: number, date: string): Promise<TodayRoutine[]> {
-  return readTodayRoutines(await getDb(), personId, date);
+  const db = await getDb();
+  await requestPerson(db, personId);
+  return readTodayRoutines(db, personId, date);
 }
 
 /** What a plan took from its people's routine choices when it was generated. */
 export async function getPlanRoutines(planId: number): Promise<PlanRoutineView[]> {
-  return readPlanRoutines(await getDb(), planId);
+  const db = await getDb();
+  const { setup } = await requestPlan(db, planId);
+  const rows = await readPlanRoutines(db, planId);
+  if (rows.some((row) => !setup.personIds.includes(row.personId))) {
+    throw new HouseholdAccessError("This plan contains routines outside its selected profiles.");
+  }
+  return rows;
 }
 
 /**
@@ -286,6 +360,7 @@ export interface HabitRow {
 /** Every habit from the library, plus the ids this person ticked on `date`. */
 export async function getHabitsFor(date: string, personId: number): Promise<{ habits: HabitRow[]; doneIds: Set<number> }> {
   const db = await getDb();
+  await requestPerson(db, personId);
   const habits = await db.select().from(s.habits);
   const log = await db.select().from(s.habitLog).where(and(eq(s.habitLog.date, date), eq(s.habitLog.personId, personId)));
   return { habits, doneIds: new Set(log.filter((r) => r.done).map((r) => r.habitId)) };
@@ -293,22 +368,30 @@ export async function getHabitsFor(date: string, personId: number): Promise<{ ha
 
 /** Tick rows saved under the old `prep:{planId}:` key format, for the batch-cook sessions on the prep page. */
 export async function getBatchPrepTicks(planId: number): Promise<{ taskKey: string; done: boolean }[]> {
-  return (await getDb()).select({ taskKey: s.prepTaskState.taskKey, done: s.prepTaskState.done }).from(s.prepTaskState).where(like(s.prepTaskState.taskKey, `prep:${planId}:%`));
+  const db = await getDb();
+  const { access } = await requestPlan(db, planId);
+  return db.select({ taskKey: s.prepTaskState.taskKey, done: s.prepTaskState.done }).from(s.prepTaskState).where(and(
+    eq(s.prepTaskState.householdId, access.householdId), like(s.prepTaskState.taskKey, `prep:${planId}:%`),
+  ));
 }
 
 /** What a reset would delete, for the Settings page. */
 export async function getResetCounts(): Promise<ResetCounts> {
-  return resetCounts(await getDb());
+  const db = await getDb();
+  return resetCounts(db, (await requestHousehold(db)).householdId);
 }
 
 /** Every link saved on a recipe page, in display order, with video embeds worked out. See link-view.ts. */
 export async function getRecipeLinks(recipeSlug: string): Promise<RecipeLinkView[]> {
-  return recipeLinksFor(await getDb(), recipeSlug);
+  const db = await getDb();
+  return recipeLinksFor(db, recipeSlug, (await requestHousehold(db)).householdId);
 }
 
 /** Which of the three after-plan steps are done. All three keys are always present. */
 export async function getPlanMilestones(planId: number): Promise<PlanMilestones> {
-  return readPlanMilestones(await getDb(), planId);
+  const db = await getDb();
+  await requestPlan(db, planId);
+  return readPlanMilestones(db, planId);
 }
 
 /** Milestones of the newest plan, or null when there is no plan. */

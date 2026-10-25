@@ -1,13 +1,12 @@
-import fs from "node:fs";
-import path from "node:path";
-import { count as countRows, eq, isNotNull, or } from "drizzle-orm";
-import type Database from "better-sqlite3";
+import { and, count as countRows, eq, inArray, isNotNull, or, type SQL } from "drizzle-orm";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { BlobStore } from "../blob/types";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
 import { withTx } from "../db/tx";
 import type { Tx } from "../db/tx";
 import { markChanged, nowIso } from "../human/util";
+import { resetPersonalFeedback } from "../human/personal-feedback";
 
 export const RESET_SCOPES = ["plans", "groceries", "progress", "ratings", "profiles", "all"] as const;
 export type ResetScope = (typeof RESET_SCOPES)[number];
@@ -37,71 +36,77 @@ export interface ResetCounts {
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function count(db: Db, table: any): Promise<number> {
-  const [row] = await db.select({ n: countRows() }).from(table);
+async function count(db: Db, table: PgTable, where?: SQL): Promise<number> {
+  const [row] = await db.select({ n: countRows() }).from(table).where(where);
   return Number(row?.n ?? 0);
 }
 
-export async function resetCounts(db: Db): Promise<ResetCounts> {
+export async function resetCounts(db: Db, householdId?: string): Promise<ResetCounts> {
+  const owned = (column: AnyPgColumn<{ data: string }>) => householdId === undefined ? undefined : eq(column, householdId);
+  const people = db.select({ id: s.people.id }).from(s.people).where(owned(s.people.householdId));
+  const plans = db.select({ id: s.plans.id }).from(s.plans).where(owned(s.plans.householdId));
+  const person = (column: AnyPgColumn<{ data: number }>) => householdId === undefined ? undefined : inArray(column, people);
+  const plan = (column: AnyPgColumn<{ data: number }>) => householdId === undefined ? undefined : inArray(column, plans);
   const [feedback] = await db
     .select({ n: countRows() })
     .from(s.recipeFeedback)
-    .where(or(isNotNull(s.recipeFeedback.rating), eq(s.recipeFeedback.favourite, true), eq(s.recipeFeedback.banned, true), eq(s.recipeFeedback.status, "tested"), isNotNull(s.recipeFeedback.notes)));
+    .where(and(owned(s.recipeFeedback.householdId), or(isNotNull(s.recipeFeedback.rating), eq(s.recipeFeedback.favourite, true), eq(s.recipeFeedback.banned, true), eq(s.recipeFeedback.status, "tested"), isNotNull(s.recipeFeedback.notes))));
   return {
-    profiles: await count(db, s.people),
-    plans: await count(db, s.plans),
-    groceryItems: (await count(db, s.groceryState)) + (await count(db, s.groceryManual)) + (await count(db, s.pantry)),
-    progressTicks: (await count(db, s.habitLog)) + (await count(db, s.prepTaskState)),
-    ratings: Number(feedback?.n ?? 0),
-    partChoices: await count(db, s.planPartState),
-    links: await count(db, s.recipeLinks),
-    routineChoices: await count(db, s.personRoutines),
-    planRoutines: await count(db, s.planRoutines),
-    planSteps: await count(db, s.planProgress),
-    photos: await count(db, s.photos),
+    profiles: await count(db, s.people, owned(s.people.householdId)),
+    plans: await count(db, s.plans, owned(s.plans.householdId)),
+    groceryItems: (await count(db, s.groceryState, plan(s.groceryState.planId))) + (await count(db, s.groceryManual, plan(s.groceryManual.planId))) + (await count(db, s.pantry, owned(s.pantry.householdId))),
+    progressTicks: (await count(db, s.habitLog, person(s.habitLog.personId))) + (await count(db, s.prepTaskState, owned(s.prepTaskState.householdId))),
+    ratings: Number(feedback?.n ?? 0) + await count(db, s.personRecipeFeedback, person(s.personRecipeFeedback.personId)),
+    partChoices: await count(db, s.planPartState, plan(s.planPartState.planId)),
+    links: await count(db, s.recipeLinks, owned(s.recipeLinks.householdId)),
+    routineChoices: await count(db, s.personRoutines, person(s.personRoutines.personId)),
+    planRoutines: await count(db, s.planRoutines, and(plan(s.planRoutines.planId), person(s.planRoutines.personId))),
+    planSteps: await count(db, s.planProgress, plan(s.planProgress.planId)),
+    photos: await count(db, s.photos, owned(s.photos.householdId)),
   };
 }
 
-function clearPlans(tx: Tx) {
-  tx.delete(s.planProgress).run();
-  tx.delete(s.planPartState).run();
-  tx.delete(s.planRoutines).run();
-  tx.delete(s.planSlotPortions).run();
-  tx.delete(s.groceryState).run();
-  tx.delete(s.groceryManual).run();
-  tx.delete(s.planSlots).run();
-  tx.delete(s.plans).run();
-  tx.delete(s.planSetups).run();
-  tx.delete(s.prepTaskState).run();
+async function clearPlans(tx: Tx) {
+  await tx.delete(s.planProgress);
+  await tx.delete(s.planPartState);
+  await tx.delete(s.planRoutines);
+  await tx.delete(s.planSlotPortions);
+  await tx.delete(s.groceryState);
+  await tx.delete(s.groceryManual);
+  await tx.delete(s.planSlots);
+  await tx.delete(s.plans);
+  await tx.delete(s.planSetups);
+  await tx.delete(s.prepTaskState);
 }
 
-function clearGroceries(tx: Tx) {
-  tx.delete(s.groceryState).run();
-  tx.delete(s.groceryManual).run();
-  tx.delete(s.pantry).run();
+async function clearGroceries(tx: Tx) {
+  await tx.delete(s.groceryState);
+  await tx.delete(s.groceryManual);
+  await tx.delete(s.pantry);
 }
 
-function clearProgress(tx: Tx) {
-  tx.delete(s.habitLog).run();
-  tx.delete(s.reminderLog).run();
-  tx.delete(s.prepTaskState).run();
+async function clearProgress(tx: Tx) {
+  await tx.delete(s.habitLog);
+  await tx.delete(s.reminderLog);
+  await tx.delete(s.prepTaskState);
 }
 
-function clearRatings(tx: Tx) {
-  tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null }).run();
-  markChanged(tx, "recipe-feedback", nowIso());
+async function clearRatings(tx: Tx) {
+  await resetPersonalFeedback(tx);
+  await tx.update(s.recipeFeedback).set({ status: "draft", rating: null, favourite: false, banned: false, notes: null, testedAt: null });
+  await markChanged(tx, "recipe-feedback", nowIso());
 }
 
-function clearProfiles(tx: Tx) {
-  clearPlans(tx);
-  clearProgress(tx);
-  tx.delete(s.pushSubscriptions).run();
-  tx.delete(s.preferences).run();
+async function clearProfiles(tx: Tx) {
+  await clearPlans(tx);
+  await clearProgress(tx);
+  await tx.delete(s.pushSubscriptions);
+  await tx.delete(s.preferences);
   // Routine choices belong to a profile; deleting the people deletes them (the foreign key cascades), so mark the export.
-  tx.delete(s.personRoutines).run();
-  markChanged(tx, "person-routines", nowIso());
-  tx.delete(s.people).run();
+  await tx.delete(s.personRoutines);
+  await markChanged(tx, "person-routines", nowIso());
+  await resetPersonalFeedback(tx);
+  await tx.delete(s.people);
 }
 
 /**
@@ -109,25 +114,25 @@ function clearProfiles(tx: Tx) {
  * Runs in one transaction, so a failure leaves everything as it was.
  */
 export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStore): Promise<void> {
-  await withTx(db, (tx) => {
+  await withTx(db, async (tx) => {
     switch (scope) {
-      case "plans": return clearPlans(tx);
-      case "groceries": return clearGroceries(tx);
-      case "progress": return clearProgress(tx);
-      case "ratings": return clearRatings(tx);
-      case "profiles": return clearProfiles(tx);
+      case "plans": return await clearPlans(tx);
+      case "groceries": return await clearGroceries(tx);
+      case "progress": return await clearProgress(tx);
+      case "ratings": return await clearRatings(tx);
+      case "profiles": return await clearProfiles(tx);
       case "all":
-        clearProfiles(tx);
-        clearGroceries(tx);
-        clearRatings(tx);
-        tx.delete(s.savedViews).run();
-        markChanged(tx, "saved-views", nowIso());
-        tx.delete(s.recipeLinks).run();
-        markChanged(tx, "recipe-links", nowIso());
-        tx.delete(s.photos).run();
-        markChanged(tx, "photos", nowIso());
-        tx.delete(s.photoDecisions).run();
-        markChanged(tx, "photo-decisions", nowIso());
+        await clearProfiles(tx);
+        await clearGroceries(tx);
+        await clearRatings(tx);
+        await tx.delete(s.savedViews);
+        await markChanged(tx, "saved-views", nowIso());
+        await tx.delete(s.recipeLinks);
+        await markChanged(tx, "recipe-links", nowIso());
+        await tx.delete(s.photos);
+        await markChanged(tx, "photos", nowIso());
+        await tx.delete(s.photoDecisions);
+        await markChanged(tx, "photo-decisions", nowIso());
         return;
     }
   });
@@ -135,15 +140,11 @@ export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStor
   if (scope === "all" && photoStore) for (const key of await photoStore.list()) await photoStore.delete(key);
 }
 
-/** Copies the live database to backups/ before a reset. Returns the path, or null for an in-memory database. */
-export async function backupBeforeReset(sqlite: Database.Database, root: string, scope: ResetScope): Promise<string | null> {
-  if (sqlite.name === ":memory:" || sqlite.memory) return null;
-  const dir = path.join(root, "backups");
-  fs.mkdirSync(dir, { recursive: true });
-  const out = path.join(dir, `pre-reset-${scope}-${new Date().toISOString().replace(/[:.]/g, "-")}.db`);
-  sqlite.prepare("VACUUM INTO ?").run(out);
-  // "Everything" also deletes the photo files, so keep a copy of them beside the database backup.
-  const uploads = process.env.UPLOADS_DIR ?? path.join(root, "uploads");
-  if (scope === "all" && fs.existsSync(uploads)) fs.cpSync(uploads, out.replace(/\.db$/, "-uploads"), { recursive: true });
-  return out;
+/** Destructive application resets stay disabled until the Postgres backup/restore gate is implemented. */
+export class ResetUnavailableError extends Error {
+  constructor() { super("Reset is disabled: a verified Postgres backup and restore procedure is required first."); }
+}
+
+export async function backupBeforeReset(): Promise<string> {
+  throw new ResetUnavailableError();
 }

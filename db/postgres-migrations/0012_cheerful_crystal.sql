@@ -1,0 +1,2 @@
+ALTER TABLE "reminder_batches" ADD COLUMN "household_id" text;--> statement-breakpoint
+ALTER TABLE "reminder_batches" ADD CONSTRAINT "reminder_batches_household_id_households_id_fk" FOREIGN KEY ("household_id") REFERENCES "public"."households"("id") ON DELETE restrict ON UPDATE no action;

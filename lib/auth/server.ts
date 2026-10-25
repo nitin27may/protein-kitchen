@@ -1,0 +1,33 @@
+import { getDb } from "../server/context";
+import { authConfiguration } from "./config";
+import { createAuth } from "./create";
+import { resendAuthSender } from "./mail";
+import { localTestAuthSender } from "./test-mail";
+
+let instance: {
+  auth: ReturnType<typeof createAuth>;
+  sendAssociation: (email: string) => Promise<void>;
+} | undefined;
+
+async function configuredAuth() {
+  if (!instance) {
+    const config = authConfiguration(process.env);
+    const sendMail = process.env.AUTH_TEST_MAILBOX
+      ? localTestAuthSender(process.env) : resendAuthSender(process.env);
+    instance = {
+      auth: createAuth(await getDb(), { ...config, sendCode: sendMail, sendLink: sendMail }),
+      sendAssociation: (email) => sendMail({
+        email, url: new URL("/sign-in", config.baseURL).toString(), type: "household-association",
+      }),
+    };
+  }
+  return instance;
+}
+
+export async function getAuth() {
+  return (await configuredAuth()).auth;
+}
+
+export async function sendHouseholdAssociationNotice(email: string) {
+  return (await configuredAuth()).sendAssociation(email);
+}

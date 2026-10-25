@@ -7,6 +7,7 @@ import { CheckIcon, PlusIcon, XIcon } from "@/components/icons";
 import { Banner, Button, Chip, Input, SearchField } from "@/components/ui";
 import { filterGroceryLines } from "@/lib/filters/lists";
 import { aisleLabel, grams } from "@/lib/format";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 export interface GroceryLineView {
   slug: string;
@@ -44,6 +45,7 @@ function storageKey(planId: number) {
 }
 
 export function GroceryClient(p: GroceryProps) {
+  const hydrated = useHydrated();
   const [checked, setChecked] = useState<Record<string, boolean>>(() => Object.fromEntries(p.lines.map((l) => [l.slug, l.checked])));
   const [manual, setManual] = useState(p.manual);
   const [text, setText] = useState("");
@@ -230,7 +232,7 @@ export function GroceryClient(p: GroceryProps) {
                 {ls.map((l) => (
                   <li key={l.slug}>
                     <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface2">
-                      <input type="checkbox" checked={!!checked[l.slug]} onChange={(e) => tick(l.slug, e.target.checked)} className="size-6 shrink-0 accent-[var(--primary)]" />
+                      <input type="checkbox" disabled={!hydrated} checked={!!checked[l.slug]} onChange={(e) => tick(l.slug, e.target.checked)} className="size-6 shrink-0 accent-[var(--primary)]" />
                       {l.image ? <img src={l.image} alt="" loading="lazy" className="size-10 shrink-0 rounded-control object-cover" /> : <IngredientTile aisle={aisle} className="size-10 shrink-0 rounded-control" />}
                       <span className="min-w-0 flex-1">
                         <span className={`block text-base font-medium leading-snug ${checked[l.slug] ? "text-muted line-through" : ""}`}>{l.name}{l.state === "dry" ? <span className="text-sm font-normal text-muted"> (dry)</span> : null}</span>
@@ -251,17 +253,17 @@ export function GroceryClient(p: GroceryProps) {
                 <ul className="divide-y divide-line">
                   {manual.map((m) => (
                     <li key={m.id} className="flex min-h-14 items-center gap-3 px-3">
-                      <input aria-label={m.text} type="checkbox" checked={m.checked} onChange={async (e) => { const v = e.target.checked; setManual((c) => c.map((x) => (x.id === m.id ? { ...x, checked: v } : x))); await setManualChecked(m.id, v); }} className="size-6 shrink-0 accent-[var(--primary)]" />
+                      <input aria-label={m.text} type="checkbox" disabled={!hydrated} checked={m.checked} onChange={async (e) => { const v = e.target.checked; setManual((c) => c.map((x) => (x.id === m.id ? { ...x, checked: v } : x))); await setManualChecked(m.id, v); }} className="size-6 shrink-0 accent-[var(--primary)]" />
                       <span className={`flex-1 text-base ${m.checked ? "text-muted line-through" : ""}`}>{m.text}</span>
-                      <button type="button" aria-label={`Remove ${m.text}`} onClick={async () => { setManual((c) => c.filter((x) => x.id !== m.id)); await removeManualItem(m.id); }} className="flex size-11 items-center justify-center rounded-control text-muted hover:bg-surface2 hover:text-fg lg:size-9"><XIcon className="size-4" /></button>
+                      <button type="button" disabled={!hydrated} aria-label={`Remove ${m.text}`} onClick={async () => { setManual((c) => c.filter((x) => x.id !== m.id)); await removeManualItem(m.id); }} className="flex size-11 items-center justify-center rounded-control text-muted hover:bg-surface2 hover:text-fg lg:size-9"><XIcon className="size-4" /></button>
                     </li>
                   ))}
                 </ul>
               ) : <p className="px-3 py-3 text-sm text-muted">Anything not in the plan, such as dish soap or fruit. Add it below.</p>}
               <form onSubmit={add} className="flex gap-2 border-t border-line p-2">
                 <label htmlFor="manual" className="sr-only">Add an item</label>
-                <Input id="manual" value={text} onChange={(e) => setText(e.target.value)} placeholder="Add an item" maxLength={120} className="flex-1" />
-                <Button type="submit" disabled={!text.trim()}><PlusIcon className="size-4" />Add</Button>
+                <Input id="manual" disabled={!hydrated} value={text} onChange={(e) => setText(e.target.value)} placeholder="Add an item" maxLength={120} className="flex-1" />
+                <Button type="submit" disabled={!hydrated || !text.trim()}><PlusIcon className="size-4" />Add</Button>
               </form>
             </div>
           </section>
@@ -272,8 +274,8 @@ export function GroceryClient(p: GroceryProps) {
               <ul className="divide-y divide-line border-t border-line">
                 {pantry.map((l) => (
                   <li key={l.slug} className="flex min-h-12 items-center justify-between gap-3 px-3 py-1 text-base">
-                    <label className="flex flex-1 cursor-pointer items-center gap-3">
-                      <input type="checkbox" checked={!!checked[l.slug]} onChange={(e) => tick(l.slug, e.target.checked)} className="size-6 accent-[var(--primary)]" />
+                    <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-3">
+                      <input type="checkbox" disabled={!hydrated} checked={!!checked[l.slug]} onChange={(e) => tick(l.slug, e.target.checked)} className="size-6 accent-[var(--primary)]" />
                       <span className={checked[l.slug] ? "text-muted line-through" : ""}>{l.name}</span>
                     </label>
                     <span className="tabular-nums text-muted">{grams(l.needG)}</span>

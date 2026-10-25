@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { deletePerson, savePerson } from "@/app/actions";
+import type { Result, PersonInputData } from "@/app/actions";
 import { ReminderSettings } from "@/components/ReminderSettings";
 import { RoutinePicker } from "@/components/routines/RoutinePicker";
 import type { PersonRoutineView, RoutineOption } from "@/lib/routines/types";
@@ -20,6 +22,7 @@ export interface ProfileInitial {
   proteinValue: number | "";
   kcalTarget: number | "";
   reminderTime: string;
+  reminderTimezone?: string;
 }
 
 const ACTIVITY: { value: ProfileInitial["activityLevel"]; label: string; hint: string }[] = [
@@ -47,8 +50,12 @@ export interface ProfileRoutines {
   chosen: PersonRoutineView[];
 }
 
-export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null }: { initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null }) {
+export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null, saveAction = savePerson, canDelete = false, deviceReminders = false }: {
+  initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null;
+  saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>>; canDelete?: boolean; deviceReminders?: boolean;
+}) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [v, setV] = useState<ProfileInitial>(initial);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -66,7 +73,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
     setError(null);
     setFields({});
     start(async () => {
-      const res = await savePerson({
+      const res = await saveAction({
         id: v.id,
         name: v.name,
         sex: v.sex,
@@ -78,7 +85,8 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
         proteinValue: v.proteinValue === "" ? Number.NaN : v.proteinValue,
         kcalTarget: v.kcalTarget === "" ? null : v.kcalTarget,
         reminderTime: v.reminderTime === "" ? null : v.reminderTime,
-      });
+        reminderTimezone: v.reminderTimezone?.trim() || null,
+      }).catch(() => ({ ok: false as const, error: "The profile could not be saved. Check your connection and try again.", fields: undefined }));
       if (!res.ok) {
         setError(res.error);
         setFields(res.fields ?? {});
@@ -110,6 +118,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
 
   return (
     <form onSubmit={submit} className="px-4 pb-28 pt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 lg:pb-10" noValidate>
+      <fieldset disabled={!hydrated} className="contents">
       <div className="space-y-4">
         {error ? <Banner tone="bad" title="Could not save">{error}</Banner> : null}
 
@@ -174,7 +183,14 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           <Field label="Prep reminder time (optional)" htmlFor="reminder" hint="Reminders are per person. On iPhone they need the app added to the home screen.">
             <Input id="reminder" type="time" value={v.reminderTime} onChange={(e) => set("reminderTime", e.target.value)} className="sm:w-44" />
           </Field>
-          {v.id ? <div className="mt-4"><ReminderSettings personId={v.id} personName={v.name || "this person"} publicKey={vapidPublicKey} hasTime={initial.reminderTime !== ""} /></div> : null}
+          <div className="mt-4">
+            <Field label="Reminder time zone (optional)" htmlFor="reminder-timezone" error={fields.reminderTimezone}
+              hint="Leave blank to use the household time zone. Use an IANA name, such as America/Toronto or Asia/Kolkata. Meal-plan dates still follow the household time zone.">
+              <Input id="reminder-timezone" value={v.reminderTimezone ?? ""} onChange={(e) => set("reminderTimezone", e.target.value)}
+                placeholder="Household time zone" aria-invalid={!!fields.reminderTimezone} autoCapitalize="none" spellCheck={false} />
+            </Field>
+          </div>
+          {v.id && deviceReminders ? <div className="mt-4"><ReminderSettings personId={v.id} personName={v.name || "this person"} publicKey={vapidPublicKey} hasTime={initial.reminderTime !== ""} /></div> : null}
         </SectionCard>
 
         {v.id && routines ? (
@@ -185,7 +201,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           </div>
         ) : null}
 
-        {v.id ? (
+        {v.id && canDelete ? (
           <SectionCard id="danger" title="Delete profile" description="Removes their preferences and ticks. Plans that include them must be deleted first.">
             {confirmDelete ? (
               <div className="space-y-3">
@@ -218,7 +234,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
           </div>
           <dl className="mt-4 space-y-2 border-t border-line pt-4 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-muted">Calories</dt><dd className="font-medium tabular-nums">{v.kcalTarget === "" ? "Not set" : `${v.kcalTarget} kcal`}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-muted">Reminder</dt><dd className="font-medium tabular-nums">{v.reminderTime || "Off"}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-muted">Reminder</dt><dd className="font-medium tabular-nums">{v.reminderTime ? `${v.reminderTime} (${v.reminderTimezone?.trim() || "household time"})` : "Off"}</dd></div>
           </dl>
           <Button type="submit" size="lg" className="mt-5 w-full" loading={pending}>{pending ? "Saving" : saveLabel}</Button>
         </div>
@@ -228,6 +244,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
         <p className="mb-2 text-sm text-muted">{dailyProtein !== null ? <><strong className="text-fg">{dailyProtein} g</strong> protein a day</> : "Enter a protein target"}</p>
         <Button type="submit" size="lg" className="w-full" loading={pending}>{pending ? "Saving" : saveLabel}</Button>
       </div>
+      </fieldset>
     </form>
   );
 }

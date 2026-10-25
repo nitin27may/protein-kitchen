@@ -1,14 +1,19 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SettingsClient } from "@/components/SettingsClient";
 import { PageTitle } from "@/components/ui";
 import { getResetCounts } from "@/lib/server/queries";
+import { StateSyncControls } from "@/components/StateSyncControls";
+import { stateSyncSettings } from "@/lib/sync/server";
 
 export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  const member = await requirePageMember();
   const counts = await getResetCounts();
+  const sync = member.role === "owner" ? await stateSyncSettings() : null;
   return (
     <>
       <PageTitle title="Settings" sub="Manage people and start over when you want to." />
@@ -27,6 +32,7 @@ export default async function SettingsPage() {
           </div>
           <p className="mt-1 text-sm text-muted">Approve or reject candidate photos for recipes and ingredients. {counts.photos} {counts.photos === 1 ? "photo" : "photos"} kept.</p>
         </Link>
+        {sync ? <StateSyncControls settings={sync} /> : null}
         <SettingsClient counts={counts} />
       </div>
     </>

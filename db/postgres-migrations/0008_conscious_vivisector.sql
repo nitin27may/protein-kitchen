@@ -1,0 +1,1 @@
+ALTER TABLE "people" ADD COLUMN "reminder_timezone" text;

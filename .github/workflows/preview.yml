@@ -1,0 +1,163 @@
+name: protected-preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: protein-kitchen-preview
+  cancel-in-progress: false
+
+jobs:
+  accepted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful push CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          run_id=$(gh api "repos/$REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT&event=push&status=success&per_page=100" \
+            --jq '.workflow_runs' | jq -r --arg sha "$COMMIT" --arg branch "$BRANCH" \
+            '[.[] | select(.head_sha == $sha and .head_branch == $branch and .event == "push" and .conclusion == "success")] | first | .id // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::Successful push CI for this exact branch and commit is required."
+            exit 1
+          fi
+          gh api --paginate "repos/$REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100" \
+            --jq '.jobs[] | select(.name == "acceptance") | .conclusion' | grep -qx success
+
+  preview:
+    needs: accepted
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: preview
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      PREVIEW_ALIAS: ${{ vars.PREVIEW_ALIAS }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+      NEON_DEVELOPMENT_BRANCH_ID: ${{ vars.NEON_DEVELOPMENT_BRANCH_ID }}
+      NEON_PRODUCTION_BRANCH_ID: ${{ vars.NEON_PRODUCTION_BRANCH_ID }}
+      DATABASE_NONPRODUCTION_HOST: ${{ vars.DATABASE_NONPRODUCTION_HOST }}
+      DATABASE_DIRECT_NONPRODUCTION_HOST: ${{ vars.DATABASE_DIRECT_NONPRODUCTION_HOST }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Require deployment settings
+        run: |
+          node --input-type=module <<'JS'
+          const required = [
+            "VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "DATABASE_URL",
+            "DATABASE_URL_UNPOOLED", "NEON_PROJECT_ID", "NEON_DEVELOPMENT_BRANCH_ID",
+            "NEON_PRODUCTION_BRANCH_ID", "DATABASE_NONPRODUCTION_HOST",
+            "DATABASE_DIRECT_NONPRODUCTION_HOST", "PREVIEW_ALIAS",
+          ];
+          const missing = required.filter((key) => !process.env[key]);
+          if (missing.length) throw new Error(`Missing preview settings: ${missing.join(", ")}`);
+          JS
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned deployment CLI
+        run: npm install --global vercel@58.4.4
+      - name: Pull preview runtime settings
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: vercel pull --yes --environment=preview --git-branch="$BRANCH" --token="$VERCEL_TOKEN"
+      - name: Verify live runtime configuration and applied schema
+        run: |
+          node --import tsx --input-type=module <<'JS'
+          import { readFileSync } from "node:fs";
+          import { parseEnv } from "node:util";
+          import { readMigrationFiles } from "drizzle-orm/migrator";
+          import { previewPreflight } from "./lib/deployment/preflight.ts";
+          import { runtimeTarget } from "./lib/db/postgres/runtime-target.ts";
+          import { openVerifiedPostgres } from "./lib/db/postgres/verified-client.ts";
+          const runtime = {
+            ...parseEnv(readFileSync(".vercel/.env.preview.local", "utf8")),
+            VERCEL: "1", VERCEL_ENV: "preview", NODE_ENV: "production",
+          };
+          for (const key of [
+            "DATABASE_URL", "DATABASE_URL_UNPOOLED", "NEON_PROJECT_ID",
+            "NEON_DEVELOPMENT_BRANCH_ID", "NEON_PRODUCTION_BRANCH_ID",
+            "DATABASE_NONPRODUCTION_HOST", "DATABASE_DIRECT_NONPRODUCTION_HOST",
+          ]) {
+            if (!runtime[key] || runtime[key] !== process.env[key]) {
+              throw new Error(`Vercel preview setting is missing or differs from GitHub: ${key}`);
+            }
+          }
+          const report = await previewPreflight(runtime, true);
+          console.log(JSON.stringify(report));
+          if (!report.configurationValid || !report.liveBranchVerified) {
+            throw new Error("Preview preflight refused deployment. No migration or upload occurred.");
+          }
+          if (runtime.BETTER_AUTH_URL !== `https://${process.env.PREVIEW_ALIAS}`) {
+            throw new Error("The preview auth origin must match the reviewed GitHub preview alias.");
+          }
+          const handle = await openVerifiedPostgres({
+            ...runtimeTarget(runtime), connectionString: runtime.DATABASE_URL_UNPOOLED,
+            nonProductionHost: runtime.DATABASE_DIRECT_NONPRODUCTION_HOST,
+          }, runtime);
+          try {
+            const expected = readMigrationFiles({ migrationsFolder: "db/postgres-migrations" });
+            const { rows } = await handle.pool.query("select hash, created_at from drizzle.__drizzle_migrations order by created_at");
+            if (rows.length !== expected.length || rows.some((row, i) =>
+              row.hash !== expected[i].hash || Number(row.created_at) !== expected[i].folderMillis)) {
+              throw new Error("Preview schema is pending or divergent. Use the separately approved migration procedure.");
+            }
+          } finally {
+            await handle.close();
+          }
+          JS
+      - name: Require protection on every deployment and alias
+        run: |
+          node --input-type=module <<'JS'
+          import { execFileSync } from "node:child_process";
+          const project = JSON.parse(execFileSync("vercel", ["api",
+            `/v9/projects/${encodeURIComponent(process.env.VERCEL_PROJECT_ID)}?teamId=${encodeURIComponent(process.env.VERCEL_ORG_ID)}`,
+            "--token", process.env.VERCEL_TOKEN,
+          ], { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
+          if (project.id !== process.env.VERCEL_PROJECT_ID || project.ssoProtection?.deploymentType !== "all") {
+            throw new Error("Require Vercel Authentication on all deployments and aliases before uploading.");
+          }
+          JS
+      - name: Build accepted commit
+        run: vercel build --token="$VERCEL_TOKEN"
+      - name: Deploy protected preview
+        run: |
+          node --input-type=module <<'JS'
+          import { execFileSync } from "node:child_process";
+          const run = (args) => JSON.parse(execFileSync("vercel", [...args, "--token", process.env.VERCEL_TOKEN],
+            { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
+          const deployment = run(["deploy", "--prebuilt", "--yes", "--target", "preview", "--json"]);
+          const url = deployment.url ?? deployment.deployment?.url;
+          if (!url) throw new Error("Vercel did not return a deployment URL.");
+          const inspected = run(["inspect", url, "--json"]);
+          if (inspected.readyState !== "READY" || inspected.target === "production") {
+            throw new Error("Refuse an unready deployment or implicit first-deployment production promotion.");
+          }
+          execFileSync("vercel", ["alias", "set", url, process.env.PREVIEW_ALIAS, "--token", process.env.VERCEL_TOKEN],
+            { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+          console.log(JSON.stringify({ url, id: inspected.id, target: "preview", readyState: inspected.readyState }));
+          JS
+      - name: Remove pulled credentials
+        if: ${{ always() }}
+        run: |
+          rm -f .vercel/.env.preview.local
+          rm -rf .vercel/output

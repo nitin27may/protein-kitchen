@@ -1,13 +1,15 @@
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
-import { openDb } from "../lib/db/client";
-import type { DbHandle } from "../lib/db/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { openDb } from "./helpers/db";
+import type { DbHandle } from "./helpers/db";
 import * as s from "../lib/db/schema";
 import { applyRenames, RenamesSchema } from "../lib/db/renames";
 import { clearSavedView, exportHumanData, importHumanData, registerExporter, writeRecipeFeedback, writeSavedView } from "../lib/human";
 import type { HumanDataClass } from "../lib/human";
 import { feedbackClass } from "../lib/human/feedback";
+import { savedViewsClass } from "../lib/human/saved-views";
+import { photosClass } from "../lib/human/photos";
 
 const migrations = path.resolve(__dirname, "..", "db", "migrations");
 let a: DbHandle;
@@ -25,8 +27,8 @@ async function addRecipe(h: DbHandle, slug: string, opts: { feedback?: boolean }
 const feedbackOf = async (h: DbHandle, id: number) => (await h.db.select().from(s.recipeFeedback).where(eq(s.recipeFeedback.recipeId, id)))[0];
 const syncOf = async (h: DbHandle, cls: string) => (await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, cls)))[0];
 
-beforeEach(() => {
-  a = openDb(":memory:", migrations);
+beforeEach(async () => {
+  a = await openDb();
 });
 
 describe("writeRecipeFeedback", () => {
@@ -106,6 +108,55 @@ describe("saved views", () => {
 });
 
 describe("export and import", () => {
+  it("refuses an unscoped multi-household bundle before filling legacy export stamps", async () => {
+    const recipeId = await addRecipe(a, "fixture");
+    await a.db.update(s.recipeFeedback).set({ favourite: true }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    await a.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const before = await a.db.select().from(s.recipeFeedback);
+    await expect(exportHumanData(a.db)).rejects.toThrow("cannot represent multiple households");
+    expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+    expect(await exportHumanData(a.db, ["recipe-feedback"], { householdId: "a" }))
+      .toMatchObject({ files: {}, manifest: { version: 2 } });
+  });
+
+  it("preserves single-household operator exports but refuses legacy import into any claimed target", async () => {
+    const recipeId = await addRecipe(a, "fixture");
+    await a.db.insert(s.households).values({ id: "a", name: "First" });
+    await a.db.update(s.recipeFeedback).set({ householdId: "a", favourite: true }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    const bundle = await exportHumanData(a.db);
+    expect(Object.keys(bundle.files)).toEqual(["feedback/fixture.json"]);
+    const before = await a.db.select().from(s.recipeFeedback);
+    for (const version of [1, 2] as const) {
+      await expect(importHumanData(a.db, { ...bundle, manifest: { ...bundle.manifest, version } }))
+        .rejects.toThrow("unclaimed operator staging");
+    }
+    expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+  });
+
+  it("rolls back earlier export stamps if a later class fails", async () => {
+    const recipeId = await addRecipe(a, "fixture");
+    await a.db.update(s.recipeFeedback).set({ favourite: true }).where(eq(s.recipeFeedback.recipeId, recipeId));
+    const before = await a.db.select().from(s.recipeFeedback);
+    const later = vi.spyOn(savedViewsClass, "exportFiles").mockRejectedValueOnce(new Error("synthetic serialization failure"));
+    try {
+      await expect(exportHumanData(a.db)).rejects.toThrow("synthetic serialization failure");
+      expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+    } finally { later.mockRestore(); }
+  });
+
+  it("rolls back earlier class writes when a later legacy import file is malformed", async () => {
+    const source = await openDb();
+    const recipeId = await addRecipe(source, "fixture");
+    await writeRecipeFeedback(source.db, recipeId, { favourite: true });
+    const bundle = await exportHumanData(source.db);
+    bundle.files["saved-views/recipes.json"] = "{";
+    await addRecipe(a, "fixture");
+    const before = await a.db.select().from(s.recipeFeedback);
+    await expect(importHumanData(a.db, bundle)).rejects.toThrow();
+    expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+    expect(await a.db.select().from(s.syncState)).toEqual([]);
+  });
+
   async function seedHuman(h: DbHandle) {
     const palak = await addRecipe(h, "palak-paneer");
     const rajma = await addRecipe(h, "rajma-masala");
@@ -120,14 +171,14 @@ describe("export and import", () => {
     await seedHuman(a);
     const first = await exportHumanData(a.db);
 
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "something-else-first"); // shifts every recipe id
     await addRecipe(b, "palak-paneer");
     await addRecipe(b, "rajma-masala");
     await addRecipe(b, "untouched-recipe");
     const report = await importHumanData(b.db, first, { renames: {} });
     expect(report.skipped).toEqual([]);
-    expect(report.imported).toEqual({ "person-routines": 0, "photo-decisions": 0, "photos": 0, "recipe-feedback": 2, "recipe-links": 0, "saved-views": 2 });
+    expect(report.imported).toEqual({ "personal-recipe-feedback": 0, "person-routines": 0, "photo-decisions": 0, "photos": 0, "recipe-feedback": 2, "recipe-links": 0, "saved-views": 2 });
 
     const second = await exportHumanData(b.db);
     expect(Object.keys(second.files)).toEqual(Object.keys(first.files));
@@ -140,7 +191,7 @@ describe("export and import", () => {
   it("is idempotent: importing twice changes nothing", async () => {
     await seedHuman(a);
     const bundle = await exportHumanData(a.db);
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     for (const slug of ["palak-paneer", "rajma-masala", "untouched-recipe"]) await addRecipe(b, slug);
     await importHumanData(b.db, bundle, { renames: {} });
     const once = await exportHumanData(b.db);
@@ -192,7 +243,7 @@ describe("export and import", () => {
     await writeRecipeFeedback(a.db, id, { rating: 3 });
     const bundle = await exportHumanData(a.db);
 
-    const b = openDb(":memory:", migrations);
+    const b = await openDb();
     await addRecipe(b, "new-name");
     expect((await importHumanData(b.db, bundle, { renames: {} })).skipped).toEqual(["feedback/old-name.json"]);
     const report = await importHumanData(b.db, bundle, { renames: { "old-name": "new-name" } });
@@ -203,6 +254,75 @@ describe("export and import", () => {
 });
 
 describe("applyRenames", () => {
+  it("preserves feedback conflicts, link ordering, covers and personal feedback independently in each household", async () => {
+    const oldId = await addRecipe(a, "old");
+    const newId = await addRecipe(a, "new");
+    await a.db.insert(s.households).values([{ id: "a", name: "First" }, { id: "b", name: "Second" }]);
+    const at = "2026-10-23T12:00:00.000Z";
+    for (const householdId of [null, "a", "b"]) {
+      const key = householdId ?? "legacy";
+      if (householdId === null) {
+        await a.db.update(s.recipeFeedback).set({ rating: 3, uid: `${key}-feedback`, createdAt: at, updatedAt: at }).where(eq(s.recipeFeedback.recipeId, oldId));
+      } else {
+        await a.db.insert(s.recipeFeedback).values({ householdId, recipeId: oldId, rating: 3, uid: `${key}-feedback`, createdAt: at, updatedAt: at });
+        if (householdId === "a") await a.db.insert(s.recipeFeedback).values({ householdId, recipeId: newId, rating: 5, uid: "target-feedback", createdAt: at, updatedAt: at });
+      }
+      const [person] = await a.db.insert(s.people).values({
+        householdId, name: key, sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [],
+      }).returning({ id: s.people.id });
+      await a.db.insert(s.personRecipeFeedback).values({ personId: person!.id, recipeId: oldId, rating: 3, uid: `${key}-personal`, createdAt: at, updatedAt: at });
+      if (householdId === "a") await a.db.insert(s.personRecipeFeedback).values({ personId: person!.id, recipeId: newId, rating: 5, uid: "target-personal", createdAt: at, updatedAt: at });
+      await a.db.insert(s.recipeLinks).values({ householdId, recipeId: oldId, uid: `${key}-link`, kind: "recipe", url: "https://example.test", title: key, position: 10, createdAt: at, updatedAt: at, createdByPersonId: person!.id });
+      await a.db.insert(s.photos).values({ householdId, recipeId: oldId, uid: `${key}-photo`, origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, isCover: true, position: 10, createdAt: at, updatedAt: at, createdByPersonId: person!.id });
+      if (householdId === "a") {
+        await a.db.insert(s.recipeLinks).values({ householdId, recipeId: newId, uid: "target-link", kind: "recipe", url: "https://example.test", title: key, position: 6, createdAt: at, updatedAt: at });
+        await a.db.insert(s.photos).values({ householdId, recipeId: newId, uid: "target-photo", origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, isCover: true, position: 6, createdAt: at, updatedAt: at });
+      }
+    }
+    const originalLinks = await a.db.select().from(s.recipeLinks);
+    const originalPhotos = await a.db.select().from(s.photos);
+    expect(await applyRenames(a.db, { old: "new" })).toEqual({ moved: ["old"] });
+    const feedback = await a.db.select().from(s.recipeFeedback);
+    expect(feedback.find((row) => row.uid === "a-feedback")).toMatchObject({ recipeId: oldId, householdId: "a", rating: 3 });
+    for (const key of ["legacy", "b"]) expect(feedback.find((row) => row.uid === `${key}-feedback`)).toMatchObject({ recipeId: newId, rating: 3, createdAt: at });
+    expect(feedback.find((row) => row.uid === "target-feedback")).toMatchObject({ recipeId: newId, householdId: "a", rating: 5 });
+    for (const before of originalLinks) {
+      const [after] = await a.db.select().from(s.recipeLinks).where(eq(s.recipeLinks.id, before.id));
+      expect(after).toEqual({ ...before, recipeId: newId, position: before.uid === "target-link" ? 6 : before.householdId === "a" ? 7 : 0, updatedAt: expect.any(String) });
+    }
+    for (const before of originalPhotos) {
+      const [after] = await a.db.select().from(s.photos).where(eq(s.photos.id, before.id));
+      expect(after).toEqual({ ...before, recipeId: newId, position: before.uid === "target-photo" ? 6 : before.householdId === "a" ? 7 : 0, isCover: before.uid !== "a-photo", updatedAt: expect.any(String) });
+    }
+    const personal = await a.db.select().from(s.personRecipeFeedback);
+    expect(personal.find((row) => row.uid === "a-personal")).toMatchObject({ recipeId: oldId, rating: 3 });
+    for (const key of ["legacy", "b"]) expect(personal.find((row) => row.uid === `${key}-personal`)).toMatchObject({ recipeId: newId, rating: 3, createdAt: at });
+    const revisions = await a.db.select().from(s.syncState);
+    for (const householdId of [null, "a", "b"]) {
+      const changed = revisions.filter((row) => row.householdId === householdId).map((row) => row.dataClass).sort();
+      expect(changed).toEqual(householdId === "a" ? ["photos", "recipe-links"] : ["personal-recipe-feedback", "photos", "recipe-feedback", "recipe-links"]);
+    }
+    expect(await applyRenames(a.db, { old: "new" })).toEqual({ moved: [] });
+    expect(await a.db.select().from(s.syncState)).toEqual(revisions);
+  });
+
+  it("rolls back earlier class moves and earlier in-place renames when a later class fails", async () => {
+    const oldId = await addRecipe(a, "old");
+    await addRecipe(a, "new");
+    await addRecipe(a, "in-place");
+    await writeRecipeFeedback(a.db, oldId, { rating: 4 });
+    const before = await a.db.select().from(s.recipeFeedback);
+    const revisions = await a.db.select().from(s.syncState);
+    const failure = vi.spyOn(photosClass, "moveRecipe").mockRejectedValueOnce(new Error("synthetic later class failure"));
+    try {
+      await expect(applyRenames(a.db, { "in-place": "renamed", old: "new" })).rejects.toThrow("synthetic later class failure");
+      expect(await a.db.select().from(s.recipeFeedback)).toEqual(before);
+      expect(await a.db.select().from(s.syncState)).toEqual(revisions);
+      expect(await a.db.select().from(s.recipes).where(eq(s.recipes.slug, "in-place"))).toHaveLength(1);
+      expect(await a.db.select().from(s.recipes).where(eq(s.recipes.slug, "renamed"))).toEqual([]);
+    } finally { failure.mockRestore(); }
+  });
+
   async function plan(h: DbHandle, recipeId: number) {
     const [person] = await h.db.insert(s.people).values({ name: "T", sex: "male", birthDate: "1985-01-01", heightCm: 180, weightKg: 80, activityLevel: "moderate", dietFlags: [] }).returning({ id: s.people.id });
     const [setup] = await h.db.insert(s.planSetups).values({ personIds: [person!.id], startDate: "2026-11-02", endDate: "2026-11-08", mealTypes: ["lunch"], cuisineBalance: 0.5, createdAt: "2026-11-01" }).returning({ id: s.planSetups.id });

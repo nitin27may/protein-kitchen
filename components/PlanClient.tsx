@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { deletePlan, enableShake, getSwapOptions, regeneratePlan, setPortion, swapSlot, toggleLock } from "@/app/actions";
 import type { SwapOption } from "@/app/actions";
 import { RecipeThumb } from "@/components/RecipeThumb";
@@ -68,6 +69,7 @@ const SheetView = dynamic(() => import("./SheetView").then((m) => m.SheetView), 
 
 export function PlanClient(p: PlanProps) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [day, setDay] = useState(p.startIndex);
   const [view, setView] = useState<"day" | "overview" | "sheet">("day");
   const [swapFor, setSwapFor] = useState<PlanSlotView | null>(null);
@@ -162,7 +164,7 @@ export function PlanClient(p: PlanProps) {
   const routinesCard = <PlanRoutinesCard rows={p.routines} people={p.people.map((x) => ({ id: x.id, name: x.name }))} />;
 
   return (
-    <div className="pb-6">
+    <fieldset disabled={!hydrated} className="min-w-0 pb-6">
       <NextSteps planId={p.planId} milestones={p.milestones} />
       {p.makeAheadWeekMin > 0 ? (
         <p className={`px-4 pt-2 text-sm ${p.makeAheadWeekMin > MAKE_AHEAD_WEEK_WARN_MIN ? "font-semibold text-warn" : "text-muted"}`}>
@@ -374,6 +376,6 @@ export function PlanClient(p: PlanProps) {
           </div>
         ) : null}
       </Sheet>
-    </div>
+    </fieldset>
   );
 }

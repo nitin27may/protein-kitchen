@@ -1,0 +1,3 @@
+ALTER TABLE "sync_state" ADD COLUMN "revision" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "sync_state" ADD COLUMN "exported_revision" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "sync_state" ADD CONSTRAINT "sync_state_revision_valid" CHECK ("sync_state"."revision" > 0 and "sync_state"."exported_revision" >= 0 and "sync_state"."exported_revision" <= "sync_state"."revision");

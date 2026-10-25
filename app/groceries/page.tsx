@@ -1,17 +1,19 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { GroceryClient } from "@/components/GroceryClient";
 import type { GroceryLineView } from "@/components/GroceryClient";
 import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
 import { buildGroceryList } from "@/lib/grocery/aggregate";
 import { addDays, formatDay } from "@/lib/planner/dates";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { getPartModes, getPlanView, groceryChecks, latestPlanId, routineContext } from "@/lib/server/queries";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getPhotoIndex } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Groceries" };
 export const dynamic = "force-dynamic";
 
 export default async function GroceriesPage({ searchParams }: { searchParams: Promise<{ plan?: string; w?: string }> }) {
+  await requirePageMember();
   const sp = await searchParams;
   const planId = sp.plan && Number.isInteger(Number(sp.plan)) ? Number(sp.plan) : await latestPlanId();
   const view = planId ? await getPlanView(planId) : undefined;
@@ -35,7 +37,7 @@ export default async function GroceriesPage({ searchParams }: { searchParams: Pr
 
   const list = buildGroceryList(meals, data.recipes, data.ingredients, await getPartModes(view.id), (await routineContext(view)).refs);
   const state = await groceryChecks(view.id);
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
   const lines: GroceryLineView[] = list.lines.map((l) => ({
     slug: l.ingredient,
     name: l.name,

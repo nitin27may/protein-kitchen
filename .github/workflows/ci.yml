@@ -2,8 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,21 +15,54 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fixture
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: protein_kitchen_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NEXT_DIST_DIR: .next-build
+      POSTGRES_TEST_URL: postgres://fixture@127.0.0.1:5432/protein_kitchen_test
+      PG_DUMP_TEST_BIN: /usr/lib/postgresql/17/bin/pg_dump
+      PG_RESTORE_TEST_BIN: /usr/lib/postgresql/17/bin/pg_restore
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Install synthetic recovery tooling
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --location \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends age postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
 
       - name: Typecheck
         run: pnpm typecheck
@@ -37,10 +71,70 @@ jobs:
         run: pnpm validate
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:coverage --reporter=default --reporter=junit --outputFile.junit=${{ runner.temp }}/test-results.xml
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results
+          path: ${{ runner.temp }}/test-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build
         run: pnpm build
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fixture
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: protein_kitchen_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_E2E_URL: postgres://fixture@127.0.0.1:5432/protein_kitchen_e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Browser regression tests
+        run: pnpm test:e2e
+      - name: Upload browser failure evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-failures
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   secrets:
     runs-on: ubuntu-latest
@@ -49,9 +143,30 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  acceptance:
+    if: ${{ always() }}
+    needs: [ci, browser, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require every acceptance job
+        env:
+          CI_RESULT: ${{ needs.ci.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          SECRETS_RESULT: ${{ needs.secrets.result }}
+        run: |
+          for result in "$CI_RESULT" "$BROWSER_RESULT" "$SECRETS_RESULT"; do
+            if [ "$result" != "success" ]; then
+              echo "::error::All CI, browser and secret-scanning jobs must succeed."
+              exit 1
+            fi
+          done

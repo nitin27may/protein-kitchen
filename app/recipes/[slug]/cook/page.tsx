@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CookMode } from "@/components/CookMode";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 const ingName = (i: Ingredient | undefined, fallback: string) => (i ? displayName(i) : fallback);
 
 export default async function CookPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ plan?: string }> }) {
+  await requirePageMember();
   const { slug } = await params;
   const { plan } = await searchParams;
   const data = getData();

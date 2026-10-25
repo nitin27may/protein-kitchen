@@ -77,11 +77,14 @@ export function ReminderSettings({ personId, personName, publicKey, hasTime }: {
     try {
       const sub = await currentSubscription();
       if (sub) {
-        await fetch("/api/push/unsubscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+        const response = await fetch("/api/push/unsubscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+        if (!response.ok) throw new Error("The server could not disable this device. Try again.");
         await sub.unsubscribe();
       }
       setStatus("off");
       setMsg({ tone: "info", text: "Reminders are off on this device." });
+    } catch {
+      setMsg({ tone: "bad", text: "Reminders could not be disabled. Check your connection and try again." });
     } finally {
       setBusy(false);
     }

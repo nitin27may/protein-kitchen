@@ -20,7 +20,7 @@ import { ingredientFilters } from "../lib/filters/ingredients";
 import type { IngredientCard } from "../lib/filters/ingredients";
 import { recipeFilters } from "../lib/filters/recipes";
 import type { RecipeCardData } from "../lib/filters/recipes";
-import { openDb } from "../lib/db/client";
+import { openDb } from "./helpers/db";
 import { clearDefaultView, defaultViewQuery, setDefaultView } from "../lib/server/saved-views";
 
 interface Item {
@@ -160,7 +160,7 @@ describe("saved default view", () => {
   });
 
   it("keeps exactly one default per list in the database", async () => {
-    const h = openDb(":memory:", path.resolve(__dirname, "..", "db", "migrations"));
+    const h = await openDb();
     expect(await defaultViewQuery(h.db, "recipes")).toBeNull();
     await setDefaultView(h.db, "recipes", "meal=dinner");
     await setDefaultView(h.db, "recipes", "time=20&sort=fastest");

@@ -1,14 +1,23 @@
-import path from "node:path";
+import { blobConfiguration } from "./config";
 import { createFsStore } from "./fs";
+import { createS3Store } from "./s3";
 import type { BlobStore } from "./types";
 
 export type { BlobStore } from "./types";
 
 let current: BlobStore | null = null;
 
-/** The app's photo store: the `uploads/` folder (or `UPLOADS_DIR`) until the Neon bucket replaces it. */
+/** Lazy configuration keeps credentials and storage access out of imports/builds. */
 export function getBlobStore(): BlobStore {
-  current ??= createFsStore(process.env.UPLOADS_DIR ?? path.join(process.cwd(), "uploads"));
+  if (!current) {
+    const config = blobConfiguration(process.env);
+    const store = config.kind === "filesystem" ? createFsStore(config.root) : createS3Store(config);
+    current = config.readOnly ? {
+      ...store,
+      async put() { throw new Error("Photo changes are disabled in preview deployments."); },
+      async delete() { throw new Error("Photo changes are disabled in preview deployments."); },
+    } : store;
+  }
   return current;
 }
 

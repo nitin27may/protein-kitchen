@@ -1,3 +1,4 @@
+import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SetupForm } from "@/components/SetupForm";
@@ -7,8 +8,8 @@ import type { PersonRoutineView } from "@/lib/routines/types";
 import { PageTitle } from "@/components/ui";
 import { addDays, nextMonday } from "@/lib/planner/dates";
 import { displayName } from "@/lib/schemas";
-import { getData, getDb } from "@/lib/server/context";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getData } from "@/lib/server/context";
+import { getPhotoIndex } from "@/lib/server/queries";
 import { getCandidates, getPersonRoutines, getPrefs, lastSetup, listPeople, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
 
@@ -38,11 +39,12 @@ const ANCHORS: { slug: string; label: string }[] = [
 ];
 
 export default async function NewPlanPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+  const member = await requirePageMember();
   const { step } = await searchParams;
   const people = await listPeople();
   if (people.length === 0) redirect("/profiles/new?next=/plan/new");
   const data = getData();
-  const photos = await photoIndex(await getDb());
+  const photos = await getPhotoIndex();
   const last = await lastSetup();
   const start = nextMonday(todayISO());
   const length = last ? (last.days === 14 ? "14" : last.days === 7 ? "7" : "7") : "7";
@@ -77,7 +79,7 @@ export default async function NewPlanPage({ searchParams }: { searchParams: Prom
     recipes: (await getCandidates()).map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name)),
     hasLastPlan: !!last,
     initialStep: step ?? null,
-    routines: { catalog: getRoutineCatalog(data), chosen: chosenRoutines },
+    routines: { catalog: getRoutineCatalog(data), chosen: chosenRoutines, editablePersonIds: people.filter((p) => member.role === "owner" || p.id === member.personId).map((p) => p.id) },
     initial: {
       personIds,
       length,

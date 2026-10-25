@@ -10,7 +10,9 @@ import type { StepProps } from "./types";
  * Step 4: daily routines for each person who is eating. Choices save to the profile at once, so there is nothing to
  * submit here. The plan takes a copy of them when it is generated.
  */
-export function RoutineStep({ draft, people, catalog, chosen }: StepProps & { catalog: RoutineOption[]; chosen: Record<number, PersonRoutineView[]> }) {
+export function RoutineStep({ draft, people, catalog, chosen, editablePersonIds }: StepProps & {
+  catalog: RoutineOption[]; chosen: Record<number, PersonRoutineView[]>; editablePersonIds: number[];
+}) {
   const selected = people.filter((p) => draft.personIds.includes(p.id));
   const [whoRaw, setWho] = useState<number>(selected[0]?.id ?? 0);
   const who = selected.find((p) => p.id === whoRaw) ?? selected[0];
@@ -26,7 +28,9 @@ export function RoutineStep({ draft, people, catalog, chosen }: StepProps & { ca
         </div>
       ) : null}
       {/* Keyed by person so each person's picker keeps its own state. */}
-      <RoutinePicker key={who.id} personId={who.id} personName={who.name} catalog={catalog} chosen={chosen[who.id] ?? []} />
+      {editablePersonIds.includes(who.id)
+        ? <RoutinePicker key={who.id} personId={who.id} personName={who.name} catalog={catalog} chosen={chosen[who.id] ?? []} />
+        : <p className="text-sm text-muted">Their saved routines will be included. Only they or a household owner can change them.</p>}
     </SectionCard>
   );
 }

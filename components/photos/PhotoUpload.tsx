@@ -38,6 +38,8 @@ export function PhotoUpload({ recipeSlug, label = "Add a photo", variant = "seco
       }
       onUploaded?.();
       router.refresh();
+    } catch {
+      setError("The photo could not be uploaded. Check your connection and try again.");
     } finally {
       setBusy(false);
       if (input.current) input.current.value = "";

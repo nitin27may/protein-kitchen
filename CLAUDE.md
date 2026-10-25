@@ -5,15 +5,24 @@ Personal meal planner for a lacto-vegetarian household (dairy yes, eggs no). Rea
 ## Commands
 
 ```
-pnpm dev        # Next.js dev server (set DB_PATH to use a scratch database, APP_TZ for the time zone)
+pnpm dev        # Next.js dev server (explicit isolated DATABASE_URL/DATABASE_ENV, APP_TZ for time zone)
 pnpm build      # production build
 pnpm typecheck  # tsc --noEmit
 pnpm validate   # validate all /data files, compute macros, print report
-pnpm seed       # upsert /data into db/app.db (runs validate first)
+pnpm seed       # guarded dev/test Postgres library seed (DATABASE_URL_UNPOOLED; validates first)
 pnpm test       # Vitest: nutrition maths, conversions, generator
-pnpm backup     # VACUUM INTO backups/app-<timestamp>.db
-sqlite3 db/app.db  # inspect data directly
+pnpm test:e2e   # saved Playwright cases; explicit disposable loopback POSTGRES_E2E_URL
+pnpm backup     # legacy SQLite only: explicit DB_PATH, DATABASE_URL must be unset
+pnpm db:migrate:postgres  # explicit direct dev/test connection; never runs at request/build time
+pnpm db:verify:postgres runtime  # metadata-only configuration/branch preflight; also accepts migration
+pnpm db:import:sqlite /absolute/path/to/source-copy.db  # verified legacy import into an empty dev/test target
 ```
+
+Database tests use disposable PGlite fixtures. Native TCP tests additionally require `POSTGRES_TEST_URL` pointing to a loopback-only `protein_kitchen_test` database. Existing SQLite files are import/rollback sources, never the application fallback. Settings reset stays blocked until Postgres backup/restore is verified.
+
+Remote non-production runtime/migration/seed must pass live Neon project/branch/endpoint verification before opening a pool; an asserted host alone is insufficient. Supply explicit `NEON_PROJECT_ID`, `NEON_DEVELOPMENT_BRANCH_ID`, `NEON_PRODUCTION_BRANCH_ID` and a server-only `NEON_API_KEY`. Local loopback tests need none of these. No credential files are automatically loaded or rewritten by CLI commands. See README for the gate and import rehearsal procedure.
+
+Before each development stage, detail the scope, dependencies, permission boundaries and acceptance cases in `docs/plan-v3-publish-and-protect.md`. Add feature-level coverage, verify the actual browser flow with Playwright, and retain executable browser cases for targeted reruns. Browser setup may clear only the explicitly selected loopback `protein_kitchen_e2e` database; never use the cloud branch or household source as its fixture. Remote synthetic import additionally needs `SQLITE_IMPORT_NEON_BRANCH_ID` matching the verified development branch.
 
 ## Golden rules for data
 

@@ -1,0 +1,2 @@
+DROP INDEX "photo_decisions_candidate_uq";--> statement-breakpoint
+ALTER TABLE "photo_decisions" ADD CONSTRAINT "photo_decisions_household_candidate_uq" UNIQUE NULLS NOT DISTINCT("household_id","subject_kind","subject_slug","candidate_key");

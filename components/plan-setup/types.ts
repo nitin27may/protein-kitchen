@@ -26,7 +26,7 @@ export interface SetupProps {
   hasLastPlan: boolean;
   /** The `?step=` in the address when the page was loaded, if any. */
   initialStep: string | null;
-  routines: { catalog: RoutineOption[]; chosen: Record<number, PersonRoutineView[]> };
+  routines: { catalog: RoutineOption[]; chosen: Record<number, PersonRoutineView[]>; editablePersonIds: number[] };
   initial: {
     personIds: number[];
     length: "7" | "14" | "custom";

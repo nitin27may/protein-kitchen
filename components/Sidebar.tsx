@@ -53,6 +53,7 @@ export function Sidebar() {
         {links.map((l) => <NavLink key={l.href} l={l} active={l.match(path)} />)}
       </nav>
       <div className="space-y-2 border-t border-line p-3">
+        <Link href="/account" className="flex min-h-11 items-center rounded-control px-3 font-semibold text-primary">Your account</Link>
         <NavLink l={settings} active={settings.match(path)} />
         <ThemeToggle variant="segmented" />
         <div className="flex gap-3 px-1 pt-1 text-xs text-muted">

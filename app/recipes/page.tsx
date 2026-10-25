@@ -1,3 +1,6 @@
+import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { PublicCatalog } from "@/components/PublicLibrary";
 import type { Metadata } from "next";
 import { RecipesClient } from "@/components/RecipesClient";
 import type { RecipeCardData } from "@/components/RecipesClient";
@@ -6,17 +9,22 @@ import { PageTitle } from "@/components/ui";
 import { perServing } from "@/lib/nutrition/macros";
 import { autoTags } from "@/lib/nutrition/tags";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
-import { getData, getDb } from "@/lib/server/context";
+import { getData } from "@/lib/server/context";
 import { feedbackMap, getCandidates, getDefaultViewQuery } from "@/lib/server/queries";
-import { photoIndex } from "@/lib/server/photo-index";
+import { getPhotoIndex } from "@/lib/server/queries";
 
 export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
 
-export default async function RecipesPage() {
+export default async function RecipesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  if (!await optionalPageMember()) {
+    const { q } = await searchParams;
+    return <PublicCatalog data={getData()} kind="recipes" query={q} />;
+  }
+  const member = await requirePageMember();
   const data = getData();
-  const fb = await feedbackMap();
-  const photos = await photoIndex(await getDb());
+  const fb = await feedbackMap(member.personId);
+  const photos = await getPhotoIndex();
   const cards: RecipeCardData[] = (await getCandidates()).map((c) => {
     const r = data.recipes.get(c.slug)!;
     const f = fb.get(c.slug);
