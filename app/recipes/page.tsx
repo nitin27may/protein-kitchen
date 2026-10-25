@@ -1,6 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
-import { PublicCatalog } from "@/components/PublicLibrary";
+import { libraryRecipeCards, recipeKeywords } from "@/lib/library/anonymous";
 import type { Metadata } from "next";
 import { RecipesClient } from "@/components/RecipesClient";
 import type { RecipeCardData } from "@/components/RecipesClient";
@@ -16,10 +16,16 @@ import { getPhotoIndex } from "@/lib/server/queries";
 export const metadata: Metadata = { title: "Recipes" };
 export const dynamic = "force-dynamic";
 
-export default async function RecipesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function RecipesPage() {
   if (!await optionalPageMember()) {
-    const { q } = await searchParams;
-    return <PublicCatalog data={getData()} kind="recipes" query={q} />;
+    return (
+      <>
+        <PageTitle title="Recipes" sub="Protein and calories are computed from the ingredients, never typed in." />
+        <Suspense fallback={null}>
+          <RecipesClient recipes={libraryRecipeCards(getData())} savedDefault={null} mode="anonymous" />
+        </Suspense>
+      </>
+    );
   }
   const member = await requirePageMember();
   const data = getData();
@@ -38,6 +44,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
       kcal: c.perServing.kcal,
       activeMin: c.activeMin,
       isIndian: c.isIndian,
+      keywords: recipeKeywords(c.slug, data),
       tags: autoTags(r, c.perServing, c.activeMin),
       lowSugar: c.lowSugar,
       light: c.light,
@@ -68,6 +75,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
         kcal: m.kcal,
         activeMin: r.active_min,
         isIndian: r.is_indian,
+        keywords: recipeKeywords(r.slug, data),
         tags: [],
         lowSugar: false,
         light: false,

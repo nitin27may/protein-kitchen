@@ -7,8 +7,9 @@ import { wholeLinks } from "@/lib/recipes/linkview";
 
 /** "Watch and read": the links for the whole recipe, with add, edit, remove and reorder. */
 export function LinksCard() {
-  const { links, play, openAdd, openEdit, remove, move, busy } = useLinks();
+  const { links, play, openAdd, openEdit, remove, move, busy, readOnly } = useLinks();
   const list = wholeLinks(links);
+  if (readOnly) return null;
 
   return (
     <SectionCard

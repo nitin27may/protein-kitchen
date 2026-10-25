@@ -44,7 +44,7 @@ function NavLink({ l, active }: { l: { href: string; label: string; icon: ReactN
 }
 
 /** Desktop navigation rail. Phones use the header and bottom bar instead. */
-export function Sidebar() {
+export function Sidebar({ signedIn }: { signedIn: boolean }) {
   const path = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
@@ -53,13 +53,24 @@ export function Sidebar() {
         {links.map((l) => <NavLink key={l.href} l={l} active={l.match(path)} />)}
       </nav>
       <div className="space-y-2 border-t border-line p-3">
-        <Link href="/account" className="flex min-h-11 items-center rounded-control px-3 font-semibold text-primary">Your account</Link>
-        <NavLink l={settings} active={settings.match(path)} />
+        {signedIn ? (
+          <>
+            <Link href="/account" className="flex min-h-11 items-center rounded-control px-3 font-semibold text-primary">Your account</Link>
+            <NavLink l={settings} active={settings.match(path)} />
+          </>
+        ) : (
+          <div aria-label="Account" role="group" className="space-y-2">
+            <Link href="/sign-up" className="flex min-h-11 items-center justify-center rounded-control bg-primary px-3 font-semibold text-primaryfg hover:opacity-90">Create account</Link>
+            <Link href="/sign-in" className="flex min-h-11 items-center justify-center rounded-control border border-line px-3 font-semibold text-primary hover:bg-surface2">Sign in</Link>
+          </div>
+        )}
         <ThemeToggle variant="segmented" />
-        <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
-          <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link>
-          <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link>
-        </div>
+        {signedIn ? (
+          <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
+            <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link>
+            <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link>
+          </div>
+        ) : null}
       </div>
     </aside>
   );

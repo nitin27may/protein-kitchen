@@ -38,7 +38,7 @@ export interface PresetDef {
 }
 
 export interface FilterDef<T> {
-  /** Text a search can match: name, aliases, family and so on. Every search word must appear. */
+  /** Text a search can match. The first entry is the name (ranked highest); then aliases, family, tags and so on. Every search word must appear. */
   search: (item: T) => string[];
   sorts: SortDef<T>[];
   defaultSort: string;
@@ -143,11 +143,52 @@ function facetOk<T>(f: FacetDef<T>, item: T, selected: string[]): boolean {
   return f.combine === "or" ? opts.some((o) => o.test(item)) : opts.every((o) => o.test(item));
 }
 
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** "tomatoes" and "tomato", "lentils" and "lentil" should find each other. */
+function variants(word: string): string[] {
+  const out = [word];
+  if (word.length > 3 && word.endsWith("es")) out.push(word.slice(0, -2));
+  if (word.length > 3 && word.endsWith("s")) out.push(word.slice(0, -1));
+  return out;
+}
+
+/**
+ * How well an item matches a search, or null when it does not match. Every word must match somewhere. The first
+ * field `search` returns is the name and counts most; later fields (aliases, cuisine, tags, ingredients) count less.
+ * Whole words beat word starts, which beat matches inside a word, so "pea" lists "Pea soup" before "Chickpea salad".
+ */
+export function searchScore<T>(def: FilterDef<T>, item: T, q: string): number | null {
+  const qn = norm(q);
+  if (!qn) return 0;
+  const [first = "", ...rest] = def.search(item).map(norm);
+  const nameWords = first.split(" ");
+  const restWords = rest.flatMap((f) => f.split(" "));
+  const restText = rest.join(" ");
+  let total = 0;
+  for (const w of qn.split(" ")) {
+    let best = 0;
+    for (const v of variants(w)) {
+      let s = 0;
+      if (nameWords.includes(v)) s = 50;
+      else if (nameWords.some((x) => x.startsWith(v))) s = 40;
+      else if (first.includes(v)) s = 25;
+      else if (restWords.includes(v)) s = 20;
+      else if (restWords.some((x) => x.startsWith(v))) s = 15;
+      else if (restText.includes(v)) s = 8;
+      best = Math.max(best, s);
+    }
+    if (best === 0) return null;
+    total += best;
+  }
+  if (first === qn) total += 100;
+  else if (first.startsWith(qn)) total += 30;
+  else if (first.includes(qn)) total += 15;
+  return total;
+}
+
 function searchOk<T>(def: FilterDef<T>, item: T, q: string): boolean {
-  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const hay = def.search(item).join(" ").toLowerCase();
-  return words.every((w) => hay.includes(w));
+  return searchScore(def, item, q) !== null;
 }
 
 function passes<T>(def: FilterDef<T>, item: T, state: FilterState, skipFacet?: string): boolean {
@@ -158,7 +199,11 @@ function passes<T>(def: FilterDef<T>, item: T, state: FilterState, skipFacet?: s
 
 export function applyFilters<T>(def: FilterDef<T>, items: readonly T[], state: FilterState): T[] {
   const sort = def.sorts.find((s) => s.value === state.sort) ?? def.sorts.find((s) => s.value === def.defaultSort)!;
-  return items.filter((i) => passes(def, i, state)).sort(sort.compare);
+  const kept = items.filter((i) => passes(def, i, state));
+  if (!norm(state.q)) return kept.sort(sort.compare);
+  // With a search, the best match comes first and the chosen sort breaks ties.
+  const score = new Map(kept.map((i) => [i, searchScore(def, i, state.q) ?? 0]));
+  return kept.sort((a, b) => score.get(b)! - score.get(a)! || sort.compare(a, b));
 }
 
 /** How many items pass base visibility alone: the "of N" in "41 of 99 recipes". Search and filters are ignored. */

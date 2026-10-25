@@ -12,11 +12,13 @@ import { useUrlFilters } from "@/lib/filters/use-url-filters";
  * Search, sort, Filters button, active-filter chips and the filter drawer for one list. It owns the filter state (kept
  * in the URL) and hands the filtered items to `children`, so a list only has to draw its own results.
  */
-export function FilterToolbar<T>({ list, def, items, savedDefault, noun, searchLabel, searchPlaceholder, children }: {
+export function FilterToolbar<T>({ list, def, items, savedDefault, canSaveView = true, noun, searchLabel, searchPlaceholder, children }: {
   list: string;
   def: FilterDef<T>;
   items: readonly T[];
   savedDefault: string | null;
+  /** False for a visitor without an account: the saved-view controls are not shown. */
+  canSaveView?: boolean;
   noun: { one: string; many: string };
   searchLabel: string;
   searchPlaceholder: string;
@@ -79,14 +81,14 @@ export function FilterToolbar<T>({ list, def, items, savedDefault, noun, searchL
                 onToggle={(v) => f.toggle(facet.key, v)}
               />
             ))}
-            <div className="space-y-2 border-t border-line pt-4">
+            {canSaveView ? <div className="space-y-2 border-t border-line pt-4">
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" size="sm" onClick={saveDefault} loading={pending} disabled={isDefaultState(def, f.state) || savedIsCurrent}>Save as my default</Button>
                 {savedDefault !== null ? <Button variant="ghost" size="sm" onClick={removeDefault} disabled={pending}>Remove default</Button> : null}
               </div>
               <p className="text-xs text-muted">The default opens whenever this list loads without filters in its link.</p>
               {note ? <Banner tone="ok">{note}</Banner> : null}
-            </div>
+            </div> : null}
           </div>
           <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-surface p-3 lg:px-5" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
             <Button variant="ghost" size="sm" onClick={f.clear} disabled={nFilters === 0}>Clear all</Button>

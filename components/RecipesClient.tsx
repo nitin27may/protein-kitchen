@@ -4,15 +4,16 @@ import Link from "next/link";
 import { FilterToolbar } from "@/components/FilterToolbar";
 import { RecipeThumb } from "@/components/RecipeThumb";
 import { Pill } from "@/components/ui";
-import { recipeFilters } from "@/lib/filters/recipes";
+import { anonymousRecipeFilters, recipeFilters } from "@/lib/filters/recipes";
 import type { RecipeCardData } from "@/lib/filters/recipes";
 
 export type { RecipeCardData } from "@/lib/filters/recipes";
 
-export function RecipesClient({ recipes, savedDefault }: { recipes: RecipeCardData[]; savedDefault: string | null }) {
+export function RecipesClient({ recipes, savedDefault, mode = "member" }: { recipes: RecipeCardData[]; savedDefault: string | null; mode?: "member" | "anonymous" }) {
+  const anonymous = mode === "anonymous";
   return (
-    <FilterToolbar list="recipes" def={recipeFilters} items={recipes} savedDefault={savedDefault}
-      noun={{ one: "recipe", many: "recipes" }} searchLabel="Search recipes" searchPlaceholder="Search recipes, cuisines or meal types">
+    <FilterToolbar list="recipes" def={anonymous ? anonymousRecipeFilters : recipeFilters} items={recipes} savedDefault={anonymous ? null : savedDefault} canSaveView={!anonymous}
+      noun={{ one: "recipe", many: "recipes" }} searchLabel="Search recipes" searchPlaceholder="Search recipes, ingredients or cuisines">
       {(shown) => (
         <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {shown.map((r) => (
@@ -28,8 +29,8 @@ export function RecipesClient({ recipes, savedDefault }: { recipes: RecipeCardDa
                     {r.light ? <Pill tone="info">Light</Pill> : null}
                     {r.lowSugar ? <Pill tone="info">Low sugar</Pill> : null}
                     {r.tags.includes("high-fibre") ? <Pill tone="info">High fibre</Pill> : null}
-                    {r.favourite ? <Pill tone="warn">Favourite</Pill> : null}
-                    {r.kind === "component" ? <Pill>Part of a meal</Pill> : r.tested ? <Pill tone="ok">Tested{r.rating ? ` ${r.rating}/5` : ""}</Pill> : <Pill>Draft</Pill>}
+                    {anonymous ? null : r.favourite ? <Pill tone="warn">Favourite</Pill> : null}
+                    {r.kind === "component" ? <Pill>Part of a meal</Pill> : anonymous ? null : r.tested ? <Pill tone="ok">Tested{r.rating ? ` ${r.rating}/5` : ""}</Pill> : <Pill>Draft</Pill>}
                     {r.banned ? <Pill tone="bad">Hidden</Pill> : null}
                   </div>
                 </div>

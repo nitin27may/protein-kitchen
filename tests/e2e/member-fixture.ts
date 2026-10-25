@@ -7,6 +7,7 @@ import { authUsers, authAccounts, householdMembers, people } from "../../lib/db/
 import { e2eTarget } from "./target";
 
 const email = "authorized-browser-fixture@example.test";
+const origin = `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`;
 const password = "Synthetic-authorized-browser-password-123!";
 let state: Awaited<ReturnType<APIRequestContext["storageState"]>> | undefined;
 
@@ -33,10 +34,10 @@ export const test = base.extend({
           await tx.insert(householdMembers).values({ householdId, userId: id, role: "owner", personId: profile!.id });
         });
       } finally { await handle.close(); }
-      const client = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3112" });
+      const client = await playwright.request.newContext({ baseURL: origin });
       try {
         const response = await client.post("/api/auth/sign-in/email", {
-          headers: { origin: "http://127.0.0.1:3112", "x-forwarded-for": "127.0.0.31" },
+          headers: { origin, "x-forwarded-for": "127.0.0.31" },
           data: { email, password },
         });
         expect(response.status()).toBe(200);
