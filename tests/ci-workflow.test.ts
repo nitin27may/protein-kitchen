@@ -6,6 +6,15 @@ const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta
 const acceptance = workflow.slice(workflow.indexOf("\n  acceptance:"));
 
 describe("credential-free CI acceptance gate", () => {
+  it("installs matching native recovery clients from the signed PostgreSQL repository on a fixed Ubuntu release", () => {
+    expect(workflow).toContain("runs-on: ubuntu-24.04");
+    expect(workflow).toContain("signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc");
+    expect(workflow).toContain("https://apt.postgresql.org/pub/repos/apt noble-pgdg main");
+    expect(workflow).toContain("age postgresql-client-17");
+    expect(workflow).toContain("/usr/lib/postgresql/17/bin/pg_dump --version");
+    expect(workflow).toContain("/usr/lib/postgresql/17/bin/pg_restore --version");
+  });
+
   it("runs even after unsuccessful dependencies and names every required job", () => {
     expect(acceptance).toContain("if: ${{ always() }}");
     expect(acceptance).toContain("needs: [ci, browser, secrets]");

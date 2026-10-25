@@ -192,6 +192,11 @@ For operator deployment from this macOS machine, upload a clean archive of the
 exact CI-accepted commit for Vercel's Linux build; do not upload local test
 fixtures, pulled env files or macOS-built server binaries. The committed
 Actions runner continues to use Linux prebuilt output when registered.
+The first remote CI run exposed an unavailable `postgresql-client-17` package
+in the runner's default apt sources. Pin its native recovery job to Ubuntu
+24.04 and add the official HTTPS PGDG repository with a scoped `signed-by`
+key, keeping client/server major version 17 and verifying both binary versions.
+Do not skip recovery tests or weaken the aggregate gate to deploy.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 
