@@ -217,7 +217,7 @@ async function smallTargets(page: Page, selector: string) {
     return box.height < 43.5 ? [`${el.tagName} "${(el.textContent ?? "").trim().slice(0, 40)}" ${Math.round(box.height)}px`] : [];
   }));
 }
-const noHorizontalScroll = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+const noHorizontalScroll = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
 
 test("at 390 px the setup, draft, groceries and signup sheet fit with 44 px tap targets", async ({ page }) => {
   test.setTimeout(180_000);

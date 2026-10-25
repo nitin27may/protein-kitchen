@@ -156,7 +156,8 @@ export function SetupForm({ people: memberPeople, ingredients, anchors, recipes,
       return anonFeasibility(input, profileResult.profile, library.library);
     } : undefined,
   );
-  const blocks = draftBlockers(draft, feas.result);
+  // Generating before the public library arrives would only fail, so hold the button until it is ready.
+  const blocks = anonymous && library.status === "loading" ? ["Loading the recipe library. This takes a moment."] : draftBlockers(draft, feas.result);
   const canShake = shakeFix(draft, feas.result);
 
   function onNext() {

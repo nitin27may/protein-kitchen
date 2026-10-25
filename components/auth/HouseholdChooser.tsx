@@ -50,7 +50,7 @@ export function HouseholdChooser({ households, selectedHouseholdId, selectionUna
           {household.role === "owner" && editing !== household.id ? <Button variant="secondary" disabled={pending !== null}
             onClick={() => { setEditing(household.id); setDraft(household.name); setError(""); setNotice(""); }}
             aria-label={`Rename household: ${household.name}`}>Rename</Button> : null}
-          <Button className="max-w-full whitespace-normal text-left" disabled={pending !== null} loading={pending === household.id}
+          <Button className="max-w-full whitespace-normal! text-left" disabled={pending !== null} loading={pending === household.id}
             onClick={() => void select(household.id)} aria-label={`Use household: ${household.name}`}>Use this household</Button>
         </div>
       </div>

@@ -17,7 +17,7 @@ async function expectTapTarget(locator: Locator) {
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
 }
 async function expectNoOverflow(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
 }
 async function passwordSignIn(page: Page, email: string, value: string) {
   await page.goto("/sign-in?next=%2Faccount");

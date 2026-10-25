@@ -52,19 +52,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/" className="inline-flex min-h-11 items-center whitespace-nowrap text-lg font-bold text-primary">
                   Protein Kitchen
                 </Link>
-                <div className="flex items-center">
+                <div className="flex min-w-0 items-center">
                   <ThemeToggle />
                   {signedIn ? (
                     <>
                       <Link href="/account" className="flex min-h-11 items-center rounded-control px-2 text-sm font-semibold text-primary">
                         Account
                       </Link>
-                      <Link href="/settings" className="flex min-h-11 items-center rounded-control px-3 text-base font-semibold text-muted hover:bg-surface2">
+                      <Link href="/settings" className="flex min-h-11 items-center rounded-control px-2 text-sm font-semibold text-muted hover:bg-surface2">
                         Settings
                       </Link>
                     </>
                   ) : (
-                    <Link href="/sign-in" className="flex min-h-11 items-center whitespace-nowrap rounded-control px-3 text-sm font-semibold text-primary">
+                    <Link href="/sign-in" className="flex min-h-11 min-w-0 items-center rounded-control px-3 text-right text-sm leading-tight font-semibold text-primary">
                       Sign in / Create account
                     </Link>
                   )}
