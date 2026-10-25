@@ -1,11 +1,13 @@
 import { validatePostgresTarget } from "./target";
+import { productionMigrationTarget } from "./production-target";
 import type { PostgresTarget } from "./target";
 
-/** Deliberately development/test only until the production migration and cutover procedure is implemented. */
+/** Development/test anywhere; production only from the approved main-branch CI job (see production-target.ts). */
 export function postgresMigrationTarget(env: Readonly<Record<string, string | undefined>>): PostgresTarget {
   const environment = env.DATABASE_ENV;
+  if (environment === "production") return productionMigrationTarget(env);
   if (environment !== "development" && environment !== "test") {
-    throw new Error("Postgres migrations currently require DATABASE_ENV=development or test. Production and preview are not enabled.");
+    throw new Error("Postgres migrations currently require DATABASE_ENV=development or test. Preview is not enabled and production runs only from the approved CI job.");
   }
   if (!env.DATABASE_URL_UNPOOLED) {
     throw new Error("Postgres migrations require DATABASE_URL_UNPOOLED; the application URL is never used as a fallback.");

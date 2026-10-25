@@ -99,6 +99,12 @@ Preview admission requires sync/reminder/vault flags absent or `false`, and mail
 
 Add `--verify-branch` to explicitly run the existing read-only fixed-origin Neon metadata checks for both endpoints. Missing/mismatched/default/production/protected/unready branch mappings fail closed. A configuration-only pass reports `liveBranchVerified:false`; even live metadata success is not storage/privacy/provider acceptance or deployment approval. No release workflow, production migration or Vercel promotion is enabled by this command.
 
+### Production guards and `pnpm db:check:production`
+
+There is one hosted environment, production. Migrate, seed and import against it are accepted only from the main-branch GitHub Actions job (`GITHUB_ACTIONS=true`, `GITHUB_REF=refs/heads/main`, `DEPLOYMENT_ENVIRONMENT=production`) with `DATABASE_ENV=production`; from a laptop or any other context they fail with `PRODUCTION_CONTEXT_REFUSED`. Restore stays development/test only. In that job the control plane must confirm the pinned `NEON_PRODUCTION_BRANCH_ID` is ready and the direct host is its unique read-write endpoint (`PRODUCTION_BRANCH_MISMATCH`, `PRODUCTION_BRANCH_NOT_READY`, `PRODUCTION_ENDPOINT_MISMATCH`). The running Vercel production app needs no Neon API key: `DATABASE_PRODUCTION_HOST` pins the pooled host and `DATABASE_DIRECT_PRODUCTION_HOST` pins the direct host used by migrations (`PRODUCTION_PIN_MISSING`, `PRODUCTION_HOST_MISMATCH`, `PRODUCTION_POOLER_REQUIRED`, `PRODUCTION_DIRECT_REQUIRED`). `sslmode=verify-full` and the libpq host-override refusal still apply.
+
+`pnpm db:check:production [--phase=pre-migrate|pre-deploy] [--remote-read-only]` is the read-only remote sanity check (default phase `pre-deploy`). It reads configuration from the injected environment (no env files), asks the Neon control plane about project, branch and endpoints, then reads the database inside `BEGIN READ ONLY`: server version, migration ledger (exact, pending N, divergent), schema drift against the drizzle snapshot, library fingerprint against local `/data`, and the age of the newest `pre-deploy-` snapshot branch (at most 60 minutes). Output is stable codes and counts only. Outside GitHub Actions the flag `--remote-read-only` is required and a write-capable role is refused (`ROLE_WRITE_CAPABLE`). Set `PRODUCTION_ORIGIN` to the production https origin; `BETTER_AUTH_URL` must equal it.
+
 For a **reviewed, isolated dev/test database**, supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification.
 
 Remote non-production application startup, migration and seed additionally require `NEON_PROJECT_ID`, `NEON_DEVELOPMENT_BRANCH_ID`, `NEON_PRODUCTION_BRANCH_ID` and a server-only `NEON_API_KEY` with access to the project's metadata. The API key is used only for read-only GETs to the fixed Neon control-plane origin, with timeouts, no redirects and no response-body logging. Never expose it through `NEXT_PUBLIC_` or provide it to client components; use the least-privileged key supported by your account. Existing CLI OAuth login is not read by the application.
@@ -182,6 +188,10 @@ Set in `.env.local` (git-ignored). Never commit it.
 | `DATABASE_ENV` | Explicit database environment; must match `NODE_ENV` or `VERCEL_ENV` |
 | `DATABASE_NONPRODUCTION_HOST` | Exact remote non-production endpoint host; additionally checked against live Neon metadata |
 | `DATABASE_URL_UNPOOLED` | Direct dev/test connection for explicit migrations and seed |
+| `DATABASE_PRODUCTION_HOST` | Production runtime only: exact pooled endpoint host the application may connect to |
+| `DATABASE_DIRECT_PRODUCTION_HOST` | Production migrations and checks: exact direct endpoint host |
+| `DEPLOYMENT_ENVIRONMENT` | Marker `production`, set only by the approved main-branch CI job |
+| `PRODUCTION_ORIGIN` | Production https origin; the read-only check requires `BETTER_AUTH_URL` to equal it |
 | `NEON_PROJECT_ID` | Explicit project id for remote non-production metadata verification |
 | `NEON_DEVELOPMENT_BRANCH_ID` | Explicit non-default, non-primary, unprotected development branch id |
 | `NEON_PRODUCTION_BRANCH_ID` | Production branch id that non-production traffic must never select |

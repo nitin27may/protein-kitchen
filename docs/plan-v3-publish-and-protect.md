@@ -2,6 +2,38 @@
 
 Status: steps 12-17 implemented locally; step 18 private cloud-photo implementation passes local acceptance, but its live storage rehearsal awaits explicit approval. Step 19A-19C's selective snapshots, private GitHub App publication, persisted recovery, owner controls and authenticated scheduler are verified locally. Step 20A-20B local encrypted artifacts/guarded restore, 20C1-20C2 append-only vault library/operator/fetched recovery and 20D timezone/device receipts/authenticated scheduling pass local acceptance. Approved off-machine acceptance/pre-reset gate, retention, live provider/device checks and deployment remain open. Isolated Neon database rehearsals were verified after approval; public publishing has not started. Updated 2026-10-24. Live cloud/state-sync acceptance and UI/photo owner/device checks remain. Identity/provider changes and later infrastructure still follow their approval gates. See `roadmap.md` for current status; the PR numbers in this document are delivery labels, not GitHub pull request numbers.
 
+## Stage scope: single production environment and production guards (2026-10-25)
+
+Owner decision: there is ONE hosted environment, production, on Vercel with the single existing Neon project, shared with friends. Local development uses a throwaway local Postgres (or PGlite). The protected-preview machinery stays for history but is not a second environment to maintain. A remote sanity check must pass before any deployment; GitHub Actions may later run migrations and deploys behind an owner approval. This stage only builds and tests the guards; it touches no remote service.
+
+Hard boundaries for agents working this stage: never run anything against Neon or Vercel, never read or print `.env*` values or secrets, no workflow or Vercel configuration changes (a later step). Everything is built and tested with local PGlite, loopback Postgres and fakes.
+
+### PR1: production guards
+
+- A production migration/seed/import target exists and is allowed only when `GITHUB_ACTIONS=true`, `GITHUB_REF=refs/heads/main` and the deployment environment marker `DEPLOYMENT_ENVIRONMENT=production` are all present. Any other context (a laptop, a preview-labelled run, another ref) is refused with the stable code `PRODUCTION_CONTEXT_REFUSED`. Restore stays development/test only. The development/test targets and the loopback-only mailbox and fixture rules do not change.
+- `verifyProductionBranch` requires the branch id to equal `NEON_PRODUCTION_BRANCH_ID`, the branch to be ready, and the host to be the unique read-write endpoint of that branch (direct host for migrations, pooler derived from it for runtime). The Neon control-plane client is injected.
+- Runtime gap closed: production runtime pins its host with `DATABASE_PRODUCTION_HOST` (pooled) and migrations pin `DATABASE_DIRECT_PRODUCTION_HOST` (direct), so the running application needs no Neon API key. `sslmode=verify-full`, libpq host-override refusal and the direct-endpoint requirement for migrations are kept. A production runtime also requires `VERCEL=1` and `VERCEL_ENV=production`, so `next start` on a laptop cannot reach production.
+- Stable codes: `PRODUCTION_CONTEXT_REFUSED`, `PRODUCTION_PIN_MISSING`, `PRODUCTION_HOST_MISMATCH`, `PRODUCTION_DIRECT_REQUIRED`, `PRODUCTION_POOLER_REQUIRED`, `PRODUCTION_NEON_CONFIG_MISSING`, `PRODUCTION_NEON_UNREACHABLE`, `PRODUCTION_NEON_INVALID`, `PRODUCTION_BRANCH_MISMATCH`, `PRODUCTION_BRANCH_NOT_READY`, `PRODUCTION_ENDPOINT_MISMATCH`.
+
+### PR2: `pnpm db:check:production`
+
+Read-only remote sanity check (`BEGIN READ ONLY`, an allow-list of statements, rollback at the end). It prints only stable codes and counts, never a configuration value or URL. Checks: configuration well-formed (pooled and direct URLs agree on database and credentials, `BETTER_AUTH_URL` is https and equals `PRODUCTION_ORIGIN`, mail variables present, no bootstrap secret or fixture variables, sync/reminder/vault flags false); Neon control plane (project, production branch, ready, endpoint); connectivity and server version; migration ledger against `db/postgres-migrations` (exact, pending N, divergent); schema drift against the drizzle snapshot matching the applied ledger; library seed version against the local `/data` fingerprint; age of the newest `pre-deploy-` snapshot branch.
+
+- `--phase=pre-migrate`: pending migrations are allowed, a stale library and a missing snapshot are warnings. `--phase=pre-deploy` (default): ledger must be exact, library current, and a snapshot younger than 60 minutes must exist. A divergent ledger always fails.
+- Outside GitHub Actions the command requires `--remote-read-only` and refuses a role that can write (superuser, or INSERT/UPDATE/DELETE on the library table, or CREATE on `public`).
+
+### Acceptance
+
+1. `pnpm typecheck`, `pnpm test`, `pnpm validate` and `NEXT_DIST_DIR=.next-build pnpm build` pass.
+2. Unit tests: laptop refused, preview-labelled refused, wrong ref refused, wrong branch, pooler vs direct, host mismatch, missing pins, happy path in the CI context.
+3. PGlite tests exercise every check code, prove the transaction is read-only, and prove that no secret or URL value appears in output.
+4. No workflow, Vercel or external-service change in this stage; wiring the check and approvals into GitHub Actions is the next stage.
+
+### Gotchas
+
+- `DEPLOYMENT_ENVIRONMENT` is a marker set by the (future) workflow job, not a GitHub built-in; it is a guard against mistakes, and GitHub environment approval remains the real control.
+- Pre-deploy snapshot branches are expected to be named `pre-deploy-<timestamp>`.
+
 ## Revised product direction: public library and email-first households
 
 User-directed change, 2026-10-24: public visitors browse recipes/ingredients/details with a top menu; signed-in people use the full application within their own household. Anyone can sign up without invitation/bootstrap codes or choosing a cook/owner role. A household adds members by email from day one. This supersedes the single-household-per-deployment and invite-only product assumptions below, not their existing privacy protections. **This section is an implementation plan, not completed functionality.**

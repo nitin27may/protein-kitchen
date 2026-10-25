@@ -65,7 +65,7 @@ describe("live Neon branch-to-host verification", () => {
   });
 
   it("leaves the production runtime outside this development gate, without a control-plane dependency", async () => {
-    await verifyNonProductionBranch({ ...target, runtimeEnvironment: "production", databaseEnvironment: "production" }, {}, fetchMock);
+    await verifyNonProductionBranch({ ...target, runtimeEnvironment: "production", databaseEnvironment: "production", productionHost: host }, {}, fetchMock);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
