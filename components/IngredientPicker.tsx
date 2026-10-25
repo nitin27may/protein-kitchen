@@ -98,7 +98,7 @@ export function IngredientPicker({
   const [whoRaw, setWho] = useState<number>(people[0]?.id ?? 0);
   const who = people.some((p) => p.id === whoRaw) ? whoRaw : (people[0]?.id ?? 0);
   const groups = useMemo(() => Array.from(new Set(items.map((i) => i.group))), [items]);
-  const current = prefs[who] ?? { liked: [], avoided: [] };
+  const current = useMemo(() => prefs[who] ?? { liked: [], avoided: [] }, [prefs, who]);
   const byslug = useMemo(() => new Map(items.map((i) => [i.slug, i])), [items]);
 
   const shown = useMemo(() => {
