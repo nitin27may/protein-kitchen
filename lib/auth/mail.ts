@@ -10,6 +10,11 @@ const subjects = {
 } satisfies Record<AuthCodeMail["type"], string>;
 
 export function resendAuthSender(env: Readonly<Record<string, string | undefined>>, request: typeof fetch = fetch) {
+  if (env.VERCEL_ENV === "preview") {
+    return async (_mail: AuthMail): Promise<void> => {
+      throw new AuthConfigurationError("Authentication email delivery is disabled in protected previews.");
+    };
+  }
   const apiKey = env.RESEND_API_KEY;
   const sender = z.string().email().safeParse(env.AUTH_EMAIL_FROM);
   if (!apiKey || !sender.success) throw new AuthConfigurationError("Set RESEND_API_KEY and a verified AUTH_EMAIL_FROM email address for auth delivery.");

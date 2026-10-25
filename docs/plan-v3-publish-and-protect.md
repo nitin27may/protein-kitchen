@@ -181,6 +181,18 @@ and verify actual protected/public-library responses through authenticated
 Vercel access. No production cutover, signup/mail acceptance claim, source
 import, reset, release or unrelated product slice is included.
 
+**Preview auth dependency:** the existing eager mail configuration prevents
+provider/session initialization when preview correctly has no live mail key.
+Keep email disabled explicitly in protected preview: construct a sender that
+throws a clear configuration error on every delivery attempt, without network
+I/O, rather than failing provider construction or pretending delivery succeeded.
+Test refusal with absent and accidentally supplied credentials; preserve all
+non-preview mail validation and receipts. This is not hosted mail acceptance.
+For operator deployment from this macOS machine, upload a clean archive of the
+exact CI-accepted commit for Vercel's Linux build; do not upload local test
+fixtures, pulled env files or macOS-built server binaries. The committed
+Actions runner continues to use Linux prebuilt output when registered.
+
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 
 1. **D1: reconcile and finish feature acceptance.** Complete H1-H6 first. Audit the actual reminder/push implementation rather than rebuilding it: timezone controls, session-bound subscriptions, test-send controls, persisted device receipts and the authenticated POST scheduler already exist and pass local synthetic acceptance. Still required: household-scoped eligibility and plan/prep selection, revocation/switching behavior, hosted scheduling, real provider delivery and physical-device acceptance. Retain tests for two unrelated households, same-household cooks, timezone/DST, duplicate scheduler calls, successful-device suppression, expired/revoked registrations, explicit retries and ambiguous sends. Run full coverage/native/browser/build acceptance before any release candidate.

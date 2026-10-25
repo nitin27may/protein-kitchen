@@ -33,6 +33,15 @@ describe("explicit server auth configuration", () => {
 
 const mailEnv = { RESEND_API_KEY: "synthetic-provider-key", AUTH_EMAIL_FROM: "auth@example.test" };
 const mail = { email: "cook@example.test", otp: "123456", type: "email-verification" as const };
+
+describe("protected-preview mail boundary", () => {
+  it.each([{}, mailEnv])("initializes without live mail and explicitly refuses every send with %j", async (env) => {
+    const request = vi.fn<typeof fetch>();
+    const send = resendAuthSender({ ...env, VERCEL_ENV: "preview" }, request);
+    await expect(send(mail)).rejects.toThrow("Authentication email delivery is disabled in protected previews.");
+    expect(request).not.toHaveBeenCalled();
+  });
+});
 describe("explicit, awaited auth code delivery", () => {
   it.each([{}, { RESEND_API_KEY: "synthetic" }, { ...mailEnv, AUTH_EMAIL_FROM: "invalid" }])("refuses an unconfigured provider", (env) => {
     expect(() => resendAuthSender(env)).toThrow(AuthConfigurationError);
