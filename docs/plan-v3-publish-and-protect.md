@@ -197,6 +197,12 @@ in the runner's default apt sources. Pin its native recovery job to Ubuntu
 24.04 and add the official HTTPS PGDG repository with a scoped `signed-by`
 key, keeping client/server major version 17 and verifying both binary versions.
 Do not skip recovery tests or weaken the aggregate gate to deploy.
+Retain an operator-only hosted browser smoke command, separate from loopback
+fixtures: explicit HTTPS preview origin plus server-only protection bypass;
+confirm anonymous denial, public library/sign-in rendering, private-account
+redirect and no uncaught browser errors. Inject the bypass only into requests
+for the exact origin, never into third-party requests; no writes or fixture
+reset are performed.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 
