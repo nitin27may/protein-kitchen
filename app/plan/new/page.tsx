@@ -1,4 +1,7 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { hasSessionCookie } from "@/lib/auth/session-cookie";
+import { buildCandidates } from "@/lib/planner/candidates";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SetupForm } from "@/components/SetupForm";
@@ -38,7 +41,39 @@ const ANCHORS: { slug: string; label: string }[] = [
   { slug: "edamame-prepared", label: "Edamame" },
 ];
 
+/** Visitors plan on their own device: library data only, no household, no feedback, no photos. */
+async function AnonymousNewPlan({ stepParam }: { stepParam: Promise<{ step?: string }> }) {
+  const step = (await stepParam).step ?? null;
+  const data = getData();
+  const start = nextMonday(todayISO());
+  const props: SetupProps = {
+    people: [],
+    ingredients: [...data.ingredients.values()].filter((i) => PICKER_AISLES[i.aisle]).map((i) => ({
+      slug: i.slug, name: displayName(i), aliases: i.aliases, group: PICKER_AISLES[i.aisle]!, aisle: i.aisle,
+      density: i.per100g.kcal > 0 ? (i.per100g.protein_g / i.per100g.kcal) * 100 : 0, image: null,
+    })).sort((a, b) => a.name.localeCompare(b.name)),
+    anchors: ANCHORS.filter((a) => data.ingredients.has(a.slug)),
+    recipes: buildCandidates(data).map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name)),
+    hasLastPlan: false,
+    initialStep: step,
+    routines: { catalog: [], chosen: {}, editablePersonIds: [] },
+    initial: {
+      personIds: [1], length: "7", start, end: addDays(start, 6), meals: ["breakfast", "lunch", "dinner", "snack"], cuisineBalance: 0.6,
+      prepStyle: "leftovers", health: { nutrientDense: true, lowSugar: true, light: true }, timeLimit: "weeknights", prefs: {},
+    },
+  };
+  return (
+    <>
+      <PageTitle title="New plan" sub="Five short steps. Your plan stays on this device until you save it to an account." />
+      <SetupForm {...props} anonymous />
+    </>
+  );
+}
+
 export default async function NewPlanPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+  if (!await optionalPageMember() && !await hasSessionCookie()) {
+    return <AnonymousNewPlan stepParam={searchParams} />;
+  }
   const member = await requirePageMember();
   const { step } = await searchParams;
   const people = await listPeople();

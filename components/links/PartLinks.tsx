@@ -10,8 +10,9 @@ import { partLinks } from "@/lib/recipes/linkview";
  * video added for hummus is visible in every meal that uses hummus.
  */
 export function PartLinks({ partSlug, partName }: { partSlug: string; partName: string }) {
-  const { links, play, openAdd, openEdit, remove, move, busy } = useLinks();
+  const { links, play, openAdd, openEdit, remove, move, busy, readOnly } = useLinks();
   const list = partLinks(links, partSlug);
+  if (readOnly) return null;
 
   return (
     <div data-slot="part-links">

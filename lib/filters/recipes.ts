@@ -22,12 +22,14 @@ export interface RecipeCardData {
   tested: boolean;
   rating: number | null;
   banned: boolean;
+  /** Extra search text: ingredient names and the recipe's own tags. Not shown. */
+  keywords?: string[];
 }
 
 const density = (r: RecipeCardData) => (r.kcal > 0 ? r.proteinG / r.kcal : 0);
 
 export const recipeFilters = defineFilters<RecipeCardData>({
-  search: (r) => [r.name, r.family, r.cuisine, ...r.slots],
+  search: (r) => [r.name, r.cuisine, r.family, ...r.slots, ...r.tags, ...(r.keywords ?? [])],
   defaultSort: "protein",
   sorts: [
     { value: "protein", label: "Most protein", compare: (a, b) => b.proteinG - a.proteinG || a.name.localeCompare(b.name) },
@@ -104,4 +106,13 @@ export const recipeFilters = defineFilters<RecipeCardData>({
     { id: "breakfast-20g", label: "Breakfast 20 g+", sel: { meal: ["breakfast"], protein: ["20"] } },
     { id: "tested", label: "Tested", sel: { yours: ["tested"] } },
   ],
+});
+
+/** The list a visitor without an account sees: no "Yours" facet, "Hidden recipes" option or "Tested" preset, because there is no feedback. */
+export const anonymousRecipeFilters = defineFilters<RecipeCardData>({
+  ...recipeFilters,
+  facets: recipeFilters.facets
+    .filter((f) => f.key !== "yours")
+    .map((f) => (f.key === "show" ? { ...f, options: f.options.filter((o) => o.value === "parts") } : f)),
+  presets: recipeFilters.presets.filter((p) => p.id !== "tested"),
 });

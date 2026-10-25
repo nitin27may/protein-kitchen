@@ -36,5 +36,7 @@ export async function householdAccount(db: Db, access: HouseholdAccess) {
   }).from(s.householdMembers).innerJoin(s.authUsers, eq(s.authUsers.id, s.householdMembers.userId))
     .leftJoin(s.people, and(eq(s.people.id, s.householdMembers.personId), eq(s.people.householdId, access.householdId)))
     .where(eq(s.householdMembers.householdId, access.householdId)).orderBy(s.authUsers.name) : [];
-  return { profile, owner, profiles, invitations, incomingAssociations, members };
+  // Accounts created by email code have no account name; show the profile name, else the email local-part.
+  const named = members.map((member) => ({ ...member, name: member.name.trim() || member.profileName || member.email.split("@")[0]! }));
+  return { profile, owner, profiles, invitations, incomingAssociations, members: named };
 }

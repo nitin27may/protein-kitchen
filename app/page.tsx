@@ -1,6 +1,7 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
-import { PublicCatalog } from "@/components/PublicLibrary";
+import { AnonymousHome } from "@/components/AnonymousHome";
+import { libraryHighlights } from "@/lib/library/anonymous";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { DailyBasics } from "@/components/today/DailyBasics";
@@ -37,7 +38,7 @@ const SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack", "shake"];
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const publicMember = await optionalPageMember();
-  if (!publicMember) return <PublicCatalog data={getData()} kind="recipes" />;
+  if (!publicMember) return <AnonymousHome highlights={libraryHighlights(getData())} />;
   const member = await requirePageMember();
   const { p } = await searchParams;
   const people = await listPeople();

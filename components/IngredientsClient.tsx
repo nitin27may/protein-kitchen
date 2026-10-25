@@ -13,10 +13,10 @@ export type { IngredientCard } from "@/lib/filters/ingredients";
 
 const fmt = (n: number) => (Math.round(n * 10) / 10).toLocaleString("en-CA", { maximumFractionDigits: 1 });
 
-export function IngredientsClient({ items, savedDefault }: { items: IngredientCard[]; savedDefault: string | null }) {
+export function IngredientsClient({ items, savedDefault, mode = "member" }: { items: IngredientCard[]; savedDefault: string | null; mode?: "member" | "anonymous" }) {
   const def = useMemo(() => ingredientFilters([...new Set(items.map((i) => i.aisle))]), [items]);
   return (
-    <FilterToolbar list="ingredients" def={def} items={items} savedDefault={savedDefault}
+    <FilterToolbar list="ingredients" def={def} items={items} savedDefault={mode === "anonymous" ? null : savedDefault} canSaveView
       noun={{ one: "ingredient", many: "ingredients" }} searchLabel="Search ingredients" searchPlaceholder="Search by name, or Hindi or Punjabi name">
       {(shown) => (
         <>

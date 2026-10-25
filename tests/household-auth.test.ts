@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as s from "../lib/db/schema";
 import {
-  acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember, revokeInvitation,
+  acceptInvitation, assignMemberProfile, changeMemberRole, claimHousehold, claimHouseholdByOwnerEmail, createMemberProfile, deleteOwnAccount, issueInvitation, removeHouseholdMember, revokeInvitation,
 } from "../lib/auth/household";
 import { openDb, type DbHandle } from "./helpers/db";
 import { exportHumanData } from "../lib/human/export";
@@ -418,6 +418,40 @@ describe("one-time household bootstrap", () => {
       expect(await h.db.select().from(s.households)).toEqual([]);
     } finally { await h.dropFailure(table, "reject_owner"); }
     expect(await claimHousehold(h.db, id, bootstrapSecret, bootstrapSecret)).toMatchObject({ role: "owner" });
+  });
+});
+
+describe("owner-email claim of the imported household", () => {
+  it("binds the verified owner email to the memberless household and records bootstrap, once", async () => {
+    await h.db.insert(s.households).values({ id: "migrated", name: "Existing household" });
+    const id = await user("owner", "Owner@Example.test");
+    expect(await claimHouseholdByOwnerEmail(h.db, id, "owner@example.test")).toMatchObject({ householdId: "migrated", role: "owner", personId: null });
+    expect(await h.db.select().from(s.householdBootstrap)).toMatchObject([{ id: 1, ownerUserId: id }]);
+    const second = await user("second");
+    expect(await claimHouseholdByOwnerEmail(h.db, second, "second@example.test")).toBeNull();
+    expect(await h.db.select().from(s.householdMembers)).toHaveLength(1);
+  });
+  it.each([undefined, "", "not-an-email", "someone-else@example.test"])("returns null without claiming for owner email %j", async (configured) => {
+    await h.db.insert(s.households).values({ id: "migrated", name: "Existing household" });
+    const id = await user();
+    expect(await claimHouseholdByOwnerEmail(h.db, id, configured)).toBeNull();
+    expect(await h.db.select().from(s.householdBootstrap)).toEqual([]);
+    expect(await h.db.select().from(s.householdMembers)).toEqual([]);
+  });
+  it("refuses an unverified email and never claims when bootstrap already exists", async () => {
+    await h.db.insert(s.households).values({ id: "migrated", name: "Existing household" });
+    await user("unverified", "unverified@example.test", false);
+    await expect(claimHouseholdByOwnerEmail(h.db, "unverified", "unverified@example.test")).rejects.toThrow("Verify your email");
+    const id = await user();
+    await h.db.insert(s.authUsers).values({ id: "earlier", name: "Earlier", email: "earlier@example.test", emailVerified: true });
+    await h.db.insert(s.householdBootstrap).values({ id: 1, ownerUserId: "earlier" });
+    expect(await claimHouseholdByOwnerEmail(h.db, id, "owner@example.test")).toBeNull();
+    expect(await h.db.select().from(s.householdMembers)).toEqual([]);
+  });
+  it("leaves a household that already has members alone", async () => {
+    await owner();
+    const id = await user("other-owner", "other-owner@example.test");
+    expect(await claimHouseholdByOwnerEmail(h.db, id, "other-owner@example.test")).toBeNull();
   });
 });
 

@@ -78,14 +78,59 @@ commands; the operator exercised the supported preview arguments successfully.
 
 ### Required experience
 
-- Anonymous home is the public library/landing experience, with Recipes, Ingredients, Sign in and Create account in a responsive top menu. Do not show private Plan/Groceries/Profiles/Settings navigation to anonymous visitors. Direct private URLs still require authorization; hiding links is not enforcement.
+- Anonymous home is the public library/landing experience, with Recipes, Ingredients, Sign in and Create account in a responsive top menu. **Superseded 2026-10-25** by "Open signup and anonymous app shell" below: anonymous visitors now get the same app shell. Direct private URLs still require authorization; hiding links is not enforcement.
 - Public recipe/component/ingredient/technique pages expose library content and computed nutrition, not household feedback, saved views, profile-based targets, plans, notes, links, uploaded photos or other human-owned content. Private image routes remain private. Initial public cards can be image-free rather than republishing household photos. Public catalogue filtering must not use household banned/tested/favourite choices.
-- Signup asks for ordinary identity details, never a bootstrap key, invitation code, cook role or ownership selection. Member association uses normalized email. No manual household grant/code is required. Use email links rather than asking users to copy a numeric email code; verify the installed Better Auth email-link contract before changing providers/hooks. Keep working self-managed Better Auth and its rate limits/origin protections. Mail must be wired and exercised from the first auth slice, not deferred until deployment.
+- **Superseded in part 2026-10-25:** signup is email-first and open (email, then a six-digit code, magic link as fallback); there is no password at signup. See "Open signup and anonymous app shell". Original text: signup asks for ordinary identity details, never a bootstrap key, invitation code, cook role or ownership selection. Member association uses normalized email. No manual household grant/code is required. Use email links rather than asking users to copy a numeric email code; verify the installed Better Auth email-link contract before changing providers/hooks. Keep working self-managed Better Auth and its rate limits/origin protections. Mail must be wired and exercised from the first auth slice, not deferred until deployment.
 - Prove email ownership before showing membership/household associations or granting private access. Before proof, return a generic "Check your email to continue" response; do not expose whether an address has an account or belongs to someone else's household. After proof, show "This email has been added to a household. Finish setting up your account to join" (without disclosing private household details before acceptance).
 - A verified person with no household sees a simple create-household start point and personal-profile onboarding. A verified person with a pending email association sees an explicit accept/decline choice; acceptance requires no copied token/code. Never silently move an existing account, copy its data or merge households when another person adds its email.
 - Household settings adds an email, an optional display name and optional relationship label such as partner/spouse/roommate. Relationship labels are not authorization roles, are not required and must not be inferred. Existing and future accounts can accept the same pending association after verified sign-in/signup. Only the recipient may accept; the sender can revoke pending associations.
 - Internal owner/member permissions remain for safe member management and destructive controls; signup does not ask users to choose a role. The household creator receives management permission automatically. Shared plans/shopping/prep remain shared within the household; each member keeps their own profile/targets and existing private-field protections.
 - Multiple-household behavior was asked but the user was unavailable and subsequently directed autonomous decisions. Use explicit multiple memberships and a household switcher: accepting a second household never reassigns a profile, copies data or merges households. Require recipient acceptance, keep the current household selected until an explicit switch, and reauthorize that selection on every private request.
+
+### Open signup and anonymous app shell (direction set 2026-10-25)
+
+This supersedes the earlier rule that anonymous visitors see only a reduced navigation and that signup needs an invitation or claim key.
+
+**Direction**
+
+- Anonymous visitors get the same app shell as signed-in users: Today, Plan, Recipes, Groceries, Profiles and the rest of the navigation are visible.
+- Browsing recipes, parts, techniques and ingredients is open. Public pages still show library content and computed nutrition only, never household feedback, notes, links, uploaded photos or profile-based targets.
+- Generating a plan works on the device with no server writes. The draft lives in the browser only.
+- Any persisting action asks for email signup and carries the draft through: save plan, favourite, rate, tick groceries, add a photo, add a link, save a profile.
+- Signup is open. There is no invitation, claim key, household form or role choice. The user enters an email, receives a six-digit code (an email link is the fallback), and a verified email creates the account. A household is created automatically, named "<name or email local-part>'s kitchen".
+- A password can be set later in account settings; password sign-in for existing accounts continues. `/sign-up/email` is disabled.
+- Before proof of the email, responses are generic and identical for existing and new addresses. Tenant enforcement, origin checks and rate limits stay.
+- Admission after verification, in order: existing membership is selected; pending email associations show accept/decline plus "Start my own kitchen instead"; the verified email equal to the server-only `HOUSEHOLD_OWNER_EMAIL` binds to the imported household while `household_bootstrap` is empty (email proof replaces the claim key); otherwise a household is created automatically.
+- The profile step after admission is short: name, protein target, optional weight and kcal target. Sex, birth date and height become optional where generation does not need them.
+
+**Anonymous vs account**
+
+| Capability | Anonymous | Account |
+| --- | --- | --- |
+| Browse recipes, parts, techniques, ingredients | Yes | Yes |
+| Computed nutrition on library pages | Yes | Yes |
+| Generate a plan | Yes, on device, draft kept in the browser | Yes |
+| Save a plan to the server | Asks for email, draft carried through | Yes |
+| Favourite, rate, ban, tested | Asks for email | Yes |
+| Tick groceries, pantry, prep | Asks for email | Yes |
+| Upload a photo, add a link, add a note | Asks for email | Yes |
+| Profile and targets | Asks for email | Yes |
+| Household feedback, photos, links of others | Never | Own household only |
+| Invite or associate other emails | No | Household owner |
+
+**Acceptance criteria**
+
+1. The sign-in and create-account screens have no invitation, claim key, role or household-name field.
+2. A new email, a code and verification produce a verified user, a household with that user as owner, and a selected session, with no further form before the profile step.
+3. The request-code and request-link responses are byte-identical for existing and new addresses.
+4. `/sign-up/email` is refused; a user cannot be created without a proven code or link.
+5. A user with a pending email association is shown accept/decline and "Start my own kitchen instead", and is not given an automatic household first. If an automatic creation races with the association, the association remains acceptable and no data moves.
+6. `HOUSEHOLD_OWNER_EMAIL` binds the imported household only for the matching verified email and only while `household_bootstrap` is empty; the value is never logged or returned.
+7. Anonymous visitors see the full navigation; private data routes still authorize every request; no anonymous action writes to the server.
+8. A persisting action by an anonymous visitor opens email signup and, after verification, completes with the carried draft (delivered in a later step).
+9. Browser and unit tests use loopback fixtures and the test mailbox only, with no real mail and no remote database.
+
+Implementation order: step 1 is this record; step 2 is the signup and admission change; later steps deliver the anonymous shell, the on-device draft and the carry-through.
 
 ### Why changing only signup is unsafe
 

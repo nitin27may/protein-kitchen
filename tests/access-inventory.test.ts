@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,12 @@ const files = readdirSync("app", { recursive: true, withFileTypes: true })
 const publicPages = new Set(["app/sign-in/page.tsx", "app/sign-up/page.tsx", "app/verify-email/page.tsx", "app/reset-password/page.tsx"]);
 const admissionPages = new Set(["app/onboarding/page.tsx"]);
 const libraryPages = new Set(["app/page.tsx", "app/recipes/page.tsx", "app/recipes/[slug]/page.tsx", "app/ingredients/page.tsx", "app/ingredients/[slug]/page.tsx"]);
+// Household pages that show a visitor without an account a prompt instead of redirecting. No data is read before the guard.
+const anonymousShellPages = new Set(["app/groceries/page.tsx", "app/profiles/page.tsx", "app/plan/page.tsx", "app/plan/new/page.tsx"]);
+// Reads the plan draft from the visitor's own browser. The server part may use library files only.
+const devicePages = new Set(["app/plan/draft/page.tsx"]);
+// The only functions a library page may call before its membership guard: no database, no household, no photos.
+const libraryLoaders = ["libraryRecipeCards", "libraryIngredientCards", "libraryRecipeDetail", "libraryIngredientDetail", "libraryHighlights"];
 const source = (file: string) => ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const exported = (node: ts.FunctionDeclaration) => node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
 function firstCall(node: ts.FunctionDeclaration) {
@@ -21,7 +27,7 @@ function firstCall(node: ts.FunctionDeclaration) {
   }
 }
 describe("application authorization inventory", () => {
-  for (const file of files.filter((file) => file.endsWith("/page.tsx") && !publicPages.has(file) && !admissionPages.has(file))) {
+  for (const file of files.filter((file) => file.endsWith("/page.tsx") && !publicPages.has(file) && !admissionPages.has(file) && !devicePages.has(file))) {
     it(`${file} checks membership before its loader`, () => {
       const page = source(file).statements.find((node): node is ts.FunctionDeclaration =>
         ts.isFunctionDeclaration(node) && !!exported(node) && !!node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword));
@@ -37,8 +43,20 @@ describe("application authorization inventory", () => {
         };
         for (const statement of statements.slice(0, guard)) visit(statement);
         expect(calls).toContain("optionalPageMember");
-        for (const call of calls) expect(["optionalPageMember", "getData", "data.recipes.get", "data.ingredients.get", "notFound"]).toContain(call);
-        expect(statements.slice(0, guard).some((statement) => statement.getText().includes("return <Public"))).toBe(true);
+        for (const call of calls) expect(["optionalPageMember", "getData", "data.recipes.get", "data.ingredients.get", "notFound", ...libraryLoaders]).toContain(call);
+        expect(statements.slice(0, guard).some((statement) => /return\s*\(?\s*</.test(statement.getText()))).toBe(true);
+      } else if (anonymousShellPages.has(file)) {
+        const statements = page!.body!.statements;
+        const guard = statements.findIndex((statement) => statement.getText().includes("await requirePageMember();"));
+        expect(guard, "A household page must keep its membership guard after the anonymous prompt.").toBeGreaterThan(0);
+        expect(statements[0]!.getText()).toMatch(/^if \(!await optionalPageMember\(\) && !await hasSessionCookie\(\)\) \{\s*return <(?:AnonymousPrompt|AnonymousPlan|AnonymousGroceries|AnonymousProfiles|AnonymousNewPlan)\b/);
+        const calls: string[] = [];
+        const visit = (node: ts.Node) => {
+          if (ts.isCallExpression(node)) calls.push(node.expression.getText());
+          ts.forEachChild(node, visit);
+        };
+        for (const statement of statements.slice(0, guard)) visit(statement);
+        expect(calls).toEqual(["optionalPageMember", "hasSessionCookie"]);
       } else if (file === "app/households/page.tsx") {
         const boundary = page!.body!.statements[0];
         expect(ts.isTryStatement(boundary!)).toBe(true);
@@ -51,16 +69,38 @@ describe("application authorization inventory", () => {
       expect(readFileSync(file, "utf8")).toMatch(/export const dynamic = ["']force-dynamic["']/);
     });
   }
-  it("public library rendering cannot import database, household actions or private projections", () => {
-    const imports = source("components/PublicLibrary.tsx").statements.filter(ts.isImportDeclaration);
-    const allowed = new Set(["next/link", "./Markdown", "./ui", "@/lib/data/load", "@/lib/data/rules", "@/lib/nutrition/macros", "@/lib/recipes/storage", "@/lib/schemas"]);
-    for (const entry of imports) {
-      expect(ts.isStringLiteral(entry.moduleSpecifier)).toBe(true);
-      expect(allowed.has((entry.moduleSpecifier as ts.StringLiteral).text)).toBe(true);
-    }
-    expect(readFileSync("components/PublicLibrary.tsx", "utf8")).not.toMatch(/getDb|photoIndex|feedbackMap|setRecipeFeedback|getRecipeLinks|listPeople|listPlans/);
+  it("library loaders and anonymous components cannot reach the database, household modules or server actions", () => {
+    const roots = ["lib/library/anonymous.ts", "lib/library/recipe-detail.ts", "components/AnonymousHome.tsx", "components/AnonymousPrompt.tsx", "components/IngredientDetailView.tsx"];
+    const forbidden = /^(lib\/(db|server|auth|human|blob|sync)\/|app\/)|\/(queries|context|actions)$/;
+    const seen = new Set<string>();
+    const resolve = (spec: string, from: string) => {
+      const base = spec.startsWith("@/") ? spec.slice(2) : spec.startsWith(".") ? path.posix.join(path.posix.dirname(from), spec) : null;
+      if (!base) return null;
+      return [`${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((candidate) => existsSync(candidate)) ?? null;
+    };
+    const walk = (file: string) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      for (const entry of source(file).statements.filter(ts.isImportDeclaration)) {
+        if (entry.importClause?.isTypeOnly) continue;
+        const spec = (entry.moduleSpecifier as ts.StringLiteral).text;
+        const target = resolve(spec, file);
+        if (!target) continue; // package import
+        expect(target, `${file} imports ${spec}`).not.toMatch(forbidden);
+        walk(target);
+      }
+    };
+    for (const root of roots) walk(root);
+    expect(seen.size).toBeGreaterThan(roots.length);
+    for (const root of roots) expect(readFileSync(root, "utf8")).not.toMatch(/getDb|photoIndex|feedbackMap|setRecipeFeedback|getRecipeLinks|listPeople|listPlans|getCandidates/);
   });
-  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts")) {
+  it("the anonymous library route is public, GET-only, and cannot reach the database or a session", () => {
+    const text = readFileSync("app/api/anon-library/route.ts", "utf8");
+    const exports = source("app/api/anon-library/route.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(exports.map((node) => node.name?.getText())).toEqual(["GET"]);
+    expect(text).not.toMatch(/getDb|requireMember|routeAccess|headers\(|cookies\(|request/i);
+  });
+  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts" && file !== "app/api/anon-library/route.ts")) {
     const statements = source(file).statements;
     it(`${file} uses explicit, reviewable HTTP handler declarations`, () => {
       const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
@@ -101,7 +141,7 @@ describe("application authorization inventory", () => {
   }
   it("all legacy actions check membership first, including read-only previews", () => {
     const actions = source("app/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
-    expect(actions).toHaveLength(33);
+    expect(actions).toHaveLength(35);
     for (const action of actions) expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
   });
   it("private-state action checks current owner permission before reading configuration", () => {
@@ -129,6 +169,14 @@ describe("application authorization inventory", () => {
         : action.name!.getText() === "joinHousehold" ? "await verifiedSessionUser()" : "await verifiedSessionIdentity()";
       expect(task.body.statements[0]?.getText()).toContain(guard);
       if (management.has(action.name!.getText())) expect(task.body.statements[1]?.getText()).toBe('checkPermission(actor, "owner");');
+    }
+  });
+  it("device pages read only library files on the server and no household, database or session code", () => {
+    for (const file of devicePages) {
+      const text = readFileSync(file, "utf8");
+      const imports = [...text.matchAll(/from "([^"]+)"/g)].map((m) => m[1]!);
+      for (const spec of imports) expect(spec, `${file} imports ${spec}`).not.toMatch(/auth\/|server\/queries|server\/household|db\/|server\/photo|server\/export/);
+      expect(text).not.toMatch(/requirePageMember|optionalPageMember|getDb|headers\(/);
     }
   });
 });

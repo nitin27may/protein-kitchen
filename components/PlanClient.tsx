@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { ReactNode } from "react";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { deletePlan, enableShake, getSwapOptions, regeneratePlan, setPortion, swapSlot, toggleLock } from "@/app/actions";
 import type { SwapOption } from "@/app/actions";
@@ -47,7 +48,27 @@ export interface PlanSlotView {
 /** Above this many make-ahead minutes in a week the plan says so. */
 const MAKE_AHEAD_WEEK_WARN_MIN = 90;
 
+type EditResult = { ok: boolean; error?: string };
+
+/**
+ * Hands the plan screen a plan that lives on the device instead of in the household. The edits are local functions
+ * that return at once; the screen shows what the parent passes back in `PlanProps`.
+ */
+export interface DraftBindings {
+  swapOptions: (slot: PlanSlotView) => SwapOption[];
+  swap: (slot: PlanSlotView, recipeSlug: string) => EditResult;
+  lock: (slot: PlanSlotView, locked: boolean) => EditResult;
+  portion: (slot: PlanSlotView, personId: number, servings: number) => EditResult;
+  addShake: () => EditResult;
+  /** Shown above the day strip, for the "on this device only" notice. */
+  banner: ReactNode;
+  /** Replaces the "This plan" card. */
+  actions: ReactNode;
+}
+
 export interface PlanProps {
+  /** Present for a plan drafted on the device. Everything else comes from the props below. */
+  draft?: DraftBindings;
   /** Hands-on minutes of make-ahead parts across the week; 0 hides the line. */
   makeAheadWeekMin: number;
   planId: number;
@@ -58,11 +79,12 @@ export interface PlanProps {
   days: { date: string; personId: number; proteinG: number; kcal: number }[];
   slots: PlanSlotView[];
   allRecipes: { slug: string; name: string; proteinG: number; activeMin: number; slots: string[] }[];
-  sheet: PlanExport;
+  /** The three below are absent for a plan drafted on the device. */
+  sheet?: PlanExport;
   /** Routines this plan was made with, ready to show. */
-  routines: PlanRoutineRow[];
+  routines?: PlanRoutineRow[];
   /** Which of the three after-plan steps are done. */
-  milestones: PlanMilestones;
+  milestones?: PlanMilestones;
 }
 
 const SheetView = dynamic(() => import("./SheetView").then((m) => m.SheetView), { ssr: false, loading: () => <p className="px-4 pt-4 text-sm text-muted">Loading the spreadsheet...</p> });
@@ -94,19 +116,21 @@ export function PlanClient(p: PlanProps) {
     tabsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
   }, [day]);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>, success?: string, reviewed = false) {
+  function run(fn: () => Promise<EditResult>, success?: string, reviewed = false) {
     setMessage(null);
     start(async () => {
       const res = await fn();
       if (!res.ok) setMessage({ tone: "bad", text: res.error ?? "Something went wrong" });
       else {
         if (success) setMessage({ tone: "ok", text: success });
+        if (p.draft) return;
         // A swap or a lock means the person is looking through the plan: count the review step as done.
         if (reviewed) announcePlanStep(p.planId, "reviewed");
         router.refresh();
       }
     });
   }
+  const local = async (edit: () => EditResult): Promise<EditResult> => edit();
 
   function openSwap(slot: PlanSlotView) {
     setSwapFor(slot);
@@ -115,7 +139,8 @@ export function PlanClient(p: PlanProps) {
     setQ("");
     setSwapTime("any");
     setSwapSort("protein");
-    getSwapOptions(p.planId, slot.id).then((r) => setOptions(r.ok ? r.options : []));
+    if (p.draft) setOptions(p.draft.swapOptions(slot));
+    else getSwapOptions(p.planId, slot.id).then((r) => setOptions(r.ok ? r.options : []));
   }
 
   const gaps = p.people
@@ -136,7 +161,7 @@ export function PlanClient(p: PlanProps) {
   const kcalFor = (personId: number) => Math.round(p.days.find((x) => x.date === current.iso && x.personId === personId)?.kcal ?? 0);
 
   /** Plan-level actions: Groceries is the main one, the rest are secondary, and Delete is set apart and confirmed. */
-  const actions = (
+  const actions = p.draft ? p.draft.actions : (
     <Card className="space-y-3">
       <h2 className="text-base font-semibold">This plan</h2>
       <LinkButton href="/groceries" size="lg" className="w-full">Open grocery list</LinkButton>
@@ -161,11 +186,11 @@ export function PlanClient(p: PlanProps) {
     </Card>
   );
 
-  const routinesCard = <PlanRoutinesCard rows={p.routines} people={p.people.map((x) => ({ id: x.id, name: x.name }))} />;
+  const routinesCard = p.draft ? null : <PlanRoutinesCard rows={p.routines!} people={p.people.map((x) => ({ id: x.id, name: x.name }))} />;
 
   return (
     <fieldset disabled={!hydrated} className="min-w-0 pb-6">
-      <NextSteps planId={p.planId} milestones={p.milestones} />
+      {p.draft ? <div className="px-4 pt-3">{p.draft.banner}</div> : <NextSteps planId={p.planId} milestones={p.milestones!} />}
       {p.makeAheadWeekMin > 0 ? (
         <p className={`px-4 pt-2 text-sm ${p.makeAheadWeekMin > MAKE_AHEAD_WEEK_WARN_MIN ? "font-semibold text-warn" : "text-muted"}`}>
           Make-ahead work this week: about {p.makeAheadWeekMin} min, done on your prep day{p.makeAheadWeekMin > MAKE_AHEAD_WEEK_WARN_MIN ? ". That is a lot for one session; swap a meal or buy a part." : "."}
@@ -187,13 +212,13 @@ export function PlanClient(p: PlanProps) {
 
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 lg:px-4">
         <h1 className="text-2xl font-bold leading-tight">{view === "day" ? current.long : view === "sheet" ? "Spreadsheet" : "Whole plan"}</h1>
-        <Segmented value={view} onChange={setView} label="View" options={[{ value: "day", label: "Day" }, { value: "overview", label: "Overview" }, { value: "sheet", label: "Sheet" }]} />
+        <Segmented value={view} onChange={setView} label="View" options={[{ value: "day", label: "Day" }, { value: "overview", label: "Overview" }, ...(p.draft ? [] : [{ value: "sheet" as const, label: "Sheet" }])]} />
       </div>
 
       {message ? <div className="px-4 pt-3 lg:px-4"><Banner tone={message.tone === "ok" ? "ok" : "bad"}>{message.text}</Banner></div> : null}
 
       {view === "sheet" ? (
-        <SheetView planId={p.planId} plan={p.sheet} />
+        <SheetView planId={p.planId} plan={p.sheet!} />
       ) : view === "overview" ? (
         <div className="px-4 pt-3">
           <div className="overflow-x-auto rounded-card border border-line bg-surface">
@@ -247,7 +272,7 @@ export function PlanClient(p: PlanProps) {
                 <p>{shakeOn ? "Swap a meal for a higher-protein one." : "Swap a meal for a higher-protein one, or turn on a daily shake."}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {lowestSwappable ? <Button variant="secondary" size="sm" onClick={() => openSwap(lowestSwappable)}>Show swaps</Button> : null}
-                  {!shakeOn ? <Button variant="secondary" size="sm" disabled={pending} onClick={() => run(() => enableShake(p.planId), "Daily shake added. Locked meals were kept.")}>Add shake</Button> : null}
+                  {!shakeOn ? <Button variant="secondary" size="sm" disabled={pending} onClick={() => run(() => (p.draft ? local(() => p.draft!.addShake()) : enableShake(p.planId)), "Daily shake added. Locked meals were kept.")}>Add shake</Button> : null}
                 </div>
               </Banner>
             ) : null}
@@ -262,7 +287,7 @@ export function PlanClient(p: PlanProps) {
                   <RecipeThumb image={s.image} thumbs={s.thumbs} label={SLOT_LABEL[s.slot] ?? s.slot} className="aspect-[4/3] w-24 shrink-0 rounded-control md:aspect-[16/9] md:w-full md:rounded-none" />
                   <div className="min-w-0 flex-1 md:px-4 md:pb-3">
                     <p className="text-sm font-semibold text-primary">{SLOT_LABEL[s.slot]}</p>
-                    <Link href={`/recipes/${s.recipeSlug}?plan=${p.planId}`} className="flex min-h-11 items-center text-lg font-semibold leading-snug hover:underline">{s.recipeName}</Link>
+                    <Link href={p.draft ? `/recipes/${s.recipeSlug}` : `/recipes/${s.recipeSlug}?plan=${p.planId}`} className="flex min-h-11 items-center text-lg font-semibold leading-snug hover:underline">{s.recipeName}</Link>
                     <MacroLine protein={s.proteinG} kcal={s.kcal} minutes={s.activeMin} />
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {s.leftover ? <Pill tone="warn">Leftover, no cooking</Pill> : null}
@@ -287,7 +312,7 @@ export function PlanClient(p: PlanProps) {
                 <div className="flex gap-2 border-t border-line p-2">
                   <Button variant="secondary" size="sm" className="flex-1" disabled={s.locked} onClick={() => openSwap(s)}>Swap</Button>
                   <Button variant="secondary" size="sm" className="flex-1" onClick={() => setPortionFor(s)}><SlidersIcon className="size-4" />Portions</Button>
-                  <Button variant="secondary" size="sm" className={`flex-1 ${s.locked ? "border-primary bg-primarysoft text-primary" : ""}`} aria-pressed={s.locked} disabled={pending} onClick={() => run(() => toggleLock(p.planId, s.id, !s.locked), undefined, true)}>
+                  <Button variant="secondary" size="sm" className={`flex-1 ${s.locked ? "border-primary bg-primarysoft text-primary" : ""}`} aria-pressed={s.locked} disabled={pending} onClick={() => run(() => (p.draft ? local(() => p.draft!.lock(s, !s.locked)) : toggleLock(p.planId, s.id, !s.locked)), undefined, true)}>
                     {s.locked ? <CheckIcon className="size-4" /> : null}{s.locked ? "Locked" : "Lock"}
                   </Button>
                 </div>
@@ -314,7 +339,7 @@ export function PlanClient(p: PlanProps) {
                     <li key={o.slug} className="rounded-card border border-strong p-3">
                       <p className="text-base font-semibold">{o.name}</p>
                       <p className="text-sm text-muted tabular-nums">{o.proteinG} g protein · {o.kcal} kcal · {o.reason}</p>
-                      <Button className="mt-2 w-full" disabled={pending} onClick={() => run(async () => { const r = await swapSlot(p.planId, swapFor.id, o.slug); if (r.ok) setSwapFor(null); return r; }, `Swapped to ${o.name}.`, true)}>Pick this</Button>
+                      <Button className="mt-2 w-full" disabled={pending} onClick={() => run(async () => { const r = p.draft ? p.draft.swap(swapFor, o.slug) : await swapSlot(p.planId, swapFor.id, o.slug); if (r.ok) setSwapFor(null); return r; }, `Swapped to ${o.name}.`, true)}>Pick this</Button>
                     </li>
                   ))}
                 </ul>
@@ -336,7 +361,7 @@ export function PlanClient(p: PlanProps) {
                 <ul className="mt-1 divide-y divide-line">
                   {allForSlot.map((r) => (
                     <li key={r.slug}>
-                      <button type="button" disabled={pending} onClick={() => run(async () => { const res = await swapSlot(p.planId, swapFor.id, r.slug); if (res.ok) setSwapFor(null); return res; }, `Swapped to ${r.name}.`, true)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
+                      <button type="button" disabled={pending} onClick={() => run(async () => { const res = p.draft ? p.draft.swap(swapFor, r.slug) : await swapSlot(p.planId, swapFor.id, r.slug); if (res.ok) setSwapFor(null); return res; }, `Swapped to ${r.name}.`, true)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
                         <span className="font-medium">{r.name}</span>
                         <span className="shrink-0 text-sm text-muted tabular-nums">{Math.round(r.proteinG)} g · {r.activeMin} min</span>
                       </button>
@@ -362,12 +387,12 @@ export function PlanClient(p: PlanProps) {
                 <div key={person.id} className="flex items-center justify-between gap-3">
                   <span className="text-base font-semibold">{person.name}</span>
                   <div className="flex items-center gap-2">
-                    <button type="button" aria-label={`Fewer servings for ${person.name}`} disabled={pending || cur <= 0.25} onClick={() => run(() => setPortion(p.planId, portionFor.id, person.id, cur - 0.25))} className="size-11 rounded-control border border-strong text-xl font-semibold hover:bg-surface2 disabled:opacity-40">−</button>
+                    <button type="button" aria-label={`Fewer servings for ${person.name}`} disabled={pending || cur <= 0.25} onClick={() => run(() => (p.draft ? local(() => p.draft!.portion(portionFor, person.id, cur - 0.25)) : setPortion(p.planId, portionFor.id, person.id, cur - 0.25)))} className="size-11 rounded-control border border-strong text-xl font-semibold hover:bg-surface2 disabled:opacity-40">−</button>
                     <span className="w-28 text-center leading-tight" aria-live="polite">
                       <span className="block text-lg font-semibold">{portionText(cur, portionFor.servingG, portionFor.unit).amount}</span>
                       <span className="block text-xs text-muted">{portionText(cur, portionFor.servingG, portionFor.unit).detail}</span>
                     </span>
-                    <button type="button" aria-label={`More servings for ${person.name}`} disabled={pending || cur >= 4} onClick={() => run(() => setPortion(p.planId, portionFor.id, person.id, cur + 0.25))} className="size-11 rounded-control border border-strong text-xl font-semibold hover:bg-surface2 disabled:opacity-40">+</button>
+                    <button type="button" aria-label={`More servings for ${person.name}`} disabled={pending || cur >= 4} onClick={() => run(() => (p.draft ? local(() => p.draft!.portion(portionFor, person.id, cur + 0.25)) : setPortion(p.planId, portionFor.id, person.id, cur + 0.25)))} className="size-11 rounded-control border border-strong text-xl font-semibold hover:bg-surface2 disabled:opacity-40">+</button>
                   </div>
                 </div>
               );

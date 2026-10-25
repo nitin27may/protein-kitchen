@@ -22,7 +22,12 @@ import { loadNight } from "@/lib/server/prep";
 import { todayISO } from "@/lib/server/time";
 import { generatePlan, portionsFor, slotShares, suggestSwaps } from "@/lib/planner/generate";
 import type { GeneratedPlan, Slot } from "@/lib/planner/types";
-import { MEAL_SLOTS, PlanSetupSchema } from "@/lib/schemas";
+import { PlanSetupSchema } from "@/lib/schemas";
+import { CreatePlanInput } from "@/lib/plan/create-plan-input";
+import { AnonDraftSchema, ANON_PERSON_ID, isDraftExpired, parsePendingIntent, type AnonDraft } from "@/lib/plan/anon-draft";
+import { importDraftPlan } from "@/lib/server/anon-import";
+import { currentLibraryVersion } from "@/lib/server/anon-library";
+import { replayIntent, type ReplayResult } from "@/lib/server/pending-intent";
 import { PersonInput, type PersonInputData } from "@/lib/schemas/person";
 import { getData, getDb } from "@/lib/server/context";
 import { getBlobStore } from "@/lib/blob";
@@ -33,7 +38,7 @@ import type { ResetScope } from "@/lib/server/reset";
 import { writePartMode } from "@/lib/server/part-state";
 import { writePlanStep } from "@/lib/server/plan-progress";
 import { changeHouseholdDefaultView, VIEW_LISTS } from "@/lib/server/saved-views";
-import { getCandidates, getPlanView, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
+import { getCandidates, getPlanView, getPrefs, ingredientIds, recipeIds, toPersonTarget } from "@/lib/server/queries";
 import { actionDenial, requireMember } from "@/lib/auth/access";
 import { manualItemExists, slotBelongsToPlan } from "@/lib/server/plan-access";
 import { requireHouseholdProfile, memberHouseholdAccess, type HouseholdAccess } from "@/lib/auth/household-access";
@@ -169,22 +174,6 @@ export async function deletePerson(id: number): Promise<Result> {
 
 // ---------- Plan creation ----------
 
-const CreatePlanInput = z.object({
-  personIds: z.array(z.number().int().positive()).min(1, "Choose at least one person"),
-  startDate: z.string(),
-  endDate: z.string(),
-  mealTypes: z.array(z.enum(MEAL_SLOTS)).min(1, "Choose at least one meal type"),
-  cuisineBalance: z.number().min(0).max(1),
-  maxActiveMin: z.number().int().positive().nullable(),
-  pinned: z.array(z.string()),
-  healthFocus: z.object({ nutrientDense: z.boolean(), lowSugar: z.boolean(), light: z.boolean() }).default({ nutrientDense: true, lowSugar: true, light: true }),
-  prepStyle: z.enum(["variety", "leftovers", "batch"]).default("leftovers"),
-  prefs: z.record(z.string(), z.object({ liked: z.array(z.string()), avoided: z.array(z.string()) })),
-  /** ISO weekdays (1 = Monday ... 7 = Sunday): when to finish shopping and when to batch cook. Optional. */
-  shoppingDay: z.number().int().min(1, "Choose a day from Monday to Sunday").max(7, "Choose a day from Monday to Sunday").nullable().optional(),
-  prepDay: z.number().int().min(1, "Choose a day from Monday to Sunday").max(7, "Choose a day from Monday to Sunday").nullable().optional(),
-});
-
 export type CreatePlanData = z.input<typeof CreatePlanInput>;
 
 async function savePrefs(db: Db, access: HouseholdAccess, personId: number, liked: string[], avoided: string[]) {
@@ -248,6 +237,71 @@ export async function createPlan(input: CreatePlanData): Promise<Result<{ planId
   });
   refresh(planId);
   return { ok: true, planId, gaps: plan.warnings.filter((w) => w.type === "protein_gap").length };
+}
+
+export type ImportDraftData = { planId: number; changed: boolean; libraryChanged: boolean; gaps: number };
+
+async function importDraftCore(parsed: AnonDraft): Promise<Result<ImportDraftData>> {
+  const now = new Date();
+  if (isDraftExpired(parsed, now)) return fail("This draft has expired. Make the plan again.");
+  const context = await householdContext();
+  if (!context.ok) return context;
+  const { db, access } = context;
+  let personId: number;
+  try { personId = requireHouseholdProfile(access); }
+  catch (error) {
+    if (error instanceof HouseholdAccessError) return fail(error.message);
+    throw error;
+  }
+  const person = (await householdPeople(db, access)).find((p) => p.id === personId);
+  if (!person) return fail("Your profile is not available in this household.");
+  // Likes and avoids made on the device join the saved ones for this plan; they are stored only after the plan is.
+  const draftPrefs = parsed.setup.prefs[ANON_PERSON_ID] ?? { liked: [], avoided: [] };
+  const stored = await getPrefs(personId);
+  const avoided = [...new Set([...stored.avoided, ...draftPrefs.avoided])];
+  const liked = [...new Set([...stored.liked, ...draftPrefs.liked])].filter((slug) => !avoided.includes(slug));
+  const target = { ...(await toPersonTarget(person)), liked: new Set(liked), avoided: new Set(avoided) };
+  const result = await importDraftPlan({
+    db, access, draft: parsed, candidates: await getCandidates([personId]), target,
+    recipeIds: (await recipeIds()).bySlug, libraryVersion: currentLibraryVersion(getData()), now,
+  });
+  if (!result.ok) return fail(result.error);
+  if (draftPrefs.liked.length || draftPrefs.avoided.length) await savePrefs(db, access, personId, liked, avoided);
+  refresh(result.planId);
+  return { ok: true, planId: result.planId, changed: result.changed, libraryChanged: result.libraryChanged, gaps: result.gaps };
+}
+
+/**
+ * Saves a plan drafted on the device, after signup. Only the draft's seed and setup are used: the server rebuilds the
+ * meals from the household's own recipes and feedback and never stores the client's slots. `changed` tells the UI the
+ * saved plan differs from the draft (for example the library changed since it was made).
+ */
+export async function importAnonymousDraft(input: unknown): Promise<Result<ImportDraftData>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  const parsed = AnonDraftSchema.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "This draft could not be read. Make the plan again.");
+  return importDraftCore(parsed.data);
+}
+
+/**
+ * Finishes the action a visitor started before signing up. Goes through the existing actions only, so membership and
+ * human-owned writes keep their own checks. Plan saving and favourites work; other kinds report that they are unsupported.
+ */
+export async function replayPendingIntent(intent: unknown, draft?: unknown): Promise<Result<{ replay: ReplayResult }>> {
+  const denied = await actionDenial();
+  if (denied) return denied;
+  const parsed = parsePendingIntent(intent, new Date());
+  if (!parsed) return fail("That saved action has expired or could not be read.");
+  const replay = await replayIntent(parsed, {
+    savePlan: async (raw) => {
+      const draftParsed = AnonDraftSchema.safeParse(raw);
+      if (!draftParsed.success) return { ok: false, error: "This draft could not be read. Make the plan again." };
+      return importDraftCore(draftParsed.data);
+    },
+    favourite: (slug) => setRecipeFeedback(slug, { favourite: true }),
+  }, draft);
+  return { ok: true, replay };
 }
 
 /**

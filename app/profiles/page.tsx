@@ -1,4 +1,7 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { optionalPageMember } from "@/lib/auth/public-access";
+import { hasSessionCookie } from "@/lib/auth/session-cookie";
+import { AnonymousProfiles } from "@/components/AnonymousDevicePanels";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState, LinkButton, PageTitle } from "@/components/ui";
@@ -12,6 +15,9 @@ export const metadata: Metadata = { title: "Profiles" };
 export const dynamic = "force-dynamic";
 
 export default async function ProfilesPage() {
+  if (!await optionalPageMember() && !await hasSessionCookie()) {
+    return <AnonymousProfiles title="Profiles" sub="Each person has their own targets, likes and portions." heading="Profiles are saved to your account" body="Create a plan to set a protein target, or sign in to open the profiles in your household." />;
+  }
   const member = await requirePageMember();
   const db = await getDb();
   const access = await memberHouseholdAccess(db, member);

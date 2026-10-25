@@ -1,15 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import { z, ZodError } from "zod";
 import type { Result } from "@/app/actions";
 import { getDb } from "@/lib/server/context";
+import { authUsers } from "@/lib/db/schema";
 import { checkPermission, requireMember, verifiedSessionIdentity, verifiedSessionUser } from "@/lib/auth/access";
 import { AuthConfigurationError } from "@/lib/auth/config";
 import { acceptEmailAssociation, acceptInvitation, addEmailAssociation as createEmailAssociation, assignMemberProfile, changeMemberRole, claimHousehold, createMemberProfile, declineEmailAssociation, emailAssociationRecipient, HouseholdAccessError, issueInvitation, removeHouseholdMember, revokeInvitation } from "@/lib/auth/household";
 import type { PersonInputData } from "@/lib/schemas/person";
 import { memberHouseholdAccess } from "@/lib/auth/household-access";
-import { createSessionHousehold, resolveSessionHouseholdAccess, selectSessionHousehold } from "@/lib/auth/household-session";
+import { createSessionHousehold, defaultKitchenName, resolveSessionHouseholdAccess, selectSessionHousehold } from "@/lib/auth/household-session";
 import { sendHouseholdAssociationNotice } from "@/lib/auth/server";
 
 async function attempt<T extends object>(task: () => Promise<T>): Promise<Result<T>> {
@@ -46,10 +48,14 @@ export async function joinHousehold(kind: "bootstrap" | "invitation", grant: str
   });
 }
 
-export async function createHousehold(name: string): Promise<Result<{ householdId: string }>> {
+export async function startOwnKitchen(): Promise<Result<{ householdId: string }>> {
   return attempt(async () => {
     const identity = await verifiedSessionIdentity();
-    const created = await createSessionHousehold(await getDb(), identity, name);
+    const db = await getDb();
+    const [user] = await db.select({ name: authUsers.name, email: authUsers.email }).from(authUsers)
+      .where(eq(authUsers.id, identity.userId)).limit(1);
+    if (!user) throw new HouseholdAccessError("This household is not available to your verified account.");
+    const created = await createSessionHousehold(db, identity, defaultKitchenName(user.name, user.email));
     return { householdId: created.householdId };
   });
 }

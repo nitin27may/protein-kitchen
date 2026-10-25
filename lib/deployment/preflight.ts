@@ -56,7 +56,7 @@ export async function previewPreflight(
   });
   check("public-secrets", () => {
     if (Object.keys(env).some((key) => key.startsWith("NEXT_PUBLIC_") && !!env[key] &&
-        /SECRET|TOKEN|PASSWORD|PRIVATE_KEY|DATABASE|API_KEY|ACCESS_KEY|BOOTSTRAP/.test(key))) refuse();
+        /SECRET|TOKEN|PASSWORD|PRIVATE_KEY|DATABASE|API_KEY|ACCESS_KEY|BOOTSTRAP|OWNER_EMAIL/.test(key))) refuse();
   });
   const configurationValid = failed.length === 0;
   let liveBranchVerified = false;

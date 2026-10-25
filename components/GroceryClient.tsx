@@ -2,6 +2,8 @@
 
 import { IngredientTile } from "@/components/IngredientTile";
 import { useEffect, useMemo, useState } from "react";
+import { useRequireAccount } from "@/components/auth/RequireAccount";
+import { ANON_TICKS_KEY } from "@/lib/auth/signup-gate";
 import { addManualItem, removeManualItem, setGroceryChecked, setManualChecked } from "@/app/actions";
 import { CheckIcon, PlusIcon, XIcon } from "@/components/icons";
 import { Banner, Button, Chip, Input, SearchField } from "@/components/ui";
@@ -30,6 +32,8 @@ export interface GroceryProps {
   lines: GroceryLineView[];
   singleUse: number;
   manual: { id: number; text: string; checked: boolean }[];
+  /** A visitor with a plan on the device: ticking is kept on this device only; your own items and the pantry ask for an account. */
+  anonymous?: boolean;
 }
 
 const labelFor = aisleLabel;
@@ -46,6 +50,8 @@ function storageKey(planId: number) {
 
 export function GroceryClient(p: GroceryProps) {
   const hydrated = useHydrated();
+  const gate = useRequireAccount();
+  const anonymous = p.anonymous === true;
   const [checked, setChecked] = useState<Record<string, boolean>>(() => Object.fromEntries(p.lines.map((l) => [l.slug, l.checked])));
   const [manual, setManual] = useState(p.manual);
   const [text, setText] = useState("");
@@ -56,6 +62,15 @@ export function GroceryClient(p: GroceryProps) {
 
   // Restore anything ticked while offline and try to sync it.
   useEffect(() => {
+    if (anonymous) {
+      try {
+        const raw = sessionStorage.getItem(ANON_TICKS_KEY);
+        if (raw) setChecked((c) => ({ ...c, ...(JSON.parse(raw) as Record<string, boolean>) }));
+      } catch {
+        /* storage can be blocked; ticks then last until the page closes */
+      }
+      return;
+    }
     try {
       const raw = localStorage.getItem(storageKey(p.planId));
       if (!raw) return;
@@ -66,9 +81,10 @@ export function GroceryClient(p: GroceryProps) {
     } catch {
       /* storage can be unavailable in private windows */
     }
-  }, [p.planId]);
+  }, [p.planId, anonymous]);
 
   useEffect(() => {
+    if (anonymous) return;
     const flush = async () => {
       const entries = Object.entries(offlineQueue);
       if (entries.length === 0 || !navigator.onLine) return;
@@ -87,9 +103,21 @@ export function GroceryClient(p: GroceryProps) {
     void flush();
     window.addEventListener("online", flush);
     return () => window.removeEventListener("online", flush);
-  }, [offlineQueue, p.planId]);
+  }, [offlineQueue, p.planId, anonymous]);
+
+  function tickOnDevice(slug: string, value: boolean) {
+    // The pantry is a household record, so it needs an account; ticking what to buy stays on this device.
+    if (p.lines.find((l) => l.slug === slug)?.pantry) {
+      gate.require({ intent: { kind: "other", action: "saving your pantry" } });
+      return;
+    }
+    const next = { ...checked, [slug]: value };
+    setChecked(next);
+    try { sessionStorage.setItem(ANON_TICKS_KEY, JSON.stringify(next)); } catch { /* ticks last until the page closes */ }
+  }
 
   async function tick(slug: string, value: boolean) {
+    if (anonymous) return tickOnDevice(slug, value);
     setChecked((c) => ({ ...c, [slug]: value }));
     try {
       const r = await setGroceryChecked(p.planId, slug, value);
@@ -151,6 +179,10 @@ export function GroceryClient(p: GroceryProps) {
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
+    if (anonymous) {
+      gate.require({ intent: { kind: "other", action: "adding your own grocery items" } });
+      return;
+    }
     const r = await addManualItem(p.planId, text);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setManual((m) => [...m, { id: r.id, text: text.trim(), checked: false }]);
@@ -209,6 +241,12 @@ export function GroceryClient(p: GroceryProps) {
           </div>
           {p.singleUse >= 12 ? <p className="mt-3 text-sm text-muted">{p.singleUse} items are used in only one recipe. Swapping one meal for something that shares ingredients shortens the list.</p> : null}
         </div>
+        {anonymous ? (
+          <Banner tone="info" title="Ticks stay on this device">
+            <p>Sign up to share this list with your household, keep your own items and track your pantry.</p>
+            <Button variant="secondary" size="sm" className="mt-2" onClick={() => gate.require({ intent: { kind: "save-plan" }, returnTo: "/plan/draft" })}>Save plan and create account</Button>
+          </Banner>
+        ) : null}
         {note ? <Banner tone={note.tone}>{note.text}</Banner> : null}
       </aside>
 

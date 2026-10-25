@@ -64,6 +64,26 @@ async function requireAnotherOwner(tx: Tx, householdId: string, userId: string) 
   if (!other) throw new HouseholdAccessError("Keep at least one verified owner with a completed profile.");
 }
 
+export const householdNameSchema = z.string().trim().min(1, "Enter a household name.").max(100, "Use at most 100 characters.");
+
+/**
+ * Renames one household. The actor must be an owner of exactly that household; the id is checked against
+ * the actor's own membership row, so a guessed id from another household is indistinguishable from a missing one.
+ */
+export async function renameHousehold(db: Db, actorUserId: string, householdId: string, name: string) {
+  const householdName = householdNameSchema.parse(name);
+  z.string().min(1).max(128).parse(householdId);
+  return withTx(db, async (tx) => {
+    await verifiedUser(tx, actorUserId);
+    const [member] = await tx.select().from(householdMembers)
+      .where(and(eq(householdMembers.userId, actorUserId), eq(householdMembers.householdId, householdId))).for("update");
+    if (!member) throw new HouseholdAccessError("This household is not available to your verified account.");
+    if (member.role !== "owner") throw new HouseholdAccessError("Only a household owner can rename the household.");
+    await tx.update(households).set({ name: householdName, updatedAt: new Date() }).where(eq(households.id, householdId));
+    return { householdId, name: householdName };
+  });
+}
+
 export async function changeMemberRole(db: Db, actorUserId: string, targetUserId: string, role: "owner" | "member", access?: HouseholdAccess) {
   z.string().min(1).max(128).parse(targetUserId);
   z.enum(["owner", "member"]).parse(role);
@@ -191,6 +211,31 @@ export async function claimHousehold(db: Db, userId: string, submittedSecret: st
     const household = existing[0] ?? (await tx.insert(households).values({ id: randomUUID(), name: "Household" }).returning({ id: households.id }))[0]!;
     await tx.insert(householdBootstrap).values({ id: 1, ownerUserId: userId });
     const [member] = await tx.insert(householdMembers).values({ householdId: household.id, userId, role: "owner" }).returning();
+    return member!;
+  });
+}
+
+/**
+ * Email proof replaces the claim secret: binds the verified owner email to the imported, memberless household.
+ * Returns null (never throws) when the email does not match, bootstrap is already used, or there is no single
+ * memberless household, so the caller falls through to automatic household creation. The configured email is
+ * never logged or returned.
+ */
+export async function claimHouseholdByOwnerEmail(db: Db, userId: string, ownerEmail: string | undefined) {
+  const configured = ownerEmail ? emailSchema.safeParse(ownerEmail) : null;
+  if (!configured?.success) return null;
+  return withTx(db, async (tx) => {
+    await lockHousehold(tx);
+    const user = await verifiedUser(tx, userId);
+    if (emailSchema.parse(user.email) !== configured.data) return null;
+    if ((await tx.select().from(householdBootstrap).limit(1)).length) return null;
+    if ((await tx.select().from(householdMembers).where(eq(householdMembers.userId, userId)).limit(1)).length) return null;
+    const orphans = await tx.select({ id: households.id }).from(households)
+      .leftJoin(householdMembers, eq(householdMembers.householdId, households.id))
+      .where(isNull(householdMembers.userId)).limit(2);
+    if (orphans.length !== 1) return null;
+    await tx.insert(householdBootstrap).values({ id: 1, ownerUserId: userId });
+    const [member] = await tx.insert(householdMembers).values({ householdId: orphans[0]!.id, userId, role: "owner" }).returning();
     return member!;
   });
 }

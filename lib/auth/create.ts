@@ -5,13 +5,12 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP, magicLink } from "better-auth/plugins";
-import { ZodError } from "zod";
 import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as schema from "../db/schema";
-import { authorizeSignup } from "./signup";
-import { HouseholdAccessError } from "./household";
+import { permitsUserCreation } from "./signup";
 import { accountDeletion } from "./account-deletion";
+import { accountHasPassword, revokeOtherSessions, takePasswordAttempt, type PasswordOutcome } from "./password";
 
 export interface AuthCodeMail {
   email: string;
@@ -36,10 +35,21 @@ export type AuthMail = AuthCodeMail | AuthLinkMail | AuthAssociationMail;
 export interface AuthOptions {
   secret: string;
   baseURL: string;
-  bootstrapSecret?: string;
   isVercel: boolean;
   sendCode: (mail: AuthCodeMail) => Promise<void>;
   sendLink: (mail: AuthLinkMail) => Promise<void>;
+}
+
+function passwordFailure(error: unknown): PasswordOutcome {
+  if (error instanceof APIError) {
+    const code = error.body?.code;
+    if (code === "INVALID_PASSWORD") return { ok: false, reason: "wrong-current" };
+    if (code === "PASSWORD_ALREADY_SET") return { ok: false, reason: "already-set" };
+    if (error.status === "UNAUTHORIZED") return { ok: false, reason: "unauthenticated" };
+  }
+  // Never log the error object: provider errors can carry request context.
+  console.error("Password change failed.");
+  return { ok: false, reason: "unavailable" };
 }
 
 export function createAuth(db: Db, options: AuthOptions) {
@@ -65,7 +75,7 @@ export function createAuth(db: Db, options: AuthOptions) {
     account: { modelName: "authAccounts" },
     verification: { modelName: "authVerifications" },
     emailAndPassword: {
-      enabled: true, requireEmailVerification: true, autoSignIn: false,
+      enabled: true, disableSignUp: true, requireEmailVerification: true, autoSignIn: false,
       minPasswordLength: 12, maxPasswordLength: 128, revokeSessionsOnPasswordReset: true,
     },
     emailVerification: { sendOnSignUp: true, autoSignInAfterVerification: false },
@@ -76,7 +86,6 @@ export function createAuth(db: Db, options: AuthOptions) {
     rateLimit: {
       enabled: true, storage: "database", modelName: "authRateLimits", window: 60, max: 60,
       customRules: {
-        "/sign-up/email": { window: 60, max: 3 },
         "/sign-in/*": { window: 60, max: 5 },
         "/email-otp/*": { window: 60, max: 5 },
         "/delete-household-account": { window: 60, max: 5 },
@@ -96,30 +105,18 @@ export function createAuth(db: Db, options: AuthOptions) {
             throw new APIError("BAD_REQUEST", { message: "Email links must return to this application's onboarding flow." });
           }
         }
-        if (context.path !== "/sign-up/email") return;
-        if (typeof context.body?.email !== "string") throw new APIError("BAD_REQUEST", { message: "A valid signup email is required." });
-        try {
-          const email = await authorizeSignup(db, context.body.email, context.headers, options.bootstrapSecret);
-          // Resolve admission before the adapter transaction, including on single-connection PGlite.
-          return { context: { context: { householdSignupEmail: email } } };
-        } catch (error) {
-          if (error instanceof HouseholdAccessError) throw new APIError("FORBIDDEN", { message: error.message });
-          if (error instanceof ZodError) throw new APIError("BAD_REQUEST", { message: "A valid signup email is required." });
-          throw error;
-        }
       }),
     },
     databaseHooks: {
       user: { create: { before: async (user, context) => {
-        if (!context || !("householdSignupEmail" in context.context) ||
-            context.context.householdSignupEmail !== user.email.trim().toLowerCase()) {
-          throw new APIError("FORBIDDEN", { message: "Signup requires household admission." });
+        if (!permitsUserCreation(context?.path) || user.emailVerified !== true) {
+          throw new APIError("FORBIDDEN", { message: "An account is created only by proving ownership of its email address." });
         }
         return { data: user };
       } } },
     },
     plugins: [accountDeletion(db), magicLink({
-      disableSignUp: true, expiresIn: 300, storeToken: "hashed",
+      disableSignUp: false, expiresIn: 300, storeToken: "hashed",
       async sendMagicLink({ email, url, token }) {
         try {
           await options.sendLink({ email, url, type: "sign-in-link" });
@@ -133,7 +130,7 @@ export function createAuth(db: Db, options: AuthOptions) {
         }
       },
     }), emailOTP({
-      disableSignUp: true, sendVerificationOnSignUp: true, overrideDefaultEmailVerification: true,
+      disableSignUp: false, overrideDefaultEmailVerification: true,
       otpLength: 6, expiresIn: 300, allowedAttempts: 3, storeOTP: "hashed", resendStrategy: "rotate",
       async sendVerificationOTP(mail) {
         try {
@@ -149,7 +146,39 @@ export function createAuth(db: Db, options: AuthOptions) {
   });
   return {
     // Session checks only; auth mutations go through HTTP so rate limits always run.
-    api: { getSession: (input: { headers: Headers }) => auth.api.getSession(input) },
+    api: {
+      getSession: (input: { headers: Headers }) => auth.api.getSession(input),
+      /** Server-side only: Better Auth's setPassword has no HTTP route, so the limiter lives here. */
+      async setPassword(input: { headers: Headers; newPassword: string }): Promise<PasswordOutcome> {
+        const session = await auth.api.getSession({ headers: input.headers });
+        if (!session?.user.emailVerified) return { ok: false, reason: "unauthenticated" };
+        if (!await takePasswordAttempt(db, session.user.id)) return { ok: false, reason: "rate-limited" };
+        if (await accountHasPassword(db, session.user.id)) return { ok: false, reason: "already-set" };
+        try {
+          await auth.api.setPassword({ headers: input.headers, body: { newPassword: input.newPassword } });
+        } catch (error) {
+          return passwordFailure(error);
+        }
+        await revokeOtherSessions(db, session.user.id, session.session.id);
+        return { ok: true };
+      },
+      async changePassword(input: { headers: Headers; currentPassword: string; newPassword: string }): Promise<PasswordOutcome> {
+        const session = await auth.api.getSession({ headers: input.headers });
+        if (!session?.user.emailVerified) return { ok: false, reason: "unauthenticated" };
+        if (!await takePasswordAttempt(db, session.user.id)) return { ok: false, reason: "rate-limited" };
+        if (!await accountHasPassword(db, session.user.id)) return { ok: false, reason: "no-password" };
+        try {
+          // Other sessions are revoked below instead of by the provider, which would also end this one.
+          await auth.api.changePassword({
+            headers: input.headers, body: { currentPassword: input.currentPassword, newPassword: input.newPassword },
+          });
+        } catch (error) {
+          return passwordFailure(error);
+        }
+        await revokeOtherSessions(db, session.user.id, session.session.id);
+        return { ok: true };
+      },
+    },
     handler(request: Request) {
       if (!isIP(request.headers.get(ipHeader) ?? "")) return Promise.resolve(Response.json({
         message: "A valid connecting address is required for authentication.",

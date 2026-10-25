@@ -6,6 +6,7 @@ import { stepLinks } from "@/lib/recipes/linkview";
 
 /** Chips for the links tied to one step of the meal (`partSlug` null) or of a part. `stepNo` is 1-based. */
 export function StepLinks({ partSlug, stepNo }: { partSlug: string | null; stepNo: number }) {
-  const { links, play } = useLinks();
+  const { links, play, readOnly } = useLinks();
+  if (readOnly) return null;
   return <LinkChips links={stepLinks(links, partSlug, stepNo)} onPlay={play} />;
 }

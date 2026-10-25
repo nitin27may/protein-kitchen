@@ -1,6 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
-import { PublicCatalog } from "@/components/PublicLibrary";
+import { libraryIngredientCards } from "@/lib/library/anonymous";
 import type { Metadata } from "next";
 import { IngredientsClient } from "@/components/IngredientsClient";
 import type { IngredientCard } from "@/components/IngredientsClient";
@@ -14,10 +14,16 @@ import { getPhotoIndex } from "@/lib/server/queries";
 export const metadata: Metadata = { title: "Ingredients" };
 export const dynamic = "force-dynamic";
 
-export default async function IngredientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function IngredientsPage() {
   if (!await optionalPageMember()) {
-    const { q } = await searchParams;
-    return <PublicCatalog data={getData()} kind="ingredients" query={q} />;
+    return (
+      <>
+        <PageTitle title="Ingredients" sub="Per 100 g in the state shown. Open one for full nutrition and how to get the most from it." />
+        <Suspense fallback={null}>
+          <IngredientsClient items={libraryIngredientCards(getData())} savedDefault={null} mode="anonymous" />
+        </Suspense>
+      </>
+    );
   }
   await requirePageMember();
   const data = getData();

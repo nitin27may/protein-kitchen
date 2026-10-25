@@ -12,38 +12,40 @@ import { e2eTarget } from "./target";
 const password = "Synthetic-ui-password-for-tests-123!";
 const owner = "ui-owner@example.test";
 const cook = "ui-cook@example.test";
-const bootstrap = "synthetic-browser-bootstrap-key-for-tests";
 async function code(email: string, type: "email-verification" | "sign-in" | "forget-password") {
   return z.object({ otp: z.string().regex(/^\d{6}$/) }).parse(JSON.parse(await readFile(testMailPath(email, type), "utf8"))).otp;
 }
-async function signup(page: Page, email: string, grant: string, firstOwner = false) {
-  await page.goto("/sign-up");
-  await page.getByLabel("Account name", { exact: true }).fill(firstOwner ? "Synthetic UI owner" : "Synthetic UI cook");
+/** Open signup: email, then the six-digit code, creates the account. An invitation link may ride along. */
+async function signup(page: Page, email: string, options: { invite?: string; wrongCodeFirst?: boolean } = {}) {
+  await page.goto(options.invite ? `/sign-in?invite=${options.invite}` : "/sign-up");
+  await expect(page.getByRole("heading", { name: "Sign in or create an account", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Invitation code")).toHaveCount(0);
+  await expect(page.getByLabel(/bootstrap key/i)).toHaveCount(0);
   await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  if (firstOwner) await page.getByRole("radio", { name: "First owner", exact: true }).click();
-  await page.getByLabel(firstOwner ? "Household bootstrap key" : "Invitation code", { exact: true }).fill(grant);
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Verify your email", exact: true })).toBeVisible();
-  if (firstOwner) {
-    const original = await code(email, "email-verification");
+  await page.getByRole("button", { name: "Email me a code", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Check your email to continue");
+  if (options.wrongCodeFirst) {
+    const original = await code(email, "sign-in");
     await page.getByLabel("Six-digit email code").fill(original === "000000" ? "111111" : "000000");
-    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
     await page.getByRole("button", { name: "Send a new code" }).click();
-    await expect(page.getByRole("status")).toContainText("it has been sent");
+    await expect(page.getByRole("status")).toContainText("Check your email to continue");
   }
-  await page.getByLabel("Six-digit email code").fill(await code(email, "email-verification"));
-  await page.getByRole("button", { name: "Verify email", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Email verified");
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByLabel("Six-digit email code").fill(await code(email, "sign-in"));
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page).toHaveURL(/\/onboarding/);
 }
-async function join(page: Page, grant: string, firstOwner = false) {
-  if (firstOwner) await page.getByRole("radio", { name: "First owner", exact: true }).click();
-  await page.getByLabel(firstOwner ? "Household bootstrap key" : "Invitation code", { exact: true }).fill(grant);
-  await page.getByRole("button", { name: "Join household", exact: true }).click();
+async function acceptInvite(page: Page) {
+  await page.getByRole("button", { name: "Accept invitation", exact: true }).click();
+}
+async function setPassword(page: Page, email: string, address: string) {
+  const headers = { origin: "http://127.0.0.1:3112", "x-forwarded-for": address };
+  expect((await page.request.post("/api/auth/email-otp/request-password-reset", { headers, data: { email } })).status()).toBe(200);
+  const reset = await page.request.post("/api/auth/email-otp/reset-password", {
+    headers, data: { email, otp: await code(email, "forget-password"), password },
+  });
+  expect(reset.status()).toBe(200);
 }
 async function legacyInvitation(email: string, personId?: number) {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
@@ -55,6 +57,7 @@ async function legacyInvitation(email: string, personId?: number) {
 }
 async function signIn(page: Page, email: string, secret: string) {
   await page.goto("/sign-in?next=%2Faccount");
+  await page.getByRole("button", { name: "I have a password", exact: true }).click();
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -91,9 +94,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 375, height: 812 });
   await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.21" });
-  await signup(page, owner, bootstrap, true);
-  await page.reload();
-  await join(page, bootstrap, true);
+  await signup(page, owner, { wrongCodeFirst: true });
   await expect(page.getByRole("heading", { name: "Your meal profile", exact: true })).toBeVisible();
   await page.getByLabel("Name", { exact: true }).fill("Synthetic owner targets");
   await page.getByLabel("Date of birth").fill("2000-01-01");
@@ -111,7 +112,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
   await expect(page.getByRole("link", { name: "Profile: Synthetic owner targets" })).toBeVisible();
   const ownerProfile = await page.getByRole("link", { name: "Profile: Synthetic owner targets" }).getAttribute("href");
   expect(ownerProfile).toMatch(/^\/profiles\/\d+$/);
-  const ownerControls = page.getByRole("group", { name: "Cook Synthetic UI owner", exact: true });
+  const ownerControls = page.getByRole("group", { name: "Cook Synthetic owner targets", exact: true });
   await ownerControls.getByRole("button", { name: "Make member", exact: true }).click();
   await ownerControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("at least one verified owner");
@@ -122,16 +123,18 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
   const other = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": "127.0.0.22" } });
   try {
     const second = await other.newPage();
-    await signup(second, cook, grant);
+    await signup(second, cook, { invite: grant });
+    await expect(second.getByRole("heading", { name: "Join a household", exact: true })).toBeVisible();
     const cookInvitation = page.getByText(cook, { exact: false }).locator("xpath=..");
     await cookInvitation.getByRole("button", { name: "Revoke", exact: true }).click();
     await expect(cookInvitation).toHaveCount(0);
-    await join(second, grant);
+    await acceptInvite(second);
     await expect(second.getByRole("main").getByRole("alert")).toContainText("invalid or no longer available");
     const replacementGrant = await legacyInvitation(cook, 300);
     await page.reload();
     expect(replacementGrant).not.toBe(grant);
-    await join(second, replacementGrant);
+    await second.goto(`/onboarding?invite=${replacementGrant}`);
+    await acceptInvite(second);
     await expect(second).toHaveURL("http://127.0.0.1:3112/");
     await second.goto("/account");
     await expect(second.getByRole("link", { name: "Profile: Synthetic import fixture" })).toBeVisible();
@@ -168,7 +171,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await second.goto("/profiles/new");
     await expect(second).toHaveURL(/\/account$/);
     await page.reload();
-    const cookControls = page.getByRole("group", { name: "Cook Synthetic UI cook", exact: true });
+    const cookControls = page.getByRole("group", { name: "Cook Synthetic import fixture", exact: true });
     await cookControls.getByRole("button", { name: "Make owner", exact: true }).click();
     await cookControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
     await expect(cookControls.getByRole("button", { name: "Make member", exact: true })).toBeVisible();
@@ -248,15 +251,14 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await page.goto("/account");
     await expect(page).toHaveURL(/\/sign-in$/);
     await page.getByLabel("Email", { exact: true }).fill(owner);
-    await page.getByRole("button", { name: "Use an email code" }).click();
-    await page.getByRole("button", { name: "Send code", exact: true }).click();
+    await page.getByRole("button", { name: "Email me a code", exact: true }).click();
     await expect(page.getByLabel("Six-digit email code")).toBeVisible();
     await page.getByLabel("Six-digit email code").fill(await code(owner, "sign-in"));
-    await page.getByRole("button", { name: "Sign in with code", exact: true }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page).toHaveURL("http://127.0.0.1:3112/");
     await page.goto("/reset-password");
     await page.getByLabel("Email", { exact: true }).fill(owner);
-    await page.getByRole("button", { name: "Send code", exact: true }).click();
+    await page.getByRole("button", { name: "Email me a code", exact: true }).click();
     await expect(page.getByLabel("Six-digit email code")).toBeVisible();
     await page.getByLabel("Six-digit email code").fill(await code(owner, "forget-password"));
     const replacement = "Synthetic-ui-reset-password-456!";
@@ -306,15 +308,17 @@ test("confirmed member and original-owner deletion preserve shared meals and den
   await page.getByRole("button", { name: "Cancel account deletion", exact: true }).click();
   await expect(page.getByLabel("Current password", { exact: true })).toHaveCount(0);
   const grant = await legacyInvitation(cook, 300);
+  await setPassword(page, cook, "127.0.0.34");
   const other = await browser.newContext({ storageState: { cookies: [], origins: [] }, extraHTTPHeaders: { "x-forwarded-for": "127.0.0.32" } });
   try {
     const second = await other.newPage();
-    await second.goto("/sign-in");
+    await second.goto(`/sign-in?invite=${grant}`);
+    await second.getByRole("button", { name: "I have a password", exact: true }).click();
     await second.getByLabel("Email", { exact: true }).fill(cook);
     await second.getByLabel("Password", { exact: true }).fill(password);
     await second.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(second).toHaveURL(/\/onboarding(?:\?|$)/);
-    await join(second, grant);
+    await acceptInvite(second);
     await expect(second).toHaveURL("http://127.0.0.1:3112/");
     await second.goto("/account");
     await second.getByRole("button", { name: "Delete my account", exact: true }).click();
@@ -340,15 +344,15 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     await other.addCookies(staleMember);
     expect((await other.request.get("http://127.0.0.1:3112/api/account/export")).status()).toBe(401);
     await page.reload();
-    await expect(page.getByRole("group", { name: "Cook Synthetic UI cook", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Cook Synthetic import fixture", exact: true })).toHaveCount(0);
     const successor = "ui-successor@example.test";
     const nextGrant = await legacyInvitation(successor, 300);
     await other.clearCookies();
-    await signup(second, successor, nextGrant);
-    await join(second, nextGrant);
+    await signup(second, successor, { invite: nextGrant });
+    await acceptInvite(second);
     await expect(second).toHaveURL("http://127.0.0.1:3112/");
     await page.reload();
-    const successorControls = page.getByRole("group", { name: "Cook Synthetic UI cook", exact: true });
+    const successorControls = page.getByRole("group", { name: "Cook Synthetic import fixture", exact: true });
     await successorControls.getByRole("button", { name: "Make owner", exact: true }).click();
     await successorControls.getByRole("button", { name: "Confirm role change", exact: true }).click();
     await expect(successorControls.getByRole("button", { name: "Make member", exact: true })).toBeVisible();
@@ -389,20 +393,30 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     await expect(second.getByRole("checkbox").first()).toBeChecked({ checked: prep });
     await second.goto("/account");
     await expect(second.getByRole("link", { name: "Profile: Synthetic import fixture", exact: true })).toBeVisible();
-    await expect(second.getByRole("group", { name: "Cook Synthetic UI owner", exact: true })).toHaveCount(0);
+    await expect(second.getByRole("group", { name: "Cook Synthetic owner targets", exact: true })).toHaveCount(0);
   } finally { await other.close(); }
 });
 
 test("signup and sign-in show actionable failures and support retry without storing secrets", async ({ page }) => {
   await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.23" });
   await page.goto("/sign-up");
-  await page.getByLabel("Account name", { exact: true }).fill("Synthetic uninvited");
+  await expect(page.getByRole("heading", { name: "Sign in or create an account", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Invitation code")).toHaveCount(0);
+  await expect(page.getByRole("radio")).toHaveCount(0);
   await page.getByLabel("Email", { exact: true }).fill("ui-outsider@example.test");
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByLabel("Invitation code", { exact: true }).fill("invalid");
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("Signup requires");
+  await page.route("**/api/auth/email-otp/send-verification-otp", (route) => route.abort("failed"));
+  await page.getByRole("button", { name: "Email me a code", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Check your connection");
+  await expect(page.getByRole("button", { name: "Email me a code", exact: true })).toBeEnabled();
+  await page.unroute("**/api/auth/email-otp/send-verification-otp");
+  await page.route("**/api/auth/email-otp/send-verification-otp", (route) => route.fulfill({
+    status: 503, contentType: "application/json", body: '{"message":"We could not send the email code. Please try again."}',
+  }));
+  await page.getByRole("button", { name: "Email me a code", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("could not send the email code");
+  await page.unroute("**/api/auth/email-otp/send-verification-otp");
   await page.goto("/sign-in");
+  await page.getByRole("button", { name: "I have a password", exact: true }).click();
   await page.getByLabel("Email", { exact: true }).fill("ui-outsider@example.test");
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.route("**/api/auth/sign-in/email", (route) => route.abort("failed"));
@@ -429,15 +443,15 @@ test("an emailed link signs in only its opening browser, survives reload and rej
     await handle.db.insert(s.householdMembers).values({ householdId, userId: id, role: "owner" });
     await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.84" });
     await page.goto("/sign-in");
-    await page.getByRole("button", { name: "Use an email link", exact: true }).click();
+    await page.getByRole("button", { name: "Email me a link instead", exact: true }).click();
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.route("**/api/auth/sign-in/magic-link", (route) => route.abort("failed"));
-    await page.getByRole("button", { name: "Send email link", exact: true }).click();
+    await page.getByRole("button", { name: "Email me a link", exact: true }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText("Check your connection");
-    await expect(page.getByRole("button", { name: "Send email link", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Email me a link", exact: true })).toBeEnabled();
     await page.unroute("**/api/auth/sign-in/magic-link");
-    await page.getByRole("button", { name: "Send email link", exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: "an email link has been sent" })).toBeVisible();
+    await page.getByRole("button", { name: "Email me a link", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Check your email to continue" })).toBeVisible();
     const mail = z.object({ email: z.literal(email), type: z.literal("sign-in-link"), url: z.string().url() })
       .parse(JSON.parse(await readFile(testMailPath(email, "sign-in-link"), "utf8")));
     expect(await (await page.request.get("/api/auth/get-session")).json()).toBeNull();
@@ -454,10 +468,10 @@ test("an emailed link signs in only its opening browser, survives reload and rej
     await expect(page).toHaveURL(/\/sign-in\?emailLinkError=1&error=INVALID_TOKEN$/);
     await expect(page.getByRole("main").getByRole("alert")).toContainText("invalid, expired or already used");
     expect(await (await page.request.get("/api/auth/get-session")).json()).toBeNull();
-    await page.getByRole("button", { name: "Use an email link", exact: true }).click();
+    await page.getByRole("button", { name: "Email me a link instead", exact: true }).click();
     await page.getByLabel("Email", { exact: true }).fill(email);
-    await page.getByRole("button", { name: "Send email link", exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: "an email link has been sent" })).toBeVisible();
+    await page.getByRole("button", { name: "Email me a link", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Check your email to continue" })).toBeVisible();
     const retry = z.object({ url: z.string().url() }).parse(JSON.parse(await readFile(testMailPath(email, "sign-in-link"), "utf8")));
     expect(retry.url).not.toBe(mail.url);
     await page.goto(retry.url);

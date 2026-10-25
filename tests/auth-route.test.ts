@@ -10,7 +10,7 @@ describe("uncached auth route", () => {
   it("forwards GET and POST to the auth handler and makes responses non-cacheable", async () => {
     const handler = vi.fn<(request: Request) => Promise<Response>>()
       .mockImplementation(async () => Response.json({ success: true }));
-    vi.mocked(getAuth).mockResolvedValue({ handler, api: { getSession: vi.fn() } });
+    vi.mocked(getAuth).mockResolvedValue({ handler, api: { getSession: vi.fn(), setPassword: vi.fn(), changePassword: vi.fn() } });
     const request = new Request("http://localhost/api/auth/get-session");
     for (const method of [GET, POST]) {
       const response = await method(request);
