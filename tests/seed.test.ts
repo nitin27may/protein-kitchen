@@ -20,6 +20,17 @@ beforeAll(async () => {
 });
 
 describe("seedDatabase", () => {
+  it("can prepare an isolated library without initializing any human-owned feedback", async () => {
+    const isolated = await openDb();
+    try {
+      await seedDatabase(isolated.db, data, { initializeFeedback: false });
+      expect(await isolated.db.select().from(s.recipeFeedback)).toEqual([]);
+      await verifyLibraryVersion(isolated.db, data);
+    } finally {
+      await isolated.close();
+    }
+  });
+
   it("loads every ingredient, recipe and technique", async () => {
     const report = await seedDatabase(handle.db, data);
     expect(report.ingredients).toBe(data.ingredients.size);

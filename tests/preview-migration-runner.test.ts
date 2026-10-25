@@ -107,6 +107,7 @@ describe("actual operator preview migration runner", () => {
     try {
       await import("../scripts/seed-preview");
       expect(fixture.seed).toHaveBeenCalledOnce();
+      expect(fixture.seed).toHaveBeenCalledWith(expect.anything(), expect.anything(), { initializeFeedback: false });
       expect(fixture.migrate).not.toHaveBeenCalled();
       expect(fixture.release).toHaveBeenCalledWith(true);
       expect(fixture.close).toHaveBeenCalledOnce();

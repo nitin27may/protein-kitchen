@@ -27,7 +27,7 @@ export interface SeedReport {
  * Upserts content, moves renamed human data, rebuilds derived children and records the library version in one
  * awaited transaction. Human writers use nested savepoints, so a failure restores the entire previous library.
  */
-export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
+export async function seedDatabase(db: Db, data: DataSet, options: { initializeFeedback?: boolean } = {}): Promise<SeedReport> {
   return withTx(db, async (tx) => {
     // Ingredients
     for (const ing of data.ingredients.values()) {
@@ -109,9 +109,11 @@ export async function seedDatabase(db: Db, data: DataSet): Promise<SeedReport> {
     await applyRenames(tx, data.renames);
 
     // Feedback rows exist for every recipe but are never overwritten.
-    const feedbackIds = new Set((await tx.select({ recipeId: s.recipeFeedback.recipeId }).from(s.recipeFeedback)).map((row) => row.recipeId));
-    for (const id of seededIds) {
-      if (!feedbackIds.has(id)) await tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing();
+    if (options.initializeFeedback !== false) {
+      const feedbackIds = new Set((await tx.select({ recipeId: s.recipeFeedback.recipeId }).from(s.recipeFeedback)).map((row) => row.recipeId));
+      for (const id of seededIds) {
+        if (!feedbackIds.has(id)) await tx.insert(s.recipeFeedback).values({ recipeId: id }).onConflictDoNothing();
+      }
     }
 
     // Children are derived, so clear and rebuild.

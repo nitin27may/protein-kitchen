@@ -209,6 +209,12 @@ using the same live target, advisory lock, complete migration ledger and
 empty-non-library-state guards; validate disk data first and seed only library
 data through the existing transactional helper. Never seed at request/build
 time or relax the existing development/test seed guard.
+Live rehearsal found that the shared seed helper initializes empty legacy
+feedback rows. Preserve that default for existing callers, but explicitly omit
+feedback initialization for the isolated preview seed and prove every
+non-library table stays empty. Keep the first synthetic preview database
+untouched and use a fresh empty hosted-preview database rather than deleting
+human-owned-class rows to repair the rehearsal.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 

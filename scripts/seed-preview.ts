@@ -24,7 +24,7 @@ try {
     const { rows } = await client.query("select hash, created_at from drizzle.__drizzle_migrations order by created_at, id");
     requireMigrationPrefix(rows, expected, true);
     await requirePreviewLibraryOnly(client);
-    const result = await seedDatabase(drizzle(client, { schema }), data);
+    const result = await seedDatabase(drizzle(client, { schema }), data, { initializeFeedback: false });
     console.log(`Preview library seeded: ${result.ingredients} ingredients, ${result.recipes} recipes/components. No household data imported.`);
   } finally {
     client.release(true);
