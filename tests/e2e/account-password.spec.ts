@@ -49,7 +49,7 @@ test("a code-created account sets, uses and changes a password and renames its h
     await page.getByLabel("Height (cm)").fill("170");
     await page.getByLabel("Weight (kg)").fill("70");
     console.log("DIAG", JSON.stringify(await page.evaluate(() => {
-      const w = window.innerWidth;
+      const w = 390;
       const wide = [...document.querySelectorAll("*")].filter((e) => e.getBoundingClientRect().right > w + 1 && getComputedStyle(e).position !== "fixed").slice(0, 12)
         .map((e) => `${e.tagName}.${String(e.className).slice(0, 60)} r=${Math.round(e.getBoundingClientRect().right)}`);
       return { w, sw: document.documentElement.scrollWidth, sx: window.scrollX, vv: [visualViewport?.width, visualViewport?.scale, visualViewport?.offsetLeft], wide };
