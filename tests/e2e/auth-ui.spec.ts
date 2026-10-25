@@ -84,7 +84,7 @@ async function downloadAccount(page: Page) {
 }
 
 test("owner and invited cook finish UI onboarding, keep separate profiles and share plan, shopping and prep", async ({ page, browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   await page.setViewportSize({ width: 375, height: 812 });
   await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.21" });
   await signup(page, owner, bootstrap, true);

@@ -230,6 +230,11 @@ Full local rerun also exposed a reminder fixture comparing the current day
 against hard-coded October 25, which collided when the clock reached that
 date. Make both days of that calendar-independence case explicit; preserve
 live-clock dispatcher cases and all admission assertions.
+Linux evidence confirms the scroll fix lets the full owner/cook journey reach
+sign-out and its cold PDF-route authorization check, but that long journey
+exhausts its two-minute total deadline before password reset. Allow four
+minutes for that retained multi-account journey; do not retry or suppress its
+assertions. Dependent password-reset/deletion coverage must still complete.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 
