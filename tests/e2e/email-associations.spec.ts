@@ -69,11 +69,13 @@ test("owner adds/revokes by email; verified recipients can accept or decline wit
     try {
       const accepted = await acceptedContext.newPage();
       await accepted.goto("http://127.0.0.1:3112/sign-in");
+      await accepted.getByRole("button", { name: "I have a password", exact: true }).click();
       await accepted.getByLabel("Email", { exact: true }).fill(acceptedEmail);
       await accepted.getByLabel("Password", { exact: true }).fill(password);
       await accepted.getByRole("button", { name: "Sign in", exact: true }).click();
       await expect(accepted).toHaveURL(/\/onboarding(?:\?|$)/);
       await expect(accepted.getByRole("heading", { name: "Household email association", exact: true })).toBeVisible();
+      await expect(accepted.getByRole("button", { name: "Start my own kitchen instead", exact: true })).toBeVisible();
       await expect(accepted.getByText("Pat", { exact: true })).toHaveCount(0);
       await expect(accepted.getByText("Synthetic authorized fixture", { exact: true })).toHaveCount(0);
       await accepted.getByRole("button", { name: "Accept and join", exact: true }).click();
@@ -90,6 +92,7 @@ test("owner adds/revokes by email; verified recipients can accept or decline wit
       await expect(page.getByRole("status")).toContainText("notification email sent");
       const declined = await declinedContext.newPage();
       await declined.goto("http://127.0.0.1:3112/sign-in");
+      await declined.getByRole("button", { name: "I have a password", exact: true }).click();
       await declined.getByLabel("Email", { exact: true }).fill(declinedEmail);
       await declined.getByLabel("Password", { exact: true }).fill(password);
       await declined.getByRole("button", { name: "Sign in", exact: true }).click();

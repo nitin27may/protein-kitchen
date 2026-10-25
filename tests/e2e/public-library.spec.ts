@@ -40,7 +40,7 @@ test("public navigation fits phone and desktop; unknown subjects return 404", as
     await expect(page.getByText("No matches. Try another name.")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("navigation", { name: "Public navigation" }).getByRole("link", { name: "Sign in", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in or create an account", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
   }
   for (const url of ["/recipes/nonexistent-library-item", "/ingredients/nonexistent-library-item", "/recipes/methi-water"]) {

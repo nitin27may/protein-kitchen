@@ -3,7 +3,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews, photos, photoDecisions } from "../../lib/db/schema";
+import { authSessions, authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews, photos, photoDecisions } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
 import { loadCandidates } from "../../lib/photos/candidates";
@@ -377,7 +377,7 @@ test("anonymous pages, server components, photo bytes and exports never disclose
     for (const url of ["/profiles", "/groceries", "/photos/review", `/plan/${process.env.E2E_PREP_PLAN_ID}/prep`]) {
       await page.goto(`http://127.0.0.1:3112${url}`);
       await expect(page).toHaveURL(/\/sign-in$/);
-      await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Sign in or create an account", exact: true })).toBeVisible();
     }
     for (const url of [
       "/api/account/export",
@@ -482,7 +482,14 @@ test("captured Server Actions cannot edit another profile or survive revoked hou
       expect(revokedDownload.headers()["cache-control"]).toContain("no-store");
       await page.goto("/groceries");
       await expect(page).toHaveURL(/\/onboarding/);
+      // A person without membership now gets an automatic kitchen; it must not outlive this test.
+      await expect(page.getByRole("heading", { name: "Your meal profile", exact: true })).toBeVisible();
     } finally {
+      const kitchens = await handle.db.select({ householdId: householdMembers.householdId }).from(householdMembers)
+        .where(and(eq(householdMembers.userId, account!.userId), ne(householdMembers.householdId, account!.householdId!)));
+      await handle.db.delete(householdMembers).where(and(eq(householdMembers.userId, account!.userId), ne(householdMembers.householdId, account!.householdId!)));
+      for (const kitchen of kitchens) if (kitchen.householdId) await handle.db.delete(households).where(eq(households.id, kitchen.householdId));
+      await handle.db.update(authSessions).set({ activeHouseholdId: null }).where(eq(authSessions.userId, account!.userId));
       await handle.db.insert(householdMembers).values({ householdId: account!.householdId, userId: account!.userId, personId, role: "owner" })
         .onConflictDoUpdate({ target: [householdMembers.householdId, householdMembers.userId], set: { role: "owner", personId } });
       expect(await handle.db.select().from(householdMembers).where(and(eq(householdMembers.userId, account!.userId), eq(householdMembers.personId, personId)))).toHaveLength(1);
