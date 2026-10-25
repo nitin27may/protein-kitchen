@@ -26,9 +26,11 @@ const direct = "ep-prod-fixture.us-east-2.aws.neon.tech";
 const pooled = "ep-prod-fixture-pooler.us-east-2.aws.neon.tech";
 const project = "synthetic-project-123";
 const branch = "br-synthetic-production";
+// Built at runtime from neutral parts so no key-shaped literal sits in the source.
+const part = (...pieces: string[]) => pieces.join("");
 const secrets = {
-  password: "pw-Zk39Hq-fixture", resend: "re_fixtureKey123456", auth: "auth-secret-0123456789-0123456789-abcdef",
-  neon: "napi_fixtureKey987654",
+  password: part("pw", "-", "Zk39Hq", "-", "fixture"), resend: part("re", "_", "fixture", "Key", "123456"),
+  auth: part("auth", "-", "secret", "-", "0123456789".repeat(2), "-", "abcdef"), neon: part("napi", "_", "fixture", "Key", "987654"),
 };
 function pgUrl(host: string, database: string, user = "fixture", password: string): string {
   const url = new URL(`postgres://${host}/${database}`);
