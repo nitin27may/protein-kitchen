@@ -7,9 +7,9 @@ Written 2026-10-23 so the work can continue on another machine, or in a fresh se
 **Deployed and browser-verified:**
 https://protein-kitchen-preview-nitin27mays-projects.vercel.app
 (requires Vercel sign-in). Application commit
-`9ce109234fe2d23d246998798614807c25a1f38a`, successful exact-commit
-CI run `40165492180`, ready preview deployment
-`dpl_CZBnATqVheeEZgiL1ToBGxGHNnjJ`. Source came from a clean git archive;
+`f0b9fe44b587009a6f01fa1dd360ce17f122d173`, successful exact-commit
+CI run `40168258902`, ready preview deployment
+`dpl_4mHAXeMCPb2BNzUs4Axiu7MJsEYw`. Source came from a clean git archive;
 Vercel built Linux output. Nothing was merged to `main`.
 
 Runtime and GitHub preview URLs select **`protein_kitchen_hosted_preview`**,
@@ -21,8 +21,8 @@ revoked. The development branch no longer expires. Production Neon was not
 modified; production GitHub deployment policy still permits zero branches.
 Mail, push, sync, vault and public self-service signup remain disabled/gated.
 
-Local acceptance: **2,011 tests / 101 files**, including 42 native cases,
-all **36 browser journeys**, critical coverage gates, types, validation and
+Local acceptance: **2,015 tests / 101 files**, including 42 native cases,
+all **38 browser journeys**, critical coverage gates, types, validation and
 build. Exact-commit Linux CI passed all jobs. Its retained trace exposed a
 cross-session prep assertion racing the commit: `networkidle` had already
 occurred. Actual Server Action responses now synchronize shared checklist
@@ -41,7 +41,7 @@ upload and refuses implicit production classification/unready output.
 Techniques are embedded on recipe details, not a `/techniques` index; the smoke
 now expands the real recipe technique instead of asserting a nonexistent page.
 
-**Next bounded slice accepted locally:** a verified, membership-free account
+**Next bounded slice implemented and deployed:** a verified, membership-free account
 creates an empty household and continues to its own meal profile without a
 grant or role choice, using the existing transactional service. Pending email
 associations stay explicit choices; legacy join remains compatible. The
@@ -57,13 +57,17 @@ separate first-click hydration gap in shopping/prep controls (GET with no
 mutation POST in the trace). The existing hydration hook now gates grocery,
 pantry, manual-item and prep mutations; deliberate script-delayed cases prove
 first-change persistence on both pages. No arbitrary sleeps or forced clicks.
-The next-slice candidate still needs its own exact-commit CI/deployment before
-replacing the application SHA above.
+This slice passed its own Linux aggregate CI and is included in the current
+deployed application SHA above.
 
 The reviewed GitHub `preview` variable `PREVIEW_ALIAS` pins the fixed alias
 above. The runner compares it with Vercel's auth origin and assigns it only
 after verifying a ready, non-production deployment. Workflow registration on
 the default branch remains a separate reviewed change; nothing was merged.
+Vercel 58.4.4 rejects `--skip-domain` for preview targets; the runner now omits
+that production-only option, matching the successfully exercised operator
+command. The final follow-up changes only delivery tooling and these records,
+not the already accepted/deployed application.
 
 ## Earlier continuation records
 

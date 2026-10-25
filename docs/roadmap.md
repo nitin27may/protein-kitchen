@@ -8,16 +8,15 @@ Each step ends with the same checks: `pnpm typecheck`, `pnpm test`, `pnpm valida
 
 **Verified delivery, 2026-10-25:** protected preview is live at
 https://protein-kitchen-preview-nitin27mays-projects.vercel.app (Vercel sign-in).
-Application SHA `9ce109234fe2d23d246998798614807c25a1f38a` passed aggregate CI
-`40165492180`; hosted browser acceptance passes real list/detail/auth routes,
+Application SHA `f0b9fe44b587009a6f01fa1dd360ce17f122d173` passed aggregate CI
+`40168258902`; hosted browser acceptance passes real list/detail/auth routes,
 technique expansion, anonymous denial and private redirect. Runtime uses
 `protein_kitchen_hosted_preview` with 20 migrations, library-only seed and empty
 non-library tables. Private read-only storage is empty; development no longer
 expires. All-deployment protection is required; the automatically classified
 first bootstrap production deployment was removed. Production release remains
-blocked. Local acceptance is 2,011 tests / 101 files and 36 browser journeys.
-H3 household creation UI is now accepted locally (2,015 tests and 38 browser
-journeys), awaiting its own exact-commit CI/deployment; public signup/live mail
+blocked. Local acceptance is 2,015 tests / 101 files and 38 browser journeys.
+H3 household creation UI is now accepted and deployed; public signup/live mail
 stay gated. This update supersedes historical provisioning/deployment blockers.
 
 **New product direction, 2026-10-24:** public recipe/ingredient browsing with anonymous top navigation, open email-first signup without invitation/bootstrap codes or role selection, and add-household-members-by-email from day one. The existing deployment-wide household model must become safely tenant-scoped before opening signup. The H1-H6 implementation plan at the top of `plan-v3-publish-and-protect.md` supersedes old invite-only/single-household assumptions. Public browsing is implemented below; household isolation and email-first admission remain pending. Deployment of the old flow is not the next priority.
@@ -26,7 +25,7 @@ stay gated. This update supersedes historical provisioning/deployment blockers.
 
 | Step | What | State |
 |---|---|---|
-| H3 household creation / checklist readiness | Code-free creation for verified accounts without memberships; reliable first checklist change | Accepted locally: existing locked creation service, automatic manager/session selection, explicit association choices, own profile/reload, server field errors, failure/retry and replay refusal. Grocery/pantry/manual/prep mutation controls wait for hydration; retained script-delayed browser cases prove persistence. 2,015 tests / 101 files, 42 native cases, 38 browsers, critical gates, types/validation/build pass. Candidate awaits exact-commit deployment; signup/live mail stay gated. |
+| H3 household creation / checklist readiness | Code-free creation for verified accounts without memberships; reliable first checklist change | Accepted and deployed at `f0b9fe4`: existing locked creation service, automatic manager/session selection, explicit association choices, own profile/reload, server field errors, failure/retry and replay refusal. Grocery/pantry/manual/prep mutation controls wait for hydration; retained script-delayed browser cases prove persistence. 2,015 tests / 101 files, 42 native cases, 38 browsers, critical gates, types/validation/build and exact-commit Linux CI pass. Signup/live mail stay gated. |
 | D3/D5 preview runner | Manual exact-SHA preview deployment with fail-closed gates | Published on work branch; current preview was operator-deployed after successful exact-SHA aggregate CI and hosted acceptance. Runner additionally requires all-deployment protection, pins/assigns the auth alias and refuses implicit production classification. Actual guard/refusal programs are tested. No migration/seed in the runner; default-branch workflow registration still requires review. |
 | D2 project / secret setup | New Vercel project and environment-scoped Neon configuration | Vercel preview has 21 encrypted runtime settings and all-deployment Authentication. GitHub pins the matching database/branches and fixed alias. Dedicated hosted-preview database has 20 migrations, library-only seed and empty non-library tables; private storage is empty/read-only, development expiry removed. Production Neon untouched; production GitHub policy permits zero branches. |
 | H4 email associations | Owner add-by-email, verified recipient accept/decline and notification retry | Deployed to protected preview at SHA `9ce1092` after full local and Linux acceptance. Migration `0019` supports tokenless per-household associations and decline/label fields; accepting preserves existing memberships/selection. Incomplete-profile recipient prompts and notification retry are retained. Live email delivery and open signup remain disabled; no household data was imported. |

@@ -17,6 +17,7 @@ describe("protected preview deployment contract", () => {
     expect(preview).toContain("needs: accepted");
     expect(preview).toContain("environment: preview");
     expect(preview).not.toContain("--prod");
+    expect(preview).not.toContain("--skip-domain");
     expect(preview).not.toContain("environment: production");
   });
 

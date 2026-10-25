@@ -145,7 +145,7 @@ jobs:
           import { execFileSync } from "node:child_process";
           const run = (args) => JSON.parse(execFileSync("vercel", [...args, "--token", process.env.VERCEL_TOKEN],
             { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
-          const deployment = run(["deploy", "--prebuilt", "--yes", "--target", "preview", "--skip-domain", "--json"]);
+          const deployment = run(["deploy", "--prebuilt", "--yes", "--target", "preview", "--json"]);
           const url = deployment.url ?? deployment.deployment?.url;
           if (!url) throw new Error("Vercel did not return a deployment URL.");
           const inspected = run(["inspect", url, "--json"]);

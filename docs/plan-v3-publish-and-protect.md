@@ -10,8 +10,8 @@ User-directed change, 2026-10-24: public visitors browse recipes/ingredients/det
 
 Protected preview is live at
 https://protein-kitchen-preview-nitin27mays-projects.vercel.app,
-application SHA `9ce109234fe2d23d246998798614807c25a1f38a`,
-successful aggregate CI `40165492180`. Hosted browser acceptance verifies
+application SHA `f0b9fe44b587009a6f01fa1dd360ce17f122d173`,
+successful aggregate CI `40168258902`. Hosted browser acceptance verifies
 anonymous denial, five real routes, recipe technique expansion, private-account
 redirect and no uncaught errors. Vercel Authentication protects **all**
 deployments/aliases; implicit first-deployment production promotion is refused
@@ -22,7 +22,7 @@ non-library tables, private read-only empty storage, no development-branch
 expiry. Production Neon and blocked production release policy are unchanged.
 These facts supersede the historical deployment blockers below.
 
-**Status: H3 household creation UI accepted locally, not open signup.** Expose the already
+**Status: H3 household creation UI accepted and deployed, not open signup.** Expose the already
 accepted `createSessionHousehold` primitive through a verified-session Server
 Action and hydration-safe onboarding form. A verified account with no
 membership may name a new empty household, automatically become its manager
@@ -49,8 +49,8 @@ creates a household without entering a grant, handles failed submit/retry,
 finishes a profile, reloads, confirms selection and preserves an independent
 household. Run affected authorization/action tests, full serial coverage and
 browser acceptance, types, validation and database-free production build.
-This slice is developed after hosted acceptance; it is not part of the deployed
-application SHA until a later exact-commit deployment.
+This slice was developed after initial hosted acceptance, then passed its own
+exact-commit Linux CI and was deployed as the current application SHA above.
 
 Full browser acceptance exposed the same first-click readiness gap on shared
 shopping/prep checkboxes: the trace contained a GET but no mutation POST after a
@@ -70,7 +70,11 @@ reload and unchanged independent household data. Actual workflow guard programs
 also execute against synthetic CLI fixtures and refuse partial protection,
 wrong project, unready output and implicit production classification.
 `PREVIEW_ALIAS` pins the auth origin and is assigned only after target checks.
-This candidate awaits its own exact-commit hosted acceptance.
+Current ready preview `dpl_4mHAXeMCPb2BNzUs4Axiu7MJsEYw` passed the retained
+hosted read-only browser acceptance. No synthetic account/household was created
+in the cloud; the full creation journey uses only disposable loopback fixtures.
+Vercel's `--skip-domain` flag is production-only and is omitted from preview
+commands; the operator exercised the supported preview arguments successfully.
 
 ### Required experience
 
