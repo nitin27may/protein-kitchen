@@ -1,0 +1,3 @@
+# Historical synthetic scheduler fixtures, verified against their original commits.
+f3956068b1f1151095e27033cfb5894fd03cf908:tests/reminder-scheduler.test.ts:generic-api-key:7
+87061d56bb7924dd31955a3c5c3deb881a585f54:tests/state-sync-entrypoints.test.ts:generic-api-key:13
