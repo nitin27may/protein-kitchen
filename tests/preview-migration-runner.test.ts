@@ -5,7 +5,8 @@ const fixture = vi.hoisted(() => {
   const release = vi.fn();
   const close = vi.fn();
   const connect = vi.fn(async () => ({ query, release }));
-  return { query, release, close, connect, migrate: vi.fn(), preflight: vi.fn(), open: vi.fn() };
+  return { query, release, close, connect, migrate: vi.fn(), preflight: vi.fn(), open: vi.fn(),
+    load: vi.fn(), seed: vi.fn() };
 });
 vi.mock("../lib/db/postgres/verified-client", () => ({ openVerifiedPostgres: fixture.open }));
 vi.mock("../lib/deployment/preflight", () => ({ previewPreflight: fixture.preflight }));
@@ -14,6 +15,8 @@ vi.mock("drizzle-orm/migrator", () => ({
 }));
 vi.mock("drizzle-orm/node-postgres", () => ({ drizzle: (client: unknown) => client }));
 vi.mock("drizzle-orm/node-postgres/migrator", () => ({ migrate: fixture.migrate }));
+vi.mock("../lib/data/load", () => ({ loadData: fixture.load }));
+vi.mock("../lib/db/seed", () => ({ seedDatabase: fixture.seed }));
 
 beforeEach(() => {
   vi.resetModules();
@@ -30,10 +33,12 @@ beforeEach(() => {
   vi.stubEnv("PREVIEW_MIGRATION_BRANCH", "br-fixture");
   fixture.preflight.mockResolvedValue({ configurationValid: true, liveBranchVerified: true, failed: [] });
   fixture.open.mockResolvedValue({ pool: { connect: fixture.connect }, close: fixture.close });
+  fixture.load.mockReturnValue({ issues: [] });
+  fixture.seed.mockResolvedValue({ ingredients: 1, recipes: 1 });
 });
 afterEach(() => { vi.unstubAllEnvs(); });
 
-function queries({ occupied = false, divergent = false, complete = true } = {}) {
+function queries({ occupied = false, divergent = false, complete = true, completeInitially = false } = {}) {
   let reads = 0;
   fixture.query.mockImplementation(async (query: string) => {
     if (query.includes("pg_advisory_lock")) return { rows: [] };
@@ -41,7 +46,7 @@ function queries({ occupied = false, divergent = false, complete = true } = {}) 
     if (query.includes("select hash")) {
       reads++;
       return { rows: divergent ? [{ hash: "unreviewed", created_at: "1" }]
-        : reads === 1 || !complete ? [] : [{ hash: "reviewed", created_at: "1" }] };
+        : (reads === 1 && !completeInitially) || !complete ? [] : [{ hash: "reviewed", created_at: "1" }] };
     }
     if (query.includes("pg_tables")) return { rows: [{ tablename: "recipes" }, { tablename: "people" }] };
     if (query.includes("exists(select")) return { rows: [{ occupied }] };
@@ -94,5 +99,34 @@ describe("actual operator preview migration runner", () => {
     await expect(import("../scripts/migrate-preview")).rejects.toThrow("DDL refused");
     expect(fixture.release).toHaveBeenCalledWith(true);
     expect(fixture.close).toHaveBeenCalledOnce();
+  });
+
+  it("seeds only validated library data after complete schema and empty-human-state checks", async () => {
+    queries({ completeInitially: true });
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await import("../scripts/seed-preview");
+      expect(fixture.seed).toHaveBeenCalledOnce();
+      expect(fixture.migrate).not.toHaveBeenCalled();
+      expect(fixture.release).toHaveBeenCalledWith(true);
+      expect(fixture.close).toHaveBeenCalledOnce();
+    } finally { log.mockRestore(); }
+  });
+
+  it.each([{ occupied: true, completeInitially: true }, { complete: false }])(
+    "refuses library writes for unsafe schema/state %j", async (options) => {
+      queries(options);
+      await expect(import("../scripts/seed-preview")).rejects.toThrow();
+      expect(fixture.seed).not.toHaveBeenCalled();
+      expect(fixture.release).toHaveBeenCalledWith(true);
+      expect(fixture.close).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("refuses invalid library data before opening a database", async () => {
+    fixture.load.mockReturnValue({ issues: [{ file: "synthetic.json", message: "invalid" }] });
+    await expect(import("../scripts/seed-preview")).rejects.toThrow("Preview library is invalid");
+    expect(fixture.open).not.toHaveBeenCalled();
+    expect(fixture.seed).not.toHaveBeenCalled();
   });
 });

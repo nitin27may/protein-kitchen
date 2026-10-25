@@ -203,6 +203,12 @@ confirm anonymous denial, public library/sign-in rendering, private-account
 redirect and no uncaught browser errors. Inject the bypass only into requests
 for the exact origin, never into third-party requests; no writes or fixture
 reset are performed.
+The application also requires the exact library version before opening
+database-backed auth. Add a separate explicit preview library-seed command
+using the same live target, advisory lock, complete migration ledger and
+empty-non-library-state guards; validate disk data first and seed only library
+data through the existing transactional helper. Never seed at request/build
+time or relax the existing development/test seed guard.
 
 User direction, 2026-10-24: finish and test the product, then deploy using GitHub CLI, Vercel CLI and the existing Neon account; configure GitHub Actions secrets and create a release later. This adds the following ordered delivery work, not authorization to publish the current incomplete build. Reuse existing projects/accounts and self-managed Better Auth. Confirm exact target projects, domain, costs and any real-data transfer before provisioning or cutover. Never delete/reset a Neon branch or change an existing production resource as an implicit setup step.
 

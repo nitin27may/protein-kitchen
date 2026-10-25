@@ -22,6 +22,7 @@
     "db:generate:postgres": "drizzle-kit generate --config=drizzle.postgres.config.ts",
     "db:migrate:postgres": "tsx scripts/migrate-postgres.ts",
     "db:migrate:preview": "tsx scripts/migrate-preview.ts",
+    "db:seed:preview": "tsx scripts/seed-preview.ts",
     "db:verify:postgres": "tsx scripts/verify-postgres.ts",
     "db:import:sqlite": "tsx scripts/import-sqlite.ts",
     "dev": "next dev",

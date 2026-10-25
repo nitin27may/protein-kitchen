@@ -5,7 +5,7 @@ import { readMigrationFiles } from "drizzle-orm/migrator";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { openVerifiedPostgres } from "../lib/db/postgres/verified-client";
 import { previewPreflight } from "../lib/deployment/preflight";
-import { previewLibraryTables, previewMigrationTarget, requireMigrationPrefix } from "../lib/deployment/preview-migration";
+import { previewMigrationTarget, requireMigrationPrefix, requirePreviewLibraryOnly } from "../lib/deployment/preview-migration";
 
 const env = process.env;
 const target = previewMigrationTarget(env);
@@ -27,15 +27,7 @@ try {
         : [];
     };
     requireMigrationPrefix(await ledger(), expected);
-    const tables = await client.query<{ tablename: string }>(
-      "select tablename from pg_tables where schemaname = 'public'",
-    );
-    for (const { tablename } of tables.rows) {
-      if (previewLibraryTables.has(tablename)) continue;
-      const quoted = `"${tablename.replaceAll('"', '""')}"`;
-      const result = await client.query(`select exists(select 1 from public.${quoted} limit 1) as occupied`);
-      if (result.rows[0].occupied) throw new Error("Preview migration refuses a target containing non-library state.");
-    }
+    await requirePreviewLibraryOnly(client);
     await migrate(drizzle(client), { migrationsFolder: folder });
     requireMigrationPrefix(await ledger(), expected, true);
     console.log(`Verified ${expected.length} preview migrations. No household state imported or library seeded.`);
