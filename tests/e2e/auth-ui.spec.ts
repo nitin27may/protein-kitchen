@@ -60,12 +60,16 @@ async function signIn(page: Page, email: string, secret: string) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/account$/);
 }
-async function saveFeedback(page: Page, change: () => Promise<void>) {
+async function saveAction(page: Page, change: () => Promise<void>) {
+  const pathname = new URL(page.url()).pathname;
   const saved = page.waitForResponse((response) =>
-    response.request().method() === "POST" && new URL(response.url()).pathname === "/recipes/tofu-burrito-bowl");
+    response.request().method() === "POST" && new URL(response.url()).pathname === pathname);
   await change();
   const response = await saved;
   expect(response.status()).toBe(200);
+}
+async function saveFeedback(page: Page, change: () => Promise<void>) {
+  await saveAction(page, change);
   await expect(page.getByRole("button", { name: "Favourite", exact: true })).toBeEnabled();
 }
 async function downloadAccount(page: Page) {
@@ -224,15 +228,13 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await page.goto("/groceries");
     const tick = page.getByRole("checkbox").first();
     const checked = await tick.isChecked();
-    await tick.setChecked(!checked);
-    await page.waitForLoadState("networkidle");
+    await saveAction(page, () => tick.setChecked(!checked));
     await second.goto("/groceries");
     await expect(second.getByRole("checkbox").first()).toBeChecked({ checked: !checked });
     await second.goto(`${plan}/prep`);
     const prep = second.getByRole("checkbox").first();
     const done = await prep.isChecked();
-    await prep.setChecked(!done);
-    await second.waitForLoadState("networkidle");
+    await saveAction(second, () => prep.setChecked(!done));
     await page.goto(`${plan}/prep`);
     await expect(page.getByRole("checkbox").first()).toBeChecked({ checked: !done });
     await page.goto("/account");
