@@ -1,4 +1,6 @@
 import { feedbackClass } from "./feedback";
+import { foodLogClass } from "./food-log";
+import { householdFoodsClass } from "./household-foods";
 import { libraryPhotoDecisionsClass, libraryPhotosClass } from "./library-photos";
 import { linksClass } from "./links";
 import { photoDecisionsClass, photosClass } from "./photos";
@@ -22,5 +24,7 @@ export function registerBuiltinClasses(): void {
   registerExporter(photoDecisionsClass);
   registerExporter(libraryPhotosClass);
   registerExporter(libraryPhotoDecisionsClass);
+  registerExporter(householdFoodsClass);
+  registerExporter(foodLogClass);
   done = true;
 }

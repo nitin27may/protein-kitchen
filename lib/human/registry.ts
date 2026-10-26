@@ -9,6 +9,8 @@ export interface BlobRef {
 export interface ImportContext {
   /** Resolves a recipe slug to its id, following data/renames.json when the slug was renamed. */
   resolveRecipeId(slug: string): Promise<number | undefined>;
+  /** The household the files are loaded into. Household-owned classes whose rows cannot exist without one (foods, food log) skip every file when it is absent. */
+  householdId?: string;
 }
 
 export interface ExportScope {

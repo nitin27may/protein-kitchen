@@ -5,6 +5,8 @@ import type { Db } from "../db/client";
 import { withTx, type Tx } from "../db/tx";
 import { authAccounts, authSessions, authUsers, authVerifications, householdBootstrap, householdInvitations, householdMembers, households, people, pushSubscriptions } from "../db/schema";
 import { deletePersonalFeedbackForPerson } from "../human/personal-feedback";
+import { deleteFoodLogForPerson } from "../human/food-log";
+import { detachPersonFromFoods } from "../human/household-foods";
 import { deleteHousehold } from "../human/reset";
 import { consumeEmailCode } from "./email-code";
 import { secretsMatch, tokenHash } from "./tokens";
@@ -187,6 +189,8 @@ export async function deleteOwnAccount(db: Db, input: { userId: string; sessionT
       } else if (member.personId !== null) {
         await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.personId, member.personId));
         await deletePersonalFeedbackForPerson(tx, member.personId);
+        await deleteFoodLogForPerson(tx, member.personId);
+        await detachPersonFromFoods(tx, member.householdId, member.personId);
       }
     }
     await tx.delete(householdInvitations).where(or(

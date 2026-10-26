@@ -154,7 +154,7 @@ it("rolls back export-time legacy stamps if a later shared class fails serializa
 it("counts only owned Settings roots and children, excluding foreign and null-owned data in every summary", async () => {
   const empty = {
     profiles: 1, plans: 1, groceryItems: 0, progressTicks: 0, ratings: 0, partChoices: 0,
-    links: 0, routineChoices: 0, planRoutines: 0, planSteps: 0, photos: 0,
+    links: 0, routineChoices: 0, planRoutines: 0, planSteps: 0, photos: 0, foods: 0, foodLog: 0,
   };
   expect(await getResetCounts()).toEqual(empty);
   const [foreign] = await h.db.select().from(s.plans).where(eq(s.plans.householdId, "b"));
@@ -196,7 +196,7 @@ it("counts only owned Settings roots and children, excluding foreign and null-ow
   vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
   expect(await getResetCounts()).toEqual({
     profiles: 1, plans: 1, groceryItems: 3, progressTicks: 2, ratings: 2,
-    partChoices: 1, links: 1, routineChoices: 1, planRoutines: 1, planSteps: 1, photos: 1,
+    partChoices: 1, links: 1, routineChoices: 1, planRoutines: 1, planSteps: 1, photos: 1, foods: 0, foodLog: 0,
   });
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
   await expect(getResetCounts()).rejects.toThrow("Select an available household");

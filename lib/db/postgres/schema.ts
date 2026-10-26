@@ -659,3 +659,135 @@ export const planRoutines = pgTable("plan_routines", {
   timeOfDay: text("time_of_day").notNull(),
   servings: real("servings").notNull(),
 }, (t) => [primaryKey({ columns: [t.planId, t.personId, t.habitId] })]);
+
+const FOOD_STATES = ["dry", "cooked", "raw", "ready"] as const;
+const FOOD_SOURCES = ["LABEL", "OFF", "MANUAL"] as const;
+const FOOD_LABEL_BASES = ["per_serving", "per_100g", "per_100ml"] as const;
+const FOOD_LOG_SLOTS = ["breakfast", "lunch", "dinner", "snack", "shake"] as const;
+const FOOD_LOG_KINDS = ["planned", "skipped", "swap", "extra"] as const;
+const ownedHousehold = () => text("household_id").notNull().references(() => households.id, { onDelete: "restrict" });
+
+/**
+ * A household's master list of packaged foods, added from a label. Human-owned: written only by
+ * lib/human/household-foods.ts. Nutrients are per 100 g exactly as confirmed; fibre NULL means "not reported".
+ */
+export const householdFoods = pgTable("household_foods", {
+  householdId: ownedHousehold(),
+  id: id(),
+  uid: text("uid").notNull(),
+  createdAt: isoTimestamp("created_at").notNull(),
+  updatedAt: isoTimestamp("updated_at").notNull(),
+  createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  brand: text("brand"),
+  barcode: text("barcode"),
+  state: text("state", { enum: FOOD_STATES }).notNull().default("ready"),
+  aisle: text("aisle").notNull().default("packaged"),
+  kcal: real("kcal").notNull(),
+  proteinG: real("protein_g").notNull(),
+  carbsG: real("carbs_g").notNull(),
+  fatG: real("fat_g").notNull(),
+  fibreG: real("fibre_g"),
+  per100gMicros: json<Record<string, number>>("per100g_micros").notNull().default({}),
+  notReported: json<string[]>("not_reported").notNull().default([]),
+  servingLabel: text("serving_label"),
+  servingG: real("serving_g"),
+  servingMl: real("serving_ml"),
+  densityGPerMl: real("density_g_per_ml"),
+  pieceLabel: text("piece_label"),
+  pieceG: real("piece_g"),
+  labelBasis: text("label_basis", { enum: FOOD_LABEL_BASES }).notNull(),
+  labelValues: json<Record<string, unknown>>("label_values").notNull().default({}),
+  source: text("source", { enum: FOOD_SOURCES }).notNull(),
+  sourceId: text("source_id"),
+  fieldOrigins: json<Record<string, string>>("field_origins").notNull().default({}),
+  confirmedAt: isoTimestamp("confirmed_at").notNull(),
+  confirmedByPersonId: integer("confirmed_by_person_id").references(() => people.id, { onDelete: "set null" }),
+  labelPhotoUid: text("label_photo_uid"),
+  labelPhotoSha256: text("label_photo_sha256"),
+  ingredientsText: text("ingredients_text"),
+  isDairy: bool("is_dairy").notNull().default(false),
+  containsOnionGarlic: bool("contains_onion_garlic").notNull().default(false),
+  dietFlagsFound: json<string[]>("diet_flags_found").notNull().default([]),
+  dietCheckedAt: isoTimestamp("diet_checked_at"),
+  archivedAt: isoTimestamp("archived_at"),
+}, (t) => [
+  uniqueIndex("household_foods_uid_uq").on(t.uid),
+  index("household_foods_household_idx").on(t.householdId),
+  // Lets food_log point at (household, food) so a log entry can never name another household's food.
+  uniqueIndex("household_foods_household_id_uq").on(t.householdId, t.id),
+  uniqueIndex("household_foods_barcode_uq").on(t.householdId, t.barcode).where(sql`${t.barcode} is not null`),
+  check("household_foods_nutrients_ck", sql`${t.kcal} >= 0 and ${t.proteinG} >= 0 and ${t.carbsG} >= 0 and ${t.fatG} >= 0 and (${t.fibreG} is null or ${t.fibreG} >= 0)`),
+  check("household_foods_macro_mass_ck", sql`${t.proteinG} + ${t.carbsG} + ${t.fatG} <= 105`),
+  check("household_foods_amounts_ck", sql`(${t.servingG} is null or ${t.servingG} > 0) and (${t.servingMl} is null or ${t.servingMl} > 0) and (${t.densityGPerMl} is null or ${t.densityGPerMl} > 0) and (${t.pieceG} is null or ${t.pieceG} > 0)`),
+  check("household_foods_barcode_ck", sql`${t.barcode} is null or ${t.barcode} ~ '^[0-9]{8,14}$'`),
+  check("household_foods_state_ck", sql`${t.state} in ('dry', 'cooked', 'raw', 'ready')`),
+  check("household_foods_source_ck", sql`${t.source} in ('LABEL', 'OFF', 'MANUAL')`),
+  check("household_foods_basis_ck", sql`${t.labelBasis} in ('per_serving', 'per_100g', 'per_100ml')`),
+  check("household_foods_label_photo_ck", sql`(${t.labelPhotoUid} is null) = (${t.labelPhotoSha256} is null)`),
+]);
+
+/**
+ * What a person ate. Human-owned: written only by lib/human/food-log.ts. Entries store amounts, never macros
+ * (golden rule 1); nutrition is computed from the recipe, ingredient or household food at read time. A `skipped`
+ * entry names the skipped meal in its item columns and is never counted as eaten.
+ */
+export const foodLog = pgTable("food_log", {
+  householdId: ownedHousehold(),
+  id: id(),
+  uid: text("uid").notNull(),
+  personId: integer("person_id").notNull(),
+  date: isoDate("date").notNull(),
+  slot: text("slot", { enum: FOOD_LOG_SLOTS }).notNull(),
+  kind: text("kind", { enum: FOOD_LOG_KINDS }).notNull(),
+  recipeSlug: text("recipe_slug"),
+  servings: real("servings"),
+  ingredientSlug: text("ingredient_slug"),
+  householdFoodId: integer("household_food_id"),
+  grams: real("grams"),
+  displayQty: real("display_qty"),
+  displayUnit: text("display_unit"),
+  planId: integer("plan_id").references(() => plans.id, { onDelete: "set null" }),
+  plannedRecipeSlug: text("planned_recipe_slug"),
+  plannedServings: real("planned_servings"),
+  note: text("note"),
+  createdAt: isoTimestamp("created_at").notNull(),
+  updatedAt: isoTimestamp("updated_at").notNull(),
+  createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+}, (t) => [
+  uniqueIndex("food_log_uid_uq").on(t.uid),
+  index("food_log_person_date_idx").on(t.personId, t.date),
+  index("food_log_household_idx").on(t.householdId),
+  index("food_log_food_idx").on(t.householdFoodId),
+  index("food_log_plan_idx").on(t.planId),
+  foreignKey({ name: "food_log_person_household_fk", columns: [t.householdId, t.personId], foreignColumns: [people.householdId, people.id] }).onDelete("cascade"),
+  foreignKey({ name: "food_log_food_household_fk", columns: [t.householdId, t.householdFoodId], foreignColumns: [householdFoods.householdId, householdFoods.id] }),
+  check("food_log_slot_ck", sql`${t.slot} in ('breakfast', 'lunch', 'dinner', 'snack', 'shake')`),
+  check("food_log_kind_ck", sql`${t.kind} in ('planned', 'skipped', 'swap', 'extra')`),
+  check("food_log_item_ck", sql`(
+    (${t.recipeSlug} is not null and ${t.servings} is not null and ${t.servings} > 0 and ${t.ingredientSlug} is null and ${t.householdFoodId} is null and ${t.grams} is null)
+    or (${t.ingredientSlug} is not null and ${t.grams} is not null and ${t.grams} > 0 and ${t.recipeSlug} is null and ${t.householdFoodId} is null and ${t.servings} is null)
+    or (${t.householdFoodId} is not null and ${t.grams} is not null and ${t.grams} > 0 and ${t.recipeSlug} is null and ${t.ingredientSlug} is null and ${t.servings} is null)
+  )`),
+  check("food_log_planned_ck", sql`${t.plannedServings} is null or ${t.plannedServings} > 0`),
+]);
+
+/**
+ * Operational log of label-reading calls, for cost caps. Not human-owned and not exported; rows older than 90 days are
+ * pruned by lib/server/label-extractions.ts.
+ */
+export const labelExtractions = pgTable("label_extractions", {
+  householdId: ownedHousehold(),
+  id: id(),
+  personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
+  createdAt: isoTimestamp("created_at").notNull(),
+  model: text("model").notNull(),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  outcome: text("outcome", { enum: ["success", "unreadable", "invalid", "refused", "error"] }).notNull(),
+}, (t) => [
+  index("label_extractions_household_idx").on(t.householdId, t.createdAt),
+  index("label_extractions_person_idx").on(t.personId, t.createdAt),
+  check("label_extractions_outcome_ck", sql`${t.outcome} in ('success', 'unreadable', 'invalid', 'refused', 'error')`),
+  check("label_extractions_tokens_ck", sql`${t.inputTokens} >= 0 and ${t.outputTokens} >= 0`),
+]);

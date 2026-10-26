@@ -19,3 +19,7 @@ export { copyHumanBlobs } from "./blobs";
 export type { BlobCopyReport } from "./blobs";
 export { approveLibraryCandidate, rejectLibraryCandidates, removeLibraryPhoto, setLibraryCover, undoLibraryRejection, LIBRARY_PHOTO_CAP } from "./library-photos";
 export type { LibraryApproveInput, LibraryApproveResult, LibraryCandidateRef, LibrarySubjectKind } from "./library-photos";
+export { archiveHouseholdFood, attachFoodLabelPhoto, createHouseholdFood, deleteHouseholdFood, restoreHouseholdFood, updateHouseholdFood, FoodDataError } from "./household-foods";
+export type { FoodErrorCode, FoodScope } from "./household-foods";
+export { deleteFoodEntry, findDanglingFoodLogSlugs, logFoodEntry, markPlannedMealEaten, updateFoodEntry } from "./food-log";
+export type { PlannedMealEaten } from "./food-log";

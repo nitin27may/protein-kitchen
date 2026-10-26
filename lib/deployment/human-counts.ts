@@ -18,6 +18,8 @@ export const HUMAN_OWNED_TABLES = [
   "recipe_links",
   "photos",
   "photo_decisions",
+  "household_foods",
+  "food_log",
   "saved_views",
   "person_routines",
   "plan_routines",
