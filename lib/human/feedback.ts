@@ -4,6 +4,7 @@ import type { Db } from "../db/client";
 import { withTx } from "../db/tx";
 import * as s from "../db/schema";
 import type { HumanDataClass } from "./registry";
+import type { Tx } from "../db/tx";
 import { markChanged, newUid, nowIso, stableJson } from "./util";
 
 export const FEEDBACK_CLASS = "recipe-feedback";
@@ -59,6 +60,18 @@ export async function writeRecipeFeedback(db: Db, recipeId: number, patch: Feedb
     else await tx.insert(s.recipeFeedback).values({ householdId: householdId ?? null, recipeId, ...set, ...stamps });
     await markChanged(tx, FEEDBACK_CLASS, at, householdId);
   });
+}
+
+/**
+ * Legacy household import writer. Keeps the bundle's uid and timestamps and does NOT mark the class changed: the
+ * import is a one-time restore of the owner's own data, not a new human change. The caller holds the household lock
+ * and has already refused a household that has any feedback.
+ */
+export async function insertLegacyFeedback(tx: Tx, householdId: string, rows: readonly {
+  recipeId: number; uid: string; status: "draft" | "tested"; rating: number | null; favourite: boolean; banned: boolean; notes: string | null;
+  testedAt: string | null; createdAt: string; updatedAt: string; createdByPersonId: number | null;
+}[]): Promise<void> {
+  if (rows.length) await tx.insert(s.recipeFeedback).values(rows.map((row) => ({ householdId, ...row })));
 }
 
 // ---- export / import ----

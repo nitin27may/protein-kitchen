@@ -17,7 +17,7 @@ const pending = () => and(isNull(householdInvitations.acceptedAt), isNull(househ
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 
 // One deployment-wide lock also covers the not-yet-created bootstrap row.
-async function lockHousehold(tx: Tx) {
+export async function lockHousehold(tx: Tx) {
   await tx.execute(sql`select pg_advisory_xact_lock(20261024, 15)`);
 }
 

@@ -123,6 +123,7 @@ Some data belongs to the people using the app, not to the library. Ratings, favo
 - A new human-owned table gets a `uid`, `created_at`, `updated_at` and a nullable `created_by_person_id`, and one `registerExporter` line plus a round-trip test (export, import into a fresh database, export again, identical bytes).
 - Renaming a recipe or component slug needs an entry in `data/renames.json` (`{ "old-slug": "new-slug" }`, no chains), so ratings, links and photos follow it. The seed applies it.
 - Resetting data in Settings clears these tables; reseeding never does.
+- The one-time legacy household import (`lib/human/legacy-household-import.ts`) writes these classes only through `insertLegacy*` functions in their own `lib/human/` modules, keeps the bundle's uids, and deliberately does not mark `sync_state` changed. See `docs/launch/wp7-legacy-import.md`.
 - **Routine choices** (`person_routines`) are exported as `routines/<personKey>.json`, one file per person. People have no uid, so the file is named by `personKey(name, birthDate)`: `p-` plus the first 16 hex characters of sha256 of the lower-cased name, a bar and the birth date. The key hides the birth date, survives a restore into different ids, and changes only if the name or birth date is edited. Import matches people by this key and skips a person it cannot find.
 
 ### Routines — `data/routines/<slug>.json`

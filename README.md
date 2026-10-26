@@ -65,6 +65,7 @@ signup or bypass household membership/profile onboarding.
 | `pnpm db:generate:postgres` | Generate application Postgres migrations without connecting to a database |
 | `pnpm db:migrate:postgres` | Apply Postgres migrations to an explicitly configured development/test database only |
 | `pnpm db:verify:postgres runtime` / `migration` | Verify runtime or direct CLI configuration and live remote branch mapping without opening Postgres or changing credentials |
+| `pnpm legacy:bundle [--with-plans] /abs/source-copy.db /abs/bundle.json` | Local, read-only, no network: builds the versioned legacy household bundle you upload in Settings (see `docs/launch/wp7-legacy-import.md`) |
 | `pnpm db:import:sqlite /absolute/path/to/source-copy.db` | Read-only legacy snapshot and checksum-verified import into an empty dev/test target; remote rehearsal needs an explicit branch pin and live verification |
 | `pnpm test:e2e` | Saved phone-width Chromium browser regressions against an explicitly selected disposable local Postgres database |
 | `pnpm vault:postgres publish /private/artifact --trust-artifact` | Explicit guarded operator publication of an existing trusted encrypted artifact; stable artifact id makes retries safe |
