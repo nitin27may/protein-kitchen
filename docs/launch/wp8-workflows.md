@@ -43,6 +43,8 @@ Triggers: `workflow_run` of `ci` (completed, branch `main`) and `workflow_dispat
 13. `pnpm deploy:smoke:production --stage=live`
 14. summary, then the always-run cleanup
 
+Note on steps 5 and 7: `BETTER_AUTH_SECRET` and `RESEND_API_KEY` exist only in Vercel, never in GitHub. With `--phase=... --runtime-manifest=...` the check runs the manifest check and then the normal phase checks, and the auth and mail configuration checks are satisfied from the manifest instead of the job environment: both secrets must be present and typed `sensitive`, `BETTER_AUTH_URL` must be a plain value equal to `PRODUCTION_ORIGIN`, and `AUTH_EMAIL_FROM` must be a plain bare address equal to the GitHub-side value. Database, Neon, ledger, schema, library, snapshot and host-pin checks are unchanged. Without `--runtime-manifest` (local or ad hoc runs) the process environment is still required to hold both secrets. `--runtime-manifest` alone, with no `--phase`, stays the local manifest-only check.
+
 Anything that fails before step 12 leaves production serving the previous deployment. The database steps are expand-only, so the previous deployment keeps working against the migrated schema.
 
 ## rehearse-migration.yml

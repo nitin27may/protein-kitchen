@@ -13,7 +13,7 @@ import {
   parseRuntimeManifest, loadMigrationArtifacts, parseCheckArguments, requireRemoteFlag,
   runDatabaseChecks, summarise,
 } from "../lib/deployment/check-production";
-import type { CheckResult } from "../lib/deployment/check-production";
+import type { CheckResult, RuntimeManifest } from "../lib/deployment/check-production";
 
 /**
  * Read-only production sanity check. Prints stable codes only: no URL, host, credential or database value, and no raw
@@ -24,20 +24,26 @@ async function main(): Promise<number> {
   const env = process.env;
   const emit = (results: CheckResult[]) => { for (const r of results) console.log(formatResult(r)); };
 
+  let manifestResults: CheckResult[] = [];
+  let manifest: RuntimeManifest | undefined;
   if (args.runtimeManifest !== undefined) {
     // One local file, no network and no database. Names, types and plain values are compared; only names are printed.
     let json: unknown;
     try { json = JSON.parse(fs.readFileSync(args.runtimeManifest, "utf8")); } catch { json = undefined; }
-    const results = checkRuntimeManifest(parseRuntimeManifest(json), env);
-    emit(results); console.log(summarise(results, "runtime-manifest"));
-    return results.some((r) => r.severity === "fail") ? 1 : 0;
+    manifest = parseRuntimeManifest(json);
+    manifestResults = checkRuntimeManifest(manifest, env);
+    // Without an explicit phase this is the standalone manifest check. With one, a readable manifest continues into the phase.
+    if (!args.phaseExplicit || !manifest) {
+      emit(manifestResults); console.log(summarise(manifestResults, "runtime-manifest"));
+      return manifestResults.some((r) => r.severity === "fail") ? 1 : 0;
+    }
   }
 
   const refused = requireRemoteFlag(env, args);
   if (refused) { emit([refused]); console.log(summarise([refused], args.phase)); return 1; }
 
   const rehearsal = args.target === "rehearsal";
-  const results = rehearsal ? checkRehearsalConfiguration(env) : checkConfiguration(env);
+  const results = [...manifestResults, ...(rehearsal ? checkRehearsalConfiguration(env) : checkConfiguration(env, manifest))];
   if (results.some((r) => r.severity === "fail")) {
     results.push({ check: "remote", severity: "fail", code: "SKIPPED_PREREQUISITE", detail: "config" });
     emit(results); console.log(summarise(results, args.phase)); return 1;

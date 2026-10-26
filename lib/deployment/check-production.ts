@@ -55,24 +55,30 @@ export function summarise(results: readonly CheckResult[], phase: Phase | "runti
 }
 
 export type CheckTarget = "production" | "rehearsal";
-export interface CheckArguments { phase: Phase; remoteReadOnly: boolean; target: CheckTarget; runtimeManifest?: string }
+export interface CheckArguments {
+  phase: Phase; remoteReadOnly: boolean; target: CheckTarget; runtimeManifest?: string;
+  /** A phase given together with a manifest: the database checks run too, with auth and mail read from the manifest. */
+  phaseExplicit?: true;
+}
 
 const USAGE = "Usage: pnpm db:check:production [--phase=pre-migrate|pre-deploy] [--remote-read-only] [--target=rehearsal] | --runtime-manifest=<file>";
 
 export function parseCheckArguments(argv: readonly string[]): CheckArguments {
   let phase: Phase = "pre-deploy", remoteReadOnly = false, target: CheckTarget = "production", runtimeManifest: string | undefined;
+  let phaseExplicit = false;
   for (const argument of argv) {
     if (argument === "--remote-read-only") remoteReadOnly = true;
-    else if (argument === "--phase=pre-migrate") phase = "pre-migrate";
-    else if (argument === "--phase=pre-deploy") phase = "pre-deploy";
+    else if (argument === "--phase=pre-migrate") { phase = "pre-migrate"; phaseExplicit = true; }
+    else if (argument === "--phase=pre-deploy") { phase = "pre-deploy"; phaseExplicit = true; }
     else if (argument === "--target=rehearsal") target = "rehearsal";
     else if (argument.startsWith("--runtime-manifest=") && argument.length > "--runtime-manifest=".length) {
       runtimeManifest = argument.slice("--runtime-manifest=".length);
     } else throw new Error(USAGE);
   }
-  // The manifest check reads one local file and nothing else; it does not combine with a database check.
+  // A manifest alone reads one local file. With an explicit phase it also runs that phase (CI), on the production target.
   if (runtimeManifest !== undefined && (target !== "production" || remoteReadOnly)) throw new Error(USAGE);
-  return runtimeManifest === undefined ? { phase, remoteReadOnly, target } : { phase, remoteReadOnly, target, runtimeManifest };
+  if (runtimeManifest === undefined) return { phase, remoteReadOnly, target };
+  return phaseExplicit ? { phase, remoteReadOnly, target, runtimeManifest, phaseExplicit } : { phase, remoteReadOnly, target, runtimeManifest };
 }
 
 /** Running in the approved CI runner needs no flag; anything else is a laptop that must opt in to a remote read. */
@@ -149,6 +155,34 @@ function mailConfiguration(env: Environment): CheckResult {
   return result(check, "ok", "CONFIG_OK");
 }
 
+/**
+ * Auth and mail when a Vercel manifest is supplied. BETTER_AUTH_SECRET and RESEND_API_KEY live only in Vercel, so only
+ * their presence and sensitive type are checked; the sender and origin are compared with the GitHub-side values.
+ */
+function manifestAuthConfiguration(env: Environment, manifest: RuntimeManifest): CheckResult {
+  const check = "config.auth";
+  const url = manifest.get("BETTER_AUTH_URL");
+  const absent = ["BETTER_AUTH_URL", "BETTER_AUTH_SECRET"].filter((name) => !manifest.has(name));
+  if (!present(env, "PRODUCTION_ORIGIN")) absent.push("PRODUCTION_ORIGIN");
+  if (absent.length) return result(check, "fail", "CONFIG_MISSING", absent.join(","));
+  const configured = url?.type === "plain" ? originOf(url.value) : undefined, expected = originOf(env.PRODUCTION_ORIGIN);
+  if (!configured || !expected || manifest.get("BETTER_AUTH_SECRET")?.type !== "sensitive") return result(check, "fail", "CONFIG_MALFORMED", "auth");
+  if (configured !== expected) return result(check, "fail", "CONFIG_ORIGIN_MISMATCH");
+  return result(check, "ok", "CONFIG_OK");
+}
+
+function manifestMailConfiguration(env: Environment, manifest: RuntimeManifest): CheckResult {
+  const check = "config.mail";
+  const sender = manifest.get("AUTH_EMAIL_FROM");
+  const absent = ["RESEND_API_KEY", "AUTH_EMAIL_FROM"].filter((name) => !manifest.has(name));
+  if (!absent.length && !present(env, "AUTH_EMAIL_FROM")) absent.push("AUTH_EMAIL_FROM");
+  if (absent.length) return result(check, "fail", "CONFIG_MISSING", absent.join(","));
+  if (manifest.get("RESEND_API_KEY")?.type !== "sensitive" || sender?.type !== "plain" ||
+      !z.string().email().safeParse(sender.value).success) return result(check, "fail", "CONFIG_MALFORMED", "mail");
+  if (sender.value !== env.AUTH_EMAIL_FROM!.trim()) return result(check, "fail", "CONFIG_VALUE_MISMATCH", "AUTH_EMAIL_FROM");
+  return result(check, "ok", "CONFIG_OK");
+}
+
 function neonConfiguration(env: Environment): CheckResult {
   const check = "config.neon";
   const absent = missing(env, ["NEON_PROJECT_ID", "NEON_PRODUCTION_BRANCH_ID", "NEON_API_KEY"]);
@@ -157,11 +191,14 @@ function neonConfiguration(env: Environment): CheckResult {
   return result(check, "ok", "CONFIG_OK");
 }
 
-export function checkConfiguration(env: Environment): CheckResult[] {
+export function checkConfiguration(env: Environment, manifest?: RuntimeManifest): CheckResult[] {
   const forbidden = FORBIDDEN.filter((key) => present(env, key));
   const enabled = FLAGS.filter((key) => present(env, key) && env[key]!.trim() !== "false");
   return [
-    databaseConfiguration(env), authConfiguration(env), mailConfiguration(env), neonConfiguration(env),
+    databaseConfiguration(env),
+    manifest ? manifestAuthConfiguration(env, manifest) : authConfiguration(env),
+    manifest ? manifestMailConfiguration(env, manifest) : mailConfiguration(env),
+    neonConfiguration(env),
     forbidden.length ? result("config.forbidden", "fail", "CONFIG_FORBIDDEN_SET", forbidden.join(",")) : result("config.forbidden", "ok", "CONFIG_OK"),
     enabled.length ? result("config.flags", "fail", "CONFIG_FLAG_ENABLED", enabled.join(",")) : result("config.flags", "ok", "CONFIG_OK"),
   ];

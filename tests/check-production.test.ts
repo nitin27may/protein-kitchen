@@ -299,6 +299,9 @@ describe("laptop runs", () => {
     expect(parseCheckArguments(["--phase=pre-migrate", "--remote-read-only"])).toEqual({ phase: "pre-migrate", remoteReadOnly: true, target: "production" });
     expect(parseCheckArguments(["--target=rehearsal"])).toMatchObject({ target: "rehearsal" });
     expect(parseCheckArguments(["--runtime-manifest=/tmp/m.json"])).toMatchObject({ runtimeManifest: "/tmp/m.json" });
+    expect(parseCheckArguments(["--phase=pre-migrate", "--runtime-manifest=/tmp/m.json"]))
+      .toEqual({ phase: "pre-migrate", remoteReadOnly: false, target: "production", runtimeManifest: "/tmp/m.json", phaseExplicit: true });
+    expect(parseCheckArguments(["--runtime-manifest=/tmp/m.json", "--phase=pre-deploy"])).toMatchObject({ phase: "pre-deploy", phaseExplicit: true });
     expect(() => parseCheckArguments(["--runtime-manifest="])).toThrow("Usage");
     expect(() => parseCheckArguments(["--runtime-manifest=m.json", "--target=rehearsal"])).toThrow("Usage");
     expect(() => parseCheckArguments(["--runtime-manifest=m.json", "--remote-read-only"])).toThrow("Usage");
@@ -611,6 +614,51 @@ describe("runtime manifest", () => {
     expect(output).toContain("RESULT FAIL phase=runtime-manifest");
   });
 
+  describe("phase run with a manifest", () => {
+    const { BETTER_AUTH_SECRET: _a, RESEND_API_KEY: _r, ...githubSide } = { ...env, ...github } as Record<string, string | undefined>;
+    const phaseConfig = (over: Record<string, { type: string; value?: string } | null> = {}, extra: Record<string, string | undefined> = {}) =>
+      track(checkConfiguration({ ...githubSide, ...extra }, parseRuntimeManifest(entries(over))));
+    const part = (results: CheckResult[], name: string) => results.find((r) => r.check === name);
+
+    it("satisfies auth and mail from the manifest without the two secrets in the environment", () => {
+      expect(githubSide.BETTER_AUTH_SECRET).toBeUndefined();
+      const results = phaseConfig();
+      expect(results.every((r) => r.severity === "ok")).toBe(true);
+      expect(checkConfiguration(githubSide).filter((r) => r.severity === "fail").map((r) => r.check)).toEqual(["config.auth", "config.mail"]);
+    });
+
+    const cases: [string, Record<string, { type: string; value?: string } | null>, Record<string, string | undefined>, string, string, string?][] = [
+      ["secret missing from the manifest", { BETTER_AUTH_SECRET: null }, {}, "config.auth", "CONFIG_MISSING", "BETTER_AUTH_SECRET"],
+      ["secret typed plain", { BETTER_AUTH_SECRET: { type: "plain", value: "x" } }, {}, "config.auth", "CONFIG_MALFORMED", "auth"],
+      ["auth URL missing from the manifest", { BETTER_AUTH_URL: null }, {}, "config.auth", "CONFIG_MISSING", "BETTER_AUTH_URL"],
+      ["auth URL hidden", { BETTER_AUTH_URL: { type: "sensitive" } }, {}, "config.auth", "CONFIG_MALFORMED", "auth"],
+      ["auth URL not an origin", { BETTER_AUTH_URL: { type: "plain", value: "http://meals.example.test" } }, {}, "config.auth", "CONFIG_MALFORMED", "auth"],
+      ["auth URL for another origin", { BETTER_AUTH_URL: { type: "plain", value: "https://elsewhere.example.test" } }, {}, "config.auth", "CONFIG_ORIGIN_MISMATCH"],
+      ["no GitHub origin", {}, { PRODUCTION_ORIGIN: undefined }, "config.auth", "CONFIG_MISSING", "PRODUCTION_ORIGIN"],
+      ["mail key missing from the manifest", { RESEND_API_KEY: null }, {}, "config.mail", "CONFIG_MISSING", "RESEND_API_KEY"],
+      ["mail key typed plain", { RESEND_API_KEY: { type: "plain", value: "x" } }, {}, "config.mail", "CONFIG_MALFORMED", "mail"],
+      ["sender missing from the manifest", { AUTH_EMAIL_FROM: null }, {}, "config.mail", "CONFIG_MISSING", "AUTH_EMAIL_FROM"],
+      ["sender hidden", { AUTH_EMAIL_FROM: { type: "sensitive" } }, {}, "config.mail", "CONFIG_MALFORMED", "mail"],
+      ["sender with a display name", { AUTH_EMAIL_FROM: { type: "plain", value: "Kitchen <kitchen@meals.example.test>" } }, {}, "config.mail", "CONFIG_MALFORMED", "mail"],
+      ["sender differs from GitHub", { AUTH_EMAIL_FROM: { type: "plain", value: "other@meals.example.test" } }, {}, "config.mail", "CONFIG_VALUE_MISMATCH", "AUTH_EMAIL_FROM"],
+      ["no GitHub sender", {}, { AUTH_EMAIL_FROM: undefined }, "config.mail", "CONFIG_MISSING", "AUTH_EMAIL_FROM"],
+    ];
+    it.each(cases)("fails on %s", (_name, over, extra, checkName, code, detail) => {
+      expect(part(phaseConfig(over, extra), checkName)).toMatchObject({ severity: "fail", code, ...(detail ? { detail } : {}) });
+    });
+
+    it("still runs the database, Neon, forbidden and flag checks", () => {
+      expect(part(phaseConfig({}, { DATABASE_URL: undefined }), "config.database")).toMatchObject({ severity: "fail", code: "CONFIG_MISSING" });
+      expect(part(phaseConfig({}, { NEON_API_KEY: undefined }), "config.neon")).toMatchObject({ severity: "fail" });
+      expect(part(phaseConfig({}, { VAULT_ENABLED: "true" }), "config.flags")).toMatchObject({ severity: "fail" });
+    });
+
+    it("never prints a value", () => {
+      const output = phaseConfig({ AUTH_EMAIL_FROM: { type: "plain", value: "other@meals.example.test" } }).map(formatResult).join("\n");
+      expect(output).not.toContain("example.test");
+    });
+  });
+
   it("runs from the command with no network, from a file", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "manifest-"));
     const file = path.join(dir, "env.json");
@@ -628,6 +676,20 @@ describe("runtime manifest", () => {
     const missing = run([`--runtime-manifest=${path.join(dir, "absent.json")}`]);
     expect(missing.status).toBe(1);
     expect(missing.stdout).toContain("FAIL runtime.manifest CONFIG_MALFORMED manifest");
+    // A phase run with the manifest reads auth and mail from it. No database settings are given, so it stops before any network.
+    const ghEnv = { ...Object.fromEntries(Object.entries(github).filter(([, v]) => v) as [string, string][]), GITHUB_ACTIONS: "true" };
+    const phase = run(["--phase=pre-migrate", `--runtime-manifest=${file}`], ghEnv);
+    expect(phase.status).toBe(1);
+    expect(phase.stdout).toContain("OK runtime.required CONFIG_OK");
+    expect(phase.stdout).toContain("OK config.auth CONFIG_OK");
+    expect(phase.stdout).toContain("OK config.mail CONFIG_OK");
+    expect(phase.stdout).toContain("FAIL config.database CONFIG_MISSING");
+    expect(phase.stdout).toContain("RESULT FAIL phase=pre-migrate");
+    const badFile = path.join(dir, "bad.json");
+    writeFileSync(badFile, "{");
+    const bad = run(["--phase=pre-deploy", `--runtime-manifest=${badFile}`], ghEnv);
+    expect(bad.status).toBe(1);
+    expect(bad.stdout).toContain("RESULT FAIL phase=runtime-manifest");
     expect(mismatch.stdout + missing.stdout + good.stdout).not.toContain("elsewhere.example.test");
   }, 120_000);
 });
