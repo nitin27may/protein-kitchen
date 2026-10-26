@@ -34,7 +34,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
   } catch (err) {
-    console.error("[export] failed", err);
-    return privateJson({ ok: false, error: "Could not build the file" }, 500);
+    // Log a code only: error messages can carry file system paths.
+    const code = (err as NodeJS.ErrnoException | null)?.code;
+    console.error("Plan export failed.", { format, code: typeof code === "string" ? code : "unknown" });
+    return privateJson(
+      { ok: false, error: format === "pdf" ? "The PDF could not be built. Try again later." : "The file could not be built. Try again later." },
+      500,
+    );
   }
 }
