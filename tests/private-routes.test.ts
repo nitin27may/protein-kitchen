@@ -4,6 +4,8 @@ import { getDb } from "../lib/server/context";
 import { getBlobStore } from "../lib/blob";
 import { getPlanExport } from "../lib/server/export";
 import { GET as exportPlan } from "../app/api/plan/[id]/export/route";
+import { GET as schedulePlan } from "../app/api/plan/[id]/schedule/route";
+import { getScheduleData } from "../lib/server/schedule";
 import { GET as photo } from "../app/photos/[uid]/[variant]/route";
 import { GET as status, POST as subscribe } from "../app/api/push/subscribe/route";
 import { POST as unsubscribe } from "../app/api/push/unsubscribe/route";
@@ -23,6 +25,7 @@ vi.mock("../lib/auth/access", () => ({ routeAccess: vi.fn() }));
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
 vi.mock("../lib/blob", () => ({ getBlobStore: vi.fn() }));
 vi.mock("../lib/server/export", () => ({ getPlanExport: vi.fn() }));
+vi.mock("../lib/server/schedule", () => ({ getScheduleData: vi.fn() }));
 vi.mock("../lib/server/subscriptions", () => ({ deletePushSubscription: vi.fn(), hasPushSubscription: vi.fn(), personExists: vi.fn(), savePushSubscription: vi.fn() }));
 vi.mock("../lib/server/queries", () => ({ getPerson: vi.fn() }));
 vi.mock("../lib/server/push", () => ({ sendToPerson: vi.fn(), vapidConfigured: vi.fn() }));
@@ -51,11 +54,12 @@ describe("direct private route boundaries", () => {
     const req = request({});
     const responses = await Promise.all([
       exportPlan(req, { params: Promise.resolve({ id: "1" }) }),
+      schedulePlan(req, { params: Promise.resolve({ id: "1" }) }),
       photo(req, { params: Promise.resolve({ uid: "private", variant: "thumb" }) }),
       status(request()), subscribe(req), unsubscribe(req), testPush(req),
     ]);
     for (const response of responses) uncached(response, code);
-    for (const call of [getDb, getBlobStore, getPlanExport, getPerson, sendToPerson, savePushSubscription, hasPushSubscription, deletePushSubscription]) expect(call).not.toHaveBeenCalled();
+    for (const call of [getDb, getBlobStore, getPlanExport, getScheduleData, getPerson, sendToPerson, savePushSubscription, hasPushSubscription, deletePushSubscription]) expect(call).not.toHaveBeenCalled();
   });
   it("binds every push operation to the session-linked profile", async () => {
     uncached(await subscribe(request({ ...subscription, personId: 6 })), 403);
