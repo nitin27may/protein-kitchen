@@ -137,16 +137,82 @@ test("anonymous favourite: Favourite stays visible, asks for an email, and is sa
 });
 
 test("an action replay cannot finish returns the person to the page with a clear message", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const email = "gate-rating@example.test";
   await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.63" });
-  await page.goto("/recipes/tofu-burrito-bowl");
-  await page.getByRole("radio", { name: "4", exact: true }).click();
+  await makePlan(page);
+  await page.goto("/profiles");
+  await page.getByRole("button", { name: "Save my profile" }).click();
   await signUpInSheet(page, email);
   await finishProfile(page);
-  await expect(page).toHaveURL(/\/recipes\/tofu-burrito-bowl$/, { timeout: 60_000 });
-  await expect(page.getByTestId("replay-notice")).toContainText("You are signed up. Repeat rating the recipe from this page.");
+  await expect(page).toHaveURL(/\/profiles$/, { timeout: 60_000 });
+  await expect(page.getByTestId("replay-notice")).toContainText("You are signed up. Repeat saving your profile from this page.");
   expect(await withDb((db) => db.select().from(s.authUsers).where(and(eq(s.authUsers.email, email), eq(s.authUsers.emailVerified, true))))).toHaveLength(1);
+});
+
+test("anonymous rating: rate 4, sign up, and the rating is saved on the recipe", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.67" });
+  await page.goto("/recipes/tofu-burrito-bowl");
+  await page.getByRole("radio", { name: "4", exact: true }).click();
+  await signUpInSheet(page, "gate-rate-four@example.test");
+  await finishProfile(page);
+  await expect(page).toHaveURL(/\/recipes\/tofu-burrito-bowl$/, { timeout: 60_000 });
+  await expect(page.getByTestId("replay-notice")).toContainText("Saved. You rated this recipe 4 out of 5.");
+  await page.reload();
+  await expect(page.getByRole("radio", { name: "4", exact: true })).toBeChecked();
+  expect(await deviceKeys(page)).toEqual({ session: [], local: [] });
+});
+
+test("anonymous ban: hide a recipe, sign up, and it stays hidden", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.68" });
+  await page.goto("/recipes/tofu-burrito-bowl");
+  await page.getByRole("button", { name: "Never suggest this" }).click();
+  await page.getByRole("button", { name: "Yes, hide it" }).click();
+  await signUpInSheet(page, "gate-ban@example.test");
+  await finishProfile(page);
+  await expect(page).toHaveURL(/\/recipes\/tofu-burrito-bowl$/, { timeout: 60_000 });
+  await expect(page.getByTestId("replay-notice")).toContainText("Saved. This recipe is hidden from your plans.");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Allow this recipe again" })).toBeVisible();
+});
+
+test("anonymous cooked: mark a recipe as cooked, sign up, and it stays marked", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.69" });
+  await page.goto("/recipes/tofu-burrito-bowl");
+  await page.getByRole("button", { name: "Cooked and tested", exact: true }).click();
+  await signUpInSheet(page, "gate-tested@example.test");
+  await finishProfile(page);
+  await expect(page).toHaveURL(/\/recipes\/tofu-burrito-bowl$/, { timeout: 60_000 });
+  await expect(page.getByTestId("replay-notice")).toContainText("Saved. This recipe is marked as cooked.");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Cooked and tested", exact: true })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a visitor's device profile prefills onboarding and is cleared after the save when no action is waiting", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": "127.0.0.70" });
+  await page.goto("/profiles");
+  await page.evaluate(() => sessionStorage.setItem("pk-anon-profile", JSON.stringify({ version: 1, name: "Asha", protein: { mode: "fixed", grams: 90 } })));
+  await page.reload();
+  await page.getByRole("button", { name: "Save my profile" }).click();
+  // No action should be waiting, so the form itself is responsible for clearing the device copy.
+  await page.evaluate(() => { for (const store of [sessionStorage, localStorage]) store.removeItem("pk-pending-intent"); });
+  await signUpInSheet(page, "gate-prefill@example.test");
+  await expect(page.getByText("We filled in what you entered on this device.")).toBeVisible();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Asha");
+  await expect(page.getByRole("radio", { name: "Fixed grams", exact: true })).toBeChecked();
+  await expect(page.getByLabel("Protein (g per day)", { exact: true })).toHaveValue("90");
+  await expect(page.getByLabel("Date of birth")).toHaveValue("");
+  await expect(page.getByLabel("Height (cm)")).toHaveValue("");
+  await page.getByLabel("Date of birth").fill("2000-01-01");
+  await page.getByLabel("Height (cm)").fill("170");
+  await page.getByLabel("Weight (kg)").fill("70");
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/onboarding/, { timeout: 60_000 });
+  expect(await deviceKeys(page)).toEqual({ session: [], local: [] });
 });
 
 test("the anonymous plan survives reopening the page and is cleared once it is imported", async ({ page }) => {

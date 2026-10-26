@@ -80,6 +80,15 @@ export interface ReplayOutcome {
   clear: "all" | "intent";
 }
 
+function doneMessage(intent: PendingIntent): string {
+  switch (intent.kind) {
+    case "rate": return `Saved. You rated this recipe ${intent.value} out of 5.`;
+    case "ban": return "Saved. This recipe is hidden from your plans.";
+    case "tested": return "Saved. This recipe is marked as cooked.";
+    default: return "Saved. This recipe is in your favourites.";
+  }
+}
+
 export function describeReplay(intent: PendingIntent, wire: ReplayWire): ReplayOutcome {
   const back = intent.returnTo;
   if (!wire.ok) return { status: "failed", redirectTo: back, message: wire.error, clear: "intent" };
@@ -89,7 +98,7 @@ export function describeReplay(intent: PendingIntent, wire: ReplayWire): ReplayO
       const note = r.libraryChanged || r.changed ? " Some meals were adjusted to your kitchen's recipes and feedback." : "";
       return { status: "done", redirectTo: r.redirectTo, message: `Plan saved to your kitchen.${note}`, clear: "all" };
     }
-    return { status: "done", redirectTo: r.redirectTo, message: "Saved. Your favourite is in your account.", clear: "all" };
+    return { status: "done", redirectTo: r.redirectTo, message: doneMessage(intent), clear: "all" };
   }
   if (r.unsupported) {
     return { status: "unsupported", redirectTo: back, message: `You are signed up. Repeat ${intentLabel(intent)} from this page.`, clear: "intent" };
