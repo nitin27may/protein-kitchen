@@ -3,6 +3,7 @@ import { optionalPageMember } from "@/lib/auth/public-access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RecipeDetail } from "@/components/RecipeDetail";
+import { libraryPhotoManifest } from "@/lib/library-photos/manifest";
 import { libraryRecipeDetail } from "@/lib/library/anonymous";
 import { recipeDetailFromLibrary } from "@/lib/library/recipe-detail";
 import { collectLinks, flattenParts } from "@/lib/recipes/linkview";
@@ -24,7 +25,7 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   const r = data.recipes.get(slug);
   if (!r) notFound();
   if (!await optionalPageMember()) {
-    const detail = libraryRecipeDetail(data, slug);
+    const detail = libraryRecipeDetail(data, slug, await libraryPhotoManifest());
     if (!detail) notFound();
     return <RecipeDetail {...detail} />;
   }

@@ -1,6 +1,7 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
 import { AnonymousHome } from "@/components/AnonymousHome";
+import { libraryPhotoManifest } from "@/lib/library-photos/manifest";
 import { libraryHighlights } from "@/lib/library/anonymous";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -38,7 +39,7 @@ const SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack", "shake"];
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const publicMember = await optionalPageMember();
-  if (!publicMember) return <AnonymousHome highlights={libraryHighlights(getData())} />;
+  if (!publicMember) return <AnonymousHome highlights={libraryHighlights(getData(), undefined, await libraryPhotoManifest())} />;
   const member = await requirePageMember();
   const { p } = await searchParams;
   const people = await listPeople();

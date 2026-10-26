@@ -49,7 +49,7 @@ const env: NodeJS.ProcessEnv = {
   VAPID_SUBJECT: "mailto:synthetic@example.test", REMINDER_SCHEDULER_ENABLED: "true", REMINDER_SCHEDULER_SECRET: reminderSecret,
   REMINDER_TEST_PUSH_URL: pushFixture.endpoint, REMINDER_TEST_PUSH_SECRET: pushSecret, APP_TZ: "UTC",
   BETTER_AUTH_URL: `http://127.0.0.1:${port}`, BETTER_AUTH_SECRET: randomBytes(32).toString("base64url"),
-  HOUSEHOLD_BOOTSTRAP_SECRET: "synthetic-browser-bootstrap-key-for-tests", HOUSEHOLD_OWNER_EMAIL: "ui-owner@example.test", AUTH_TEST_MAILBOX: "1", RESEND_API_KEY: "",
+  HOUSEHOLD_BOOTSTRAP_SECRET: "synthetic-browser-bootstrap-key-for-tests", HOUSEHOLD_OWNER_EMAIL: "ui-owner@example.test", PHOTO_CURATOR_EMAILS: "authorized-browser-fixture@example.test", AUTH_TEST_MAILBOX: "1", RESEND_API_KEY: "",
   BLOB_STORE: "filesystem", LEGACY_IMPORT_ENABLED: "true", STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views",
   STATE_SYNC_HOUSEHOLD_ID: "00000000-0000-4000-8000-000000000001",
   STATE_GITHUB_APP_ID: String(state.appId), STATE_GITHUB_INSTALLATION_ID: String(state.installationId),
@@ -64,6 +64,8 @@ const env: NodeJS.ProcessEnv = {
 env.PHOTO_REMOTE_TEST_DIR = path.resolve("tests/fixtures/photos");
 delete env.VERCEL_ENV;
 delete env.VERCEL;
+// The library photo manifest is kept in the Next data cache on disk for an hour; a stale copy from an earlier run names photos this database does not have.
+await rm(path.resolve(".next-e2e/dev/cache/fetch-cache"), { recursive: true, force: true });
 const child = spawn("pnpm", ["dev", "--hostname", "127.0.0.1", "--port", port], { env, stdio: "inherit" });
 child.on("error", (error) => { console.error("Browser test server failed to start.", error); process.exitCode = 1; });
 child.on("exit", async (code) => {

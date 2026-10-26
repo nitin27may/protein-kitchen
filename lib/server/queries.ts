@@ -32,6 +32,7 @@ import { memberHouseholdAccess } from "../auth/household-access";
 import { householdPeople, householdPerson, householdPlan, householdPlans } from "./household-plans";
 import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
+import { libraryPhotoManifest } from "../library-photos/manifest";
 import { creditedPhotos, photoIndex, photosOfRecipe, photosOfIngredient } from "./photo-index";
 import { pendingLibraryReview, type PendingFilter, type SubjectNames } from "./library-review";
 import type { CandidateFile } from "../photos/candidates";
@@ -45,22 +46,22 @@ async function requestHousehold(db: Db) {
 
 export async function getPhotoIndex() {
   const db = await getDb();
-  return photoIndex(db, (await requestHousehold(db)).householdId);
+  return photoIndex(db, (await requestHousehold(db)).householdId, await libraryPhotoManifest());
 }
 
 export async function getRecipePhotos(recipeId: number) {
   const db = await getDb();
-  return photosOfRecipe(db, recipeId, (await requestHousehold(db)).householdId);
+  return photosOfRecipe(db, recipeId, (await requestHousehold(db)).householdId, await libraryPhotoManifest());
 }
 
 export async function getIngredientPhotos(slug: string) {
   const db = await getDb();
-  return photosOfIngredient(db, slug, (await requestHousehold(db)).householdId);
+  return photosOfIngredient(db, slug, (await requestHousehold(db)).householdId, await libraryPhotoManifest());
 }
 
 export async function getCreditedPhotos() {
   const db = await getDb();
-  return (await creditedPhotos(db, (await requestHousehold(db)).householdId)).filter((p) => p.origin !== "upload");
+  return creditedPhotos(db, (await requestHousehold(db)).householdId, await libraryPhotoManifest());
 }
 
 /** Candidates waiting for a library decision. Library approvals are shared, so this is not household scoped. */
