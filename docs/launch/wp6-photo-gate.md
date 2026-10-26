@@ -27,7 +27,7 @@ Stays on: own photo uploads (per household, `BLOB_STORE=neon`) and `/credits`.
 
 ### Deployment check
 
-`PHOTO_REVIEW_ENABLED` is added to `FLAGS` in `lib/deployment/check-production.ts`. Like the other launch flags, `pnpm db:check:production` fails with `CONFIG_FLAG_ENABLED` if it is set to anything but `false`. Unset passes (production default is off). `.env.example` lists the name only.
+`pnpm db:check:production` fails with `CONFIG_FLAG_ENABLED` if `PHOTO_REVIEW_ENABLED` is anything but `false`, unless it is exactly `true` and a valid `PHOTO_CURATOR_EMAILS` is configured (see `docs/launch/review-flag-with-curators.md`). Unset passes (production default is off). `.env.example` lists the name only.
 
 ## Dependencies and permission boundaries
 
@@ -39,7 +39,7 @@ No schema change, no migration, no new env credentials. No remote service is con
 2. Both actions refuse with the flag off and do not touch `getDb` or `getData`.
 3. The review page throws `notFound` with the flag off.
 4. The sidebar omits the review link when off and shows it when on; the credits link stays.
-5. `check-production` rejects `PHOTO_REVIEW_ENABLED=true` and accepts `false`.
+5. `check-production` rejects `PHOTO_REVIEW_ENABLED=true` without a valid curator list, accepts it with one, and accepts `false`.
 6. Browser (`tests/e2e/photo-gate.spec.ts`, retained): with the server started with `PHOTO_REVIEW_ENABLED=false`, `/photos/review` is 404, no link to it appears on Settings or Credits, and `/credits` renders.
    Run: `PHOTO_REVIEW_ENABLED=false pnpm test:e2e tests/e2e/photo-gate.spec.ts`.
 7. Existing review specs run with the flag unset (on). Two of them skip themselves if the flag is forced off.
@@ -47,4 +47,4 @@ No schema change, no migration, no new env credentials. No remote service is con
 ## Gotchas
 
 - The browser server reads the flag at start, so the gate spec needs its own server run; it skips itself otherwise.
-- Enabling review after launch is a deliberate change: set `PHOTO_REVIEW_ENABLED=true` in Vercel and remove it from the launch flag list in the same change.
+- Enabling review after launch is a deliberate change: set `PHOTO_REVIEW_ENABLED=true` and `PHOTO_CURATOR_EMAILS` in Vercel and redeploy; set it back to `false` after review.

@@ -16,7 +16,7 @@ Library photo candidates (`/photos/review`) may be approved only by a curator: a
 ## Deployment check (`lib/deployment/check-production.ts`)
 - `PHOTO_REMOTE_TEST_DIR` (test seam for later PRs) is forbidden in config and in the runtime manifest.
 - `PHOTO_CURATOR_EMAILS` is optional in the manifest and may be plain or sensitive. A plain value is format-checked (`runtime.curators`, `CONFIG_MALFORMED` on failure); a sensitive value cannot be read. The value is never printed.
-- `PHOTO_REVIEW_ENABLED` stays must-be-false. Review is a deliberate window: set true, redeploy, review, set false.
+- `PHOTO_REVIEW_ENABLED` is false unless a curator is configured. See `docs/launch/review-flag-with-curators.md`. Turn it off after review.
 
 ## Acceptance
 Parse cases, `isCurator` against PGlite users (verified, unverified, unlisted, unset), `curatorDenial` order with mocks, check-production cases (valid, malformed, sensitive, forbidden seam).

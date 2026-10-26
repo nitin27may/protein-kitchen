@@ -23,7 +23,7 @@ export type Severity = "ok" | "warn" | "fail";
 
 export const checkCodes = [
   "CONFIG_OK", "CONFIG_MISSING", "CONFIG_MALFORMED", "CONFIG_URL_PAIR_MISMATCH", "CONFIG_ORIGIN_MISMATCH",
-  "CONFIG_FORBIDDEN_SET", "CONFIG_FLAG_ENABLED", "CONFIG_VALUE_MISMATCH",
+  "CONFIG_FORBIDDEN_SET", "CONFIG_FLAG_ENABLED", "CONFIG_VALUE_MISMATCH", "CONFIG_REVIEW_WINDOW_OPEN",
   "NEON_OK", "NEON_CONFIG_MISSING", "NEON_UNREACHABLE", "NEON_INVALID", "NEON_PROJECT_MISMATCH",
   "NEON_BRANCH_MISMATCH", "NEON_BRANCH_NOT_READY", "NEON_ENDPOINT_MISMATCH",
   "CONNECT_OK", "CONNECT_FAILED", "SERVER_VERSION_UNSUPPORTED",
@@ -101,8 +101,26 @@ const FORBIDDEN = [
   "VAPID_PRIVATE_KEY", "REMINDER_SCHEDULER_SECRET", "STATE_SYNC_SCHEDULER_SECRET",
   "STATE_GITHUB_PRIVATE_KEY", "VAULT_GITHUB_PRIVATE_KEY",
 ] as const;
-const FLAGS = ["STATE_SYNC_ENABLED", "REMINDER_SCHEDULER_ENABLED", "VAULT_ENABLED", "PHOTO_REVIEW_ENABLED"] as const;
+const FLAGS = ["STATE_SYNC_ENABLED", "REMINDER_SCHEDULER_ENABLED", "VAULT_ENABLED"] as const;
+const REVIEW_FLAG = "PHOTO_REVIEW_ENABLED";
 const present = (env: Environment, key: string) => !!env[key]?.trim();
+
+/** A curator list that can open the review window: at least one entry and every entry valid. Never echoes the value. */
+function usableCurators(value: string): boolean {
+  try { return parseCuratorEmails(value).size > 0; } catch { return false; }
+}
+
+/**
+ * Photo review is the one launch flag that may be on: only the exact value "true", and only with a curator list.
+ * Anything else that is not "false" (or unset) is refused, so a typo can not open it. `curators` is undefined when the
+ * list exists but its value can not be read (sensitive on Vercel): presence is then enough.
+ */
+type ReviewState = "off" | "open" | "refused";
+function reviewState(flag: string | undefined, curatorsExist: boolean, curators: string | undefined): ReviewState {
+  if (flag === undefined || flag.trim() === "false") return "off";
+  if (flag !== "true" || !curatorsExist) return "refused";
+  return curators === undefined || usableCurators(curators) ? "open" : "refused";
+}
 
 function missing(env: Environment, keys: readonly string[]): string[] {
   return keys.filter((key) => !present(env, key));
@@ -195,7 +213,10 @@ function neonConfiguration(env: Environment): CheckResult {
 
 export function checkConfiguration(env: Environment, manifest?: RuntimeManifest): CheckResult[] {
   const forbidden = FORBIDDEN.filter((key) => present(env, key));
-  const enabled = FLAGS.filter((key) => present(env, key) && env[key]!.trim() !== "false");
+  const enabled: string[] = FLAGS.filter((key) => present(env, key) && env[key]!.trim() !== "false");
+  const review = reviewState(present(env, REVIEW_FLAG) ? env[REVIEW_FLAG] : undefined, present(env, "PHOTO_CURATOR_EMAILS"), env.PHOTO_CURATOR_EMAILS);
+  if (review === "refused") enabled.push(REVIEW_FLAG);
+  const window: CheckResult[] = review === "open" ? [result("config.review", "ok", "CONFIG_REVIEW_WINDOW_OPEN")] : [];
   return [
     databaseConfiguration(env),
     manifest ? manifestAuthConfiguration(env, manifest) : authConfiguration(env),
@@ -203,6 +224,7 @@ export function checkConfiguration(env: Environment, manifest?: RuntimeManifest)
     neonConfiguration(env),
     forbidden.length ? result("config.forbidden", "fail", "CONFIG_FORBIDDEN_SET", forbidden.join(",")) : result("config.forbidden", "ok", "CONFIG_OK"),
     enabled.length ? result("config.flags", "fail", "CONFIG_FLAG_ENABLED", enabled.join(",")) : result("config.flags", "ok", "CONFIG_OK"),
+    ...window,
   ];
 }
 
@@ -520,7 +542,7 @@ export async function runDatabaseChecks(input: DatabaseCheckInput): Promise<Chec
 
 /**
  * Flags that must be the plain value `false` on the Vercel production runtime. One name per line so another change
- * (for example the photo review gate) adds one line without a merge conflict.
+ * adds one line without a merge conflict. PHOTO_REVIEW_ENABLED may also be "true" while PHOTO_CURATOR_EMAILS is set.
  */
 export const RUNTIME_OFF_FLAGS = [
   "STATE_SYNC_ENABLED",
@@ -599,8 +621,16 @@ export function checkRuntimeManifest(manifest: RuntimeManifest | undefined, env:
   results.push(forbidden.length ? result("runtime.forbidden", "fail", "CONFIG_FORBIDDEN_SET", forbidden.sort().join(",")) : result("runtime.forbidden", "ok", "CONFIG_OK"));
 
   // A flag that is present must be the plain value "false"; a hidden or unreadable value can not be trusted.
-  const enabled = RUNTIME_OFF_FLAGS.filter((name) => manifest.has(name) && plainValue(name)?.trim() !== "false");
+  // PHOTO_REVIEW_ENABLED is the exception: "true" is allowed while a curator list exists (and, if readable, is valid).
+  const curators = manifest.get("PHOTO_CURATOR_EMAILS");
+  const reviewFlag = plainValue(REVIEW_FLAG);
+  // A hidden (sensitive) or blank flag can not be trusted, so it is refused rather than treated as unset.
+  const review: ReviewState = !manifest.has(REVIEW_FLAG) ? "off" : reviewFlag === undefined ? "refused"
+    : reviewState(reviewFlag.trim() === "" ? "" : reviewFlag, curators !== undefined, curators?.type === "plain" ? curators.value ?? "" : undefined);
+  const enabled = RUNTIME_OFF_FLAGS.filter((name) => manifest.has(name) &&
+    (name === REVIEW_FLAG ? review === "refused" : plainValue(name)?.trim() !== "false"));
   results.push(enabled.length ? result("runtime.flags", "fail", "CONFIG_FLAG_ENABLED", enabled.join(",")) : result("runtime.flags", "ok", "CONFIG_OK"));
+  if (review === "open") results.push(result("runtime.review", "ok", "CONFIG_REVIEW_WINDOW_OPEN"));
 
   const hidden = RUNTIME_PLAIN.filter((name) => manifest.has(name) && plainValue(name) === undefined);
   const mismatched: string[] = [];
