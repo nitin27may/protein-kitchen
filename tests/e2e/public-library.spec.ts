@@ -123,3 +123,16 @@ test("unknown subjects and routines return 404", async ({ page }) => {
     expect(response!.status()).toBe(404);
   }
 });
+
+test("an ingredient lists source-reported zeros under None instead of as zero tiles", async ({ page }) => {
+  await page.goto("/ingredients/kidney-beans-dry");
+  await expect(page.getByRole("heading", { name: /Per 100 g/ })).toBeVisible();
+  const vitamins = page.getByRole("region", { name: "Vitamins" });
+  await expect(vitamins.getByText(/^None: .*Vitamin A.*Vitamin B12.*Vitamin D|^None: .*Vitamin A.*Vitamin D.*Vitamin B12/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Fats and sugars" }).getByText(/^None: .*Cholesterol/)).toBeVisible();
+  await expect(page.getByText(/A value the source reports as zero is listed under None/)).toBeVisible();
+  // No nutrient tile reads "0 mg" or "0 µg".
+  const tiles = await page.locator("section[aria-label] li p.tabular-nums").allInnerTexts();
+  expect(tiles.length).toBeGreaterThan(5);
+  for (const t of tiles) expect(t.trim()).not.toMatch(/^0 (mg|µg)/);
+});

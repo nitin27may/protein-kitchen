@@ -8,6 +8,7 @@ import { aisleLabel } from "@/lib/format";
 import { targetFor } from "@/lib/nutrition/dri";
 import { energySplit } from "@/lib/nutrition/energy";
 import { perServing } from "@/lib/nutrition/macros";
+import { formatAmount, formatPct, splitZeros } from "@/lib/nutrition/display";
 import { MICRO_GROUPS, MICRO_LABELS } from "@/lib/nutrition/labels";
 import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { displayName } from "@/lib/schemas";
@@ -59,7 +60,9 @@ export function IngredientDetailView({ data, slug, sex, cover, recipePhotos, ing
       const v = micros[k];
       return l && typeof v === "number" ? [{ ...l, value: v, pct: pctOf(k, v) }] : [];
     }),
-  })).filter((g) => g.rows.length);
+  }))
+    .map((g) => ({ title: g.title, ...splitZeros(g.rows, (r) => r.value) }))
+    .filter((g) => g.shown.length || g.none.length);
 
   const usedIn = [...data.recipes.values()]
     .filter((r) => r.kind === "recipe")
@@ -178,25 +181,26 @@ export function IngredientDetailView({ data, slug, sex, cover, recipePhotos, ing
             <section key={g.title} aria-label={g.title}>
               <h2 className="mb-2 text-lg font-semibold text-fg">{g.title}</h2>
               <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {g.rows.map((r) => (
-                  <li key={r.key} className="rounded-control border border-line bg-surface p-3">
+                {g.shown.map((r) => (
+                  <li key={r.label} className="rounded-control border border-line bg-surface p-3">
                     <p className="text-sm text-muted">{r.label}</p>
-                    <p className="text-lg font-semibold tabular-nums">{fmt(r.value, r.digits)} <span className="text-sm font-normal text-muted">{r.unit}</span></p>
+                    <p className="text-lg font-semibold tabular-nums">{formatAmount(r.value, r.digits)} <span className="text-sm font-normal text-muted">{r.unit}</span></p>
                     {r.pct !== null ? (
                       <>
-                        <div role="img" aria-label={`${Math.round(r.pct)} percent of a daily need`} className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+                        <div role="img" aria-label={`${formatPct(r.pct)} percent of a daily need`} className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
                           <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, r.pct)}%` }} />
                         </div>
-                        <p className="mt-1 text-xs text-muted">{Math.round(r.pct)}% of daily need</p>
+                        <p className="mt-1 text-xs text-muted">{formatPct(r.pct)}% of daily need</p>
                       </>
                     ) : null}
                   </li>
                 ))}
               </ul>
+              {g.none.length ? <p className="mt-2 text-sm text-muted">None: {g.none.join(", ")}.</p> : null}
             </section>
           ))}
           {groups.length === 0 ? <p className="text-sm text-muted">No micronutrient data for this item.</p> : null}
-          <p className="text-xs text-muted">Source: {ing.source} {ing.source_id}. Values the source does not report are left out, not shown as zero.</p>
+          <p className="text-xs text-muted">Source: {ing.source} {ing.source_id}. Values the source does not report are left out. A value the source reports as zero is listed under None.</p>
 
           {usedIn.length ? (
             <section aria-labelledby="used-in">

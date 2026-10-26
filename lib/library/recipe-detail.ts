@@ -5,6 +5,7 @@ import { expandRecipe } from "@/lib/grocery/aggregate";
 import { TARGETS, targetFor } from "@/lib/nutrition/dri";
 import { anchorIngredients, perServing } from "@/lib/nutrition/macros";
 import { microsPerServing } from "@/lib/nutrition/micros";
+import { MICRO_LABELS } from "@/lib/nutrition/labels";
 import { isLight, isLowSugar, qualityPerServing } from "@/lib/nutrition/quality";
 import { autoTags } from "@/lib/nutrition/tags";
 import { partsOf, usedIn } from "@/lib/recipes/parts";
@@ -48,12 +49,12 @@ export function recipeDetailFromLibrary(
   const keys = TARGETS.filter((t) => t.key !== "fibre_g").map((t) => t.key);
   const micro = microsPerServing(slug, data.recipes, data.ingredients, data.micros, keys);
   const nutrients: DetailProps["nutrients"] = [
-    { label: "Fibre", unit: "g", amount: m.fibre_g, target: targetFor("fibre_g", opts.sex) ?? null, partial: false },
+    { label: "Fibre", unit: "g", amount: m.fibre_g, target: targetFor("fibre_g", opts.sex) ?? null, partial: false, digits: 1 },
     ...micro
       .filter((n) => n.amount > 0 || n.missingFrom.length === 0)
       .map((n) => {
         const t = TARGETS.find((x) => x.key === n.key)!;
-        return { label: t.label, unit: t.unit, amount: n.amount, target: targetFor(n.key, opts.sex) ?? null, partial: n.missingFrom.length > 0 };
+        return { label: t.label, unit: t.unit, amount: n.amount, target: targetFor(n.key, opts.sex) ?? null, partial: n.missingFrom.length > 0, digits: MICRO_LABELS.find((l) => l.key === n.key)?.digits ?? 1 };
       }),
   ];
   const quality = qualityPerServing(slug, m, data.recipes, data.ingredients, data.micros);
