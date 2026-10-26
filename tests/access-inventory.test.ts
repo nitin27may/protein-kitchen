@@ -181,6 +181,24 @@ describe("application authorization inventory", () => {
     expect(firstCall(actions[0]!)).toBe("actionDenial");
     expect(actions[0]!.body?.statements[0]?.getText()).toBe('const denied = await actionDenial("owner");');
   });
+  it("household food actions are owner-only and check that permission before anything else", () => {
+    const actions = source("app/foods/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(actions.map((action) => action.name?.getText())).toEqual(["createFood", "updateFood", "archiveFood", "restoreFood", "deleteFood", "attachLabelPhoto"]);
+    for (const action of actions) {
+      expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
+      expect(action.body?.statements[0]?.getText(), action.name?.getText()).toBe('const denied = await actionDenial("owner");');
+      expect(action.body?.statements[1]?.getText(), action.name?.getText()).toBe("if (denied) return denied;");
+    }
+  });
+  it("only owners reach the pages that add or edit a food, and the label route checks request membership first", () => {
+    for (const file of ["app/foods/new/page.tsx", "app/foods/[uid]/edit/page.tsx"]) {
+      const page = source(file).statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+      expect(page!.body?.statements[0]?.getText(), file).toBe('const member = await requirePageMember("owner");');
+    }
+    const route = source("app/foods/[uid]/label/[variant]/route.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(route.map((node) => node.name?.getText())).toEqual(["GET"]);
+    expect(firstCall(route[0]!)).toBe("routeAccess");
+  });
   it("admission and account actions resolve the session inside the explicit error boundary", () => {
     const actions = source("app/onboarding/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
     expect(actions).toHaveLength(13);
