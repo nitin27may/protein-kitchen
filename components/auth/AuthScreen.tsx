@@ -15,7 +15,7 @@ const titles: Record<Stage, string> = {
  * `embedded` is the sheet version for the signup gate: email then code only, no heading or other sign-in options, and it
  * never navigates itself. `onDone` runs after a verified sign-in so the caller can continue to onboarding.
  */
-export function AuthScreen({ initial, next = "/", invite, emailLinkError = false, embedded = false, onDone }: { initial: Stage; next?: string; invite?: string; emailLinkError?: boolean; embedded?: boolean; onDone?: () => void }) {
+export function AuthScreen({ initial, next = "/", invite, emailLinkError = false, embedded = false, inviteOnly = false, onDone }: { initial: Stage; next?: string; invite?: string; emailLinkError?: boolean; embedded?: boolean; inviteOnly?: boolean; onDone?: () => void }) {
   const router = useRouter();
   const [stage, setStage] = useState(initial);
   const [email, setEmail] = useState("");
@@ -79,6 +79,7 @@ export function AuthScreen({ initial, next = "/", invite, emailLinkError = false
     <section className={embedded ? "space-y-4 p-4" : "mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8"}>
       {embedded ? null : <h1 className="text-2xl font-bold">{titles[stage]}</h1>}
       <p className="text-muted">{embedded ? "Enter your email and we will send you a six-digit code. New here? It creates your account and your kitchen, and your work on this device comes with you." : stage === "code" || stage === "link" ? `Enter your email and we will send you a ${stage === "code" ? "six-digit code" : "sign-in link"}. New here? It also creates your account and your kitchen.` : "Separate accounts, one shared meal plan and shopping list. Your meal profile keeps your own targets."}</p>
+      {inviteOnly && !embedded ? <p className="text-sm text-muted">Sign-up is invite-only for now.</p> : null}
       {error ? <Banner tone="bad">{error}</Banner> : null}
       {notice ? <Banner>{notice}</Banner> : null}
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void run(submit); }}>

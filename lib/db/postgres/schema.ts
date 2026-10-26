@@ -138,6 +138,14 @@ export const libraryVersions = pgTable("library_versions", {
   seededAt: timestamp("seeded_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Auth mail ledger: an HMAC of the normalised recipient, never the address. Rows older than 2 days are pruned. */
+export const mailSends = pgTable("mail_sends", {
+  id: id(),
+  recipientHash: text("recipient_hash").notNull(),
+  purpose: text("purpose").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("mail_sends_recipient_created_idx").on(t.recipientHash, t.createdAt)]);
+
 // Application schema. The frozen SQLite schema is retained for source import and parity checks.
 export const ingredients = pgTable("ingredients", {
   id: id(),

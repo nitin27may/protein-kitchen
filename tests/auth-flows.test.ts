@@ -3,6 +3,8 @@ import { DrizzleQueryError, eq, getTableName, sql } from "drizzle-orm";
 import { createAuth, type AuthCodeMail } from "../lib/auth/create";
 import { acceptInvitation, claimHousehold, createMemberProfile, issueInvitation } from "../lib/auth/household";
 import * as s from "../lib/db/schema";
+import { parseSignupAllowlist } from "../lib/auth/allowlist";
+import { limitedSender } from "../lib/auth/mail-limits";
 import { openDb, type DbHandle } from "./helpers/db";
 
 let h: DbHandle;
@@ -384,5 +386,80 @@ describe("real Better Auth HTTP signup, verification and sessions", () => {
     const select = vi.spyOn(h.db, "select").mockImplementationOnce(() => { throw new TypeError("synthetic programming failure"); });
     try { await expect(call("/email-otp/send-verification-otp", { email: "owner@example.test", type: "sign-in" })).rejects.toThrow("synthetic programming failure"); }
     finally { select.mockRestore(); }
+  });
+});
+
+describe("mail caps and the signup allowlist over real HTTP", () => {
+  const allowlist = parseSignupAllowlist("friend@example.test,@family.example.test");
+  const secret = options.secret;
+  let delivered: string[];
+  function build(dailyCap = 60, list = allowlist) {
+    const send = limitedSender(h.db, { secret, dailyCap, allowlist: list }, async (mail) => { delivered.push(`${mail.type}:${mail.email}`); });
+    auth = createAuth(h.db, {
+      ...options, signupAllowlist: list,
+      sendCode: async (mail) => { mailbox.push(mail); await send(mail); }, sendLink: send,
+    });
+  }
+  const request = (email: string, headers = setupAddress) => call("/email-otp/send-verification-otp", { email, type: "sign-in" }, headers);
+  beforeEach(() => { delivered = []; build(); });
+
+  it("answers byte-identically for an allowlisted, an existing, an invited and a blocked address, and mails only the first three", async () => {
+    await h.db.insert(s.authUsers).values({ id: "ex", name: "Existing", email: "existing@example.test", emailVerified: true });
+    await h.db.insert(s.authUsers).values({ id: "own", name: "Owner", email: "own@family.example.test", emailVerified: true });
+    await h.db.insert(s.households).values({ id: "hh", name: "Kitchen" });
+    await h.db.insert(s.householdInvitations).values({
+      householdId: "hh", id: "inv", email: "invited@elsewhere.test", invitedByUserId: "own", expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    const bodies: string[] = [];
+    for (const email of ["friend@example.test", "existing@example.test", "invited@elsewhere.test", "stranger@elsewhere.test"]) {
+      const response = await request(email);
+      expect(response.status, email).toBe(200);
+      bodies.push(`${response.status} ${response.headers.get("content-type")} ${response.headers.get("cache-control")} ${await response.text()}`);
+    }
+    expect(new Set(bodies).size).toBe(1);
+    expect(delivered).toEqual([
+      "sign-in:friend@example.test", "sign-in:existing@example.test", "sign-in:invited@elsewhere.test",
+    ]);
+  });
+  it("gives a blocked address the same failure as an allowed one once the cap is hit, and never mails it", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) statuses.push((await request("stranger@elsewhere.test")).status);
+    for (let i = 0; i < 4; i++) statuses.push((await request("friend@example.test", { "x-forwarded-for": "198.51.100.8" })).status);
+    expect(statuses).toEqual([200, 200, 200, 503, 200, 200, 200, 503]);
+    expect(delivered).toHaveLength(3);
+  });
+  it("enforces the global cap with the generic delivery failure and no provider call", async () => {
+    build(2);
+    expect((await request("friend@example.test")).status).toBe(200);
+    expect((await request("friend2@family.example.test")).status).toBe(200);
+    const capped = await request("friend3@family.example.test");
+    expect(capped.status).toBe(503);
+    expect(await capped.json()).toEqual({ message: "We could not send the email code. Please try again." });
+    expect(delivered).toHaveLength(2);
+  });
+  it("refuses to create an account for a non-allowlisted address even with a valid code, and admits listed and invited ones", async () => {
+    // A code can only exist for an address that was mailed, so mint one for an unlisted address with open signup first.
+    build(60, null);
+    const unlisted = "late@elsewhere.test";
+    expect((await request(unlisted)).status).toBe(200);
+    const otp = latestCode("sign-in", unlisted);
+    build();
+    const refused = await call("/sign-in/email-otp", { email: unlisted, otp }, setupAddress);
+    expect(refused.status).toBe(403);
+    expect((await h.db.select().from(s.authUsers)).map((u) => u.email)).not.toContain(unlisted);
+    expect((await signUpByCode("friend@example.test")).status).toBe(200);
+    await h.db.insert(s.households).values({ id: "hh", name: "Kitchen" });
+    await h.db.insert(s.householdInvitations).values({
+      householdId: "hh", id: "inv", email: "invited@elsewhere.test", invitedByUserId: (await h.db.select().from(s.authUsers))[0]!.id,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    expect((await signUpByCode("invited@elsewhere.test")).status).toBe(200);
+  });
+  it("lets the email link route follow the same gate", async () => {
+    const link = await call("/sign-in/magic-link", {
+      email: "stranger@elsewhere.test", callbackURL: "/onboarding", newUserCallbackURL: "/onboarding", errorCallbackURL: "/sign-in?emailLinkError=1",
+    });
+    expect(link.status).toBe(200);
+    expect(delivered).toEqual([]);
   });
 });

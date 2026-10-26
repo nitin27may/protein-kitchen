@@ -60,7 +60,13 @@ test("real auth routes create a verified account from a code, restore sessions, 
 test("a request for a code answers identically for a known and a new address and creates nothing", async ({ page }) => {
   await page.goto("/");
   const address = { "x-forwarded-for": "127.0.0.53" };
-  const known = await call(page, "/email-otp/send-verification-otp", { email, type: "sign-in" }, address);
+  // A second account, so the main test's address has not already used its per-recipient mail allowance.
+  const knownEmail = "browser-known@example.test";
+  expect((await call(page, "/email-otp/send-verification-otp", { email: knownEmail, type: "sign-in" }, address)).status).toBe(200);
+  const otp = z.object({ otp: z.string().regex(/^\d{6}$/) }).parse(JSON.parse(await readFile(testMailPath(knownEmail, "sign-in"), "utf8"))).otp;
+  expect((await call(page, "/sign-in/email-otp", { email: knownEmail, otp }, address)).status).toBe(200);
+  expect((await call(page, "/sign-out", {})).status).toBe(200);
+  const known = await call(page, "/email-otp/send-verification-otp", { email: knownEmail, type: "sign-in" }, address);
   const fresh = await call(page, "/email-otp/send-verification-otp", { email: "browser-newcomer@example.test", type: "sign-in" }, address);
   expect(fresh).toEqual(known);
   expect((await call(page, "/get-session")).body).toBeNull();

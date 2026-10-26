@@ -17,4 +17,8 @@ describe("user creation gate", () => {
     expect(() => assertUserCreation(path, verified)).toThrow(APIError);
     expect(() => assertUserCreation(path, verified)).toThrow("proving ownership of its email address");
   });
+  it("refuses a verified user whose address the signup allowlist does not admit", () => {
+    expect(() => assertUserCreation("/sign-in/email-otp", true, false)).toThrow(APIError);
+    expect(() => assertUserCreation("/magic-link/verify", true, true)).not.toThrow();
+  });
 });
