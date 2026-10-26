@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsClient } from "@/components/SettingsClient";
 import { PageTitle } from "@/components/ui";
 import { getResetCounts } from "@/lib/server/queries";
+import { photoReviewEnabled } from "@/lib/photos/review-flag";
 import { StateSyncControls } from "@/components/StateSyncControls";
 import { stateSyncSettings } from "@/lib/sync/server";
 
@@ -26,13 +27,20 @@ export default async function SettingsPage() {
           </div>
           <p className="mt-1 text-sm text-muted">People, protein targets, likes and avoids, and reminders. {counts.profiles} {counts.profiles === 1 ? "person" : "people"} saved.</p>
         </Link>
-        <Link href="/photos/review" className="block rounded-card border border-line bg-surface p-4 transition-colors hover:border-primary">
-          <div className="flex items-baseline justify-between gap-3">
+        {photoReviewEnabled() ? (
+          <Link href="/photos/review" className="block rounded-card border border-line bg-surface p-4 transition-colors hover:border-primary">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-lg font-semibold">Photos</h2>
+              <span className="text-sm font-semibold text-primary">Review</span>
+            </div>
+            <p className="mt-1 text-sm text-muted">Approve or reject candidate photos for recipes and ingredients. {counts.photos} {counts.photos === 1 ? "photo" : "photos"} kept.</p>
+          </Link>
+        ) : (
+          <section className="rounded-card border border-line bg-surface p-4">
             <h2 className="text-lg font-semibold">Photos</h2>
-            <span className="text-sm font-semibold text-primary">Review</span>
-          </div>
-          <p className="mt-1 text-sm text-muted">Approve or reject candidate photos for recipes and ingredients. {counts.photos} {counts.photos === 1 ? "photo" : "photos"} kept.</p>
-        </Link>
+            <p className="mt-1 text-sm text-muted">{counts.photos} {counts.photos === 1 ? "photo" : "photos"} kept. Add your own on a recipe page.</p>
+          </section>
+        )}
         <section className="space-y-2 rounded-card border border-line bg-surface p-4">
           <h2 className="text-lg font-semibold">Colour theme</h2>
           <p className="text-sm text-muted">Auto follows your device.</p>
