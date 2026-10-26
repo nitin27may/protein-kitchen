@@ -2,10 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { z } from "zod";
+import { postgresMigrationTarget } from "../db/postgres/migration-target";
 import type { NeonControlPlane } from "../db/postgres/neon-control-plane";
 import { directHostOf, isPoolerHost, ProductionGuardError } from "../db/postgres/production-guard";
 import { productionDirectTarget, productionPooledTarget } from "../db/postgres/production-target";
 import { validatePostgresTarget } from "../db/postgres/target";
+import { verifyNonProductionBranch } from "../db/postgres/verify-branch";
 import { productionPins, verifyProductionBranch } from "../db/postgres/verify-production";
 
 /**
@@ -20,7 +22,7 @@ export type Severity = "ok" | "warn" | "fail";
 
 export const checkCodes = [
   "CONFIG_OK", "CONFIG_MISSING", "CONFIG_MALFORMED", "CONFIG_URL_PAIR_MISMATCH", "CONFIG_ORIGIN_MISMATCH",
-  "CONFIG_FORBIDDEN_SET", "CONFIG_FLAG_ENABLED",
+  "CONFIG_FORBIDDEN_SET", "CONFIG_FLAG_ENABLED", "CONFIG_VALUE_MISMATCH",
   "NEON_OK", "NEON_CONFIG_MISSING", "NEON_UNREACHABLE", "NEON_INVALID", "NEON_PROJECT_MISMATCH",
   "NEON_BRANCH_MISMATCH", "NEON_BRANCH_NOT_READY", "NEON_ENDPOINT_MISMATCH",
   "CONNECT_OK", "CONNECT_FAILED", "SERVER_VERSION_UNSUPPORTED",
@@ -48,21 +50,29 @@ export function formatResult(r: CheckResult): string {
   return [r.severity.toUpperCase(), r.check, r.code, r.detail].filter((part) => part !== undefined).join(" ");
 }
 
-export function summarise(results: readonly CheckResult[], phase: Phase): string {
+export function summarise(results: readonly CheckResult[], phase: Phase | "runtime-manifest"): string {
   return `RESULT ${results.some((r) => r.severity === "fail") ? "FAIL" : "PASS"} phase=${phase}`;
 }
 
-export interface CheckArguments { phase: Phase; remoteReadOnly: boolean }
+export type CheckTarget = "production" | "rehearsal";
+export interface CheckArguments { phase: Phase; remoteReadOnly: boolean; target: CheckTarget; runtimeManifest?: string }
+
+const USAGE = "Usage: pnpm db:check:production [--phase=pre-migrate|pre-deploy] [--remote-read-only] [--target=rehearsal] | --runtime-manifest=<file>";
 
 export function parseCheckArguments(argv: readonly string[]): CheckArguments {
-  let phase: Phase = "pre-deploy", remoteReadOnly = false;
+  let phase: Phase = "pre-deploy", remoteReadOnly = false, target: CheckTarget = "production", runtimeManifest: string | undefined;
   for (const argument of argv) {
     if (argument === "--remote-read-only") remoteReadOnly = true;
     else if (argument === "--phase=pre-migrate") phase = "pre-migrate";
     else if (argument === "--phase=pre-deploy") phase = "pre-deploy";
-    else throw new Error("Usage: pnpm db:check:production [--phase=pre-migrate|pre-deploy] [--remote-read-only]");
+    else if (argument === "--target=rehearsal") target = "rehearsal";
+    else if (argument.startsWith("--runtime-manifest=") && argument.length > "--runtime-manifest=".length) {
+      runtimeManifest = argument.slice("--runtime-manifest=".length);
+    } else throw new Error(USAGE);
   }
-  return { phase, remoteReadOnly };
+  // The manifest check reads one local file and nothing else; it does not combine with a database check.
+  if (runtimeManifest !== undefined && (target !== "production" || remoteReadOnly)) throw new Error(USAGE);
+  return runtimeManifest === undefined ? { phase, remoteReadOnly, target } : { phase, remoteReadOnly, target, runtimeManifest };
 }
 
 /** Running in the approved CI runner needs no flag; anything else is a laptop that must opt in to a remote read. */
@@ -155,6 +165,39 @@ export function checkConfiguration(env: Environment): CheckResult[] {
     forbidden.length ? result("config.forbidden", "fail", "CONFIG_FORBIDDEN_SET", forbidden.join(",")) : result("config.forbidden", "ok", "CONFIG_OK"),
     enabled.length ? result("config.flags", "fail", "CONFIG_FLAG_ENABLED", enabled.join(",")) : result("config.flags", "ok", "CONFIG_OK"),
   ];
+}
+
+/**
+ * Rehearsal target: the development-target rules for a Neon branch of production. Auth, mail and snapshot checks do not
+ * apply (the branch has no secrets of its own to verify), but the ledger, schema and library checks do.
+ */
+export function checkRehearsalConfiguration(env: Environment): CheckResult[] {
+  const check = "config.rehearsal";
+  const absent = missing(env, ["DATABASE_URL_UNPOOLED", "DATABASE_NONPRODUCTION_HOST", "NEON_PROJECT_ID", "NEON_PRODUCTION_BRANCH_ID", "NEON_DEVELOPMENT_BRANCH_ID", "NEON_API_KEY"]);
+  if (env.DATABASE_ENV !== "development") absent.unshift("DATABASE_ENV");
+  if (absent.length) return [result(check, "fail", "CONFIG_MISSING", absent.join(","))];
+  try {
+    const url = validatePostgresTarget(postgresMigrationTarget(env));
+    if (!url.hostname.endsWith(".neon.tech")) return [result(check, "fail", "CONFIG_MALFORMED", "host")];
+  } catch {
+    return [result(check, "fail", "CONFIG_URL_PAIR_MISMATCH", "pins")];
+  }
+  if (env.NEON_DEVELOPMENT_BRANCH_ID === env.NEON_PRODUCTION_BRANCH_ID) return [result(check, "fail", "NEON_BRANCH_MISMATCH", "same-as-production")];
+  return [result(check, "ok", "CONFIG_OK")];
+}
+
+export async function checkRehearsalNeon(env: Environment, request: typeof fetch = fetch): Promise<CheckResult> {
+  const check = "neon";
+  try {
+    await verifyNonProductionBranch(postgresMigrationTarget(env), env, request);
+    return result(check, "ok", "NEON_OK");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("could not reach")) return result(check, "fail", "NEON_UNREACHABLE");
+    if (message.includes("requires NEON_PROJECT_ID")) return result(check, "fail", "NEON_CONFIG_MISSING");
+    if (message.includes("incomplete") || message.includes("invalid JSON") || message.includes("failed (HTTP")) return result(check, "fail", "NEON_INVALID");
+    return result(check, "fail", "NEON_BRANCH_MISMATCH");
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -395,7 +438,9 @@ export interface DatabaseCheckInput {
   phase: Phase;
   artifacts: MigrationArtifacts;
   localLibraryVersion: string;
-  plane: NeonControlPlane;
+  /** Required for the production target (snapshot age); a rehearsal branch has no snapshot check. */
+  plane?: NeonControlPlane;
+  target?: CheckTarget;
   now?: Date;
 }
 
@@ -420,11 +465,115 @@ export async function runDatabaseChecks(input: DatabaseCheckInput): Promise<Chec
   } finally {
     await q.query("rollback");
   }
+  if (input.target === "rehearsal") return results;
   try {
     const { project } = productionPins(input.env);
-    results.push(snapshotResult(await input.plane.branches(project), input.now ?? new Date(), input.phase));
+    results.push(snapshotResult(await input.plane!.branches(project), input.now ?? new Date(), input.phase));
   } catch {
     results.push(result("snapshot", input.phase === "pre-migrate" ? "warn" : "fail", "NEON_UNREACHABLE"));
   }
+  return results;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// (8) Vercel production runtime manifest
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Flags that must be the plain value `false` on the Vercel production runtime. One name per line so another change
+ * (for example the photo review gate) adds one line without a merge conflict.
+ */
+export const RUNTIME_OFF_FLAGS = [
+  "STATE_SYNC_ENABLED",
+  "REMINDER_SCHEDULER_ENABLED",
+  "VAULT_ENABLED",
+  "PHOTO_REVIEW_ENABLED",
+  "LEGACY_IMPORT_ENABLED",
+] as const;
+
+/** Sensitive on Vercel: must exist and must not be stored as a plain value. */
+const RUNTIME_SECRETS = [
+  "DATABASE_URL", "BETTER_AUTH_SECRET", "RESEND_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "SIGNUP_ALLOWLIST",
+] as const;
+
+/** Plain on Vercel: must exist as a plain value. */
+const RUNTIME_PLAIN = [
+  "DATABASE_ENV", "DATABASE_PRODUCTION_HOST", "NEON_PROJECT_ID", "NEON_PRODUCTION_BRANCH_ID", "BETTER_AUTH_URL",
+  "AUTH_EMAIL_FROM", "BLOB_STORE", "BLOB_BUCKET", "AWS_ENDPOINT_URL_S3", "AWS_REGION", "APP_TZ", "MAIL_DAILY_CAP",
+] as const;
+
+/** Plain runtime value to compare with the GitHub-side value (the job environment). */
+const RUNTIME_EQUALS: readonly { runtime: string; github: string; origin?: true; optionalGithub?: true }[] = [
+  { runtime: "BETTER_AUTH_URL", github: "PRODUCTION_ORIGIN", origin: true },
+  { runtime: "DATABASE_PRODUCTION_HOST", github: "DATABASE_PRODUCTION_HOST" },
+  { runtime: "NEON_PROJECT_ID", github: "NEON_PROJECT_ID" },
+  { runtime: "NEON_PRODUCTION_BRANCH_ID", github: "NEON_PRODUCTION_BRANCH_ID" },
+  { runtime: "AUTH_EMAIL_FROM", github: "AUTH_EMAIL_FROM" },
+  { runtime: "BLOB_STORE", github: "BLOB_STORE", optionalGithub: true },
+  { runtime: "BLOB_BUCKET", github: "BLOB_BUCKET", optionalGithub: true },
+];
+
+const FORBIDDEN_RUNTIME_EXACT: readonly string[] = [...FORBIDDEN, "DATABASE_URL_UNPOOLED", "NEON_API_KEY", "DEPLOYMENT_ENVIRONMENT"];
+const FORBIDDEN_RUNTIME_PREFIX = ["VAPID_", "STATE_", "VAULT_"] as const;
+
+const manifestEntry = z.object({
+  key: z.string().min(1),
+  type: z.string().min(1),
+  value: z.string().optional(),
+  target: z.union([z.string(), z.array(z.string())]).optional(),
+});
+const manifestSchema = z.union([z.array(manifestEntry), z.object({ envs: z.array(manifestEntry) })]);
+
+export interface RuntimeVariable { type: string; value?: string }
+export type RuntimeManifest = Map<string, RuntimeVariable>;
+
+/** Names, types and plain values of the Vercel production variables. Entries for other targets are ignored. */
+export function parseRuntimeManifest(json: unknown): RuntimeManifest | undefined {
+  const parsed = manifestSchema.safeParse(json);
+  if (!parsed.success) return undefined;
+  const entries = Array.isArray(parsed.data) ? parsed.data : parsed.data.envs;
+  const manifest: RuntimeManifest = new Map();
+  for (const entry of entries) {
+    const targets = entry.target === undefined ? ["production"] : [entry.target].flat();
+    if (!targets.includes("production")) continue;
+    // A value is kept only for a plain variable; anything else is never read.
+    manifest.set(entry.key, entry.type === "plain" ? { type: "plain", ...(entry.value === undefined ? {} : { value: entry.value }) } : { type: entry.type });
+  }
+  return manifest;
+}
+
+export function checkRuntimeManifest(manifest: RuntimeManifest | undefined, env: Environment): CheckResult[] {
+  if (!manifest) return [result("runtime.manifest", "fail", "CONFIG_MALFORMED", "manifest")];
+  const results: CheckResult[] = [];
+  const plainValue = (name: string) => manifest.get(name)?.type === "plain" ? manifest.get(name)?.value : undefined;
+
+  const absent = [...RUNTIME_SECRETS, ...RUNTIME_PLAIN, ...RUNTIME_OFF_FLAGS].filter((name) => !manifest.has(name));
+  results.push(absent.length ? result("runtime.required", "fail", "CONFIG_MISSING", absent.join(",")) : result("runtime.required", "ok", "CONFIG_OK"));
+
+  const exposed = RUNTIME_SECRETS.filter((name) => manifest.get(name)?.type === "plain");
+  results.push(exposed.length ? result("runtime.secrets", "fail", "CONFIG_MALFORMED", exposed.join(",")) : result("runtime.secrets", "ok", "CONFIG_OK"));
+
+  const forbidden = [...manifest.keys()].filter((name) =>
+    FORBIDDEN_RUNTIME_EXACT.includes(name) ||
+    (FORBIDDEN_RUNTIME_PREFIX.some((prefix) => name.startsWith(prefix)) && !(RUNTIME_OFF_FLAGS as readonly string[]).includes(name)));
+  results.push(forbidden.length ? result("runtime.forbidden", "fail", "CONFIG_FORBIDDEN_SET", forbidden.sort().join(",")) : result("runtime.forbidden", "ok", "CONFIG_OK"));
+
+  // A flag that is present must be the plain value "false"; a hidden or unreadable value can not be trusted.
+  const enabled = RUNTIME_OFF_FLAGS.filter((name) => manifest.has(name) && plainValue(name)?.trim() !== "false");
+  results.push(enabled.length ? result("runtime.flags", "fail", "CONFIG_FLAG_ENABLED", enabled.join(",")) : result("runtime.flags", "ok", "CONFIG_OK"));
+
+  const hidden = RUNTIME_PLAIN.filter((name) => manifest.has(name) && plainValue(name) === undefined);
+  const mismatched: string[] = [];
+  for (const { runtime, github, origin, optionalGithub } of RUNTIME_EQUALS) {
+    const runtimeValue = plainValue(runtime), githubValue = env[github]?.trim();
+    if (runtimeValue === undefined || (!githubValue && optionalGithub)) continue;
+    if (!githubValue) { mismatched.push(github); continue; }
+    const same = origin ? originOf(runtimeValue) !== undefined && originOf(runtimeValue) === originOf(githubValue) : runtimeValue.trim() === githubValue;
+    if (!same) mismatched.push(runtime);
+  }
+  if (plainValue("DATABASE_ENV") !== undefined && plainValue("DATABASE_ENV") !== "production") mismatched.push("DATABASE_ENV");
+  results.push(hidden.length ? result("runtime.values", "fail", "CONFIG_MALFORMED", hidden.join(","))
+    : mismatched.length ? result("runtime.values", "fail", "CONFIG_VALUE_MISMATCH", mismatched.join(","))
+    : result("runtime.values", "ok", "CONFIG_OK"));
   return results;
 }

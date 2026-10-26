@@ -1,13 +1,16 @@
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import type { NeonControlPlane } from "../lib/db/postgres/neon-control-plane";
 import { ProductionGuardError } from "../lib/db/postgres/production-guard";
 import {
-  checkCodes, checkConfiguration, checkNeon, checkServer, compareLedger, formatResult, ledgerResult, libraryResult,
+  checkCodes, checkConfiguration, checkNeon, checkRehearsalConfiguration, checkRehearsalNeon, checkRuntimeManifest,
+  parseRuntimeManifest, RUNTIME_OFF_FLAGS, checkServer, compareLedger, formatResult, ledgerResult, libraryResult,
   loadMigrationArtifacts, parseCheckArguments, readOnlyGuard, requireRemoteFlag, roleResult, runDatabaseChecks, schemaResult,
   snapshotResult, snapshotShape, summarise,
 } from "../lib/deployment/check-production";
@@ -292,8 +295,13 @@ describe("laptop runs", () => {
     expect(requireRemoteFlag({ GITHUB_ACTIONS: "true" }, parseCheckArguments([]))).toBeUndefined();
   });
   it("parses phases and rejects unknown arguments", () => {
-    expect(parseCheckArguments([])).toEqual({ phase: "pre-deploy", remoteReadOnly: false });
-    expect(parseCheckArguments(["--phase=pre-migrate", "--remote-read-only"])).toEqual({ phase: "pre-migrate", remoteReadOnly: true });
+    expect(parseCheckArguments([])).toEqual({ phase: "pre-deploy", remoteReadOnly: false, target: "production" });
+    expect(parseCheckArguments(["--phase=pre-migrate", "--remote-read-only"])).toEqual({ phase: "pre-migrate", remoteReadOnly: true, target: "production" });
+    expect(parseCheckArguments(["--target=rehearsal"])).toMatchObject({ target: "rehearsal" });
+    expect(parseCheckArguments(["--runtime-manifest=/tmp/m.json"])).toMatchObject({ runtimeManifest: "/tmp/m.json" });
+    expect(() => parseCheckArguments(["--runtime-manifest="])).toThrow("Usage");
+    expect(() => parseCheckArguments(["--runtime-manifest=m.json", "--target=rehearsal"])).toThrow("Usage");
+    expect(() => parseCheckArguments(["--runtime-manifest=m.json", "--remote-read-only"])).toThrow("Usage");
     expect(() => parseCheckArguments(["--phase=other"])).toThrow("Usage");
     expect(() => parseCheckArguments(["--write"])).toThrow("Usage");
   });
@@ -412,6 +420,216 @@ describe("migration artifacts", () => {
     expect(artifacts.snapshots).toHaveLength(artifacts.expected.length);
     expect(artifacts.snapshots.at(-1)!.has("library_state")).toBe(true);
   });
+});
+
+
+// ---------------------------------------------------------------------------------------------------------------
+// Rehearsal target
+// ---------------------------------------------------------------------------------------------------------------
+
+describe("rehearsal target", () => {
+  const rehearsalHost = "ep-rehearse-fixture.us-east-2.aws.neon.tech";
+  const developmentBranch = "br-synthetic-rehearsal";
+  const rehearsalEnv: Record<string, string | undefined> = {
+    DATABASE_ENV: "development", GITHUB_ACTIONS: "true",
+    DATABASE_URL_UNPOOLED: pgUrl(rehearsalHost, "app", "fixture", secrets.password), DATABASE_NONPRODUCTION_HOST: rehearsalHost,
+    NEON_PROJECT_ID: project, NEON_PRODUCTION_BRANCH_ID: branch, NEON_DEVELOPMENT_BRANCH_ID: developmentBranch, NEON_API_KEY: secrets.neon,
+  };
+  const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+  const rehearsalPlane = (over: { branch?: Record<string, unknown>; status?: number; throws?: boolean; endpoints?: unknown } = {}) => vi.fn<typeof fetch>(async (url) => {
+    if (over.throws) throw new Error("offline");
+    if (over.status) return reply({}, over.status);
+    if (String(url).endsWith("/endpoints")) {
+      return reply({ endpoints: over.endpoints ?? [{ id: "ep-rehearse-fixture", host: rehearsalHost, branch_id: developmentBranch, project_id: project, type: "read_write" }] });
+    }
+    return reply({ branch: { id: developmentBranch, project_id: project, name: "rehearse-0123456-1", default: false, primary: false, protected: false, current_state: "ready", ...over.branch } });
+  });
+
+  it("uses the development target rules and needs no auth, mail or snapshot configuration", async () => {
+    expect(track(checkRehearsalConfiguration(rehearsalEnv))).toEqual([{ check: "config.rehearsal", severity: "ok", code: "CONFIG_OK" }]);
+    expect(track(await checkRehearsalNeon(rehearsalEnv, rehearsalPlane()))).toMatchObject({ severity: "ok", code: "NEON_OK" });
+    const client = await database(localVersion);
+    const results = track(await runDatabaseChecks(input(client, { env: rehearsalEnv, target: "rehearsal" })));
+    expect(codes(results)).toEqual(["connect:CONNECT_OK", "role:ROLE_NOT_ENFORCED", "ledger:LEDGER_EXACT", "schema:SCHEMA_OK", "library:LIBRARY_OK"]);
+    const withoutPlane = { ...input(client, { env: rehearsalEnv, target: "rehearsal" }) };
+    delete withoutPlane.plane;
+    expect(await runDatabaseChecks(withoutPlane)).toHaveLength(5);
+  });
+
+  it("keeps the ledger and library checks for a copy of production before its migration", async () => {
+    const results = await runDatabaseChecks(input(await database(), { env: rehearsalEnv, target: "rehearsal", phase: "pre-migrate" }));
+    expect(codes(results)).toContain("library:LIBRARY_MISSING");
+  });
+
+  it("fails closed on missing, production-like or malformed configuration", () => {
+    const failing: [Record<string, string | undefined>, string][] = [
+      [{ DATABASE_ENV: "production" }, "CONFIG_MISSING"], [{ DATABASE_URL_UNPOOLED: undefined }, "CONFIG_MISSING"],
+      [{ NEON_DEVELOPMENT_BRANCH_ID: undefined }, "CONFIG_MISSING"], [{ DATABASE_NONPRODUCTION_HOST: "elsewhere.example.test" }, "CONFIG_URL_PAIR_MISMATCH"],
+      [{ NEON_DEVELOPMENT_BRANCH_ID: branch }, "NEON_BRANCH_MISMATCH"],
+      [{ DATABASE_URL_UNPOOLED: pgUrl("localhost", "app", "fixture", secrets.password), DATABASE_NONPRODUCTION_HOST: "localhost" }, "CONFIG_MALFORMED"],
+    ];
+    for (const [over, code] of failing) {
+      const [result] = track(checkRehearsalConfiguration({ ...rehearsalEnv, ...over }));
+      expect(result).toMatchObject({ severity: "fail", code });
+    }
+  });
+
+  it("maps every control-plane failure to a stable code", async () => {
+    const cases: [Parameters<typeof rehearsalPlane>[0], string, Record<string, string | undefined>?][] = [
+      [{ throws: true }, "NEON_UNREACHABLE"], [{ status: 500 }, "NEON_INVALID"], [{ branch: { current_state: "init" } }, "NEON_BRANCH_MISMATCH"],
+      [{ branch: { protected: true } }, "NEON_BRANCH_MISMATCH"], [{ endpoints: [] }, "NEON_BRANCH_MISMATCH"],
+      [{}, "NEON_CONFIG_MISSING", { NEON_PROJECT_ID: undefined }],
+    ];
+    for (const [over, code, extra] of cases) {
+      expect(track(await checkRehearsalNeon({ ...rehearsalEnv, ...extra }, rehearsalPlane(over)))).toMatchObject({ severity: "fail", code });
+    }
+    const incomplete = vi.fn<typeof fetch>(async () => reply({ branch: { id: developmentBranch } }));
+    expect(await checkRehearsalNeon(rehearsalEnv, incomplete)).toMatchObject({ code: "NEON_INVALID" });
+    const nonJson = vi.fn<typeof fetch>(async () => new Response("<html>", { status: 200 }));
+    expect(await checkRehearsalNeon(rehearsalEnv, nonJson)).toMatchObject({ code: "NEON_INVALID" });
+    // A non-Error rejection and the default fetch argument both degrade to a stable code.
+    const odd = vi.fn<typeof fetch>(async () => { throw "string"; });
+    expect(await checkRehearsalNeon(rehearsalEnv, odd)).toMatchObject({ code: "NEON_UNREACHABLE" });
+    vi.stubGlobal("fetch", rehearsalPlane());
+    expect(await checkRehearsalNeon(rehearsalEnv)).toMatchObject({ code: "NEON_OK" });
+    vi.unstubAllGlobals();
+    expect(await checkRehearsalNeon({})).toMatchObject({ code: "NEON_BRANCH_MISMATCH" });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Vercel runtime manifest
+// ---------------------------------------------------------------------------------------------------------------
+
+describe("runtime manifest", () => {
+  const origin = "https://meals.example.test";
+  const github: Record<string, string | undefined> = {
+    PRODUCTION_ORIGIN: origin, DATABASE_PRODUCTION_HOST: pooled, NEON_PROJECT_ID: project, NEON_PRODUCTION_BRANCH_ID: branch,
+    AUTH_EMAIL_FROM: "kitchen@meals.example.test", BLOB_STORE: "neon", BLOB_BUCKET: "meals-bucket",
+  };
+  const sensitiveNames = ["DATABASE_URL", "BETTER_AUTH_SECRET", "RESEND_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "SIGNUP_ALLOWLIST"];
+  const plainValues: Record<string, string> = {
+    DATABASE_ENV: "production", DATABASE_PRODUCTION_HOST: pooled, NEON_PROJECT_ID: project, NEON_PRODUCTION_BRANCH_ID: branch,
+    BETTER_AUTH_URL: `${origin}/`, AUTH_EMAIL_FROM: "kitchen@meals.example.test", BLOB_STORE: "neon", BLOB_BUCKET: "meals-bucket",
+    AWS_ENDPOINT_URL_S3: "https://storage.example.test", AWS_REGION: "aws-us-east-2", APP_TZ: "America/Toronto", MAIL_DAILY_CAP: "60",
+    ...Object.fromEntries(RUNTIME_OFF_FLAGS.map((flag) => [flag, "false"])),
+  };
+  const entries = (over: Record<string, { type: string; value?: string } | null> = {}) => {
+    const all: Record<string, { type: string; value?: string } | null> = {
+      ...Object.fromEntries(sensitiveNames.map((name) => [name, { type: "sensitive" }])),
+      ...Object.fromEntries(Object.entries(plainValues).map(([name, value]) => [name, { type: "plain", value }])),
+      ...over,
+    };
+    return Object.entries(all).filter(([, v]) => v !== null).map(([key, v]) => ({ key, target: ["production"], ...v }));
+  };
+  const check = (over: Record<string, { type: string; value?: string } | null> = {}, extraGithub: Record<string, string | undefined> = {}) =>
+    track(checkRuntimeManifest(parseRuntimeManifest(entries(over)), { ...github, ...extraGithub }));
+  const failed = (results: CheckResult[]) => results.filter((r) => r.severity === "fail").map((r) => `${r.check}:${r.code}:${r.detail}`);
+
+  it("passes the intended production runtime, both as a list and as a project env response", () => {
+    expect(failed(check())).toEqual([]);
+    const wrapped = checkRuntimeManifest(parseRuntimeManifest({ envs: entries() }), github);
+    expect(failed(wrapped)).toEqual([]);
+  });
+
+  it("keeps the off-feature flag list in one constant", () => {
+    expect([...RUNTIME_OFF_FLAGS]).toEqual(["STATE_SYNC_ENABLED", "REMINDER_SCHEDULER_ENABLED", "VAULT_ENABLED", "PHOTO_REVIEW_ENABLED", "LEGACY_IMPORT_ENABLED"]);
+  });
+
+  it("ignores variables of other targets and reads no value of a sensitive one", () => {
+    const manifest = parseRuntimeManifest([
+      ...entries(),
+      { key: "NEON_API_KEY", type: "plain", value: "x", target: ["preview", "development"] },
+      { key: "HOUSEHOLD_OWNER_EMAIL", type: "plain", value: "x", target: "preview" },
+      { key: "BETTER_AUTH_SECRET", type: "sensitive", value: secrets.auth, target: ["production"] },
+      { key: "STATE_SYNC_ENABLED", type: "plain", target: ["production"] },
+      { key: "ALL_TARGETS_FLAG", type: "plain", value: "1" },
+    ]);
+    expect(manifest!.has("NEON_API_KEY")).toBe(false);
+    expect(manifest!.has("HOUSEHOLD_OWNER_EMAIL")).toBe(false);
+    expect(manifest!.get("BETTER_AUTH_SECRET")).toEqual({ type: "sensitive" });
+    expect(manifest!.get("STATE_SYNC_ENABLED")).toEqual({ type: "plain" });
+    expect(manifest!.get("ALL_TARGETS_FLAG")).toEqual({ type: "plain", value: "1" });
+  });
+
+  it("fails on a malformed manifest", () => {
+    for (const bad of [null, "x", { envs: "nope" }, [{ key: "A" }], [{ key: "", type: "plain" }]]) {
+      expect(failed(track(checkRuntimeManifest(parseRuntimeManifest(bad), github)))).toEqual(["runtime.manifest:CONFIG_MALFORMED:manifest"]);
+    }
+  });
+
+  it("requires every name, secrets to be sensitive, and forbidden names absent", () => {
+    expect(failed(check({ RESEND_API_KEY: null, APP_TZ: null, PHOTO_REVIEW_ENABLED: null })))
+      .toEqual(["runtime.required:CONFIG_MISSING:RESEND_API_KEY,APP_TZ,PHOTO_REVIEW_ENABLED"]);
+    expect(failed(check({ BETTER_AUTH_SECRET: { type: "plain", value: secrets.auth }, DATABASE_URL: { type: "plain" } })))
+      .toEqual(["runtime.secrets:CONFIG_MALFORMED:DATABASE_URL,BETTER_AUTH_SECRET"]);
+    const forbidden = failed(check({
+      NEON_API_KEY: { type: "sensitive" }, DATABASE_URL_UNPOOLED: { type: "sensitive" }, DEPLOYMENT_ENVIRONMENT: { type: "plain", value: "production" },
+      VAPID_PUBLIC_KEY: { type: "plain", value: "x" }, STATE_GITHUB_APP_ID: { type: "plain", value: "x" }, VAULT_PASSPHRASE: { type: "sensitive" },
+      HOUSEHOLD_BOOTSTRAP_SECRET: { type: "sensitive" }, AUTH_TEST_MAILBOX: { type: "plain", value: "x" },
+    }));
+    expect(forbidden).toEqual([
+      "runtime.forbidden:CONFIG_FORBIDDEN_SET:AUTH_TEST_MAILBOX,DATABASE_URL_UNPOOLED,DEPLOYMENT_ENVIRONMENT,HOUSEHOLD_BOOTSTRAP_SECRET,NEON_API_KEY,STATE_GITHUB_APP_ID,VAPID_PUBLIC_KEY,VAULT_PASSPHRASE",
+    ]);
+  });
+
+  it("requires every off-feature flag to be the plain value false", () => {
+    for (const flag of RUNTIME_OFF_FLAGS) {
+      expect(failed(check({ [flag]: { type: "plain", value: "true" } }))).toEqual([`runtime.flags:CONFIG_FLAG_ENABLED:${flag}`]);
+    }
+    expect(failed(check({ VAULT_ENABLED: { type: "sensitive" }, LEGACY_IMPORT_ENABLED: { type: "plain" } })))
+      .toEqual(["runtime.flags:CONFIG_FLAG_ENABLED:VAULT_ENABLED,LEGACY_IMPORT_ENABLED"]);
+    expect(failed(check({ STATE_SYNC_ENABLED: { type: "plain", value: " false " } }))).toEqual([]);
+  });
+
+  it("compares plain values with the GitHub side by name only", () => {
+    expect(failed(check({ BETTER_AUTH_URL: { type: "plain", value: "https://elsewhere.example.test" } }))).toEqual(["runtime.values:CONFIG_VALUE_MISMATCH:BETTER_AUTH_URL"]);
+    expect(failed(check({ BETTER_AUTH_URL: { type: "plain", value: "not a url" } }))).toEqual(["runtime.values:CONFIG_VALUE_MISMATCH:BETTER_AUTH_URL"]);
+    expect(failed(check({
+      DATABASE_PRODUCTION_HOST: { type: "plain", value: direct }, NEON_PROJECT_ID: { type: "plain", value: "other-project" },
+      NEON_PRODUCTION_BRANCH_ID: { type: "plain", value: "br-other" }, AUTH_EMAIL_FROM: { type: "plain", value: "x@example.test" },
+      BLOB_STORE: { type: "plain", value: "s3" }, BLOB_BUCKET: { type: "plain", value: "other-bucket" }, DATABASE_ENV: { type: "plain", value: "development" },
+    }))).toEqual(["runtime.values:CONFIG_VALUE_MISMATCH:DATABASE_PRODUCTION_HOST,NEON_PROJECT_ID,NEON_PRODUCTION_BRANCH_ID,AUTH_EMAIL_FROM,BLOB_STORE,BLOB_BUCKET,DATABASE_ENV"]);
+    expect(failed(check({}, { PRODUCTION_ORIGIN: undefined }))).toEqual(["runtime.values:CONFIG_VALUE_MISMATCH:PRODUCTION_ORIGIN"]);
+    expect(failed(check({ AWS_REGION: { type: "sensitive" } }))).toEqual(["runtime.values:CONFIG_MALFORMED:AWS_REGION"]);
+  });
+
+  it("skips the BLOB comparison only when the GitHub side does not carry the value", () => {
+    expect(failed(check({}, { BLOB_STORE: undefined, BLOB_BUCKET: " " }))).toEqual([]);
+    expect(failed(check({ BLOB_BUCKET: { type: "plain", value: "other" } }, { BLOB_BUCKET: undefined }))).toEqual([]);
+  });
+
+  it("prints names only, even for a manifest full of values", () => {
+    const manifest = parseRuntimeManifest(entries({
+      NEON_API_KEY: { type: "plain", value: secrets.neon }, BETTER_AUTH_URL: { type: "plain", value: "https://elsewhere.example.test" },
+      STATE_SYNC_ENABLED: { type: "plain", value: "true" }, DATABASE_PRODUCTION_HOST: { type: "plain", value: secrets.password },
+    }));
+    const results = checkRuntimeManifest(manifest, github);
+    const output = [...results.map(formatResult), summarise(results, "runtime-manifest")].join("\n");
+    for (const value of [secrets.neon, secrets.password, "elsewhere.example.test", project, branch, "meals.example.test"]) expect(output).not.toContain(value);
+    for (const line of output.split("\n")) expect(line).toMatch(/^(OK|WARN|FAIL|RESULT) [A-Za-z0-9_=.,: -]+$/);
+    expect(output).toContain("RESULT FAIL phase=runtime-manifest");
+  });
+
+  it("runs from the command with no network, from a file", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "manifest-"));
+    const file = path.join(dir, "env.json");
+    writeFileSync(file, JSON.stringify(entries()));
+    const run = (args: string[], extra: Record<string, string> = {}) => spawnSync(
+      process.execPath, [path.resolve("node_modules/tsx/dist/cli.mjs"), "scripts/check-production.ts", ...args],
+      { env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...extra } as unknown as NodeJS.ProcessEnv, encoding: "utf8" },
+    );
+    const good = run([`--runtime-manifest=${file}`], Object.fromEntries(Object.entries(github).filter(([, v]) => v) as [string, string][]));
+    expect(good.stdout).toContain("RESULT PASS phase=runtime-manifest");
+    expect(good.status).toBe(0);
+    const mismatch = run([`--runtime-manifest=${file}`], { PRODUCTION_ORIGIN: "https://elsewhere.example.test" });
+    expect(mismatch.status).toBe(1);
+    expect(mismatch.stdout).toContain("FAIL runtime.values CONFIG_VALUE_MISMATCH");
+    const missing = run([`--runtime-manifest=${path.join(dir, "absent.json")}`]);
+    expect(missing.status).toBe(1);
+    expect(missing.stdout).toContain("FAIL runtime.manifest CONFIG_MALFORMED manifest");
+    expect(mismatch.stdout + missing.stdout + good.stdout).not.toContain("elsewhere.example.test");
+  }, 120_000);
 });
 
 it("exercises every check code", () => {
