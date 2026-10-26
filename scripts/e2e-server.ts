@@ -50,7 +50,7 @@ const env: NodeJS.ProcessEnv = {
   REMINDER_TEST_PUSH_URL: pushFixture.endpoint, REMINDER_TEST_PUSH_SECRET: pushSecret, APP_TZ: "UTC",
   BETTER_AUTH_URL: `http://127.0.0.1:${port}`, BETTER_AUTH_SECRET: randomBytes(32).toString("base64url"),
   HOUSEHOLD_BOOTSTRAP_SECRET: "synthetic-browser-bootstrap-key-for-tests", HOUSEHOLD_OWNER_EMAIL: "ui-owner@example.test", AUTH_TEST_MAILBOX: "1", RESEND_API_KEY: "",
-  BLOB_STORE: "filesystem", STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views",
+  BLOB_STORE: "filesystem", LEGACY_IMPORT_ENABLED: "true", STATE_SYNC_ENABLED: "true", STATE_SYNC_CLASSES: "saved-views",
   STATE_SYNC_HOUSEHOLD_ID: "00000000-0000-4000-8000-000000000001",
   STATE_GITHUB_APP_ID: String(state.appId), STATE_GITHUB_INSTALLATION_ID: String(state.installationId),
   STATE_GITHUB_REPOSITORY_ID: String(state.repositoryId), STATE_GITHUB_OWNER: state.owner,

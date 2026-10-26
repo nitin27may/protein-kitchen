@@ -25,6 +25,8 @@ export default defineConfig({
         "lib/db/postgres/import-target.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/hooks/use-hydrated.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/legacy-bundle.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/legacy/bundle.ts": { statements: 90, branches: 80, functions: 80, lines: 92 },
+        "lib/human/legacy-household-import.ts": { statements: 95, branches: 88, functions: 100, lines: 100 },
         "lib/human/reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/household-export.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

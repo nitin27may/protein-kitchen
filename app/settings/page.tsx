@@ -8,6 +8,8 @@ import { getResetCounts } from "@/lib/server/queries";
 import { photoReviewEnabled } from "@/lib/photos/review-flag";
 import { StateSyncControls } from "@/components/StateSyncControls";
 import { stateSyncSettings } from "@/lib/sync/server";
+import { LegacyImportPanel } from "@/components/LegacyImportPanel";
+import { legacyImportEnabled } from "@/lib/human/legacy-household-import";
 
 export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -47,6 +49,7 @@ export default async function SettingsPage() {
           <div className="max-w-sm"><ThemeToggle variant="segmented" /></div>
         </section>
         {sync ? <StateSyncControls settings={sync} /> : null}
+        {member.role === "owner" && legacyImportEnabled() ? <LegacyImportPanel /> : null}
         <SettingsClient counts={counts} />
       </div>
     </>
