@@ -1,5 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
+import { libraryPhotoManifest } from "@/lib/library-photos/manifest";
 import { libraryRecipeCards, recipeKeywords } from "@/lib/library/anonymous";
 import type { Metadata } from "next";
 import { RecipesClient } from "@/components/RecipesClient";
@@ -22,7 +23,7 @@ export default async function RecipesPage() {
       <>
         <PageTitle title="Recipes" sub="Protein and calories are computed from the ingredients, never typed in." />
         <Suspense fallback={null}>
-          <RecipesClient recipes={libraryRecipeCards(getData())} savedDefault={null} mode="anonymous" />
+          <RecipesClient recipes={libraryRecipeCards(getData(), await libraryPhotoManifest())} savedDefault={null} mode="anonymous" />
         </Suspense>
       </>
     );

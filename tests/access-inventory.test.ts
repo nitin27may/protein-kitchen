@@ -7,13 +7,13 @@ const files = readdirSync("app", { recursive: true, withFileTypes: true })
   .filter((entry) => entry.isFile()).map((entry) => path.join(entry.parentPath, entry.name).replaceAll("\\", "/"));
 const publicPages = new Set(["app/sign-in/page.tsx", "app/sign-up/page.tsx", "app/verify-email/page.tsx", "app/reset-password/page.tsx", "app/privacy/page.tsx", "app/account-deleted/page.tsx"]);
 const admissionPages = new Set(["app/onboarding/page.tsx"]);
-const libraryPages = new Set(["app/page.tsx", "app/recipes/page.tsx", "app/recipes/[slug]/page.tsx", "app/ingredients/page.tsx", "app/ingredients/[slug]/page.tsx"]);
+const libraryPages = new Set(["app/page.tsx", "app/recipes/page.tsx", "app/recipes/[slug]/page.tsx", "app/ingredients/page.tsx", "app/ingredients/[slug]/page.tsx", "app/credits/page.tsx"]);
 // Household pages that show a visitor without an account a prompt instead of redirecting. No data is read before the guard.
 const anonymousShellPages = new Set(["app/groceries/page.tsx", "app/profiles/page.tsx", "app/plan/page.tsx", "app/plan/new/page.tsx"]);
 // Reads the plan draft from the visitor's own browser. The server part may use library files only.
 const devicePages = new Set(["app/plan/draft/page.tsx"]);
 // The only functions a library page may call before its membership guard: no database, no household, no photos.
-const libraryLoaders = ["libraryRecipeCards", "libraryIngredientCards", "libraryRecipeDetail", "libraryIngredientDetail", "libraryHighlights"];
+const libraryLoaders = ["libraryRecipeCards", "libraryIngredientCards", "libraryRecipeDetail", "libraryIngredientDetail", "libraryHighlights", "libraryCredits"];
 const source = (file: string) => ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const exported = (node: ts.FunctionDeclaration) => node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
 function firstCall(node: ts.FunctionDeclaration) {
@@ -43,7 +43,7 @@ describe("application authorization inventory", () => {
         };
         for (const statement of statements.slice(0, guard)) visit(statement);
         expect(calls).toContain("optionalPageMember");
-        for (const call of calls) expect(["optionalPageMember", "getData", "data.recipes.get", "data.ingredients.get", "notFound", ...libraryLoaders]).toContain(call);
+        for (const call of calls) expect(["optionalPageMember", "getData", "data.recipes.get", "data.ingredients.get", "notFound", "libraryPhotoManifest", ...libraryLoaders]).toContain(call);
         expect(statements.slice(0, guard).some((statement) => /return\s*\(?\s*</.test(statement.getText()))).toBe(true);
       } else if (anonymousShellPages.has(file)) {
         const statements = page!.body!.statements;
@@ -107,7 +107,15 @@ describe("application authorization inventory", () => {
     expect(exports[0]!.parameters).toHaveLength(0);
     expect(text).not.toMatch(/routeAccess|requireMember|getDb\b|headers\(|cookies\(|request/i);
   });
-  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts" && file !== "app/api/anon-library/route.ts" && file !== "app/api/health/route.ts")) {
+  it("the library photo route is public, GET-only, and reads no session, cookie or request header", () => {
+    const file = "app/library-photos/[uid]/[variant]/route.ts";
+    const text = readFileSync(file, "utf8");
+    const exports = source(file).statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(exports.map((node) => node.name?.getText())).toEqual(["GET"]);
+    expect(text).not.toMatch(/routeAccess|requireMember|householdId|headers\(|cookies\(|_req\.|session/i);
+    expect(text).not.toMatch(/lib\/(auth|human)\//);
+  });
+  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts" && file !== "app/api/anon-library/route.ts" && file !== "app/api/health/route.ts" && file !== "app/library-photos/[uid]/[variant]/route.ts")) {
     const statements = source(file).statements;
     it(`${file} uses explicit, reviewable HTTP handler declarations`, () => {
       const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);

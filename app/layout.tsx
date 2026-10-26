@@ -7,6 +7,7 @@ import { RegisterSW } from "@/components/RegisterSW";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PendingIntentReplay } from "@/components/auth/PendingIntentReplay";
 import { RequireAccountProvider } from "@/components/auth/RequireAccount";
+import { isCurator } from "@/lib/auth/curator";
 import { photoReviewEnabled } from "@/lib/photos/review-flag";
 import { shellAccount } from "@/lib/auth/public-access";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -46,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </a>
         <RequireAccountProvider anonymous={anonymous}>
         <div className="lg:flex">
-          <Sidebar account={account.kind} photoReview={photoReviewEnabled()} />
+          <Sidebar account={account.kind} photoReview={photoReviewEnabled() && account.kind === "member" && await isCurator(account.member)} />
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
               <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
