@@ -32,6 +32,14 @@ export async function readAccountExport(db: Db, member: Pick<MemberAccess, "user
       favourite: s.personRecipeFeedback.favourite, createdAt: s.personRecipeFeedback.createdAt, updatedAt: s.personRecipeFeedback.updatedAt,
     }).from(s.personRecipeFeedback).innerJoin(s.recipes, eq(s.recipes.id, s.personRecipeFeedback.recipeId))
       .where(eq(s.personRecipeFeedback.personId, member.personId)).orderBy(s.recipes.slug);
-    return { format: "protein-kitchen-account", version: 1, exportedAt: new Date().toISOString(), ...identity, preferences, routines, feedback };
+    // Amounts only, as stored; macros are never part of a log row. Foods are named, not given by database id.
+    const foodLog = await tx.select({
+      uid: s.foodLog.uid, date: s.foodLog.date, slot: s.foodLog.slot, kind: s.foodLog.kind, recipe: s.foodLog.recipeSlug, servings: s.foodLog.servings,
+      ingredient: s.foodLog.ingredientSlug, food: s.householdFoods.name, brand: s.householdFoods.brand, grams: s.foodLog.grams,
+      displayQty: s.foodLog.displayQty, displayUnit: s.foodLog.displayUnit, plannedRecipe: s.foodLog.plannedRecipeSlug,
+      plannedServings: s.foodLog.plannedServings, note: s.foodLog.note, createdAt: s.foodLog.createdAt, updatedAt: s.foodLog.updatedAt,
+    }).from(s.foodLog).leftJoin(s.householdFoods, and(eq(s.householdFoods.id, s.foodLog.householdFoodId), eq(s.householdFoods.householdId, s.foodLog.householdId)))
+      .where(eq(s.foodLog.personId, member.personId)).orderBy(s.foodLog.date, s.foodLog.slot, s.foodLog.uid);
+    return { format: "protein-kitchen-account", version: 1, exportedAt: new Date().toISOString(), ...identity, preferences, routines, feedback, foodLog };
   }, { isolationLevel: "repeatable read", accessMode: "read only" });
 }

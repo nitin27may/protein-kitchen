@@ -2,8 +2,11 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { Tx } from "../db/tx";
 import * as s from "../db/schema";
 import { HouseholdAccessError } from "../auth/household";
-import { photoKeys } from "../photos/keys";
+import { foodLabelKeys, photoKeys } from "../photos/keys";
+import { clearFoodLog } from "./food-log";
+import { clearHouseholdFoods } from "./household-foods";
 import { markChanged, nowIso } from "./util";
+import { deleteLabelExtractionsForHousehold } from "../server/label-extractions";
 import type { ResetScope } from "../server/reset";
 
 /** Caller holds the verified household lock; returned owned photo keys are cleaned only after commit. */
@@ -55,7 +58,7 @@ export async function clearHouseholdData(tx: Tx, householdId: string, scope: Res
     if (portion || routine || setups.some((r) => r.personIds.some((id) => personIds.includes(id)))) {
       throw new HouseholdAccessError("Household reset refused: profiles have references outside this household.");
     }
-    for (const table of [s.recipeFeedback, s.recipeLinks, s.savedViews, s.photos, s.photoDecisions]) {
+    for (const table of [s.recipeFeedback, s.recipeLinks, s.savedViews, s.photos, s.photoDecisions, s.householdFoods, s.foodLog]) {
       const [foreign] = await tx.select({ id: table.createdByPersonId }).from(table)
         .where(and(inArray(table.createdByPersonId, personIds), sql`${table.householdId} is distinct from ${householdId}`)).limit(1);
       if (foreign) throw new HouseholdAccessError("Household reset refused: profiles have references outside this household.");
@@ -69,6 +72,7 @@ export async function clearHouseholdData(tx: Tx, householdId: string, scope: Res
       .where(and(inArray(s.reminderBatches.personId, personIds), sql`${s.reminderBatches.householdId} is distinct from ${householdId}`)).limit(1);
     if (batch) throw new HouseholdAccessError("Household reset refused: profiles have references outside this household.");
     await clearProgress();
+    await clearFoodLog(tx, { householdId, personIds });
     await tx.delete(s.pushSubscriptions).where(inArray(s.pushSubscriptions.personId, personIds));
     await tx.delete(s.preferences).where(inArray(s.preferences.personId, personIds));
     await tx.delete(s.personRoutines).where(inArray(s.personRoutines.personId, personIds));
@@ -96,7 +100,13 @@ export async function clearHouseholdData(tx: Tx, householdId: string, scope: Res
       await mark("photos");
       await tx.delete(s.photoDecisions).where(eq(s.photoDecisions.householdId, householdId));
       await mark("photo-decisions");
-      return photos.flatMap(({ uid }) => Object.values(photoKeys(uid)));
+      // Entries first: they point at the foods. Profiles (and their entries) are already gone; this catches any left.
+      await clearFoodLog(tx, { householdId });
+      const labels = await clearHouseholdFoods(tx, householdId);
+      return [
+        ...photos.flatMap(({ uid }) => Object.values(photoKeys(uid))),
+        ...labels.flatMap((uid) => Object.values(foodLabelKeys(uid))),
+      ];
     }
   }
   return [];
@@ -105,7 +115,7 @@ export async function clearHouseholdData(tx: Tx, householdId: string, scope: Res
 /**
  * Removes a whole household for good: access, invitations, every profile and everything hanging off it, then the
  * household row. Used when the last member deletes their account. The caller holds the deployment lock and runs this in
- * one transaction. Returns the photo blob keys, which the caller deletes only after the commit.
+ * one transaction. Returns the photo and food-label blob keys, which the caller deletes only after the commit.
  *
  * The generic test in tests/account-deletion.test.ts walks every table with a household_id column, so a table added
  * later fails there until it is cleared here.
@@ -115,6 +125,7 @@ export async function deleteHousehold(tx: Tx, householdId: string): Promise<stri
   await tx.delete(s.householdInvitations).where(eq(s.householdInvitations.householdId, householdId));
   await tx.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
   const photoKeysToDelete = await clearHouseholdData(tx, householdId, "all");
+  await deleteLabelExtractionsForHousehold(tx, householdId);
   await tx.delete(s.reminderBatches).where(eq(s.reminderBatches.householdId, householdId));
   await tx.delete(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, householdId));
   await tx.delete(s.stateSyncJobs).where(eq(s.stateSyncJobs.householdId, householdId));

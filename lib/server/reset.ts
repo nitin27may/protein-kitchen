@@ -7,6 +7,8 @@ import { withTx } from "../db/tx";
 import type { Tx } from "../db/tx";
 import { markChanged, nowIso } from "../human/util";
 import { resetPersonalFeedback } from "../human/personal-feedback";
+import { clearFoodLog } from "../human/food-log";
+import { clearHouseholdFoods } from "../human/household-foods";
 
 export const RESET_SCOPES = ["plans", "groceries", "progress", "ratings", "profiles", "all"] as const;
 export type ResetScope = (typeof RESET_SCOPES)[number];
@@ -33,6 +35,10 @@ export interface ResetCounts {
   planSteps: number;
   /** Your own and approved photos, with their approvals. Only "Everything" clears them: they are yours, like ratings. */
   photos: number;
+  /** Packaged foods on the household master list. Only "Everything" clears them: they are yours, like links and photos. */
+  foods: number;
+  /** What people logged as eaten. It belongs to a profile, so deleting profiles or "Everything" clears it. */
+  foodLog: number;
 }
 
 // Drizzle's count() is a bigint on Postgres, so every result goes through Number().
@@ -63,6 +69,8 @@ export async function resetCounts(db: Db, householdId?: string): Promise<ResetCo
     planRoutines: await count(db, s.planRoutines, and(plan(s.planRoutines.planId), person(s.planRoutines.personId))),
     planSteps: await count(db, s.planProgress, plan(s.planProgress.planId)),
     photos: await count(db, s.photos, owned(s.photos.householdId)),
+    foods: await count(db, s.householdFoods, owned(s.householdFoods.householdId)),
+    foodLog: await count(db, s.foodLog, owned(s.foodLog.householdId)),
   };
 }
 
@@ -105,6 +113,7 @@ async function clearProfiles(tx: Tx) {
   // Routine choices belong to a profile; deleting the people deletes them (the foreign key cascades), so mark the export.
   await tx.delete(s.personRoutines);
   await markChanged(tx, "person-routines", nowIso());
+  await clearFoodLog(tx);
   await resetPersonalFeedback(tx);
   await tx.delete(s.people);
 }
@@ -133,12 +142,14 @@ export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStor
         await markChanged(tx, "photos", nowIso());
         await tx.delete(s.photoDecisions);
         await markChanged(tx, "photo-decisions", nowIso());
+        await clearHouseholdFoods(tx);
         return;
     }
   });
   // Photo bytes are outside the transaction. The rows are gone, so any blob left is an orphan; the backup holds a copy.
   // Only household `photos/` keys: shared `library/` photos belong to everyone and are never part of a reset.
-  if (scope === "all" && photoStore) for (const key of await photoStore.list()) if (key.startsWith("photos/")) await photoStore.delete(key);
+  // Food label photos (`labels/`) are household bytes too and go with the foods.
+  if (scope === "all" && photoStore) for (const key of await photoStore.list()) if (key.startsWith("photos/") || key.startsWith("labels/")) await photoStore.delete(key);
 }
 
 /** Destructive application resets stay disabled until the Postgres backup/restore gate is implemented. */

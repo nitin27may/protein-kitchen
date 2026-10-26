@@ -74,7 +74,7 @@ describe("allowlisted personal account snapshot", () => {
     await writePersonalRecipeFeedback(h.db, second, recipe!.id, { rating: 2 });
     const before = await h.db.select().from(s.syncState).orderBy(s.syncState.dataClass);
     const result = (await readAccountExport(h.db, member()))!;
-    expect(keys(result)).toEqual(["account", "exportedAt", "feedback", "format", "preferences", "profile", "routines", "version"]);
+    expect(keys(result)).toEqual(["account", "exportedAt", "feedback", "foodLog", "format", "preferences", "profile", "routines", "version"]);
     expect(result).toMatchObject({ format: "protein-kitchen-account", version: 1, exportedAt: expect.stringMatching(/Z$/) });
     expect(result.account).toEqual({ name: "Synthetic first cook", email: "first@example.test", emailVerified: true, role: "owner" });
     expect(result.profile).toEqual({
@@ -99,7 +99,7 @@ describe("allowlisted personal account snapshot", () => {
     const result = (await readAccountExport(h.db, { userId: "second-user", personId: second }))!;
     expect(result.account.role).toBe("member");
     expect(result.profile).toMatchObject({ proteinTargetG: null, proteinGPerKg: 1.2, kcalTarget: null, reminderTime: null });
-    expect([result.preferences, result.routines, result.feedback]).toEqual([[], [], []]);
+    expect([result.preferences, result.routines, result.feedback, result.foodLog]).toEqual([[], [], [], []]);
   });
   it("rechecks user/profile binding, email verification and live membership inside the snapshot", async () => {
     expect(await readAccountExport(h.db, { userId: "first-user", personId: second })).toBeUndefined();

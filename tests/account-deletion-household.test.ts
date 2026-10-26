@@ -5,7 +5,7 @@ import * as s from "../lib/db/schema";
 import { deleteOwnAccount } from "../lib/auth/household";
 import { createAuth, type AuthCodeMail } from "../lib/auth/create";
 import { createMemoryStore } from "../lib/blob/memory";
-import { photoKeys } from "../lib/photos/keys";
+import { foodLabelKeys, photoKeys } from "../lib/photos/keys";
 import { openDb, type DbHandle } from "./helpers/db";
 
 let h: DbHandle;
@@ -18,6 +18,7 @@ afterAll(async () => { await h.close(); });
 const at = "2026-11-02T00:00:00Z";
 const future = () => new Date(Date.now() + 5 * 60_000);
 const hashCode = (code: string) => createHash("sha256").update(code).digest("base64url");
+const labelUid = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
 async function library() {
@@ -67,6 +68,12 @@ async function household(id: string, n: number, extra: { role?: "owner" | "membe
   await h.db.insert(s.recipeLinks).values({ householdId: id, recipeId: 1, uid: `link-${id}`, kind: "recipe", url: "https://example.test", title: "Synthetic", createdAt: at, updatedAt: at });
   await h.db.insert(s.photos).values({ householdId: id, uid: uid(n), recipeId: 1, origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, createdAt: at, updatedAt: at });
   await h.db.insert(s.photoDecisions).values({ householdId: id, uid: `decision-${id}`, subjectKind: "recipe", subjectSlug: "fixture", candidateKey: "commons:fixture", decision: "rejected", createdAt: at, updatedAt: at });
+  const [food] = await h.db.insert(s.householdFoods).values({
+    householdId: id, uid: `food-${id}`, name: "Synthetic food", kcal: 100, proteinG: 10, carbsG: 10, fatG: 1, labelBasis: "per_100g", source: "MANUAL",
+    labelPhotoUid: labelUid(n), labelPhotoSha256: "0".repeat(64), createdAt: at, updatedAt: at, confirmedAt: at, createdByPersonId: personId,
+  }).returning();
+  await h.db.insert(s.foodLog).values({ householdId: id, uid: `log-${id}`, personId, date: "2026-11-02", slot: "snack", kind: "extra", householdFoodId: food!.id, grams: 50, planId: plan!.id, createdAt: at, updatedAt: at });
+  await h.db.insert(s.labelExtractions).values({ householdId: id, personId, model: "synthetic", outcome: "success", createdAt: at });
   await h.db.insert(s.pushSubscriptions).values({ personId, endpoint: `https://push.example.test/${id}`, p256dh: "synthetic", auth: "synthetic", createdAt: at });
   await h.db.insert(s.reminderBatches).values({ householdId: id, id: `batch-${id}`, personId, date: "2026-11-02", payload: { title: "t", body: "b", url: "/" }, expiresAt: at, createdAt: at });
   await h.db.insert(s.reminderDeliveries).values({ batchId: `batch-${id}`, subscriptionId: 1, fingerprint: "f", updatedAt: at });
@@ -120,7 +127,7 @@ describe("deleting the last member deletes the household", () => {
 
     const { photoKeys: keys } = await deleteOwnAccount(h.db, proof("a"));
 
-    expect(keys.sort()).toEqual(Object.values(photoKeys(uid(1))).sort());
+    expect(keys.sort()).toEqual([...Object.values(photoKeys(uid(1))), ...Object.values(foodLabelKeys(labelUid(1)))].sort());
     for (const [name, rows] of Object.entries(await scoped(["a"], a.people, a.plans))) expect(rows, name).toBe(0);
     expect(await scoped(["b"], b.people, b.plans)).toEqual(beforeB);
     expect(await h.db.select().from(s.households)).toMatchObject([{ id: "b" }]);
@@ -185,6 +192,9 @@ describe("deleting the last member deletes the household", () => {
     await deleteOwnAccount(h.db, proof("a"));
     expect(await h.db.select().from(s.households)).toMatchObject([{ id: "a" }]);
     expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "user-other" }]);
+    // The leaving member's food log goes; the foods they added stay with the household, no longer naming them.
+    expect(await h.db.select().from(s.foodLog)).toEqual([]);
+    expect(await h.db.select({ name: s.householdFoods.name, by: s.householdFoods.createdByPersonId }).from(s.householdFoods)).toEqual([{ name: "Synthetic food", by: null }]);
   });
 
   it("rolls everything back, including the consumed code, when the household cannot be deleted", async () => {

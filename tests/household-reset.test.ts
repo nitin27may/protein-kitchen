@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import * as s from "../lib/db/schema";
 import { openDb, type DbHandle } from "./helpers/db";
 import { createMemoryStore } from "../lib/blob/memory";
-import { photoKeys } from "../lib/photos/keys";
+import { foodLabelKeys, photoKeys } from "../lib/photos/keys";
 import { resolveHouseholdAccess, type HouseholdAccess } from "../lib/auth/household-access";
 import { resetHouseholdData, ResetPhotoCleanupError } from "../lib/server/household-reset";
 import { RESET_SCOPES, resetCounts } from "../lib/server/reset";
@@ -55,6 +55,14 @@ beforeEach(async () => {
     await h.db.insert(s.recipeLinks).values({ householdId, recipeId: 1, uid: `link-${id}`, kind: "recipe", url: "https://example.test", title: "Synthetic", createdAt: at, updatedAt: at });
     await h.db.insert(s.photos).values({ householdId, uid: `photo-${id}`, recipeId: 1, origin: "upload", sha256: "0".repeat(64), width: 1, height: 1, createdAt: at, updatedAt: at });
     await h.db.insert(s.photoDecisions).values({ householdId, uid: `decision-${id}`, subjectKind: "recipe", subjectSlug: "fixture", candidateKey: "commons:fixture", decision: "rejected", createdAt: at, updatedAt: at });
+    if (householdId) {
+      const [food] = await h.db.insert(s.householdFoods).values({
+        householdId, uid: `food-${id}`, name: "Synthetic food", kcal: 100, proteinG: 10, carbsG: 10, fatG: 1, labelBasis: "per_100g", source: "MANUAL",
+        labelPhotoUid: `label-${id}`, labelPhotoSha256: "0".repeat(64), createdAt: at, updatedAt: at, confirmedAt: at, createdByPersonId: id,
+      }).returning();
+      await h.db.insert(s.foodLog).values({ householdId, uid: `log-${id}`, personId: id, date: "2026-11-02", slot: "snack", kind: "extra", householdFoodId: food!.id, grams: 50, planId: id, createdAt: at, updatedAt: at });
+    }
+    for (const key of Object.values(foodLabelKeys(`label-${id}`))) await store.put(key, Buffer.from(`label-${id}`), "image/webp");
     for (const key of Object.values(photoKeys(`photo-${id}`))) await store.put(key, Buffer.from(`fixture-${id}`), "image/webp");
   }
   await h.db.insert(s.authUsers).values({ id: "owner", name: "Fixture", email: "fixture@example.test", emailVerified: true });
@@ -83,7 +91,7 @@ async function snapshot(householdId: string | null) {
     h.db.select().from(s.personRecipeFeedback).where(inArray(s.personRecipeFeedback.personId, people)),
     h.db.select().from(s.habitLog).where(inArray(s.habitLog.personId, people)),
     h.db.select().from(s.reminderLog).where(inArray(s.reminderLog.personId, people)),
-    ...[s.pantry, s.prepTaskState, s.recipeFeedback, s.savedViews, s.recipeLinks, s.photos, s.photoDecisions, s.syncState]
+    ...[s.pantry, s.prepTaskState, s.recipeFeedback, s.savedViews, s.recipeLinks, s.photos, s.photoDecisions, s.householdFoods, s.syncState]
       .map((table) => h.db.select().from(table).where(owned(table.householdId))),
   ]);
 }
@@ -102,7 +110,7 @@ it.each(RESET_SCOPES)("resets only owned %s data and preserves foreign/legacy re
     groceries: { ...own, groceryItems: 0 },
     progress: { ...own, progressTicks: 0 },
     ratings: { ...own, ratings: 0 },
-    profiles: { ...own, profiles: 0, plans: 0, groceryItems: 1, progressTicks: 0, ratings: 1, partChoices: 0, routineChoices: 0, planRoutines: 0, planSteps: 0 },
+    profiles: { ...own, profiles: 0, plans: 0, groceryItems: 1, progressTicks: 0, ratings: 1, partChoices: 0, routineChoices: 0, planRoutines: 0, planSteps: 0, foodLog: 0 },
     all: Object.fromEntries(Object.keys(own).map((key) => [key, 0])),
   };
   expect(counts).toEqual(expected[scope]);
@@ -112,6 +120,9 @@ it.each(RESET_SCOPES)("resets only owned %s data and preserves foreign/legacy re
   expect(await h.db.select().from(s.authUsers)).toHaveLength(1);
   expect(await h.db.select().from(s.householdMembers)).toMatchObject([{ userId: "owner", householdId: "a", personId: scope === "profiles" || scope === "all" ? null : 1 }]);
   for (const id of [1, 2, 3]) for (const key of Object.values(photoKeys(`photo-${id}`))) {
+    expect(await store.exists(key)).toBe(scope !== "all" || id !== 1);
+  }
+  for (const id of [1, 2, 3]) for (const key of Object.values(foodLabelKeys(`label-${id}`))) {
     expect(await store.exists(key)).toBe(scope !== "all" || id !== 1);
   }
 });
@@ -155,13 +166,14 @@ it("reports post-commit cleanup failure explicitly and only attempts owned photo
   let attempts = 0;
   vi.spyOn(store, "delete").mockImplementation(async (key) => {
     attempts++;
-    expect(Object.values(photoKeys("photo-1"))).toContain(key);
+    expect([...Object.values(photoKeys("photo-1")), ...Object.values(foodLabelKeys("label-1"))]).toContain(key);
     expect(await h.db.select().from(s.photos).where(eq(s.photos.householdId, "a"))).toEqual([]);
     throw new Error("PRIVATE_STORAGE_FAILURE");
   });
   await expect(resetHouseholdData(h.db, access, "all", store)).rejects.toBeInstanceOf(ResetPhotoCleanupError);
-  expect(attempts).toBe(2);
+  expect(attempts).toBe(4);
   expect(await h.db.select().from(s.people).where(eq(s.people.householdId, "a"))).toEqual([]);
+  expect(await h.db.select().from(s.householdFoods).where(eq(s.householdFoods.householdId, "a"))).toEqual([]);
   expect(await store.exists(photoKeys("photo-2").master)).toBe(true);
 });
 
