@@ -53,7 +53,7 @@ async function warmRoutes(baseURL: string, prepPlanId: number) {
   const routes = [
     "/recipes", "/recipes/besan-oat-muffins", "/ingredients", "/credits", "/sign-in", "/sign-up", "/reset-password", "/verify-email",
     "/plan/new", "/plan/draft", "/plan", `/plan/${prepPlanId}`, `/plan/${prepPlanId}/prep`, "/groceries", "/onboarding", "/account",
-    "/households", "/profiles", "/profiles/new", "/settings", "/photos/review", "/api/anon-library",
+    "/households", "/privacy", "/account-deleted", "/profiles", "/profiles/new", "/settings", "/photos/review", "/api/anon-library",
   ];
   const browser = await chromium.launch();
   try {

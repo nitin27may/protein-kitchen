@@ -101,6 +101,7 @@ export function AuthScreen({ initial, next = "/", invite, emailLinkError = false
       </form>
       {needsCode ? <Button variant="secondary" className="w-full" disabled={pending || !email}
         onClick={() => void run(sendCode)}>Send a new code</Button> : null}
+      <p className="text-sm"><a href="/privacy" className="inline-flex min-h-11 items-center font-semibold text-primary underline-offset-2 hover:underline">How we use your email</a></p>
       {embedded ? <a href="/sign-in" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline-offset-2 hover:underline">I have a password</a> : null}
       {embedded ? null : <nav aria-label="Account options" className="flex flex-col items-start">
         {stage === "password" ? <>

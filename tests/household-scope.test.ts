@@ -458,7 +458,7 @@ it("withholds household member/email/invitation administration from members and 
   const member = await resolveHouseholdAccess(h.db, "a", "a");
   expect(await householdAccount(h.db, member)).toEqual({
     owner: false, profile: { id: a.personId, name: "Synthetic profile" }, profiles: [],
-    invitations: [], incomingAssociations: [], members: [],
+    invitations: [], incomingAssociations: [], members: [], memberCount: 3,
   });
   const pending = await resolveHouseholdAccess(h.db, "pending", "a");
   await expect(householdAccount(h.db, pending)).rejects.toThrow("Finish your household profile");

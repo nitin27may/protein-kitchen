@@ -80,12 +80,11 @@ export function Sidebar({ account, photoReview }: { account: "visitor" | "setup"
           </div>
         )}
         <ThemeToggle variant="segmented" />
-        {account === "member" ? (
-          <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
-            {photoReview ? <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link> : null}
-            <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link>
-          </div>
-        ) : null}
+        <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
+          {account === "member" && photoReview ? <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link> : null}
+          {account === "member" ? <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link> : null}
+          <Link href="/privacy" className="underline-offset-2 hover:underline">Privacy</Link>
+        </div>
       </div>
     </aside>
   );
