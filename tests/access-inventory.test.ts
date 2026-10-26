@@ -159,6 +159,19 @@ describe("application authorization inventory", () => {
     expect(actions).toHaveLength(35);
     for (const action of actions) expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
   });
+  it("food log actions check the person's permission first, before parsing input or touching data", () => {
+    const actions = source("app/foods/log-actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(actions.map((node) => node.name?.getText())).toEqual([
+      "markMealEaten", "markMealSkipped", "markMealSwapped", "logExtra", "updateEntry", "deleteEntry", "markRestOfDayEaten", "loadFoodCatalog",
+    ]);
+    for (const action of actions) {
+      const name = action.name!.getText();
+      expect(firstCall(action), name).toBe("actionDenial");
+      const policy = name === "loadFoodCatalog" ? "" : name === "logExtra" ? "policyFor(input?.personIds)" : "policyFor(input?.personId)";
+      expect(action.body?.statements[0]?.getText(), name).toBe(`const denied = await actionDenial(${policy});`);
+      expect(action.body?.statements[1]?.getText(), name).toBe("if (denied) return denied;");
+    }
+  });
   it("private-state action checks current owner permission before reading configuration", () => {
     const actions = source("app/settings/sync-actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
     expect(actions).toHaveLength(1);

@@ -13,12 +13,16 @@ import { getPlanExport } from "@/lib/server/export";
 import { getCandidates, getPlanMilestones, getPlanRoutines, getPlanView, proteinTargetOf } from "@/lib/server/queries";
 import { todayISO } from "@/lib/server/time";
 import { getPhotoIndex } from "@/lib/server/queries";
+import { reviewPlan } from "@/lib/food-log/day-view";
+import { plannedMealsFrom } from "@/lib/food-log/keys";
+import { nutritionLookups } from "@/lib/food-log/lookups";
+import { getFoodEntries, getHouseholdFoodRows } from "@/lib/server/food-log-queries";
 
 export const metadata: Metadata = { title: "Your plan" };
 export const dynamic = "force-dynamic";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePageMember();
+  const member = await requirePageMember();
   const { id } = await params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) notFound();
@@ -60,6 +64,16 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const today = todayISO();
   const startIndex = Math.max(0, view.dates.indexOf(today));
 
+  // Eaten against planned. An owner reviews everyone in the plan; a member reviews only their own log.
+  const reviewed = view.people.filter((x) => member.role === "owner" || x.id === member.personId);
+  const reviewedIds = reviewed.map((x) => x.id);
+  const meals = plannedMealsFrom(view.slots.map((sl) => ({ id: sl.id, date: sl.date, slot: sl.slot, recipeSlug: sl.recipeSlug, servings: sl.servings })), reviewedIds);
+  const lookups = nutritionLookups(data.recipes, data.ingredients, await getHouseholdFoodRows(true));
+  const eaten = reviewPlan({
+    people: reviewed.map((x) => ({ id: x.id, name: x.name, targetG: proteinTargetOf(x) })), dates: view.dates, today, meals,
+    rows: await getFoodEntries(reviewedIds, view.startDate, view.endDate), lookups,
+  });
+
   return (
     <PlanClient
       planId={planId}
@@ -73,6 +87,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       sheet={sheet}
       routines={routineRows}
       milestones={await getPlanMilestones(planId)}
+      eaten={eaten}
       allRecipes={candidates.map((c) => ({ slug: c.slug, name: c.name, proteinG: c.perServing.protein_g, activeMin: c.activeMin, slots: c.family === "shakes" ? ["shake"] : [...c.mealSlots] })).sort((a, b) => a.name.localeCompare(b.name))}
     />
   );

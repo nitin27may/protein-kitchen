@@ -7,13 +7,18 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { DailyBasics } from "@/components/today/DailyBasics";
 import { GroceryStatusCard } from "@/components/today/GroceryStatusCard";
+import { AddFoodButton } from "@/components/foods-log/AddFoodButton";
+import { DaySwitch } from "@/components/foods-log/DaySwitch";
+import { FoodLogProvider } from "@/components/foods-log/FoodLogProvider";
 import { MealsToday } from "@/components/today/MealsToday";
+import type { DayLog } from "@/components/today/MealsToday";
 import { MorningRoutines } from "@/components/today/MorningRoutines";
 import type { RoutineItem } from "@/components/today/MorningRoutines";
 import { PersonSwitch } from "@/components/today/PersonSwitch";
 import { PhaseCard } from "@/components/today/PhaseCard";
 import type { SetupSummary } from "@/components/today/PhaseCard";
 import { ProteinBars } from "@/components/today/ProteinBars";
+import type { PersonBar } from "@/components/today/ProteinBars";
 import { SnackNow } from "@/components/today/SnackNow";
 import { TonightCard } from "@/components/today/TonightCard";
 import type { HabitView, MealView, PrepView, SnackView } from "@/components/today/types";
@@ -27,7 +32,11 @@ import { recipeThumbs } from "@/lib/recipes/thumbs";
 import { catalogByHabit, getRoutineCatalog } from "@/lib/routines/catalog";
 import { routineDayTotals, withoutRoutineHabits } from "@/lib/routines/schedule";
 import { summaryLine } from "@/lib/routines/view";
+import { entryViews, eatenBar, mealAnswer } from "@/lib/food-log/day-view";
+import { plannedMealsFrom } from "@/lib/food-log/keys";
+import { nutritionLookups } from "@/lib/food-log/lookups";
 import { getData } from "@/lib/server/context";
+import { getFoodEntries, getHouseholdFoodRows } from "@/lib/server/food-log-queries";
 import { getPhotoIndex } from "@/lib/server/queries";
 import { loadNight } from "@/lib/server/prep";
 import { getCandidates, getHabitsFor, getPersonRoutines, getPlanView, getTodayRoutines, groceryProgress, lastSetup, latestPlanId, latestPlanMilestones, listPeople, listPlans, proteinTargetOf, toPersonTarget } from "@/lib/server/queries";
@@ -37,11 +46,11 @@ export const dynamic = "force-dynamic";
 
 const SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack", "shake"];
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ p?: string; d?: string }> }) {
   const publicMember = await optionalPageMember();
   if (!publicMember) return <AnonymousHome highlights={libraryHighlights(getData(), undefined, await libraryPhotoManifest())} />;
   const member = await requirePageMember();
-  const { p } = await searchParams;
+  const { p, d: dayParam } = await searchParams;
   const people = await listPeople();
   if (people.length === 0) {
     return (
@@ -65,6 +74,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const today = todayISO(now);
   const part = dayPart(localMinutes(now));
   const tomorrow = addDays(today, 1);
+  const yesterday = addDays(today, -1);
   const candidates = await getCandidates();
   const planId = await latestPlanId();
   const view = planId ? await getPlanView(planId, candidates) : undefined;
@@ -119,8 +129,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   // Meals for the focus day. If nothing is planned for today, show the next planned day instead of an empty screen.
   const byslug = new Map(candidates.map((c) => [c.slug, c]));
   const plannedDates = new Set((view?.slots ?? []).map((sl) => sl.date));
-  const focusDate = plannedDates.has(today) ? today : ([...plannedDates].filter((d) => d > today).sort()[0] ?? today);
+  const viewingYesterday = dayParam === yesterday;
+  const focusDate = viewingYesterday ? yesterday : plannedDates.has(today) ? today : ([...plannedDates].filter((x) => x > today).sort()[0] ?? today);
   const isToday = focusDate === today;
+  const canLog = focusDate <= today;
   const mealsOn = (date: string): MealView[] =>
     (view?.slots ?? [])
       .filter((sl) => sl.date === date)
@@ -142,20 +154,52 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
         };
       })
       .filter((m) => m.proteinG > 0 || m.kcal > 0);
-  const meals = mealsOn(focusDate);
+  const baseMeals = mealsOn(focusDate);
+
+  // Food log for the shown day: what each person ate, matched to the planned meals by person, date and slot.
+  const planPeople = view?.people ?? [];
+  const logPeople = [...new Map([...planPeople, person].map((x) => [x.id, x])).values()];
+  const householdFoods = await getHouseholdFoodRows(true);
+  const lookups = nutritionLookups(data.recipes, data.ingredients, householdFoods);
+  const logRows = await getFoodEntries(logPeople.map((x) => x.id), focusDate, focusDate);
+  const slotsOnDay = (view?.slots ?? []).filter((sl) => sl.date === focusDate);
+  const plannedMeals = plannedMealsFrom(slotsOnDay.map((sl) => ({ id: sl.id, date: sl.date, slot: sl.slot, recipeSlug: sl.recipeSlug, servings: sl.servings })), logPeople.map((x) => x.id));
+  const names = {
+    recipe: (slug: string) => data.recipes.get(slug)?.name ?? slug,
+    ingredient: (slug: string) => { const i = data.ingredients.get(slug); return i?.display_name ?? i?.name ?? slug; },
+    food: (uid: string) => householdFoods.find((f) => f.uid === uid)?.name ?? "Food no longer available",
+  };
+  const myViews = entryViews(logRows.filter((r) => r.personId === person.id), lookups, names);
+  const myBar = eatenBar({ personId: person.id, date: focusDate, today, meals: plannedMeals, rows: logRows.filter((r) => r.personId === person.id), lookups });
+  const meals: MealView[] = baseMeals.map((m) => {
+    const slotRow = slotsOnDay.find((sl) => sl.id === m.id);
+    const a = mealAnswer({ personId: String(person.id), date: focusDate, slot: m.slot, recipe: m.slug }, myViews);
+    return { ...m, log: { status: a.status, entryUid: a.entry?.uid ?? null, answerLabel: a.entry ? `${a.entry.name}${a.entry.amount ? ` (${a.entry.amount})` : ""}` : null, locked: slotRow?.locked ?? false } };
+  });
+  const chipPeople = people.filter((x) => member.role === "owner" || x.id === member.personId).map((x) => ({ id: x.id, name: x.name }));
+  const dayLog: DayLog = {
+    personId: person.id, date: focusDate, today, yesterday, canLog, isOwner: member.role === "owner", people: chipPeople, entries: myViews,
+    status: myBar.status, pendingCount: myBar.pendingCount, dayWord: focusDate === today ? "today" : focusDate === yesterday ? "yesterday" : formatDay(focusDate).long,
+  };
   const tomorrowFirst = mealsOn(tomorrow)[0];
   const preview = part === "evening" && tomorrowFirst ? { label: SLOT_LABEL[tomorrowFirst.slot] ?? tomorrowFirst.slot, name: tomorrowFirst.name } : null;
 
   // What each person's routines add on the focus day: its own line, never part of the protein bar.
   const routineChoices = (await Promise.all((view?.people ?? []).map(async (pp) => (await getPersonRoutines(pp.id)).filter((r) => r.active).map((r) => ({ habitSlug: r.habitSlug, days: r.days, servings: r.servings, personId: pp.id }))))).flat();
   const routineTotals = routineDayTotals(routineChoices, [focusDate], options, data.recipes, data.ingredients)[focusDate] ?? {};
-  const bars = (view?.people ?? []).map((pp) => ({
-    id: pp.id,
-    name: pp.name,
-    proteinG: view?.days.find((d) => d.date === focusDate && Number(d.personId) === pp.id)?.proteinG ?? 0,
-    targetG: proteinTargetOf(pp),
-    routines: routineTotals[pp.id] ? { proteinG: routineTotals[pp.id]!.protein_g, kcal: routineTotals[pp.id]!.kcal } : null,
-  }));
+  const bars: PersonBar[] = planPeople.map((pp) => {
+    const planned = {
+      id: pp.id,
+      name: pp.name,
+      proteinG: view?.days.find((x) => x.date === focusDate && Number(x.personId) === pp.id)?.proteinG ?? 0,
+      targetG: proteinTargetOf(pp),
+      routines: routineTotals[pp.id] ? { proteinG: routineTotals[pp.id]!.protein_g, kcal: routineTotals[pp.id]!.kcal } : null,
+    };
+    // A member reads only their own log, and a day that has not happened has nothing eaten: both keep the planned bar.
+    if (!canLog || (member.role !== "owner" && pp.id !== member.personId)) return planned;
+    const bar = eatenBar({ personId: pp.id, date: focusDate, today, meals: plannedMeals, rows: logRows.filter((r) => r.personId === pp.id), lookups });
+    return { ...planned, eaten: { eatenG: bar.eaten ? bar.eaten.protein_g : null, pendingG: bar.pendingProteinG } };
+  });
 
   const lastSet = await lastSetup();
   const setup: SetupSummary | undefined = lastSet ? { days: lastSet.days, mealTypes: lastSet.mealTypes.map((m) => SLOT_LABEL[m]?.toLowerCase() ?? m), people: lastSet.personIds.length } : undefined;
@@ -169,12 +213,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const panels: Record<PanelId, ReactNode> = {
     hero: (
       <PhaseCard phase={phase} setup={setup}>
-        {planHasMeals ? <ProteinBars people={bars} caption={isToday ? "Protein planned for today" : `Protein planned for ${formatDay(focusDate).long}`} /> : null}
+        {planHasMeals ? <ProteinBars people={bars} caption={canLog ? (isToday ? "Protein today" : "Protein yesterday") : isToday ? "Protein planned for today" : `Protein planned for ${formatDay(focusDate).long}`} /> : null}
       </PhaseCard>
     ),
     morning: <MorningRoutines key={`${person.id}-${today}-${part === "morning"}`} date={today} personId={person.id} items={routineItems} chosenCount={chosenCount} defaultOpen={part === "morning"} />,
     grocery: grocery ? <GroceryStatusCard progress={grocery} shopBy={shopBy} today={today} /> : null,
-    meals: planHasMeals ? <MealsToday title={isToday ? "Today's meals" : `Meals on ${formatDay(focusDate).long}`} meals={meals} planId={view?.id} /> : null,
+    meals: planHasMeals ? <MealsToday title={isToday ? "Today's meals" : `Meals on ${formatDay(focusDate).long}`} meals={meals} planId={view?.id} log={dayLog} /> : null,
     tonight: view ? <TonightCard tonight={grouped.tonight.map(toView)} overdue={grouped.overdue.map(toView)} preview={preview} today={today} /> : null,
     basics: <DailyBasics key={`${person.id}-${part === "morning"}`} date={today} personId={person.id} habits={habits} defaultOpen={part === "morning"} />,
     snack: <SnackNow snacks={snacks} />,
@@ -195,18 +239,30 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   };
 
   const render = (ids: PanelId[]) => ids.map((id) => (panels[id] ? <div key={id}>{panels[id]}</div> : null));
+  // Before a plan starts, or after it ends, food is still logged: show it on its own when the meals panel is not on the page.
+  const logOnly = !planHasMeals && (myViews.length > 0 || viewingYesterday)
+    ? <MealsToday title={isToday ? "Eaten today" : "Eaten yesterday"} meals={[]} planId={undefined} log={dayLog} />
+    : null;
+  const dayHref = (date?: string) => `/?${new URLSearchParams({ ...(p ? { p } : {}), ...(date ? { d: date } : {}) }).toString()}`;
 
   return (
-    <>
-      <PageTitle title="Today" sub={`${formatDay(today).long}. ${person.name}: ${proteinTargetOf(person)} g protein a day`} action={<LinkButton href="/plan/new" variant={phase.kind === "no-plan" ? "secondary" : "primary"}>New plan</LinkButton>} />
-      <PersonSwitch people={people.filter((x) => member.role === "owner" || x.id === member.personId).map((x) => ({ id: x.id, name: x.name }))} activeId={person.id} />
+    <FoodLogProvider>
+      <PageTitle title="Today" sub={`${formatDay(today).long}. ${person.name}: ${proteinTargetOf(person)} g protein a day`} action={(
+        <div className="flex flex-wrap justify-end gap-2">
+          <AddFoodButton label="Add food" people={chipPeople} personId={person.id} today={today} yesterday={yesterday} isOwner={member.role === "owner"} {...(viewingYesterday ? { date: yesterday } : {})} />
+          <LinkButton href="/plan/new" variant={phase.kind === "no-plan" ? "secondary" : "primary"}>New plan</LinkButton>
+        </div>
+      )} />
+      <PersonSwitch people={chipPeople} activeId={person.id} />
+      <DaySwitch viewingYesterday={viewingYesterday} yesterdayHref={dayHref(yesterday)} todayHref={dayHref()} />
       <div className="space-y-4 px-4 pb-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="space-y-4">
           {strip ? <NextSteps planId={strip.planId} milestones={strip.milestones} /> : null}
           {render(layout.main)}
+          {logOnly}
         </div>
         <aside aria-label="Shopping, basics and snacks" className="space-y-4">{render(layout.side)}</aside>
       </div>
-    </>
+    </FoodLogProvider>
   );
 }

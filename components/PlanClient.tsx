@@ -22,6 +22,7 @@ import { portionText } from "@/lib/nutrition/portion";
 import type { PlanExport } from "@/lib/export/model";
 import type { ServingUnit } from "@/lib/schemas";
 import dynamic from "next/dynamic";
+import { PlanEatenCard, type PlanEatenData } from "@/components/foods-log/PlanEatenCard";
 
 export interface PlanSlotView {
   id: number;
@@ -85,6 +86,8 @@ export interface PlanProps {
   routines?: PlanRoutineRow[];
   /** Which of the three after-plan steps are done. */
   milestones?: PlanMilestones;
+  /** Eaten against planned, from the food log. Absent for a plan drafted on the device. */
+  eaten?: PlanEatenData;
 }
 
 const SheetView = dynamic(() => import("./SheetView").then((m) => m.SheetView), { ssr: false, loading: () => <p className="px-4 pt-4 text-sm text-muted">Loading the spreadsheet...</p> });
@@ -266,6 +269,8 @@ export function PlanClient(p: PlanProps) {
                 );
               })}
             </Card>
+
+            {p.eaten && p.eaten.summaries.length ? <PlanEatenCard day={current.iso} data={p.eaten} showNames={p.eaten.summaries.length > 1} /> : null}
 
             {gaps.length ? (
               <Banner tone="warn" title={gaps.map((g) => `${g.person.name} is ${g.gap} g under target`).join(". ") + "."}>

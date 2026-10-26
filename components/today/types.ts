@@ -38,4 +38,11 @@ export interface MealView {
   leftover: boolean;
   image: string | null;
   thumbs: string[];
+  /** Whether the person has answered this planned meal, set only for a signed-in person's own day. */
+  log?: {
+    status: "pending" | "eaten" | "swapped" | "skipped";
+    entryUid: string | null;
+    answerLabel: string | null;
+    locked: boolean;
+  };
 }
