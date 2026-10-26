@@ -56,7 +56,12 @@ const env: NodeJS.ProcessEnv = {
   STATE_GITHUB_REPOSITORY_ID: String(state.repositoryId), STATE_GITHUB_OWNER: state.owner,
   STATE_GITHUB_REPOSITORY: state.repository, STATE_GITHUB_BRANCH: state.branch, STATE_GITHUB_PRIVATE_KEY: state.privateKey,
   STATE_SYNC_TEST_GITHUB_URL: fixture.endpoint, STATE_SYNC_SCHEDULER_SECRET: controlSecret,
+  // The browser member (tests/e2e/member-fixture.ts) is the only library photo curator; other accounts are not.
+  PHOTO_CURATOR_EMAILS: "authorized-browser-fixture@example.test",
 };
+// The fixture directory replaces Wikimedia/Openverse only here: loopback protein_kitchen_e2e (checked by e2eTarget above),
+// development environment, not Vercel. lib/photos/remote-seam.ts checks the same conditions again and throws otherwise.
+env.PHOTO_REMOTE_TEST_DIR = path.resolve("tests/fixtures/photos");
 delete env.VERCEL_ENV;
 delete env.VERCEL;
 const child = spawn("pnpm", ["dev", "--hostname", "127.0.0.1", "--port", port], { env, stdio: "inherit" });
