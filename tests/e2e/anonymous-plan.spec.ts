@@ -83,8 +83,8 @@ test("anonymous plan: generate, swap, save, sign up by code, and the same meals 
   const sheet = page.getByRole("dialog", { name: "Swap meal" });
   await sheet.getByRole("button", { name: "Pick this" }).first().click();
   await expect(page.getByText(/^Swapped to /)).toBeVisible();
-  const after = await firstMeal.innerText();
-  expect(after).not.toBe(before);
+  // The notice and the list update in separate renders, so wait for the list rather than reading it once.
+  await expect(firstMeal).not.toHaveText(before);
   await page.getByRole("button", { name: "Lock", exact: true }).nth(1).click();
   await expect(page.getByRole("button", { name: "Locked", exact: true })).toHaveCount(1);
   expect(writes).toEqual([]);

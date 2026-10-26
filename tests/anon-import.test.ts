@@ -103,6 +103,28 @@ describe("importAnonymousDraft", () => {
     expect(stored.get(key(draft.slots[0]!))!.slug).not.toBe(draft.slots[0]!.recipeSlug);
   });
 
+  it("keeps a leftover lunch of a dinner-only recipe even when the server built different dinners (smaller device target)", async () => {
+    const lib = hydrateAnonLibrary(JSON.parse(anonLibrary(data).body));
+    const lowProfile = AnonProfileSchema.parse({ protein: { mode: "fixed", grams: 60 } });
+    const key = (x: { date: string; slot: string }) => `${x.date}|${x.slot}`;
+    let leftoversSeen = 0;
+    for (let seed = 1; seed <= 25; seed++) {
+      const generated = generateAnonPlan({
+        setup: { ...setup, mealTypes: ["breakfast", "lunch", "dinner", "snack"], prepStyle: "leftovers" } as typeof setup, profile: lowProfile, library: lib, seed, now,
+      });
+      if (!generated.ok) throw new Error(generated.error);
+      const draft = generated.draft;
+      leftoversSeen += draft.slots.filter((x) => x.isLeftover).length;
+      const result = await importAnonymousDraft(draft);
+      if (!result.ok) throw new Error(result.error);
+      const rows = await h.db.select({ date: s.planSlots.date, slot: s.planSlots.slot, slug: s.recipes.slug, locked: s.planSlots.locked })
+        .from(s.planSlots).innerJoin(s.recipes, eq(s.recipes.id, s.planSlots.recipeId)).where(eq(s.planSlots.planId, result.planId));
+      expect(new Map(rows.map((r) => [key(r), `${r.slug}|${r.locked}`])), `seed ${seed}`)
+        .toEqual(new Map(draft.slots.map((d) => [key(d), `${d.recipeSlug}|${d.locked}`])));
+    }
+    expect(leftoversSeen).toBeGreaterThan(0);
+  });
+
   it("refuses a device swap to a recipe the household banned, a shake in a meal slot or an avoided ingredient", async () => {
     const draft = makeDraft();
     const lib = hydrateAnonLibrary(JSON.parse(anonLibrary(data).body));

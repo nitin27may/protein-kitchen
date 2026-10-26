@@ -29,17 +29,33 @@ function applyDraftChoices(draft: AnonDraft, built: readonly PlannedSlot[], cand
   const byslug = new Map(candidates.map((c) => [c.slug, c]));
   const chosen = new Map(draft.slots.map((d) => [`${d.date}|${d.slot}`, d]));
   const shares = slotShares(mealTypes);
-  return built.map((slot) => {
+  const resolved = new Map<string, PlannedSlot>();
+  const put = (slot: PlannedSlot, next: PlannedSlot) => { resolved.set(`${slot.date}|${slot.slot}`, next); return next; };
+  const previousDay = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  // Dinners first, then lunches: a leftover lunch depends on the dinner it repeats, which may itself have been swapped.
+  const order = [...built].sort((a, b) => Number(a.slot === "lunch") - Number(b.slot === "lunch"));
+  order.forEach((slot) => {
     const pick = chosen.get(`${slot.date}|${slot.slot}`);
-    if (!pick) return slot;
-    if (pick.recipeSlug === slot.recipeSlug) return { ...slot, locked: pick.locked };
+    if (!pick) { put(slot, slot); return; }
+    if (pick.recipeSlug === slot.recipeSlug) { put(slot, { ...slot, locked: pick.locked }); return; }
     const candidate = byslug.get(pick.recipeSlug);
-    if (!usableForSlot(candidate, slot.slot, target)) return slot;
-    return {
+    // A leftover is eaten again, not cooked, so it need not suit the slot: it only has to repeat last night's dinner
+    // as it stands in the final plan and respect dislikes and bans (the generator's own leftover rule).
+    const dinner = pick.isLeftover && slot.slot === "lunch" ? resolved.get(`${previousDay(slot.date)}|dinner`) : undefined;
+    if (dinner && candidate && dinner.recipeSlug === candidate.slug && !candidate.banned && ![...target.avoided].some((a) => candidate.ingredients.has(a))) {
+      put(slot, {
+        ...slot, recipeSlug: candidate.slug, locked: pick.locked, isLeftover: true,
+        servings: portionsFor(candidate, [target], shares[slot.slot] ?? 0.25), reasons: ["leftover from last night, no cooking"],
+      });
+      return;
+    }
+    if (!usableForSlot(candidate, slot.slot, target)) { put(slot, slot); return; }
+    put(slot, {
       ...slot, recipeSlug: candidate.slug, locked: pick.locked, isLeftover: false,
       servings: portionsFor(candidate, [target], shares[slot.slot] ?? 0.25), reasons: ["chosen by you before signing up"],
-    };
+    });
   });
+  return built.map((slot) => resolved.get(`${slot.date}|${slot.slot}`) ?? slot);
 }
 
 /**

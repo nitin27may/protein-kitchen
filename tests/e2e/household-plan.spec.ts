@@ -423,6 +423,8 @@ test("private photo upload, reload and deletion preserve actual WebP bytes and r
     name: "synthetic-meal.jpg", mimeType: "image/jpeg",
     buffer: await sharp({ create: { width: 900, height: 600, channels: 3, background: "#c87828" } }).jpeg().toBuffer(),
   };
+  // The picker has no handler until the page hydrates; it is disabled until then, so wait for it.
+  await expect(photos.getByRole("button", { name: "Add a photo", exact: true })).toBeEnabled();
   await page.route("**/recipes/tofu-burrito-bowl", (route) => route.request().method() === "POST" ? route.abort("failed") : route.continue());
   await photos.locator('input[type="file"]').setInputFiles(file);
   await expect(photos.getByRole("alert")).toContainText("could not be uploaded");
