@@ -10,6 +10,7 @@ import { readSqliteSnapshot } from "../../lib/db/sqlite-snapshot";
 import { restoreSqliteSnapshot } from "../../lib/human/sqlite-restore";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
 import { createSqliteSource } from "../helpers/sqlite-source";
+import { seedLibraryPhoto } from "./library-photo-fixture";
 import { e2eTarget } from "./target";
 
 export async function prepareBrowserDatabase() {
@@ -21,6 +22,7 @@ export async function prepareBrowserDatabase() {
     await restoreSqliteSnapshot(handle.db, readSqliteSnapshot(source.file));
     const data = loadData(process.cwd());
     await seedDatabase(handle.db, data);
+    await seedLibraryPhoto(handle.db);
     const recipe = [...data.recipes.values()].find((r) => r.kind === "recipe" && r.meal_slots.includes("dinner") && r.advance_prep.some((p) => p.lead_hours >= 4));
     if (!recipe) throw new Error("Browser fixture requires a dinner recipe with night-before prep.");
     const rows = await handle.db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes);

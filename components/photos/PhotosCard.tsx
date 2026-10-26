@@ -8,7 +8,7 @@ import { Banner, Button } from "@/components/ui";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import type { PhotoView } from "@/lib/server/photo-index";
 
-/** Your photos of this recipe: the cover first, with set-cover and remove, and an Add button. */
+/** Photos of this recipe: your own with set-cover and remove, then the shared library photos, which only a curator can change. */
 export function PhotosCard({ recipeSlug, photos }: { recipeSlug: string; photos: PhotoView[] }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -44,9 +44,9 @@ export function PhotosCard({ recipeSlug, photos }: { recipeSlug: string; photos:
             <div className="space-y-1 p-2">
               <p className="text-xs text-muted">
                 {p.isCover ? <strong className="font-semibold text-fg">Cover. </strong> : null}
-                {p.origin === "upload" ? "Your photo" : `${p.author ?? "Unknown author"}, ${p.licence ?? "licence not recorded"}`}
+                {p.origin === "upload" ? "Your photo" : p.scope === "library" ? `Shared photo, ${p.author ?? "unknown author"}, ${p.licence ?? "licence not recorded"}` : `${p.author ?? "Unknown author"}, ${p.licence ?? "licence not recorded"}`}
               </p>
-              {confirm === p.uid ? (
+              {p.scope === "library" ? null : confirm === p.uid ? (
                 <div className="flex gap-2">
                   <Button variant="danger" size="sm" disabled={pending || !hydrated} onClick={() => run(() => removePhoto(p.uid))}>Delete photo</Button>
                   <Button variant="secondary" size="sm" onClick={() => setConfirm(null)}>Keep</Button>
