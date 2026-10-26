@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { mailDailyCap, parseSignupAllowlist } from "./allowlist";
 
 export class AuthConfigurationError extends Error {
   override name = "AuthConfigurationError";
@@ -22,6 +23,7 @@ export function authConfiguration(env: Readonly<Record<string, string | undefine
   return {
     secret, baseURL: url.origin, bootstrapSecret: env.HOUSEHOLD_BOOTSTRAP_SECRET, ownerEmail,
     isVercel: env.VERCEL === "1",
+    mailDailyCap: mailDailyCap(env), signupAllowlist: parseSignupAllowlist(env.SIGNUP_ALLOWLIST),
   };
 }
 

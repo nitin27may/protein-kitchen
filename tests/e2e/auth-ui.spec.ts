@@ -47,6 +47,11 @@ async function setPassword(page: Page, email: string, address: string) {
   });
   expect(reset.status()).toBe(200);
 }
+/** One address runs a long journey here; the mail caps have their own spec (mail-caps.spec.ts), so reset the ledger mid-journey. */
+async function resetMailLedger() {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  try { await handle.db.delete(s.mailSends); } finally { await handle.close(); }
+}
 async function legacyInvitation(email: string, personId?: number) {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   try {
@@ -256,6 +261,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await page.getByLabel("Six-digit email code").fill(await code(owner, "sign-in"));
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page).toHaveURL("http://127.0.0.1:3112/");
+    await resetMailLedger();
     await page.goto("/reset-password");
     await page.getByLabel("Email", { exact: true }).fill(owner);
     await page.getByRole("button", { name: "Email me a code", exact: true }).click();

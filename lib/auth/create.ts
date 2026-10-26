@@ -5,10 +5,11 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP, magicLink } from "better-auth/plugins";
-import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
+import { and, DrizzleQueryError, eq, gt, inArray, isNull } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as schema from "../db/schema";
 import { assertUserCreation } from "./signup";
+import { isAllowlisted, normaliseEmail, type SignupAllowlist } from "./allowlist";
 import { accountDeletion } from "./account-deletion";
 import { accountHasPassword, revokeOtherSessions, takePasswordAttempt, type PasswordOutcome } from "./password";
 
@@ -38,6 +39,8 @@ export interface AuthOptions {
   isVercel: boolean;
   sendCode: (mail: AuthCodeMail) => Promise<void>;
   sendLink: (mail: AuthLinkMail) => Promise<void>;
+  /** Null or absent means open signup. */
+  signupAllowlist?: SignupAllowlist | null;
 }
 
 function passwordFailure(error: unknown): PasswordOutcome {
@@ -109,7 +112,17 @@ export function createAuth(db: Db, options: AuthOptions) {
     },
     databaseHooks: {
       user: { create: { before: async (user, context) => {
-        assertUserCreation(context?.path, user.emailVerified);
+        // Backstop for the mail gate: an address the allowlist and pending associations would not have mailed cannot get an account.
+        let invited = isAllowlisted(options.signupAllowlist ?? null, user.email);
+        if (!invited) {
+          const [pending] = await db.select({ id: schema.householdInvitations.id }).from(schema.householdInvitations).where(and(
+            eq(schema.householdInvitations.email, normaliseEmail(user.email)), isNull(schema.householdInvitations.acceptedAt),
+            isNull(schema.householdInvitations.declinedAt), isNull(schema.householdInvitations.revokedAt),
+            gt(schema.householdInvitations.expiresAt, new Date()),
+          )).limit(1);
+          invited = Boolean(pending);
+        }
+        assertUserCreation(context?.path, user.emailVerified, invited);
         return { data: user };
       } } },
     },

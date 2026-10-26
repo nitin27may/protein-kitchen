@@ -2,6 +2,7 @@ import { getDb } from "../server/context";
 import { authConfiguration } from "./config";
 import { createAuth } from "./create";
 import { resendAuthSender } from "./mail";
+import { limitedSender } from "./mail-limits";
 import { localTestAuthSender } from "./test-mail";
 
 let instance: {
@@ -12,10 +13,12 @@ let instance: {
 async function configuredAuth() {
   if (!instance) {
     const config = authConfiguration(process.env);
-    const sendMail = process.env.AUTH_TEST_MAILBOX
+    const transport = process.env.AUTH_TEST_MAILBOX
       ? localTestAuthSender(process.env) : resendAuthSender(process.env);
+    const db = await getDb();
+    const sendMail = limitedSender(db, { secret: config.secret, dailyCap: config.mailDailyCap, allowlist: config.signupAllowlist }, transport);
     instance = {
-      auth: createAuth(await getDb(), { ...config, sendCode: sendMail, sendLink: sendMail }),
+      auth: createAuth(db, { ...config, sendCode: sendMail, sendLink: sendMail }),
       sendAssociation: (email) => sendMail({
         email, url: new URL("/sign-in", config.baseURL).toString(), type: "household-association",
       }),

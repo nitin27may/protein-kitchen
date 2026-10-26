@@ -4,14 +4,18 @@ import { getDb } from "../lib/server/context";
 import { createAuth } from "../lib/auth/create";
 import { resendAuthSender } from "../lib/auth/mail";
 import { localTestAuthSender } from "../lib/auth/test-mail";
+import { limitedSender } from "../lib/auth/mail-limits";
 
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
 vi.mock("../lib/auth/create", () => ({ createAuth: vi.fn() }));
 vi.mock("../lib/auth/mail", () => ({ resendAuthSender: vi.fn() }));
 vi.mock("../lib/auth/test-mail", () => ({ localTestAuthSender: vi.fn() }));
+vi.mock("../lib/auth/mail-limits", () => ({ limitedSender: vi.fn() }));
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
+  // The limiter is covered in mail-limits.test.ts; here it passes the transport through and records its options.
+  vi.mocked(limitedSender).mockImplementation((_db, _options, send) => send);
   vi.stubEnv("BETTER_AUTH_URL", "https://kitchen.example.test");
   vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-session-secret-for-tests-only");
   vi.stubEnv("AUTH_TEST_MAILBOX", "");
@@ -32,6 +36,7 @@ describe("lazy server auth initialization", () => {
     expect(await getAuth()).toBe(provider);
     await sendHouseholdAssociationNotice("synthetic-recipient@example.test");
     expect(getDb).toHaveBeenCalledOnce();
+    expect(limitedSender).toHaveBeenCalledWith(db, { secret: "synthetic-session-secret-for-tests-only", dailyCap: 60, allowlist: null }, sendCode);
     expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode, sendLink: sendCode, baseURL: "https://kitchen.example.test" }));
     expect(sendCode).toHaveBeenCalledWith({
       email: "synthetic-recipient@example.test",
