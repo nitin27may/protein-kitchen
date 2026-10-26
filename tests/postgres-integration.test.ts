@@ -745,6 +745,17 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
       for (const table of [s.authUsers, s.householdMembers, s.people, s.households, s.authVerifications]) expect(await handle.db.select().from(table)).toEqual([]);
       return;
     }
+    if (operation === "delete-remove" && results.every((r) => r.status === "fulfilled")) {
+      // Order B: the second owner removed themself first, so the first was the sole member and sole owner and their deletion took the household with them.
+      for (const table of [s.householdMembers, s.people, s.households]) expect(await handle.db.select().from(table)).toEqual([]);
+      // Self-removal leaves the second user's login intact; only the deleted first user's auth rows must be gone.
+      expect((await handle.db.select({ id: s.authUsers.id }).from(s.authUsers)).map((row) => row.id)).toEqual(["second"]);
+      for (const table of [s.authSessions, s.authAccounts, s.authVerifications]) {
+        expect((await handle.db.select({ id: table.id }).from(table)).map((row) => row.id).filter((id) => id !== "second")).toEqual([]);
+      }
+      return;
+    }
+    // Order A (and every non-delete-remove case): exactly one request wins and the other is refused because it would leave no verified owner.
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((r) => r.status === "rejected");
     expect(rejected?.status === "rejected" && rejected.reason.message).toContain("at least one verified owner");
