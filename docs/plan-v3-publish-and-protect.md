@@ -1993,3 +1993,20 @@ Group 2 (PRs 14 to 22) is about 95 hours.
 ## Go-live checklist (short)
 
 See "Launch: single production environment" at the top of this document for the full gates. In short: the owner-supplied values are entered and the must-be-absent variables are absent; `main` is protected with the `acceptance` check; the `production` environment requires the owner and `main` only; Preview variables are deleted; Vercel protection is Standard; Neon is on the free plan (6-hour history, so snapshots are the recovery path) and the owner has turned Neon Auth off; the Protected branch and object-storage bucket checks are reported; a `pre-deploy-*` snapshot is taken before each migration and pruned strictly, failing loudly at a free-tier limit; local dev no longer points at the production endpoint; the soft-launch gates (owner only, real email, Safari/iPhone app/Android, hosted smoke, legacy import, restore drill, rollback drill) pass before friends are added; the privacy page has the owner's contact address, processor list and backup retention.
+
+## Shell account state and 320 px header (PR A)
+
+Scope: the app shell tells three states apart (visitor, signed in but profile unfinished, member) through `shellAccount()` in `lib/auth/public-access.ts`. `optionalPageMember` stays as is for page guards.
+
+- Dependencies: `requireMember` throws `AccessDenied` 403 for a session with no profile and 401 for an expired session. No schema or data changes.
+- Permission boundaries: no new access. The setup state only shows "Finish setting up" and "Sign out"; every page guard is unchanged. The member shell is shown only when `requireMember` succeeds.
+- Changes: sidebar and phone header per state; shared `SignOutButton`; Settings gets the colour theme control (members no longer have it in the phone header); "No invitation needed." removed from the sign-in copy.
+
+Acceptance cases:
+
+1. After code sign-up, on `/onboarding` at 1280 px the Account group has "Finish setting up" and "Sign out" and no "Create account" or "Sign in"; at 375 px the header shows "Sign out".
+2. Signing out lands on `/sign-in`, and `/account` then redirects to sign in.
+3. After the profile is saved, the sidebar shows "Your account".
+4. `/sign-in` and `/sign-up` contain no text matching /invitation|household key/i.
+5. Signed in at 320, 375 and 390 px on `/`, `/recipes`, `/groceries`, `/account`, `/settings`: no horizontal overflow (measured against the visual viewport), header at most 56 px, no tap target under 44 px.
+6. `shellAccount` unit cases: no cookie (auth untouched), member, 401, 403, other errors rethrown.

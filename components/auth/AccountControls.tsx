@@ -5,6 +5,7 @@ import { useState } from "react";
 import { addHouseholdEmailAssociation, cancelInvitation, changeCookRole, removeCook, resendHouseholdAssociationNotice } from "@/app/onboarding/actions";
 import { authRequest } from "@/lib/auth/browser";
 import { Banner, Button, Field, Input, Select } from "@/components/ui";
+import { SignOutButton } from "./SignOutButton";
 import { EmailAssociationPrompt } from "./EmailAssociationPrompt";
 
 export function AccountControls({ owner, invitations, incomingAssociations, members, currentUserId }: {
@@ -35,10 +36,7 @@ export function AccountControls({ owner, invitations, incomingAssociations, memb
     {error ? <Banner tone="bad">{error}</Banner> : null}
     {notice ? <Banner>{notice}</Banner> : null}
     <EmailAssociationPrompt associations={incomingAssociations} />
-    <Button variant="secondary" disabled={pending} onClick={() => void run(async () => {
-      await authRequest("/sign-out", {});
-      window.location.replace("/sign-in");
-    })}>Sign out</Button>
+    <SignOutButton disabled={pending} />
     <section className="space-y-3">
       <h2 className="text-xl font-semibold">Download your account</h2>
       <p className="text-sm text-muted">Includes your account details, private meal profile, preferences, routines, ratings and favourites. Keep the file private. This is not a backup of the household's shared plans or photos.</p>

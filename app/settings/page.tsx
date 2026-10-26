@@ -1,6 +1,7 @@
 import { requirePageMember } from "@/lib/auth/access";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsClient } from "@/components/SettingsClient";
 import { PageTitle } from "@/components/ui";
 import { getResetCounts } from "@/lib/server/queries";
@@ -32,6 +33,11 @@ export default async function SettingsPage() {
           </div>
           <p className="mt-1 text-sm text-muted">Approve or reject candidate photos for recipes and ingredients. {counts.photos} {counts.photos === 1 ? "photo" : "photos"} kept.</p>
         </Link>
+        <section className="space-y-2 rounded-card border border-line bg-surface p-4">
+          <h2 className="text-lg font-semibold">Colour theme</h2>
+          <p className="text-sm text-muted">Auto follows your device.</p>
+          <div className="max-w-sm"><ThemeToggle variant="segmented" /></div>
+        </section>
         {sync ? <StateSyncControls settings={sync} /> : null}
         <SettingsClient counts={counts} />
       </div>
