@@ -78,7 +78,7 @@ export function AuthScreen({ initial, next = "/", invite, emailLinkError = false
   return (
     <section className={embedded ? "space-y-4 p-4" : "mx-auto max-w-lg space-y-5 px-4 pb-28 pt-8"}>
       {embedded ? null : <h1 className="text-2xl font-bold">{titles[stage]}</h1>}
-      <p className="text-muted">{embedded ? "Enter your email and we will send you a six-digit code. New here? It creates your account and your kitchen, and your work on this device comes with you." : stage === "code" || stage === "link" ? `Enter your email and we will send you a ${stage === "code" ? "six-digit code" : "sign-in link"}. New here? It also creates your account and your kitchen. No invitation needed.` : "Separate accounts, one shared meal plan and shopping list. Your meal profile keeps your own targets."}</p>
+      <p className="text-muted">{embedded ? "Enter your email and we will send you a six-digit code. New here? It creates your account and your kitchen, and your work on this device comes with you." : stage === "code" || stage === "link" ? `Enter your email and we will send you a ${stage === "code" ? "six-digit code" : "sign-in link"}. New here? It also creates your account and your kitchen.` : "Separate accounts, one shared meal plan and shopping list. Your meal profile keeps your own targets."}</p>
       {error ? <Banner tone="bad">{error}</Banner> : null}
       {notice ? <Banner>{notice}</Banner> : null}
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void run(submit); }}>

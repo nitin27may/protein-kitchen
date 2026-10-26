@@ -44,7 +44,7 @@ export function ThemeToggle({ variant = "button" }: { variant?: "button" | "segm
       <div role="radiogroup" aria-label="Colour theme" className="grid grid-cols-3 gap-1 rounded-control border border-line bg-surface2 p-1">
         {ORDER.map((m) => (
           <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => choose(m)}
-            className={`min-h-9 rounded-[0.5rem] text-sm font-semibold ${mode === m ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-fg"}`}>
+            className={`min-h-11 rounded-[0.5rem] lg:min-h-9 text-sm font-semibold ${mode === m ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-fg"}`}>
             {LABEL[m]}
           </button>
         ))}

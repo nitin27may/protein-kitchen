@@ -1,22 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { noHorizontalScroll, smallTargets } from "./layout";
 
 const SHELL_PAGES = ["/", "/recipes", "/ingredients", "/recipes/tofu-burrito-bowl", "/ingredients/tofu-extra-firm", "/groceries", "/profiles", "/plan"];
-
-async function noHorizontalScroll(page: Page) {
-  // On a mobile viewport innerWidth grows with the content, so it cannot detect overflow; the visual viewport can.
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
-}
-
-/** Visible links and buttons in the shell and the page header area that are shorter than a 44 px tap target. */
-async function smallTargets(page: Page, selector: string) {
-  return page.locator(selector).evaluateAll((els) =>
-    els.flatMap((el) => {
-      const box = el.getBoundingClientRect();
-      const style = getComputedStyle(el);
-      if (box.width === 0 || style.visibility === "hidden" || style.display === "none") return [];
-      return box.height < 43.5 ? [`${el.tagName} "${(el.textContent ?? "").trim().slice(0, 40)}" ${Math.round(box.height)}px`] : [];
-    }));
-}
 
 test("a visitor gets the member shell on desktop, with an account slot and the same library pages", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });

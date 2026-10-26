@@ -52,7 +52,7 @@ export function SettingsClient({ counts }: { counts: ResetCounts }) {
       </div>
       {msg ? <Banner tone={msg.tone}>{msg.text}</Banner> : null}
 
-      <ul className="grid items-start gap-3 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
         {OPTIONS.map((o) => {
           const isOpen = open === o.scope;
           const ready = !o.typed || typed.trim() === "RESET";
@@ -74,12 +74,12 @@ export function SettingsClient({ counts }: { counts: ResetCounts }) {
                     </Field>
                   ) : null}
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="danger" disabled={!ready} loading={pending} onClick={() => run(o)}>{pending ? "Resetting" : `Reset ${o.title.toLowerCase()}`}</Button>
+                    <Button variant="danger" className="max-w-full whitespace-normal! text-center" disabled={!ready} loading={pending} onClick={() => run(o)}>{pending ? "Resetting" : `Reset ${o.title.toLowerCase()}`}</Button>
                     <Button variant="secondary" disabled={pending} onClick={() => { setOpen(null); setTyped(""); }}>Cancel</Button>
                   </div>
                 </div>
               ) : (
-                <Button variant="danger" className="mt-3" onClick={() => { setOpen(o.scope); setTyped(""); setMsg(null); }}>Reset {o.title.toLowerCase()}</Button>
+                <Button variant="danger" className="mt-3 max-w-full whitespace-normal! text-center" onClick={() => { setOpen(o.scope); setTyped(""); setMsg(null); }}>Reset {o.title.toLowerCase()}</Button>
               )}
             </li>
           );

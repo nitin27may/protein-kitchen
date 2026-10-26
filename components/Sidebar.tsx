@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { SignOutButton } from "./auth/SignOutButton";
 
 function icon(d: string): ReactNode {
   return (
@@ -43,8 +44,17 @@ function NavLink({ l, active }: { l: { href: string; label: string; icon: ReactN
   );
 }
 
+/** Phone header shortcut; the label lives in aria-label so the icon button stays 44 px wide. */
+export function HeaderSettingsLink() {
+  return (
+    <Link href="/settings" aria-label="Settings" className="flex size-11 items-center justify-center rounded-control text-muted hover:bg-surface2">
+      {NAV_ICONS.settings}
+    </Link>
+  );
+}
+
 /** Desktop navigation rail. Phones use the header and bottom bar instead. */
-export function Sidebar({ signedIn }: { signedIn: boolean }) {
+export function Sidebar({ account }: { account: "visitor" | "setup" | "member" }) {
   const path = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
@@ -53,11 +63,16 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
         {links.map((l) => <NavLink key={l.href} l={l} active={l.match(path)} />)}
       </nav>
       <div className="space-y-2 border-t border-line p-3">
-        {signedIn ? (
+        {account === "member" ? (
           <>
             <Link href="/account" className="flex min-h-11 items-center rounded-control px-3 font-semibold text-primary">Your account</Link>
             <NavLink l={settings} active={settings.match(path)} />
           </>
+        ) : account === "setup" ? (
+          <div aria-label="Account" role="group" className="space-y-2">
+            <Link href="/onboarding" className="flex min-h-11 items-center justify-center rounded-control bg-primary px-3 font-semibold text-primaryfg hover:opacity-90">Finish setting up</Link>
+            <SignOutButton className="w-full" />
+          </div>
         ) : (
           <div aria-label="Account" role="group" className="space-y-2">
             <Link href="/sign-up" className="flex min-h-11 items-center justify-center rounded-control bg-primary px-3 font-semibold text-primaryfg hover:opacity-90">Create account</Link>
@@ -65,7 +80,7 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
           </div>
         )}
         <ThemeToggle variant="segmented" />
-        {signedIn ? (
+        {account === "member" ? (
           <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
             <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link>
             <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link>

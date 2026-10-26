@@ -5,6 +5,7 @@ import { z } from "zod";
 import { testMailPath } from "../../lib/auth/test-mail";
 import { openPostgres } from "../../lib/db/postgres/client";
 import * as s from "../../lib/db/schema";
+import { noHorizontalScroll, smallTargets } from "./layout";
 import { e2eTarget } from "./target";
 
 /**
@@ -208,16 +209,6 @@ test("draft page explains an expired or damaged plan and offers a restart", asyn
   await page.reload();
   await expect(page.getByTestId("draft-state")).toContainText("older version");
 });
-
-async function smallTargets(page: Page, selector: string) {
-  return page.locator(selector).evaluateAll((els) => els.flatMap((el) => {
-    const box = el.getBoundingClientRect();
-    const style = getComputedStyle(el);
-    if (box.width === 0 || style.visibility === "hidden" || style.display === "none" || (el as HTMLInputElement).type === "checkbox") return [];
-    return box.height < 43.5 ? [`${el.tagName} "${(el.textContent ?? "").trim().slice(0, 40)}" ${Math.round(box.height)}px`] : [];
-  }));
-}
-const noHorizontalScroll = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth <= Math.ceil(window.visualViewport?.width ?? window.innerWidth))).toBe(true);
 
 test("at 390 px the setup, draft, groceries and signup sheet fit with 44 px tap targets", async ({ page }) => {
   test.setTimeout(180_000);
