@@ -50,9 +50,9 @@ export interface ProfileRoutines {
   chosen: PersonRoutineView[];
 }
 
-export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null, saveAction = savePerson, canDelete = false, deviceReminders = false }: {
+export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = null, routines = null, saveAction = savePerson, canDelete = false, deviceReminders = false, disabled = false }: {
   initial: ProfileInitial; nextHref?: string; vapidPublicKey?: string | null; routines?: ProfileRoutines | null;
-  saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>>; canDelete?: boolean; deviceReminders?: boolean;
+  saveAction?: (input: PersonInputData) => Promise<Result<{ id: number }>>; canDelete?: boolean; deviceReminders?: boolean; disabled?: boolean;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -118,7 +118,7 @@ export function ProfileForm({ initial, nextHref = "/profiles", vapidPublicKey = 
 
   return (
     <form onSubmit={submit} className="px-4 pb-28 pt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 lg:pb-10" noValidate>
-      <fieldset disabled={!hydrated} className="contents">
+      <fieldset disabled={!hydrated || disabled} className="contents">
       <div className="space-y-4">
         {error ? <Banner tone="bad" title="Could not save">{error}</Banner> : null}
 

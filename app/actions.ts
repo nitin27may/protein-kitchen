@@ -301,6 +301,9 @@ export async function replayPendingIntent(intent: unknown, draft?: unknown): Pro
       return importDraftCore(draftParsed.data);
     },
     favourite: (slug) => setRecipeFeedback(slug, { favourite: true }),
+    rate: (slug, value) => setRecipeFeedback(slug, { rating: value }),
+    ban: (slug) => setRecipeFeedback(slug, { banned: true }),
+    tested: (slug) => setRecipeFeedback(slug, { tested: true }),
   }, draft);
   return { ok: true, replay };
 }
