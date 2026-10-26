@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import * as s from "@/lib/db/schema";
 import { PageTitle } from "@/components/ui";
+import { photoReviewEnabled } from "@/lib/photos/review-flag";
 import { needsCredit } from "@/lib/photos/candidates";
 import { getData, getDb } from "@/lib/server/context";
 import { displayName } from "@/lib/schemas";
@@ -58,7 +59,7 @@ export default async function CreditsPage() {
   return (
     <>
       <PageTitle title="Photo credits" sub="Photos you approved from Wikimedia Commons and Openverse. Your own photos are not listed." />
-      <p className="px-4 pb-4 text-sm lg:px-2"><Link href="/photos/review" className="inline-flex min-h-11 items-center font-semibold text-primary underline">Review more photos</Link></p>
+      {photoReviewEnabled() ? <p className="px-4 pb-4 text-sm lg:px-2"><Link href="/photos/review" className="inline-flex min-h-11 items-center font-semibold text-primary underline">Review more photos</Link></p> : null}
       {section(`Recipes (${recipes.length})`, recipes)}
       {section(`Ingredients (${ingredients.length})`, ingredients)}
     </>

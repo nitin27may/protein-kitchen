@@ -392,6 +392,7 @@ test("Excel and PDF exports return actual file payloads", async ({ request }) =>
 });
 
 test("photo rejection persists, and a failed request displays an error then allows retry", async ({ page }) => {
+  test.skip(process.env.PHOTO_REVIEW_ENABLED === "false", "Candidate review is switched off");
   await page.goto("/photos/review");
   const reject = page.getByRole("button", { name: "Reject", exact: true });
   const count = await reject.count();

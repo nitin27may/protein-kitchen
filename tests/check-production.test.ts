@@ -90,6 +90,7 @@ describe("configuration", () => {
     ["state sync enabled", { STATE_SYNC_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["reminders enabled", { REMINDER_SCHEDULER_ENABLED: "1" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["vault enabled", { VAULT_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review enabled", { PHOTO_REVIEW_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
   ];
   it.each(failing)("fails on %s", (_name, change, check, code) => {
     const results = track(checkConfiguration({ ...env, ...change }));
@@ -97,7 +98,7 @@ describe("configuration", () => {
   });
 
   it("accepts flags explicitly set to false", () => {
-    const results = checkConfiguration({ ...env, STATE_SYNC_ENABLED: "false", REMINDER_SCHEDULER_ENABLED: "false", VAULT_ENABLED: "false" });
+    const results = checkConfiguration({ ...env, STATE_SYNC_ENABLED: "false", REMINDER_SCHEDULER_ENABLED: "false", VAULT_ENABLED: "false", PHOTO_REVIEW_ENABLED: "false" });
     expect(results.every((r) => r.severity === "ok")).toBe(true);
   });
 });
