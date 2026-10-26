@@ -186,6 +186,7 @@ Set in `.env.local` (git-ignored). Never commit it.
 | `REMINDER_SCHEDULER_ENABLED` | Explicit `true` enables the reminder HTTP scheduler; default off, always off in preview |
 | `REMINDER_SCHEDULER_SECRET` | Distinct random 32-128-character URL-safe bearer credential; server/scheduler only |
 | `APP_TZ` | Shared plan time zone and fallback reminder clock; each profile may choose its own IANA reminder timezone. Default `America/Toronto` |
+| `PRIVACY_CONTACT_EMAIL` | Contact address shown on `/privacy`. Plain variable, required in production (the deployment check fails without it); the owner supplies the value. Unset elsewhere shows "Contact address not set yet." |
 | `DATABASE_URL` | Pooled application Postgres connection; mandatory, with no SQLite fallback |
 | `DATABASE_ENV` | Explicit database environment; must match `NODE_ENV` or `VERCEL_ENV` |
 | `DATABASE_NONPRODUCTION_HOST` | Exact remote non-production endpoint host; additionally checked against live Neon metadata |

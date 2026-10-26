@@ -500,6 +500,7 @@ const RUNTIME_SECRETS = [
 const RUNTIME_PLAIN = [
   "DATABASE_ENV", "DATABASE_PRODUCTION_HOST", "NEON_PROJECT_ID", "NEON_PRODUCTION_BRANCH_ID", "BETTER_AUTH_URL",
   "AUTH_EMAIL_FROM", "BLOB_STORE", "BLOB_BUCKET", "AWS_ENDPOINT_URL_S3", "AWS_REGION", "APP_TZ", "MAIL_DAILY_CAP",
+  "PRIVACY_CONTACT_EMAIL",
 ] as const;
 
 /** Plain runtime value to compare with the GitHub-side value (the job environment). */
