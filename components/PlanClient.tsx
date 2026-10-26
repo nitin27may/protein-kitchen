@@ -9,6 +9,7 @@ import { deletePlan, enableShake, getSwapOptions, regeneratePlan, setPortion, sw
 import type { SwapOption } from "@/app/actions";
 import { RecipeThumb } from "@/components/RecipeThumb";
 import { announcePlanStep, NextSteps } from "@/components/plan/NextSteps";
+import { FridgeSchedule } from "@/components/FridgeSchedule";
 import { PlanRoutinesCard } from "@/components/routines/PlanRoutinesCard";
 import type { PlanMilestones } from "@/lib/planner/feasibility-types";
 import type { PlanRoutineRow } from "@/lib/routines/view";
@@ -170,6 +171,7 @@ export function PlanClient(p: PlanProps) {
         <Button variant="secondary" loading={pending} onClick={() => run(() => regeneratePlan(p.planId), "New plan made. Locked meals were kept.")}>Regenerate</Button>
         <LinkButton href="/plan/new" variant="secondary">New plan</LinkButton>
       </div>
+      <FridgeSchedule planId={p.planId} people={p.people.map((x) => ({ id: x.id, name: x.name }))} />
       <div className="border-t border-line pt-3">
         {confirmDelete ? (
           <div className="space-y-2" role="alertdialog" aria-label="Confirm delete plan">

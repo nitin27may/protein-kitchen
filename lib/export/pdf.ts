@@ -9,7 +9,7 @@ const SOFT = "#dcf0f3";
 const MUTED = "#55666f";
 
 let fontsReady = false;
-function ensureFonts(): void {
+export function ensureFonts(): void {
   if (fontsReady) return;
   const dir = path.join(path.dirname(createRequire(path.join(process.cwd(), "package.json")).resolve("pdfmake/package.json")), "build", "fonts", "Roboto");
   pdfmake.setUrlAccessPolicy(() => false);
