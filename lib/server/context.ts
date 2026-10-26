@@ -49,3 +49,9 @@ export async function getDb(): Promise<Db> {
   await ready(c);
   return c.handle!.db;
 }
+
+/** Pool without the library-version gate, for the health probe only, which reports the version state itself. */
+export async function getHealthDb(): Promise<Db> {
+  const c = ctx();
+  return (c.handle ??= await openDb()).db;
+}

@@ -100,7 +100,14 @@ describe("application authorization inventory", () => {
     expect(exports.map((node) => node.name?.getText())).toEqual(["GET"]);
     expect(text).not.toMatch(/getDb|requireMember|routeAccess|headers\(|cookies\(|request/i);
   });
-  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts" && file !== "app/api/anon-library/route.ts")) {
+  it("the health route is public, GET-only, and reads neither a session nor request data", () => {
+    const text = readFileSync("app/api/health/route.ts", "utf8");
+    const exports = source("app/api/health/route.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(exports.map((node) => node.name?.getText())).toEqual(["GET"]);
+    expect(exports[0]!.parameters).toHaveLength(0);
+    expect(text).not.toMatch(/routeAccess|requireMember|getDb\b|headers\(|cookies\(|request/i);
+  });
+  for (const file of files.filter((file) => file.endsWith("/route.ts") && file !== "app/api/auth/[...all]/route.ts" && file !== "app/api/anon-library/route.ts" && file !== "app/api/health/route.ts")) {
     const statements = source(file).statements;
     it(`${file} uses explicit, reviewable HTTP handler declarations`, () => {
       const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
