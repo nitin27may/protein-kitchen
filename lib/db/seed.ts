@@ -186,6 +186,8 @@ export async function seedDatabase(db: Db, data: DataSet, options: { initializeF
     const version = libraryVersion(data);
     await tx.insert(s.libraryState).values({ key: "library", version })
       .onConflictDoUpdate({ target: s.libraryState.key, set: { version } });
+    // Same transaction as the library rows: the history never names a version whose content is not in the database.
+    await tx.insert(s.libraryVersions).values({ version }).onConflictDoNothing();
     const staleIngredients = [...ingId.keys()].filter((slug) => !data.ingredients.has(slug));
     const staleRecipes = [...recId.keys()].filter((slug) => !data.recipes.has(slug));
     return {

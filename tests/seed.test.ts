@@ -1,6 +1,6 @@
 import path from "node:path";
 import { count, eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { loadData } from "../lib/data/load";
 import type { DataSet } from "../lib/data/load";
 import { openDb } from "./helpers/db";
@@ -108,5 +108,70 @@ describe("seedDatabase", () => {
     expect(await handle.db.select({ name: s.recipes.name }).from(s.recipes).where(eq(s.recipes.slug, slug))).toEqual([{ name: recipe.name }]);
     await verifyLibraryVersion(handle.db, data);
     await handle.dropFailure("recipe_steps", "fail_seed");
+  });
+});
+
+describe("library compatibility window", () => {
+  const variant = (n: number): DataSet => {
+    const recipes = new Map(data.recipes);
+    const [slug, recipe] = [...recipes][0]!;
+    recipes.set(slug, { ...recipe, name: `${recipe.name} v${n}` });
+    return { ...data, recipes };
+  };
+
+  it("adds the seeded version to the history in the same transaction, and rolls it back with the seed", async () => {
+    const h = await openDb();
+    try {
+      await seedDatabase(h.db, data, { initializeFeedback: false });
+      expect((await h.db.select().from(s.libraryVersions)).map((r) => r.version)).toEqual([libraryVersion(data)]);
+      await h.failWrite("recipe_steps", "insert", "fail_seed");
+      await expect(seedDatabase(h.db, variant(1), { initializeFeedback: false })).rejects.toThrow();
+      expect((await h.db.select().from(s.libraryVersions)).map((r) => r.version)).toEqual([libraryVersion(data)]);
+    } finally { await h.close(); }
+  });
+
+  it("accepts an older build after a newer seed with one value-free warning, and still refuses unknown versions", async () => {
+    const h = await openDb();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await seedDatabase(h.db, data, { initializeFeedback: false });
+      await seedDatabase(h.db, variant(1), { initializeFeedback: false });
+      await verifyLibraryVersion(h.db, variant(1));
+      expect(warn).not.toHaveBeenCalled();
+      await verifyLibraryVersion(h.db, data);
+      expect(warn).toHaveBeenCalledOnce();
+      expect(String(warn.mock.calls[0]![0])).not.toContain(libraryVersion(data));
+      await expect(verifyLibraryVersion(h.db, variant(99))).rejects.toThrow("out of date");
+    } finally { warn.mockRestore(); await h.close(); }
+  });
+
+  it("only trusts the last 10 seeded versions", async () => {
+    const h = await openDb();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await seedDatabase(h.db, data, { initializeFeedback: false });
+      // History rows are append-only facts; ten later seeds push the first version out of the window.
+      const older = variant(1);
+      await h.db.insert(s.libraryVersions).values({ version: libraryVersion(older), seededAt: new Date(Date.now() - 60_000) });
+      await h.db.insert(s.libraryVersions).values(Array.from({ length: 10 }, (_, n) => ({
+        version: `later-${n}`, seededAt: new Date(Date.now() + (n + 1) * 1000),
+      })));
+      await h.db.update(s.libraryState).set({ version: "later-9" });
+      await expect(verifyLibraryVersion(h.db, data)).rejects.toThrow("out of date");
+      expect(await h.db.select().from(s.libraryVersions)).toHaveLength(12);
+      // Dropping one newer row brings this build back inside the window of ten.
+      await h.db.delete(s.libraryVersions).where(eq(s.libraryVersions.version, "later-0"));
+      await verifyLibraryVersion(h.db, data);
+    } finally { warn.mockRestore(); await h.close(); }
+  });
+
+  it("refuses an empty database", async () => {
+    const h = await openDb();
+    try { await expect(verifyLibraryVersion(h.db, data)).rejects.toThrow("out of date"); } finally { await h.close(); }
+  });
+
+  it("backfills the history from the existing library state in migration 0020", async () => {
+    const sql = (await import("node:fs")).readFileSync("db/postgres-migrations/0020_library_versions.sql", "utf8");
+    expect(sql).toContain('SELECT "version" FROM "library_state"');
   });
 });

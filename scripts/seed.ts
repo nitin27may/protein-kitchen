@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { loadData } from "../lib/data/load";
 import { openVerifiedPostgres } from "../lib/db/postgres/verified-client";
 import { postgresMigrationTarget } from "../lib/db/postgres/migration-target";
+import { shouldInitializeFeedback } from "../lib/db/postgres/seed-target";
 import { seedDatabase } from "../lib/db/seed";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -17,7 +18,7 @@ if (data.issues.length) {
 const handle = await openVerifiedPostgres(target);
 let report;
 try {
-  report = await seedDatabase(handle.db, data, { initializeFeedback: target.databaseEnvironment !== "production" });
+  report = await seedDatabase(handle.db, data, { initializeFeedback: shouldInitializeFeedback(target) });
 } finally {
   await handle.close();
 }

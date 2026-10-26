@@ -1830,3 +1830,25 @@ Group 2 (PRs 14 to 22) is about 95 hours.
 ## Go-live checklist (short)
 
 All of PRs 0 to 21 merged with CI green including the restore round trip; domain and email DNS verified; environment variables set as Sensitive; previews protected; Neon Auth off; final SQLite backup taken and the import verified by counts and checksums; owner signs up and claims the household; one member invited and checked against the role table; IDOR checks by hand; a reminder received on Android and on an installed iPhone app; first state sync and vault backup succeeded; restore drill done into a throwaway branch; the old homelab instance kept read-only for two weeks.
+
+## Stage WP2: release safety
+
+Scope: make a release survivable before launch, expand-only.
+
+- Library compatibility window: append-only `library_versions` (migration 0020, backfilled from `library_state`). `seedDatabase` adds the version in the same transaction. `verifyLibraryVersion` accepts the exact version, or this build's own version while it is among the last 10 seeded (one value-free warning). `db:check:production --phase=pre-deploy` still needs an exact match.
+- Migration hardening: `pnpm db:migrate:postgres` uses one dedicated client, `lock_timeout 5s`, `statement_timeout 120s`, `pg_advisory_lock`, `requireMigrationPrefix` (moved to `lib/db/postgres/migration-ledger.ts`) before writing, and the full schema check afterwards.
+- Seed parity: empty `recipe_feedback` rows only for loopback non-production targets.
+- Forbidden production configuration: `HOUSEHOLD_OWNER_EMAIL` and the credentials of features off at launch (names only). Auth throws when `VERCEL_ENV=production` and the owner email is set. `sqliteImportTarget` refuses `DATABASE_ENV=production`.
+- Policy test: `tests/migration-policy.test.ts` rejects destructive statements in migrations from 0020 onward unless the line carries `-- contract-ok: <reason>`.
+
+Dependencies: none beyond the merged production guards (PR 8). No app behaviour changes; Playwright is not rerun.
+
+Permission boundaries: tests use PGlite or in-memory fakes only; no remote database or service is contacted.
+
+Acceptance:
+
+1. An old build accepts a database seeded by a newer build while within 10 versions; an unknown version, or one older than the window, is refused.
+2. A divergent ledger is refused before any write; two runners serialise on the lock; a lock or statement timeout fails cleanly.
+3. Remote and production seeds create no feedback rows.
+4. The forbidden names fail the production check; owner email in Vercel production throws; production SQLite import is refused.
+5. The policy test fails on a synthetic destructive migration and passes on the current set.
