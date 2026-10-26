@@ -67,6 +67,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Lint
+        run: pnpm lint
+
       - name: Validate data
         run: pnpm validate
 
