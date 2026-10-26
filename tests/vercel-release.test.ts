@@ -162,28 +162,99 @@ describe("release helpers", () => {
     expect(await code(requireReadyProduction(env, "a.vercel.app", { request: fetcher(() => json({})) }))).toBe("VERCEL_INVALID");
   });
 
-  it("waits for the production host to become an assigned alias, then times out", async () => {
-    let calls = 0;
-    const request = fetcher(() => json(deployment(++calls < 3 ? { alias: [] } : { alias: ["app.example.com"], aliasAssigned: 1730000000000 })));
-    const sleep = vi.fn(async () => undefined);
-    await waitForAlias(env, "dpl_Cand1date9", "https://app.example.com", { request, sleep });
-    expect(calls).toBe(3);
-    expect(sleep).toHaveBeenCalledTimes(2);
+  describe("waitForAlias", () => {
+    const origin = "https://app.example.com";
+    const sha = "a".repeat(40);
+    const wait = (request: typeof fetch, extra: Record<string, unknown> = {}) => {
+      let clock = 0;
+      return waitForAlias(env, "dpl_Cand1date9", origin, {
+        request, release: sha, sleep: async (ms) => { clock += ms; }, now: () => clock, intervalMs: 10_000, maxWaitMs: 30_000, ...extra,
+      });
+    };
+    const router = (alias: () => Response, health: () => Response) =>
+      fetcher((url) => (url.origin === VERCEL_API_ORIGIN ? alias() : health()));
 
-    let clock = 0;
-    const never = fetcher(() => json(deployment({ alias: ["other.example.com"], aliasAssigned: 1 })));
-    expect(await code(waitForAlias(env, "dpl_Cand1date9", "https://app.example.com", {
-      request: never, sleep: async (ms) => { clock += ms; }, now: () => clock, intervalMs: 10_000, maxWaitMs: 30_000,
-    }))).toBe("VERCEL_ALIAS_TIMEOUT");
-    expect(await code(waitForAlias(env, "dpl_Cand1date9", "https://app.example.com", {
-      request: fetcher(() => json(deployment({ alias: ["app.example.com"] }))), sleep: async () => undefined, now: () => 1e12, maxWaitMs: 0,
-    }))).toBe("VERCEL_ALIAS_TIMEOUT");
-    expect(await code(waitForAlias(env, "bad", "https://app.example.com"))).toBe("VERCEL_CONFIG");
-    expect(await code(waitForAlias(env, "dpl_Cand1date9", "not a url"))).toBe("VERCEL_CONFIG");
-    let defaultSleepRuns = 0;
-    const quick = fetcher(() => json(++defaultSleepRuns < 2 ? deployment() : deployment({ alias: ["app.example.com"], aliasAssigned: true })));
-    await waitForAlias(env, "dpl_Cand1date9", "https://app.example.com", { request: quick, intervalMs: 1 });
-    expect(defaultSleepRuns).toBe(2);
+    it("succeeds when the Aliases API points the production host at the promoted deployment", async () => {
+      let calls = 0;
+      const request = router(() => json({ deploymentId: ++calls < 3 ? "dpl_Old1deploy" : "dpl_Cand1date9" }), () => json({ release: "b".repeat(40) }));
+      const sleep = vi.fn(async () => undefined);
+      await waitForAlias(env, "dpl_Cand1date9", origin, { request, sleep, release: sha });
+      expect(calls).toBe(3);
+      expect(sleep).toHaveBeenCalledTimes(2);
+      const aliasCall = request.mock.calls.map(([u]) => new URL(String(u))).find((u) => u.origin === VERCEL_API_ORIGIN)!;
+      expect(aliasCall.pathname).toBe("/v4/aliases/app.example.com");
+      expect(aliasCall.searchParams.get("teamId")).toBe("team_xyz789");
+    });
+
+    it("succeeds on a health release match when the alias answer does not match", async () => {
+      expect(await wait(router(() => json({ deploymentId: "dpl_Old1deploy" }), () => json({ ok: true, release: sha })))).toBeUndefined();
+      expect(await wait(router(() => json({}), () => json({ release: sha })))).toBeUndefined();
+    });
+
+    it("keeps trying through API and health errors, then reports only a timeout code", async () => {
+      for (const request of [
+        router(() => json({ deploymentId: "dpl_Old1deploy" }), () => json({ release: "b".repeat(40) })),
+        router(() => json({ message: `token ${token}` }, 403), () => json({}, 503)),
+        router(() => json("not an object"), () => json({ release: 5 })),
+        router(() => new Response(`not json ${token}`), () => new Response("<html>")),
+      ]) {
+        const failure = await wait(request).catch((error: unknown) => error);
+        expect(failure).toBeInstanceOf(VercelApiError);
+        expect((failure as VercelApiError).code).toBe("VERCEL_ALIAS_TIMEOUT");
+        expect((failure as VercelApiError).message).not.toContain(token);
+        expect((failure as VercelApiError).message).not.toContain("app.example.com");
+      }
+      const unreachable = fetcher(() => { throw new TypeError(`connect failed ${token}`); });
+      expect(await code(wait(unreachable))).toBe("VERCEL_ALIAS_TIMEOUT");
+      expect(await code(wait(router(() => json({ deploymentId: "dpl_Cand1date9" }), () => json({})), { maxWaitMs: 0 }))).toBe("NONE");
+      expect(await code(wait(router(() => json({}), () => json({})), { maxWaitMs: 0 }))).toBe("VERCEL_ALIAS_TIMEOUT");
+    });
+
+    it("skips the health proof without a release", async () => {
+      const request = router(() => json({ deploymentId: "dpl_Old1deploy" }), () => json({ release: sha }));
+      expect(await code(wait(request, { release: undefined }))).toBe("VERCEL_ALIAS_TIMEOUT");
+      expect(request.mock.calls.every(([u]) => new URL(String(u)).origin === VERCEL_API_ORIGIN)).toBe(true);
+    });
+
+    it("talks only to the fixed API origin and the production origin, never follows redirects, and sends no credential to the health endpoint", async () => {
+      const request = router(() => json({ deploymentId: "dpl_Old1deploy" }), () => json({ release: "b".repeat(40) }));
+      await wait(request).catch(() => undefined);
+      expect(request.mock.calls.length).toBeGreaterThan(2);
+      for (const [url, init] of request.mock.calls) {
+        const target = new URL(String(url));
+        expect([VERCEL_API_ORIGIN, origin]).toContain(target.origin);
+        expect(init).toMatchObject({ method: "GET", redirect: "error", cache: "no-store" });
+        if (target.origin === origin) {
+          expect(target.pathname).toBe("/api/health");
+          expect(JSON.stringify(init!.headers)).not.toContain(token);
+        }
+      }
+    });
+
+    it("uses the global fetch and default timeout for the health endpoint when no transport is injected", async () => {
+      const stub = fetcher(() => json({ release: sha }));
+      vi.stubGlobal("fetch", stub);
+      try {
+        await waitForAlias({ ...env, VERCEL_TOKEN: "" }, "dpl_Cand1date9", origin, { release: sha, intervalMs: 1 });
+        expect(String(stub.mock.calls[0]![0])).toBe("https://app.example.com/api/health");
+        await waitForAlias(env, "dpl_Cand1date9", origin, { release: sha, timeoutMs: 5_000 });
+      } finally { vi.unstubAllGlobals(); }
+    });
+
+    it("refuses a malformed id or a non-https origin before any request", async () => {
+      const request = fetcher(() => json({}));
+      expect(await code(waitForAlias(env, "bad", origin, { request }))).toBe("VERCEL_CONFIG");
+      expect(await code(waitForAlias(env, "dpl_Cand1date9", "not a url", { request }))).toBe("VERCEL_CONFIG");
+      expect(await code(waitForAlias(env, "dpl_Cand1date9", "http://app.example.com", { request }))).toBe("VERCEL_CONFIG");
+      expect(request).not.toHaveBeenCalled();
+    });
+
+    it("waits with the real timer when no sleep is injected", async () => {
+      let n = 0;
+      const request = router(() => json({ deploymentId: ++n < 2 ? "dpl_Old1deploy" : "dpl_Cand1date9" }), () => json({}));
+      await waitForAlias(env, "dpl_Cand1date9", origin, { request, intervalMs: 1 });
+      expect(n).toBe(2);
+    });
   });
 });
 
