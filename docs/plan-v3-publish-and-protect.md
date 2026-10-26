@@ -16,7 +16,7 @@ Decisions:
 2. **Deploys only from GitHub Actions on `main`.** The deploy job runs in the `production` GitHub environment, which needs approval from the owner as required reviewer. The job refuses to run unless the exact SHA has a successful `acceptance` check.
 3. **Deploy order.** Snapshot the Neon production branch as `pre-deploy-<timestamp>`, then: migrate, seed, `pnpm db:check:production` (pre-deploy phase), `vercel build --prod`, deploy as a candidate (not yet serving the production domain), smoke test the candidate, promote, smoke test production.
 4. **Rollback.** Vercel instant rollback restores the previous deployment (on the Hobby plan only the previous production deployment, not an arbitrary older one). Restore the Neon `pre-deploy-*` snapshot branch only for data damage, because a code rollback cannot undo new database writes. Migrations stay expand-only so the previous deployment works against the new schema.
-5. **Migration rehearsal.** `rehearse-migration.yml` runs the pending migrations against a Neon branch of production that expires in 1 day, in the `production-rehearsal` environment, then deletes it. It never touches the production branch.
+5. **Migration rehearsal.** `rehearse-migration.yml` runs the pending migrations against a Neon branch of production that expires in 1 day, in the `production` environment (same reviewer approval, main-only), then deletes it. It rehearses only the tip of main; merge a migration first to rehearse it. It never touches the production branch.
 6. **Preview retired.** `preview.yml`, the `preview` GitHub environment, `pnpm deploy:preflight` and the 21 Vercel Preview variables are removed or left unused. Vercel Preview and Development environments stay empty.
 7. **Vercel protection.** Standard Protection. The site is public; preview URLs are not used. `PRODUCTION_PROTECTION_BYPASS` lets the workflow smoke test the candidate before promotion.
 8. **Neon plan: free (owner decision, 2026-10-25).** The project history retention is 6 hours (21600 s), so built-in point-in-time restore only covers damage noticed within 6 hours. The `pre-deploy-*` snapshot branches (7-day expiry, newest few kept, pruned strictly) are the real recovery path beyond 6 hours, and they only capture the state at deploy time. Free-tier storage and branch limits must be respected: production is about 32 MB today, and every snapshot, rehearsal and other branch counts against the limits. The prune step must fail loudly (non-zero exit, workflow failure) if a limit is hit or a prune fails, never skip silently. The nightly encrypted `pg_dump` is the missing safety net, so it moves from "after launch" to "soon after launch" (see Backups on the free plan below).
@@ -63,12 +63,13 @@ GitHub `production` environment, variables:
 
 - `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 - `NEON_PROJECT_ID`, `NEON_PRODUCTION_BRANCH_ID`
+- `NEON_DATABASE_NAME`, `NEON_ROLE_NAME` (migration rehearsal only)
 - `DATABASE_PRODUCTION_HOST`, `DATABASE_DIRECT_PRODUCTION_HOST`
 - `PRODUCTION_ORIGIN`
 - `AUTH_EMAIL_FROM` (bare address, no display name)
 - `SNAPSHOT_RETENTION_DAYS` (optional)
 
-GitHub `production-rehearsal` environment: secret `NEON_API_KEY`; variables `NEON_PROJECT_ID`, `NEON_PRODUCTION_BRANCH_ID`, `NEON_DATABASE_NAME`, `NEON_ROLE_NAME`.
+There is only one GitHub environment, `production`; no `production-rehearsal` environment is created. The rehearsal uses the same `NEON_API_KEY` secret and `NEON_PROJECT_ID` and `NEON_PRODUCTION_BRANCH_ID` variables, plus two more variables in `production`: `NEON_DATABASE_NAME` and `NEON_ROLE_NAME`.
 
 Vercel Production runtime, sensitive:
 

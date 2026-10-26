@@ -91,15 +91,9 @@ until target and content consent are approved.
 
 The application schema lives in `lib/db/postgres/`, re-exported by `lib/db/schema.ts`, with Drizzle history in `db/postgres-migrations/`; never apply the SQLite migration history to Postgres. Tests check parity of the 33 legacy tables with `lib/db/sqlite-schema.ts`, alongside additive library-readiness, identity/household, sync and reminder tables.
 
-### Read-only protected-preview preflight (retired)
+### Releases
 
-The protected preview is retired; this command and its description are kept only until the code is removed. Do not set up a preview environment.
-
-`pnpm deploy:preflight` checks only explicitly injected environment configuration and prints stable failure codes, never configuration values. It loads no environment files and performs no network requests, database/file writes or deployment. Require Vercel preview with `NODE_ENV=production` and `DATABASE_ENV=preview`, reviewed matching pooled/direct database URLs (`DATABASE_NONPRODUCTION_HOST` and `DATABASE_DIRECT_NONPRODUCTION_HOST`), distinct Neon development/production branch pins and server-only metadata API access. Existing auth/private-photo validators check the fixed HTTPS origin, secret and branch-bound read-only cloud-photo configuration.
-
-Preview admission requires sync/reminder/vault flags absent or `false`, and mail/push/scheduler/vault credentials absent. Test-only transports/mailboxes, bootstrap credentials and obvious secret-bearing `NEXT_PUBLIC_*` variables are refused. This intentionally prevents auth email/push delivery; it is **not yet an end-to-end usable hosted signup preview**. A protected preview's separately isolated test delivery mechanism needs its own implementation/approval; never add production mail credentials just to make this check pass. Existing storage validators check configuration, not the bucket's live access mode.
-
-Add `--verify-branch` to explicitly run the existing read-only fixed-origin Neon metadata checks for both endpoints. Missing/mismatched/default/production/protected/unready branch mappings fail closed. A configuration-only pass reports `liveBranchVerified:false`; even live metadata success is not storage/privacy/provider acceptance or deployment approval. No release workflow, production migration or Vercel promotion is enabled by this command.
+Production is released only by `.github/workflows/production.yml` (details in [docs/launch/wp8-workflows.md](docs/launch/wp8-workflows.md)). `.github/workflows/rehearse-migration.yml` rehearses pending migrations on a throwaway Neon branch (main only, manual, same `production` environment approval; it shares a concurrency group with the release). The protected preview and its preflight command are gone.
 
 ### Production guards and `pnpm db:check:production`
 

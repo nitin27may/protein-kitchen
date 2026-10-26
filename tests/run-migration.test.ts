@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { describe, expect, it, vi } from "vitest";
 import { requireMigrationPrefix } from "../lib/db/postgres/migration-ledger";
-import { requireMigrationPrefix as previewReexport } from "../lib/deployment/preview-migration";
 import { loadMigrationArtifacts, runGuardedMigration } from "../lib/deployment/run-migration";
 import type { MigrationSession } from "../lib/deployment/run-migration";
 
@@ -15,8 +14,7 @@ const applyAll = (client: PGlite) => () => migrate(drizzle(client), { migrations
 
 describe("shared migration ledger check", () => {
   const expected = [{ hash: "a", folderMillis: 1 }, { hash: "b", folderMillis: 2 }];
-  it("accepts only an ordered prefix and is still exported for preview code", () => {
-    expect(previewReexport).toBe(requireMigrationPrefix);
+  it("accepts only an ordered prefix", () => {
     expect(() => requireMigrationPrefix([], expected)).not.toThrow();
     expect(() => requireMigrationPrefix([{ hash: "a", created_at: 1 }], expected)).not.toThrow();
     expect(() => requireMigrationPrefix([{ hash: "a", created_at: 1 }], expected, true)).toThrow("pending or divergent");

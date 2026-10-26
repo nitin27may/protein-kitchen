@@ -1,0 +1,203 @@
+name: production
+
+# Releases main to production. Starts when ci succeeds for a push to main, or by hand (current main HEAD).
+# Shares the `production` concurrency group with rehearse-migration.
+# The only deploy path: there is no Git integration in Vercel and no preview environment.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+
+jobs:
+  # No environment and no secrets: it only reads GitHub metadata with the job token.
+  gate:
+    # A failed or cancelled CI run on main still emits workflow_run; skip quietly instead of failing the gate.
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Pick the commit and require accepted CI that is still the tip of main
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: pnpm deploy:gate production
+
+  release:
+    needs: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    # Shared with the other production workflow so a rehearsal and a release never overlap (Neon branch limits).
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    # Variables only. Secrets are attached to the individual steps that need them.
+    env:
+      DEPLOYMENT_ENVIRONMENT: production
+      DATABASE_ENV: production
+      APP_RELEASE_SHA: ${{ needs.gate.outputs.sha }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+      NEON_PRODUCTION_BRANCH_ID: ${{ vars.NEON_PRODUCTION_BRANCH_ID }}
+      DATABASE_PRODUCTION_HOST: ${{ vars.DATABASE_PRODUCTION_HOST }}
+      DATABASE_DIRECT_PRODUCTION_HOST: ${{ vars.DATABASE_DIRECT_PRODUCTION_HOST }}
+      PRODUCTION_ORIGIN: ${{ vars.PRODUCTION_ORIGIN }}
+      AUTH_EMAIL_FROM: ${{ vars.AUTH_EMAIL_FROM }}
+      SNAPSHOT_RETENTION_DAYS: ${{ vars.SNAPSHOT_RETENTION_DAYS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@63.1.2
+      - name: Require release settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PRODUCTION_PROTECTION_BYPASS: ${{ secrets.PRODUCTION_PROTECTION_BYPASS }}
+        run: |
+          node --input-type=module <<'JS'
+          const required = [
+            "VERCEL_TOKEN", "DATABASE_URL", "DATABASE_URL_UNPOOLED", "NEON_API_KEY", "PRODUCTION_PROTECTION_BYPASS",
+            "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "NEON_PROJECT_ID", "NEON_PRODUCTION_BRANCH_ID",
+            "DATABASE_PRODUCTION_HOST", "DATABASE_DIRECT_PRODUCTION_HOST", "PRODUCTION_ORIGIN", "AUTH_EMAIL_FROM",
+            "APP_RELEASE_SHA",
+          ];
+          const missing = required.filter((key) => !process.env[key]);
+          if (missing.length) throw new Error(`Missing release settings: ${missing.join(", ")}`);
+          if (!/^[0-9a-f]{40}$/.test(process.env.APP_RELEASE_SHA)) throw new Error("APP_RELEASE_SHA is not a full commit hash.");
+          JS
+      - name: Build the Vercel production runtime manifest
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: pnpm deploy:manifest "$RUNNER_TEMP/manifest.json"
+      - name: Require Standard Deployment Protection
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: pnpm deploy:assert-protection
+      - name: Check production before migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: pnpm db:check:production --phase=pre-migrate --runtime-manifest="$RUNNER_TEMP/manifest.json"
+      - name: Snapshot the production branch
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: pnpm db:snapshot:production
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: pnpm db:migrate:postgres
+      - name: Seed the library
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: pnpm seed
+      - name: Check production before deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: pnpm db:check:production --phase=pre-deploy --runtime-manifest="$RUNNER_TEMP/manifest.json"
+      - name: Record the previous production deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: pnpm deploy:release previous
+      # Only after every database step. The pulled file is read by the Vercel CLI alone; it is never sourced.
+      - name: Pull Vercel production settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy the candidate without moving the domain
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --skip-domain --json --token="$VERCEL_TOKEN" > "$RUNNER_TEMP/deploy.json"
+      - name: Require the candidate to be READY for production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        id: candidate
+        run: pnpm deploy:release candidate "$RUNNER_TEMP/deploy.json"
+      - name: Smoke test the candidate
+        env:
+          PRODUCTION_PROTECTION_BYPASS: ${{ secrets.PRODUCTION_PROTECTION_BYPASS }}
+          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
+          EXPECTED_SHA: ${{ needs.gate.outputs.sha }}
+        run: pnpm deploy:smoke:production --stage=candidate
+      - name: Promote
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
+        run: vercel promote "$DEPLOYMENT_URL" --yes --token="$VERCEL_TOKEN"
+      - name: Wait until the production alias points at the candidate
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_ID: ${{ steps.candidate.outputs.id }}
+        run: pnpm deploy:release wait-alias "$DEPLOYMENT_ID"
+      - name: Smoke test production
+        env:
+          PRODUCTION_PROTECTION_BYPASS: ${{ secrets.PRODUCTION_PROTECTION_BYPASS }}
+          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
+          EXPECTED_SHA: ${{ needs.gate.outputs.sha }}
+        run: pnpm deploy:smoke:production --stage=live
+      - name: Write release summary
+        if: ${{ always() }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          CANDIDATE_ID: ${{ steps.candidate.outputs.id }}
+        run: |
+          {
+            echo "Release ${APP_RELEASE_SHA:0:7}: ${JOB_STATUS}"
+            echo "Candidate: ${CANDIDATE_ID:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove pulled settings and build output
+        if: ${{ always() }}
+        run: |
+          rm -f .vercel/.env*
+          rm -rf .vercel/output
+          rm -f "$RUNNER_TEMP/manifest.json" "$RUNNER_TEMP/deploy.json"
