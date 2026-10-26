@@ -9,9 +9,8 @@ import { householdMembers, people } from "@/lib/db/schema";
 import { LinkProfile } from "@/components/auth/LinkProfile";
 import { StartOwnKitchen } from "@/components/auth/StartOwnKitchen";
 import { AcceptLegacyInvite } from "@/components/auth/AcceptLegacyInvite";
-import { ProfileForm } from "@/components/ProfileForm";
+import { OnboardingProfileForm } from "@/components/OnboardingProfileForm";
 import { Banner, PageTitle } from "@/components/ui";
-import { finishProfile } from "./actions";
 import { ensureAdmission, resolveSessionHouseholdAccess, sessionHouseholds } from "@/lib/auth/household-session";
 import { HouseholdChooser } from "@/components/auth/HouseholdChooser";
 import { EmailAssociationPrompt } from "@/components/auth/EmailAssociationPrompt";
@@ -75,7 +74,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
       <p className="text-sm text-muted">Link it instead of creating a duplicate. Unavailable or reserved profiles cannot be linked.</p>
       <LinkProfile profiles={profiles} />
     </section> : null}
-    <ProfileForm nextHref={next} saveAction={finishProfile}
+    <OnboardingProfileForm nextHref={next}
       initial={{ name: user.name, sex: "other", birthDate: "", heightCm: "", weightKg: "", activityLevel: "moderate", proteinMode: "per_kg", proteinValue: 1.2, kcalTarget: "", reminderTime: "" }} />
   </>;
 }

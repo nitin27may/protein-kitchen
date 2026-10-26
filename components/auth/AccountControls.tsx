@@ -3,17 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { addHouseholdEmailAssociation, cancelInvitation, changeCookRole, removeCook, resendHouseholdAssociationNotice } from "@/app/onboarding/actions";
-import { authRequest } from "@/lib/auth/browser";
 import { Banner, Button, Field, Input, Select } from "@/components/ui";
 import { SignOutButton } from "./SignOutButton";
 import { EmailAssociationPrompt } from "./EmailAssociationPrompt";
+import { DeleteAccountControls } from "./DeleteAccountControls";
 
-export function AccountControls({ owner, invitations, incomingAssociations, members, currentUserId }: {
+export function AccountControls({ owner, invitations, incomingAssociations, members, currentUserId, accountEmail, hasPassword, onlyMember }: {
   owner: boolean;
   invitations: { id: string; email: string; displayName: string | null; relationship: string | null; canResend: boolean }[];
   incomingAssociations: { id: string }[];
   members: { userId: string; role: "owner" | "member"; name: string; email: string; profileName: string | null }[];
   currentUserId: string;
+  accountEmail: string;
+  hasPassword: boolean;
+  onlyMember: boolean;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -23,9 +26,6 @@ export function AccountControls({ owner, invitations, incomingAssociations, memb
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmation, setConfirmation] = useState<{ userId: string; role?: "owner" | "member" } | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   async function run(task: () => Promise<void>) {
     setPending(true); setError(""); setNotice("");
     try { await task(); }
@@ -56,33 +56,7 @@ export function AccountControls({ owner, invitations, incomingAssociations, memb
         }
       })}>Download my account</Button>
     </section>
-    <section className="space-y-3">
-      <h2 className="text-xl font-semibold">Delete your account</h2>
-      <p className="text-sm text-muted">Permanently removes your login, sessions, invitations, device registrations, ratings and favourites. Shared plans, shopping, prep, notes and photos remain. Your unlinked meal profile, requirements, preferences, routines and profile history remain for the household's saved meals; this does not erase your meal profile. An owner manages profile deletion separately. Download your account first if you want a copy.</p>
-      <p className="text-sm text-muted">The last verified owner with a completed profile cannot delete their account. Make another cook an owner first.</p>
-      {deleting ? <form className="space-y-3" onSubmit={(event) => {
-        event.preventDefault();
-        void run(async () => {
-          try {
-            await authRequest("/delete-household-account", { password: deletePassword, confirmation: deleteConfirmation });
-            window.location.replace("/sign-in");
-          } finally { setDeletePassword(""); }
-        });
-      }}>
-        <fieldset disabled={pending} className="space-y-3">
-          <Field label="Current password" htmlFor="delete-password">
-            <Input id="delete-password" type="password" autoComplete="current-password" required maxLength={128} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
-          </Field>
-          <Field label="Type DELETE to confirm" htmlFor="delete-confirmation">
-            <Input id="delete-confirmation" autoComplete="off" required value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} />
-          </Field>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="danger" type="submit" loading={pending} disabled={deleteConfirmation !== "DELETE" || !deletePassword}>Permanently delete my account</Button>
-            <Button variant="secondary" type="button" onClick={() => { setDeleting(false); setDeletePassword(""); setDeleteConfirmation(""); }}>Cancel account deletion</Button>
-          </div>
-        </fieldset>
-      </form> : <Button variant="danger" disabled={pending} onClick={() => setDeleting(true)}>Delete my account</Button>}
-    </section>
+    <DeleteAccountControls email={accountEmail} hasPassword={hasPassword} onlyMember={onlyMember} />
     {owner ? <section className="space-y-4">
       <h2 className="text-xl font-semibold">Household cooks</h2>
       <p className="text-sm text-muted">Owners manage access and private profiles. Removing a cook signs them out but keeps their meal profile and the household's shared plans, shopping and prep.</p>

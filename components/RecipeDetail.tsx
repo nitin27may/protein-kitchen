@@ -17,6 +17,7 @@ import { RecipeThumb } from "@/components/RecipeThumb";
 import { MinusIcon, PlusIcon } from "@/components/icons";
 import { Banner, Button, Chip, LinkButton, Pill, SectionCard, Segmented } from "@/components/ui";
 import { round1 } from "@/lib/format";
+import { formatAmount, formatPct, splitZeros } from "@/lib/nutrition/display";
 import type { PartModes } from "@/lib/parts/mode";
 import { flattenParts } from "@/lib/recipes/linkview";
 import type { OwnedLink } from "@/lib/recipes/linkview";
@@ -56,7 +57,7 @@ export interface DetailProps {
   advancePrep: { text: string }[];
   steps: { text: string; cue: string | null; tip: string | null; timerSec: number | null; technique: { slug: string; title: string; body: string } | null }[];
   storage: string;
-  nutrients: { label: string; unit: string; amount: number; target: number | null; partial: boolean }[];
+  nutrients: { label: string; unit: string; amount: number; target: number | null; partial: boolean; digits?: number }[];
   quality: { freeSugarG: number; totalSugarG: number; sodiumMg: number; satFatG: number; kcal: number; score: number; partial: boolean; lowSugar: boolean; light: boolean; dense: boolean };
   targetFor: string;
   feedback: { favourite: boolean; banned: boolean; rating: number | null; tested: boolean };
@@ -336,27 +337,31 @@ export function RecipeDetail(p: DetailProps) {
             </SectionCard>
           </div>
 
-          {p.nutrients.length ? (
+          {p.nutrients.length ? (() => {
+            const { shown, none } = splitZeros(p.nutrients, (n) => n.amount);
+            return (
             <SectionCard id="nutr" title="Nutrients per serving" description={`Compared with the daily target for adults aged 31 to 50 (${p.targetFor}). A star means some ingredients have no reported value, so the real amount is at least this much.`}>
               <ul className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
-                {p.nutrients.map((n) => {
+                {shown.map((n) => {
                   const pct = n.target ? (n.amount / n.target) * 100 : null;
                   return (
                     <li key={n.label} className="rounded-control border border-line px-3 py-2">
                       <p className="text-sm text-muted">{n.label}{n.partial ? " *" : ""}</p>
-                      <p className="tabular-nums"><strong className="font-display text-lg">{round1(n.amount)}</strong> <span className="text-sm text-muted">{n.unit}</span></p>
+                      <p className="tabular-nums"><strong className="font-display text-lg">{formatAmount(n.amount, n.digits ?? 1)}</strong> <span className="text-sm text-muted">{n.unit}</span></p>
                       {pct !== null ? (
                         <>
-                          <div role="img" aria-label={`${Math.round(pct)} percent of the daily target`} className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%` }} /></div>
-                          <p className="mt-0.5 text-xs text-muted">{Math.round(pct)}% of daily</p>
+                          <div role="img" aria-label={`${formatPct(pct)} percent of the daily target`} className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%` }} /></div>
+                          <p className="mt-0.5 text-xs text-muted">{formatPct(pct)}% of daily</p>
                         </>
                       ) : null}
                     </li>
                   );
                 })}
               </ul>
+              {none.length ? <p className="mt-2 text-sm text-muted">None in this meal: {none.join(", ")}.</p> : null}
             </SectionCard>
-          ) : null}
+            );
+          })() : null}
         </div>
       </div>
 

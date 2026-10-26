@@ -47,6 +47,11 @@ async function setPassword(page: Page, email: string, address: string) {
   });
   expect(reset.status()).toBe(200);
 }
+/** One address runs a long journey here; the mail caps have their own spec (mail-caps.spec.ts), so reset the ledger mid-journey. */
+async function resetMailLedger() {
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  try { await handle.db.delete(s.mailSends); } finally { await handle.close(); }
+}
 async function legacyInvitation(email: string, personId?: number) {
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   try {
@@ -256,6 +261,7 @@ test("owner and invited cook finish UI onboarding, keep separate profiles and sh
     await page.getByLabel("Six-digit email code").fill(await code(owner, "sign-in"));
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page).toHaveURL("http://127.0.0.1:3112/");
+    await resetMailLedger();
     await page.goto("/reset-password");
     await page.getByLabel("Email", { exact: true }).fill(owner);
     await page.getByRole("button", { name: "Email me a code", exact: true }).click();
@@ -297,14 +303,12 @@ test("confirmed member and original-owner deletion preserve shared meals and den
   await page.setViewportSize({ width: 375, height: 812 });
   await signIn(page, owner, replacement);
   await page.getByRole("button", { name: "Delete my account", exact: true }).click();
-  await expect(page.getByText("Your unlinked meal profile", { exact: false })).toBeVisible();
+  await expect(page.getByText("You are the only member of this household", { exact: false })).toBeVisible();
   const submit = page.getByRole("button", { name: "Permanently delete my account", exact: true });
   await expect(submit).toBeDisabled();
   await page.getByLabel("Current password", { exact: true }).fill(replacement);
   await page.getByLabel("Type DELETE to confirm", { exact: true }).fill("DELETE");
-  await submit.click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("at least one verified owner");
-  await expect(page.getByLabel("Current password", { exact: true })).toHaveValue("");
+  await expect(submit).toBeEnabled();
   await page.getByRole("button", { name: "Cancel account deletion", exact: true }).click();
   await expect(page.getByLabel("Current password", { exact: true })).toHaveCount(0);
   const grant = await legacyInvitation(cook, 300);
@@ -320,6 +324,15 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     await expect(second).toHaveURL(/\/onboarding(?:\?|$)/);
     await acceptInvite(second);
     await expect(second).toHaveURL("http://127.0.0.1:3112/");
+    await page.reload();
+    await page.getByRole("button", { name: "Delete my account", exact: true }).click();
+    await expect(page.getByText("Other people share your household", { exact: false })).toBeVisible();
+    await page.getByLabel("Current password", { exact: true }).fill(replacement);
+    await page.getByLabel("Type DELETE to confirm", { exact: true }).fill("DELETE");
+    await page.getByRole("button", { name: "Permanently delete my account", exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("Transfer ownership first");
+    await expect(page.getByLabel("Current password", { exact: true })).toHaveValue("");
+    await page.getByRole("button", { name: "Cancel account deletion", exact: true }).click();
     await second.goto("/account");
     await second.getByRole("button", { name: "Delete my account", exact: true }).click();
     const memberSubmit = second.getByRole("button", { name: "Permanently delete my account", exact: true });
@@ -340,7 +353,7 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     const staleMember = await other.cookies();
     await second.getByLabel("Current password", { exact: true }).fill(password);
     await memberSubmit.click();
-    await expect(second).toHaveURL(/\/sign-in$/);
+    await expect(second).toHaveURL(/\/account-deleted$/);
     await other.addCookies(staleMember);
     expect((await other.request.get("http://127.0.0.1:3112/api/account/export")).status()).toBe(401);
     await page.reload();
@@ -377,7 +390,7 @@ test("confirmed member and original-owner deletion preserve shared meals and den
     const outstandingLink = z.object({ url: z.string().url() }).parse(JSON.parse(await readFile(testMailPath(owner, "sign-in-link"), "utf8"))).url;
     const staleOwner = await page.context().cookies();
     await submit.click();
-    await expect(page).toHaveURL(/\/sign-in$/);
+    await expect(page).toHaveURL(/\/account-deleted$/);
     await page.context().addCookies(staleOwner);
     expect((await page.request.get("/api/account/export")).status()).toBe(401);
     await page.goto(outstandingLink);

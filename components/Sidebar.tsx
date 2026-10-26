@@ -54,7 +54,7 @@ export function HeaderSettingsLink() {
 }
 
 /** Desktop navigation rail. Phones use the header and bottom bar instead. */
-export function Sidebar({ account }: { account: "visitor" | "setup" | "member" }) {
+export function Sidebar({ account, photoReview }: { account: "visitor" | "setup" | "member"; photoReview: boolean }) {
   const path = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
@@ -80,12 +80,11 @@ export function Sidebar({ account }: { account: "visitor" | "setup" | "member" }
           </div>
         )}
         <ThemeToggle variant="segmented" />
-        {account === "member" ? (
-          <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
-            <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link>
-            <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link>
-          </div>
-        ) : null}
+        <div className="flex gap-3 px-1 pt-1 text-xs text-muted">
+          {account === "member" && photoReview ? <Link href="/photos/review" className="underline-offset-2 hover:underline">Review photos</Link> : null}
+          {account === "member" ? <Link href="/credits" className="underline-offset-2 hover:underline">Photo credits</Link> : null}
+          <Link href="/privacy" className="underline-offset-2 hover:underline">Privacy</Link>
+        </div>
       </div>
     </aside>
   );

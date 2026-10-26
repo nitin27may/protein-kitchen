@@ -30,6 +30,7 @@
     "db:snapshot:production": "tsx scripts/neon-snapshot.ts",
     "db:rehearsal": "tsx scripts/rehearsal-branch.ts",
     "db:import:sqlite": "tsx scripts/import-sqlite.ts",
+    "legacy:bundle": "tsx scripts/legacy-bundle.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

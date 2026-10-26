@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { importAnonymousDraft, replayPendingIntent, setRecipeFeedback } from "../app/actions";
 import { requireMember, actionDenial } from "../lib/auth/access";
@@ -103,6 +103,28 @@ describe("importAnonymousDraft", () => {
     expect(stored.get(key(draft.slots[0]!))!.slug).not.toBe(draft.slots[0]!.recipeSlug);
   });
 
+  it("keeps a leftover lunch of a dinner-only recipe even when the server built different dinners (smaller device target)", async () => {
+    const lib = hydrateAnonLibrary(JSON.parse(anonLibrary(data).body));
+    const lowProfile = AnonProfileSchema.parse({ protein: { mode: "fixed", grams: 60 } });
+    const key = (x: { date: string; slot: string }) => `${x.date}|${x.slot}`;
+    let leftoversSeen = 0;
+    for (let seed = 1; seed <= 25; seed++) {
+      const generated = generateAnonPlan({
+        setup: { ...setup, mealTypes: ["breakfast", "lunch", "dinner", "snack"], prepStyle: "leftovers" } as typeof setup, profile: lowProfile, library: lib, seed, now,
+      });
+      if (!generated.ok) throw new Error(generated.error);
+      const draft = generated.draft;
+      leftoversSeen += draft.slots.filter((x) => x.isLeftover).length;
+      const result = await importAnonymousDraft(draft);
+      if (!result.ok) throw new Error(result.error);
+      const rows = await h.db.select({ date: s.planSlots.date, slot: s.planSlots.slot, slug: s.recipes.slug, locked: s.planSlots.locked })
+        .from(s.planSlots).innerJoin(s.recipes, eq(s.recipes.id, s.planSlots.recipeId)).where(eq(s.planSlots.planId, result.planId));
+      expect(new Map(rows.map((r) => [key(r), `${r.slug}|${r.locked}`])), `seed ${seed}`)
+        .toEqual(new Map(draft.slots.map((d) => [key(d), `${d.recipeSlug}|${d.locked}`])));
+    }
+    expect(leftoversSeen).toBeGreaterThan(0);
+  });
+
   it("refuses a device swap to a recipe the household banned, a shake in a meal slot or an avoided ingredient", async () => {
     const draft = makeDraft();
     const lib = hydrateAnonLibrary(JSON.parse(anonLibrary(data).body));
@@ -203,6 +225,42 @@ describe("replayPendingIntent", () => {
     expect(await h.db.select().from(s.syncState)).not.toEqual([]);
   });
 
+  it.each([
+    [{ kind: "rate" as const, slug: "falafel-bowl", value: 4 }, "personal", { rating: 4 }],
+    [{ kind: "ban" as const, slug: "falafel-bowl" }, "shared", { banned: true }],
+    [{ kind: "tested" as const, slug: "falafel-bowl" }, "shared", { status: "tested" }],
+  ])("replays %j through the feedback path, once or twice", async (partial, where, expected) => {
+    for (let i = 0; i < 2; i++) {
+      const result = await replayPendingIntent(intent({ ...partial, returnTo: "/recipes/falafel-bowl" }));
+      expect(result).toMatchObject({ ok: true, replay: { ok: true, kind: partial.kind, redirectTo: "/recipes/falafel-bowl" } });
+    }
+    const [recipe] = await h.db.select({ id: s.recipes.id }).from(s.recipes).where(eq(s.recipes.slug, "falafel-bowl"));
+    const rows = where === "personal"
+      ? await h.db.select().from(s.personRecipeFeedback)
+      : await h.db.select().from(s.recipeFeedback).where(and(eq(s.recipeFeedback.recipeId, recipe!.id), eq(s.recipeFeedback.householdId, "a")));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject(expected);
+    if (where === "personal") expect(rows[0]).toMatchObject({ personId: 1 });
+    expect(await h.db.select().from(s.syncState)).not.toEqual([]);
+  });
+
+  it.each([
+    [{ kind: "rate" as const, slug: "no-such-recipe", value: 4 }],
+    [{ kind: "ban" as const, slug: "no-such-recipe" }],
+    [{ kind: "tested" as const, slug: "no-such-recipe" }],
+  ])("fails safely for an unknown recipe on %j", async (partial) => {
+    const before = (await h.db.select().from(s.recipeFeedback)).length;
+    expect(await replayPendingIntent(intent({ ...partial, returnTo: "/" }))).toMatchObject({ ok: true, replay: { ok: false, error: "Recipe not found" } });
+    expect(await h.db.select().from(s.personRecipeFeedback)).toEqual([]);
+    expect(await h.db.select().from(s.recipeFeedback)).toHaveLength(before);
+  });
+
+  it("refuses a stored rating outside 1 to 5 without writing", async () => {
+    const raw = JSON.stringify({ kind: "rate", slug: "falafel-bowl", value: 9, returnTo: "/", createdAt: new Date().toISOString() });
+    expect(await replayPendingIntent(raw)).toMatchObject({ ok: false });
+    expect(await h.db.select().from(s.personRecipeFeedback)).toEqual([]);
+  });
+
   it("reports an unknown recipe for a favourite", async () => {
     expect(await replayPendingIntent(intent({ kind: "favourite", slug: "no-such-recipe", returnTo: "/" }))).toMatchObject({ ok: true, replay: { ok: false, error: "Recipe not found" } });
   });
@@ -264,10 +322,35 @@ describe("replayIntent dispatcher", () => {
     expect(savePlan).not.toHaveBeenCalled();
   });
 
+  it("routes rate, ban and tested to their own handlers with validated arguments", async () => {
+    const rate = vi.fn().mockResolvedValue({ ok: true });
+    const ban = vi.fn().mockResolvedValue({ ok: true });
+    const tested = vi.fn().mockResolvedValue({ ok: false, error: "Recipe not found" });
+    const handlers = { rate, ban, tested };
+    expect(await replayIntent({ kind: "rate", slug: "a-b", value: 4, ...base }, handlers)).toEqual({ ok: true, kind: "rate", redirectTo: "/back" });
+    expect(rate).toHaveBeenCalledWith("a-b", 4);
+    expect(await replayIntent({ kind: "ban", slug: "a-b", ...base }, handlers)).toEqual({ ok: true, kind: "ban", redirectTo: "/back" });
+    expect(ban).toHaveBeenCalledWith("a-b");
+    expect(await replayIntent({ kind: "tested", slug: "a-b", ...base }, handlers)).toEqual({ ok: false, kind: "tested", error: "Recipe not found" });
+  });
+
+  it("does not call a handler for a value or slug out of range", async () => {
+    const rate = vi.fn();
+    const ban = vi.fn();
+    for (const value of [0, 6, 2.5]) expect(await replayIntent({ kind: "rate", slug: "a-b", value, ...base }, { rate })).toMatchObject({ ok: false, kind: "rate" });
+    expect(await replayIntent({ kind: "rate", slug: "Bad Slug", value: 3, ...base }, { rate })).toMatchObject({ ok: false });
+    expect(await replayIntent({ kind: "ban", slug: "../x", ...base }, { ban })).toMatchObject({ ok: false });
+    expect(rate).not.toHaveBeenCalled();
+    expect(ban).not.toHaveBeenCalled();
+  });
+
+  it("reports rate, ban and tested without a handler as unsupported", async () => {
+    expect(await replayIntent({ kind: "rate", slug: "a-b", value: 4, ...base }, {})).toMatchObject({ ok: false, unsupported: true });
+    expect(await replayIntent({ kind: "ban", slug: "a-b", ...base }, {})).toMatchObject({ ok: false, unsupported: true });
+    expect(await replayIntent({ kind: "tested", slug: "a-b", ...base }, {})).toMatchObject({ ok: false, unsupported: true });
+  });
+
   it.each([
-    [{ kind: "rate" as const, slug: "a-b", value: 4 }],
-    [{ kind: "ban" as const, slug: "a-b" }],
-    [{ kind: "tested" as const, slug: "a-b" }],
     [{ kind: "tick-grocery" as const, ingredient: "a-b" }],
     [{ kind: "save-profile" as const }],
   ])("reports %j as unsupported and calls nothing", async (partial) => {

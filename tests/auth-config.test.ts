@@ -6,7 +6,7 @@ const configured = { BETTER_AUTH_URL: "https://kitchen.example.test", BETTER_AUT
 describe("explicit server auth configuration", () => {
   it("uses a fixed origin, server secret and Vercel's trusted IP boundary", () => {
     expect(authConfiguration({ ...configured, VERCEL: "1" })).toEqual({
-      baseURL: configured.BETTER_AUTH_URL, secret: configured.BETTER_AUTH_SECRET, bootstrapSecret: undefined, ownerEmail: undefined, isVercel: true,
+      baseURL: configured.BETTER_AUTH_URL, secret: configured.BETTER_AUTH_SECRET, bootstrapSecret: undefined, ownerEmail: undefined, isVercel: true, mailDailyCap: 60, signupAllowlist: null,
     });
   });
   it.each(["localhost", "127.0.0.1", "[::1]"])("permits HTTP loopback only for local development (%s)", (host) => {
@@ -125,5 +125,34 @@ describe("explicit, awaited auth code delivery", () => {
     });
     expect(body.text).not.toContain("household name");
     expect(body.text).not.toContain("token");
+  });
+});
+
+describe("mail cap and signup allowlist configuration", () => {
+  it("defaults to a cap of 60 and open signup", () => {
+    const config = authConfiguration(configured);
+    expect(config.mailDailyCap).toBe(60);
+    expect(config.signupAllowlist).toBeNull();
+    expect(authConfiguration({ ...configured, SIGNUP_ALLOWLIST: "  " }).signupAllowlist).toBeNull();
+  });
+  it("reads a cap below Resend's free daily limit and rejects the rest", () => {
+    expect(authConfiguration({ ...configured, MAIL_DAILY_CAP: "25" }).mailDailyCap).toBe(25);
+    for (const bad of ["0", "100", "-1", "abc", "1.5"]) {
+      expect(() => authConfiguration({ ...configured, MAIL_DAILY_CAP: bad }), bad).toThrow("MAIL_DAILY_CAP");
+    }
+  });
+  it("parses addresses and domains, case-insensitively", () => {
+    const list = authConfiguration({ ...configured, SIGNUP_ALLOWLIST: " A@Example.test, @Friends.example.test " }).signupAllowlist;
+    expect([...list!.emails]).toEqual(["a@example.test"]);
+    expect([...list!.domains]).toEqual(["friends.example.test"]);
+  });
+  it("rejects malformed entries without echoing them", () => {
+    for (const bad of ["not-an-email", "@nodot", "a@b@c.test", "@.", "x@nodot"]) {
+      try { authConfiguration({ ...configured, SIGNUP_ALLOWLIST: bad }); expect.unreachable(bad); }
+      catch (error) {
+        expect(error).toBeInstanceOf(AuthConfigurationError);
+        expect((error as Error).message).not.toContain(bad);
+      }
+    }
   });
 });

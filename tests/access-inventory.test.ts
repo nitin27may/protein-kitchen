@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const files = readdirSync("app", { recursive: true, withFileTypes: true })
   .filter((entry) => entry.isFile()).map((entry) => path.join(entry.parentPath, entry.name).replaceAll("\\", "/"));
-const publicPages = new Set(["app/sign-in/page.tsx", "app/sign-up/page.tsx", "app/verify-email/page.tsx", "app/reset-password/page.tsx"]);
+const publicPages = new Set(["app/sign-in/page.tsx", "app/sign-up/page.tsx", "app/verify-email/page.tsx", "app/reset-password/page.tsx", "app/privacy/page.tsx", "app/account-deleted/page.tsx"]);
 const admissionPages = new Set(["app/onboarding/page.tsx"]);
 const libraryPages = new Set(["app/page.tsx", "app/recipes/page.tsx", "app/recipes/[slug]/page.tsx", "app/ingredients/page.tsx", "app/ingredients/[slug]/page.tsx"]);
 // Household pages that show a visitor without an account a prompt instead of redirecting. No data is read before the guard.

@@ -9,6 +9,7 @@ import { persistNewPlan } from "../../lib/server/plan-persistence";
 import { loadCandidates } from "../../lib/photos/candidates";
 
 test("photo metadata credits bytes and candidate decisions stay within the current household", async ({ page }) => {
+  test.skip(process.env.PHOTO_REVIEW_ENABLED === "false", "Candidate review is switched off");
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   const householdId = `foreign-photo-${randomUUID()}`;
   const uid = randomUUID();

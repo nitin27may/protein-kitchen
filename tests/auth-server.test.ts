@@ -4,14 +4,20 @@ import { getDb } from "../lib/server/context";
 import { createAuth } from "../lib/auth/create";
 import { resendAuthSender } from "../lib/auth/mail";
 import { localTestAuthSender } from "../lib/auth/test-mail";
+import { limitedSender } from "../lib/auth/mail-limits";
+import { getBlobStore } from "../lib/blob";
 
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn() }));
 vi.mock("../lib/auth/create", () => ({ createAuth: vi.fn() }));
 vi.mock("../lib/auth/mail", () => ({ resendAuthSender: vi.fn() }));
 vi.mock("../lib/auth/test-mail", () => ({ localTestAuthSender: vi.fn() }));
+vi.mock("../lib/auth/mail-limits", () => ({ limitedSender: vi.fn() }));
+vi.mock("../lib/blob", () => ({ getBlobStore: vi.fn() }));
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
+  // The limiter is covered in mail-limits.test.ts; here it passes the transport through and records its options.
+  vi.mocked(limitedSender).mockImplementation((_db, _options, send) => send);
   vi.stubEnv("BETTER_AUTH_URL", "https://kitchen.example.test");
   vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-session-secret-for-tests-only");
   vi.stubEnv("AUTH_TEST_MAILBOX", "");
@@ -32,6 +38,7 @@ describe("lazy server auth initialization", () => {
     expect(await getAuth()).toBe(provider);
     await sendHouseholdAssociationNotice("synthetic-recipient@example.test");
     expect(getDb).toHaveBeenCalledOnce();
+    expect(limitedSender).toHaveBeenCalledWith(db, { secret: "synthetic-session-secret-for-tests-only", dailyCap: 60, allowlist: null }, sendCode);
     expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode, sendLink: sendCode, baseURL: "https://kitchen.example.test" }));
     expect(sendCode).toHaveBeenCalledWith({
       email: "synthetic-recipient@example.test",
@@ -66,5 +73,19 @@ describe("lazy server auth initialization", () => {
     expect(await getAuth()).toBe(provider);
     expect(resendAuthSender).not.toHaveBeenCalled();
     expect(createAuth).toHaveBeenCalledWith(db, expect.objectContaining({ sendCode: send, sendLink: send }));
+  });
+  it("removes the photo files of a deleted household through the blob store and reports a partial failure", async () => {
+    const { getAuth } = await import("../lib/auth/server");
+    vi.mocked(getDb).mockResolvedValue(Object.create(null));
+    vi.mocked(resendAuthSender).mockReturnValue(async () => {});
+    vi.mocked(createAuth).mockReturnValue({ handler: vi.fn(), api: { getSession: vi.fn(), setPassword: vi.fn(), changePassword: vi.fn() } });
+    await getAuth();
+    const deletePhotoKeys = vi.mocked(createAuth).mock.calls[0]![1].deletePhotoKeys!;
+    const remove = vi.fn<(key: string) => Promise<void>>().mockResolvedValue();
+    vi.mocked(getBlobStore).mockReturnValue({ delete: remove } as unknown as ReturnType<typeof getBlobStore>);
+    await deletePhotoKeys(["photos/a/master.webp", "photos/a/thumb.webp"]);
+    expect(remove.mock.calls.map(([key]) => key)).toEqual(["photos/a/master.webp", "photos/a/thumb.webp"]);
+    remove.mockRejectedValueOnce(new Error("synthetic storage failure"));
+    await expect(deletePhotoKeys(["photos/b/master.webp"])).rejects.toThrow("Some photo files were not removed.");
   });
 });

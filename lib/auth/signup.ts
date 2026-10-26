@@ -10,9 +10,12 @@ export function permitsUserCreation(path: string | undefined) {
   return path !== undefined && USER_CREATION_PATHS.includes(path);
 }
 
-/** Database-level backstop: refuses any user row that was not created by a proven email code or link. */
-export function assertUserCreation(path: string | undefined, emailVerified: boolean | null | undefined) {
-  if (!permitsUserCreation(path) || emailVerified !== true) {
+/**
+ * Database-level backstop: refuses any user row that was not created by a proven email code or link, or whose address the
+ * signup allowlist (when set) does not admit. `invited` is computed by the caller; it is true when signup is open.
+ */
+export function assertUserCreation(path: string | undefined, emailVerified: boolean | null | undefined, invited = true) {
+  if (!permitsUserCreation(path) || emailVerified !== true || !invited) {
     throw new APIError("FORBIDDEN", { message: "An account is created only by proving ownership of its email address." });
   }
 }

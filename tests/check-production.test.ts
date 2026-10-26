@@ -90,6 +90,7 @@ describe("configuration", () => {
     ["state sync enabled", { STATE_SYNC_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["reminders enabled", { REMINDER_SCHEDULER_ENABLED: "1" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["vault enabled", { VAULT_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review enabled", { PHOTO_REVIEW_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
   ];
   it.each(failing)("fails on %s", (_name, change, check, code) => {
     const results = track(checkConfiguration({ ...env, ...change }));
@@ -97,7 +98,7 @@ describe("configuration", () => {
   });
 
   it("accepts flags explicitly set to false", () => {
-    const results = checkConfiguration({ ...env, STATE_SYNC_ENABLED: "false", REMINDER_SCHEDULER_ENABLED: "false", VAULT_ENABLED: "false" });
+    const results = checkConfiguration({ ...env, STATE_SYNC_ENABLED: "false", REMINDER_SCHEDULER_ENABLED: "false", VAULT_ENABLED: "false", PHOTO_REVIEW_ENABLED: "false" });
     expect(results.every((r) => r.severity === "ok")).toBe(true);
   });
 });
@@ -515,6 +516,7 @@ describe("runtime manifest", () => {
     DATABASE_ENV: "production", DATABASE_PRODUCTION_HOST: pooled, NEON_PROJECT_ID: project, NEON_PRODUCTION_BRANCH_ID: branch,
     BETTER_AUTH_URL: `${origin}/`, AUTH_EMAIL_FROM: "kitchen@meals.example.test", BLOB_STORE: "neon", BLOB_BUCKET: "meals-bucket",
     AWS_ENDPOINT_URL_S3: "https://storage.example.test", AWS_REGION: "aws-us-east-2", APP_TZ: "America/Toronto", MAIL_DAILY_CAP: "60",
+    PRIVACY_CONTACT_EMAIL: "privacy@meals.example.test",
     ...Object.fromEntries(RUNTIME_OFF_FLAGS.map((flag) => [flag, "false"])),
   };
   const entries = (over: Record<string, { type: string; value?: string } | null> = {}) => {

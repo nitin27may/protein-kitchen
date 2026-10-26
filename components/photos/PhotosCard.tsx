@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { makeCoverPhoto, removePhoto } from "@/app/actions";
 import { PhotoUpload } from "@/components/photos/PhotoUpload";
 import { Banner, Button } from "@/components/ui";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import type { PhotoView } from "@/lib/server/photo-index";
 
 /** Your photos of this recipe: the cover first, with set-cover and remove, and an Add button. */
 export function PhotosCard({ recipeSlug, photos }: { recipeSlug: string; photos: PhotoView[] }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
@@ -46,13 +48,13 @@ export function PhotosCard({ recipeSlug, photos }: { recipeSlug: string; photos:
               </p>
               {confirm === p.uid ? (
                 <div className="flex gap-2">
-                  <Button variant="danger" size="sm" disabled={pending} onClick={() => run(() => removePhoto(p.uid))}>Delete photo</Button>
+                  <Button variant="danger" size="sm" disabled={pending || !hydrated} onClick={() => run(() => removePhoto(p.uid))}>Delete photo</Button>
                   <Button variant="secondary" size="sm" onClick={() => setConfirm(null)}>Keep</Button>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {!p.isCover ? <Button variant="secondary" size="sm" disabled={pending} onClick={() => run(() => makeCoverPhoto(p.uid))}>Make cover</Button> : null}
-                  <Button variant="secondary" size="sm" onClick={() => setConfirm(p.uid)}>Delete</Button>
+                  {!p.isCover ? <Button variant="secondary" size="sm" disabled={pending || !hydrated} onClick={() => run(() => makeCoverPhoto(p.uid))}>Make cover</Button> : null}
+                  <Button variant="secondary" size="sm" disabled={!hydrated} onClick={() => setConfirm(p.uid)}>Delete</Button>
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client";
-import { withTx } from "../db/tx";
+import { withTx, type Tx } from "../db/tx";
 import * as s from "../db/schema";
 import type { HumanDataClass } from "./registry";
 import { markChanged, newUid, nowIso, stableJson } from "./util";
@@ -38,6 +38,13 @@ export async function writeSavedView(db: Db, input: SavedViewInput): Promise<{ u
     await markChanged(tx, SAVED_VIEWS_CLASS, at, input.householdId);
   });
   return { uid };
+}
+
+/** Legacy household import writer: keeps the bundle's uid and timestamps; does not mark the class changed. */
+export async function insertLegacySavedViews(tx: Tx, householdId: string, rows: readonly {
+  uid: string; list: string; name: string; query: string; isDefault: boolean; createdAt: string; updatedAt: string; createdByPersonId: number | null;
+}[]): Promise<void> {
+  if (rows.length) await tx.insert(s.savedViews).values(rows.map((row) => ({ householdId, ...row })));
 }
 
 /** Removes the list's default view. */

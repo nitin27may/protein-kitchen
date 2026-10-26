@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client";
 import * as s from "../db/schema";
-import { withTx } from "../db/tx";
+import { withTx, type Tx } from "../db/tx";
 import { TIMES_OF_DAY } from "../routines/types";
 import type { TimeOfDay } from "../routines/types";
 import type { HumanDataClass } from "./registry";
@@ -43,6 +43,13 @@ export async function writePersonRoutine(db: Db, personId: number, habitId: numb
     await markChanged(tx, PERSON_ROUTINES_CLASS, at);
   });
   return { uid };
+}
+
+/** Legacy household import writer: keeps the bundle's uid and timestamps; does not mark the class changed. */
+export async function insertLegacyPersonRoutines(tx: Tx, rows: readonly (PersonRoutineInput & {
+  personId: number; habitId: number; uid: string; createdAt: string; updatedAt: string; createdByPersonId: number | null;
+})[]): Promise<void> {
+  if (rows.length) await tx.insert(s.personRoutines).values(rows.map((row) => ({ ...row })));
 }
 
 const EntrySchema = z.object({

@@ -106,11 +106,25 @@ describe("describeReplay", () => {
     expect(describeReplay(intent({ kind: "favourite" }), wire)).toMatchObject({ status: "done", redirectTo: "/recipes/x", clear: "all" });
   });
 
+  it("says what was saved for each replayed kind", () => {
+    const ok = (kind: PendingIntent["kind"]): ReplayWire => ({ ok: true, replay: { ok: true, kind, redirectTo: "/recipes/x" } });
+    expect(describeReplay(intent({ kind: "rate", value: 4 } as never), ok("rate")).message).toBe("Saved. You rated this recipe 4 out of 5.");
+    expect(describeReplay(intent({ kind: "ban" }), ok("ban")).message).toBe("Saved. This recipe is hidden from your plans.");
+    expect(describeReplay(intent({ kind: "tested" }), ok("tested")).message).toBe("Saved. This recipe is marked as cooked.");
+    expect(describeReplay(intent({ kind: "favourite" }), ok("favourite")).message).toBe("Saved. This recipe is in your favourites.");
+    expect(describeReplay(intent({ kind: "save-plan" }), { ok: true, replay: { ok: true, kind: "save-plan", redirectTo: "/plan/1" } }).message).toBe("Plan saved to your kitchen.");
+  });
+
+  it("keeps a failed rating honest", () => {
+    const out = describeReplay(intent({ kind: "rate", value: 4 } as never), { ok: true, replay: { ok: false, kind: "rate", error: "Recipe not found" } });
+    expect(out).toMatchObject({ status: "failed", message: "Recipe not found", clear: "intent" });
+  });
+
   it("returns the person to the page with a clear message for an action replay cannot finish", () => {
-    const wire: ReplayWire = { ok: true, replay: { ok: false, kind: "rate", error: "x", unsupported: true } };
-    const out = describeReplay(intent({ kind: "rate" }), wire);
+    const wire: ReplayWire = { ok: true, replay: { ok: false, kind: "tick-grocery", error: "x", unsupported: true } };
+    const out = describeReplay(intent({ kind: "tick-grocery" }), wire);
     expect(out).toMatchObject({ status: "unsupported", redirectTo: "/recipes/x", clear: "intent" });
-    expect(out.message).toBe("You are signed up. Repeat rating the recipe from this page.");
+    expect(out.message).toBe("You are signed up. Repeat ticking the grocery item from this page.");
     const other = describeReplay(intent({ kind: "other", action: "adding a link" } as never), wire);
     expect(other.message).toContain("adding a link");
   });

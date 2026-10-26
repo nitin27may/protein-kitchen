@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, max } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client";
-import { withTx } from "../db/tx";
+import { withTx, type Tx } from "../db/tx";
 import * as s from "../db/schema";
 import { LINK_KINDS } from "../links/types";
 import type { LinkKind } from "../links/types";
@@ -54,6 +54,18 @@ export async function writeLink(db: Db, recipeId: number, input: LinkRowInput, p
     return row!.id;
   });
   return { id, uid };
+}
+
+/** Legacy household import writer: keeps the bundle's uid, position and timestamps; does not mark the class changed. */
+export async function insertLegacyLinks(tx: Tx, householdId: string, rows: readonly (LinkRowInput & {
+  recipeId: number; uid: string; position: number; createdAt: string; updatedAt: string; createdByPersonId: number | null;
+})[]): Promise<void> {
+  if (!rows.length) return;
+  await tx.insert(s.recipeLinks).values(rows.map((row) => ({
+    householdId, recipeId: row.recipeId, uid: row.uid, partSlug: row.partSlug ?? null, stepNo: row.stepNo ?? null, kind: row.kind, url: row.url,
+    title: row.title, source: row.source ?? null, startSec: row.startSec ?? null, position: row.position,
+    createdAt: row.createdAt, updatedAt: row.updatedAt, createdByPersonId: row.createdByPersonId,
+  })));
 }
 
 /** Changes the fields in `patch`; the uid, position and created_at stay. Returns false if the link does not exist. */

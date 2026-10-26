@@ -101,3 +101,25 @@ export async function clearHouseholdData(tx: Tx, householdId: string, scope: Res
   }
   return [];
 }
+
+/**
+ * Removes a whole household for good: access, invitations, every profile and everything hanging off it, then the
+ * household row. Used when the last member deletes their account. The caller holds the deployment lock and runs this in
+ * one transaction. Returns the photo blob keys, which the caller deletes only after the commit.
+ *
+ * The generic test in tests/account-deletion.test.ts walks every table with a household_id column, so a table added
+ * later fails there until it is cleared here.
+ */
+export async function deleteHousehold(tx: Tx, householdId: string): Promise<string[]> {
+  // Membership and invitation rows point at profiles, so they go first.
+  await tx.delete(s.householdInvitations).where(eq(s.householdInvitations.householdId, householdId));
+  await tx.delete(s.householdMembers).where(eq(s.householdMembers.householdId, householdId));
+  const photoKeysToDelete = await clearHouseholdData(tx, householdId, "all");
+  await tx.delete(s.reminderBatches).where(eq(s.reminderBatches.householdId, householdId));
+  await tx.delete(s.recipeFeedback).where(eq(s.recipeFeedback.householdId, householdId));
+  await tx.delete(s.stateSyncJobs).where(eq(s.stateSyncJobs.householdId, householdId));
+  // clearHouseholdData marks data classes as changed; the household is going, so those rows go too.
+  await tx.delete(s.syncState).where(eq(s.syncState.householdId, householdId));
+  await tx.delete(s.households).where(eq(s.households.id, householdId));
+  return photoKeysToDelete;
+}

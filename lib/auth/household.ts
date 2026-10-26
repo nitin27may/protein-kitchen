@@ -5,6 +5,8 @@ import type { Db } from "../db/client";
 import { withTx, type Tx } from "../db/tx";
 import { authAccounts, authSessions, authUsers, authVerifications, householdBootstrap, householdInvitations, householdMembers, households, people, pushSubscriptions } from "../db/schema";
 import { deletePersonalFeedbackForPerson } from "../human/personal-feedback";
+import { deleteHousehold } from "../human/reset";
+import { consumeEmailCode } from "./email-code";
 import { secretsMatch, tokenHash } from "./tokens";
 import { PersonInput, personRow, type PersonInputData } from "../schemas/person";
 import { refreshHouseholdAccess, resolveHouseholdAccess, type HouseholdAccess } from "./household-access";
@@ -17,7 +19,7 @@ const pending = () => and(isNull(householdInvitations.acceptedAt), isNull(househ
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 
 // One deployment-wide lock also covers the not-yet-created bootstrap row.
-async function lockHousehold(tx: Tx) {
+export async function lockHousehold(tx: Tx) {
   await tx.execute(sql`select pg_advisory_xact_lock(20261024, 15)`);
 }
 
@@ -125,12 +127,24 @@ export async function removeHouseholdMember(db: Db, actorUserId: string, targetU
   });
 }
 
-/** Called only by the rate-limited auth HTTP endpoint with its authoritative session. */
-export async function deleteOwnAccount(db: Db, input: {
-  userId: string; sessionToken: string; password: string;
-  verifyPassword: (input: { password: string; hash: string }) => Promise<boolean>;
-}) {
-  await withTx(db, async (tx) => {
+/**
+ * Re-authentication for account deletion: a fresh email code for the session's own address, or the current password for
+ * an account that has one. Everything else about the request comes from the authoritative session.
+ */
+export type DeletionProof =
+  | { code: string }
+  | { password: string; verifyPassword: (input: { password: string; hash: string }) => Promise<boolean> };
+
+/**
+ * Called only by the rate-limited auth HTTP endpoint with its authoritative session.
+ *
+ * A household where the user is the only member is deleted with the account, in the same transaction: every household
+ * table, every profile (birth date, weight), and the photo rows. The returned photo keys must be deleted from the blob
+ * store by the caller after the commit. A household with other members is kept for them, and an owner there must hand
+ * over ownership first.
+ */
+export async function deleteOwnAccount(db: Db, input: { userId: string; sessionToken: string } & DeletionProof): Promise<{ photoKeys: string[] }> {
+  const outcome = await withTx(db, async (tx): Promise<{ photoKeys: string[] } | { refused: string }> => {
     await lockHousehold(tx);
     const user = await verifiedUser(tx, input.userId);
     const memberships = await tx.select().from(householdMembers)
@@ -144,16 +158,33 @@ export async function deleteOwnAccount(db: Db, input: {
       eq(authSessions.userId, user.id), eq(authSessions.token, input.sessionToken), gt(authSessions.expiresAt, new Date()),
     )).for("update");
     if (!session) throw new HouseholdAccessError("Your session has expired. Sign in again before deleting your account.");
-    const [credential] = await tx.select({ password: authAccounts.password }).from(authAccounts)
-      .where(and(eq(authAccounts.userId, user.id), eq(authAccounts.providerId, "credential"))).for("update");
-    if (!credential?.password || !await input.verifyPassword({ password: input.password, hash: credential.password })) {
-      throw new HouseholdAccessError("Your current password is incorrect. Try again.");
-    }
+    const soleHouseholds: string[] = [];
     for (const member of ownedMemberships) {
-      if (member.role === "owner") await requireAnotherOwner(tx, member.householdId, user.id);
+      const [other] = await tx.select({ id: householdMembers.userId }).from(householdMembers)
+        .where(and(eq(householdMembers.householdId, member.householdId), ne(householdMembers.userId, user.id))).limit(1);
+      if (!other) { soleHouseholds.push(member.householdId); continue; }
+      if (member.role === "owner") {
+        try { await requireAnotherOwner(tx, member.householdId, user.id); }
+        catch {
+          throw new HouseholdAccessError("Transfer ownership first. Make another cook with a completed profile an owner, because at least one verified owner must stay in the household.");
+        }
+      }
     }
+    if ("code" in input) {
+      const checked = await consumeEmailCode(tx, user.email, input.code);
+      if (!checked.ok) return { refused: checked.message };
+    } else {
+      const [credential] = await tx.select({ password: authAccounts.password }).from(authAccounts)
+        .where(and(eq(authAccounts.userId, user.id), eq(authAccounts.providerId, "credential"))).for("update");
+      if (!credential?.password || !await input.verifyPassword({ password: input.password, hash: credential.password })) {
+        throw new HouseholdAccessError("Your current password is incorrect. Try again.");
+      }
+    }
+    const photoKeys: string[] = [];
     for (const member of ownedMemberships) {
-      if (member.personId !== null) {
+      if (soleHouseholds.includes(member.householdId)) {
+        photoKeys.push(...await deleteHousehold(tx, member.householdId));
+      } else if (member.personId !== null) {
         await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.personId, member.personId));
         await deletePersonalFeedbackForPerson(tx, member.personId);
       }
@@ -172,7 +203,11 @@ export async function deleteOwnAccount(db: Db, input: {
         else false end`),
     ));
     await tx.delete(authUsers).where(eq(authUsers.id, user.id));
+    return { photoKeys };
   });
+  // A refused code still burned an attempt, so that write is committed above and the refusal is raised here.
+  if ("refused" in outcome) throw new HouseholdAccessError(outcome.refused);
+  return outcome;
 }
 
 export async function createMemberProfile(db: Db, userId: string, input: PersonInputData, access?: HouseholdAccess) {

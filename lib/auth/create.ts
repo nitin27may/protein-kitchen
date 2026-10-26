@@ -5,11 +5,13 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP, magicLink } from "better-auth/plugins";
-import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
+import { and, DrizzleQueryError, eq, gt, inArray, isNull } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as schema from "../db/schema";
 import { assertUserCreation } from "./signup";
+import { isAllowlisted, normaliseEmail, type SignupAllowlist } from "./allowlist";
 import { accountDeletion } from "./account-deletion";
+import { EMAIL_CODE_ATTEMPTS, EMAIL_CODE_LENGTH, EMAIL_CODE_TTL_SECONDS } from "./email-code";
 import { accountHasPassword, revokeOtherSessions, takePasswordAttempt, type PasswordOutcome } from "./password";
 
 export interface AuthCodeMail {
@@ -38,6 +40,10 @@ export interface AuthOptions {
   isVercel: boolean;
   sendCode: (mail: AuthCodeMail) => Promise<void>;
   sendLink: (mail: AuthLinkMail) => Promise<void>;
+  /** Null or absent means open signup. */
+  signupAllowlist?: SignupAllowlist | null;
+  /** Removes photo bytes after a household is deleted with its last member. */
+  deletePhotoKeys?: (keys: string[]) => Promise<void>;
 }
 
 function passwordFailure(error: unknown): PasswordOutcome {
@@ -109,11 +115,21 @@ export function createAuth(db: Db, options: AuthOptions) {
     },
     databaseHooks: {
       user: { create: { before: async (user, context) => {
-        assertUserCreation(context?.path, user.emailVerified);
+        // Backstop for the mail gate: an address the allowlist and pending associations would not have mailed cannot get an account.
+        let invited = isAllowlisted(options.signupAllowlist ?? null, user.email);
+        if (!invited) {
+          const [pending] = await db.select({ id: schema.householdInvitations.id }).from(schema.householdInvitations).where(and(
+            eq(schema.householdInvitations.email, normaliseEmail(user.email)), isNull(schema.householdInvitations.acceptedAt),
+            isNull(schema.householdInvitations.declinedAt), isNull(schema.householdInvitations.revokedAt),
+            gt(schema.householdInvitations.expiresAt, new Date()),
+          )).limit(1);
+          invited = Boolean(pending);
+        }
+        assertUserCreation(context?.path, user.emailVerified, invited);
         return { data: user };
       } } },
     },
-    plugins: [accountDeletion(db), magicLink({
+    plugins: [accountDeletion(db, { deletePhotoKeys: options.deletePhotoKeys }), magicLink({
       disableSignUp: false, expiresIn: 300, storeToken: "hashed",
       async sendMagicLink({ email, url, token }) {
         try {
@@ -129,7 +145,7 @@ export function createAuth(db: Db, options: AuthOptions) {
       },
     }), emailOTP({
       disableSignUp: false, overrideDefaultEmailVerification: true,
-      otpLength: 6, expiresIn: 300, allowedAttempts: 3, storeOTP: "hashed", resendStrategy: "rotate",
+      otpLength: EMAIL_CODE_LENGTH, expiresIn: EMAIL_CODE_TTL_SECONDS, allowedAttempts: EMAIL_CODE_ATTEMPTS, storeOTP: "hashed", resendStrategy: "rotate",
       async sendVerificationOTP(mail) {
         try {
           await options.sendCode(mail);

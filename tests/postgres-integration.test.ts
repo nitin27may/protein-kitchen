@@ -739,6 +739,12 @@ describe.skipIf(!url)("node-postgres on disposable native Postgres", () => {
         ? removeHouseholdMember(handle.db, id, id)
         : changeMemberRole(handle.db, id, id, "member");
     }));
+    if (operation === "delete") {
+      // The deletions serialise: the first owner leaves, and the second is then the only member, so the household goes with them.
+      expect(results.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"]);
+      for (const table of [s.authUsers, s.householdMembers, s.people, s.households, s.authVerifications]) expect(await handle.db.select().from(table)).toEqual([]);
+      return;
+    }
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((r) => r.status === "rejected");
     expect(rejected?.status === "rejected" && rejected.reason.message).toContain("at least one verified owner");

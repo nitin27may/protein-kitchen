@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requirePageMember, verifiedSessionUser } from "@/lib/auth/access";
 import { getDb } from "@/lib/server/context";
@@ -15,7 +16,8 @@ export default async function Account() {
   const user = await verifiedSessionUser();
   const db = await getDb();
   const access = await memberHouseholdAccess(db, member);
-  const { profile, owner, invitations, incomingAssociations, members } = await householdAccount(db, access);
+  const { profile, owner, invitations, incomingAssociations, members, memberCount } = await householdAccount(db, access);
+  const hasPassword = await accountHasPassword(db, member.userId);
   if (!profile) redirect("/onboarding?next=%2Faccount");
   return <section className="mx-auto max-w-xl space-y-6 px-4 pb-28 pt-8">
     <h1 className="text-2xl font-bold">Your account</h1>
@@ -27,8 +29,9 @@ export default async function Account() {
       <LinkButton href="/groceries" variant="secondary">Shared shopping list</LinkButton>
       <LinkButton href="/households" variant="secondary">Switch household</LinkButton>
     </div>
-    <PasswordControls hasPassword={await accountHasPassword(db, member.userId)} />
+    <p className="text-sm"><Link href="/privacy" className="font-semibold text-primary underline-offset-2 hover:underline">How we use your data</Link></p>
+    <PasswordControls hasPassword={hasPassword} />
     <AccountControls owner={owner} invitations={invitations} incomingAssociations={incomingAssociations}
-      members={members} currentUserId={member.userId} />
+      members={members} currentUserId={member.userId} accountEmail={user.email} hasPassword={hasPassword} onlyMember={memberCount === 1} />
   </section>;
 }
