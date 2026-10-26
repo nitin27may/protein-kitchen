@@ -34,6 +34,8 @@ export function remoteTestDir(env: Environment): string | null {
   return path.resolve(dir);
 }
 
+const DEFAULT_IMAGE = "default.jpg";
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 /**
@@ -60,13 +62,16 @@ export function fixtureFetch(dir: string): typeof fetch {
       return licence === undefined ? json({}, 404) : json({ license: licence });
     }
     const name = path.basename(url.pathname);
-    if (!/^[\w.-]+$/.test(name) || name.startsWith(".")) return new Response("not found", { status: 404 });
-    try {
-      const bytes = await readFile(path.join(dir, "images", name));
-      return new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": CONTENT_TYPES[path.extname(name).toLowerCase()] ?? "application/octet-stream" } });
-    } catch {
-      return new Response("not found", { status: 404 });
+    const safe = /^[\w.-]+$/.test(name) && !name.startsWith(".");
+    // `images/default.jpg` answers any image URL that has no file of its own, so a browser test can approve real candidate
+    // entries (whose URLs carry odd characters) without one fixture file each. Without that file the answer stays 404.
+    for (const file of safe ? [name, DEFAULT_IMAGE] : [DEFAULT_IMAGE]) {
+      try {
+        const bytes = await readFile(path.join(dir, "images", file));
+        return new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": CONTENT_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream" } });
+      } catch { /* try the next name */ }
     }
+    return new Response("not found", { status: 404 });
   }) as typeof fetch;
 }
 

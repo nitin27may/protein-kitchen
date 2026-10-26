@@ -70,7 +70,10 @@ describe("the agent cannot approve", () => {
     expect(scripts.filter((file) => /PHOTO_REMOTE_TEST_DIR/.test(read(file)))).toEqual([E2E_SERVER]);
     const text = read(E2E_SERVER);
     expect(text.match(/PHOTO_REMOTE_TEST_DIR/g)).toHaveLength(1);
-    expect(text).toMatch(/^env\.PHOTO_REMOTE_TEST_DIR = path\.resolve\("tests\/fixtures\/photos"\);$/m);
+    // A per-run copy of the committed fixtures, built under the gitignored .next-e2e-fixture directory.
+    expect(text).toMatch(/^env\.PHOTO_REMOTE_TEST_DIR = photoFixtureDir;$/m);
+    expect(text).toMatch(/const photoFixtureDir = path\.resolve\("\.next-e2e-fixture\/photos"\);/);
+    expect(text).toMatch(/cp\(path\.resolve\("tests\/fixtures\/photos"\), photoFixtureDir/);
     expect(text).toMatch(/loopback protein_kitchen_e2e \(checked by e2eTarget above\)[\s\S]*not Vercel/);
     expect(text).toMatch(/const target = e2eTarget\(process\.env\.POSTGRES_E2E_URL\);/);
   });

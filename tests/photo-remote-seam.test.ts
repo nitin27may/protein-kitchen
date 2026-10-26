@@ -1,3 +1,5 @@
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
@@ -57,6 +59,24 @@ describe("fixture directory fetch", () => {
     await expect(downloadImage("https://upload.wikimedia.org/a/b/..%2F..%2Fetc", fx)).rejects.toThrow(/404/);
     const odd = await fx("https://upload.wikimedia.org/x/tofu.bin");
     expect(odd.status).toBe(404);
+  });
+  it("answers any image URL from images/default.jpg when that file exists, odd names included, and 404s without it", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "seam-default-"));
+    try {
+      await mkdir(path.join(dir, "images"));
+      await writeFile(path.join(dir, "licences.json"), "{}");
+      const jpeg = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#336699" } }).jpeg().toBuffer();
+      const bare = fixtureFetch(dir);
+      expect((await bare("https://upload.wikimedia.org/x/1280px-Ajwain_(Trachyspermum_ammi).jpg")).status).toBe(404);
+      await writeFile(path.join(dir, "images", "default.jpg"), jpeg);
+      await writeFile(path.join(dir, "images", "own.jpg"), await sharp({ create: { width: 4, height: 4, channels: 3, background: "#ffffff" } }).jpeg().toBuffer());
+      const withDefault = fixtureFetch(dir);
+      const odd = await downloadImage("https://upload.wikimedia.org/x/1280px-Ajwain_(Trachyspermum_ammi).jpg", withDefault);
+      expect((await sharp(odd).metadata()).width).toBe(8);
+      const own = await downloadImage("https://upload.wikimedia.org/x/own.jpg", withDefault);
+      expect((await sharp(own).metadata()).width).toBe(4);
+      expect((await withDefault("https://upload.wikimedia.org/.hidden")).status).toBe(200);
+    } finally { await rm(dir, { recursive: true, force: true }); }
   });
   it("answers Commons licence queries for several titles and Openverse by id from licences.json", async () => {
     const res = await fx(`https://commons.wikimedia.org/w/api.php?${new URLSearchParams({ action: "query", titles: "File:Fixture Falafel.jpg|File:Nope.jpg" })}`);

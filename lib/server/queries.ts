@@ -34,7 +34,9 @@ import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
 import { libraryPhotoManifest } from "../library-photos/manifest";
 import { creditedPhotos, photoIndex, photosOfRecipe, photosOfIngredient } from "./photo-index";
+import { decidedLibraryReview } from "./library-decided";
 import { pendingLibraryReview, type PendingFilter, type SubjectNames } from "./library-review";
+import type { ReviewFilter } from "./photo-review";
 import type { CandidateFile } from "../photos/candidates";
 
 export type PersonRow = typeof s.people.$inferSelect;
@@ -67,6 +69,11 @@ export async function getCreditedPhotos() {
 /** Candidates waiting for a library decision. Library approvals are shared, so this is not household scoped. */
 export async function getPhotoReview(file: CandidateFile, names: SubjectNames, filter: PendingFilter = {}) {
   return pendingLibraryReview(await getDb(), file, names, filter);
+}
+
+/** Approved library photos and rejected candidates for the "Decided" view. Not household scoped. */
+export async function getDecidedReview(file: CandidateFile, names: SubjectNames, filter: ReviewFilter = {}) {
+  return decidedLibraryReview(await getDb(), file, names, filter);
 }
 
 async function requestPlan(db: Db, planId: number) {

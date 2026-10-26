@@ -129,6 +129,8 @@ export default defineConfig({
         "lib/library-photos/model.ts": { statements: 100, branches: 95, functions: 100, lines: 100 },
         "app/library-photos/**/route.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/context.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/photos/review-selection.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/server/library-decided.ts": { statements: 100, branches: 90, functions: 100, lines: 100 },
       },
     },
   },
