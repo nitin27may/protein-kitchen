@@ -5,7 +5,7 @@ import { compareHumanCounts, HUMAN_OWNED_TABLES, parseCounts, readHumanCounts } 
 import type { CountQueryable } from "../lib/deployment/human-counts";
 import { readOnlyGuard } from "../lib/deployment/check-production";
 import {
-  createPreDeploySnapshot, DEFAULT_RETENTION_DAYS, retentionDays, SNAPSHOT_KEEP, snapshotName,
+  createPreDeploySnapshot, DEFAULT_RETENTION_DAYS, retentionDays, SNAPSHOT_KEEP, SNAPSHOT_KEEP_BEFORE_CREATE, snapshotName,
 } from "../lib/deployment/neon-snapshot";
 import {
   createRehearsalBranch, deleteRehearsalBranch, rehearsalName, requireRehearsalBranch, requireRehearsalCi,
@@ -105,6 +105,20 @@ describe("pre-deploy snapshot", () => {
     expect(snapshots).toContain(result.name);
     expect(fx.names()).toContain("production");
     expect(SNAPSHOT_KEEP).toBe(5);
+    expect(SNAPSHOT_KEEP_BEFORE_CREATE).toBe(4);
+  });
+
+  it("prunes to the newest four before creating, so a full free-plan project still gets its snapshot", async () => {
+    // Production plus five snapshots fills a six-branch limit; create-then-prune would fail here.
+    const fx = fakeNeon([1, 2, 3, 4, 5].map(snapshotAt), { limit: 6 });
+    const result = await createPreDeploySnapshot(productionEnv, fx.admin, now);
+    const order = fx.requests.filter((r) => r.method !== "GET").map((r) => r.method);
+    expect(order.indexOf("DELETE")).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf("DELETE")).toBeLessThan(order.indexOf("POST"));
+    const snapshots = fx.names().filter((n) => n.startsWith("pre-deploy-"));
+    expect(snapshots).toHaveLength(5);
+    expect(snapshots).toContain(result.name);
+    expect(snapshots).not.toContain(snapshotAt(1).name);
   });
 
   it("is refused outside the approved production CI job, before any request", async () => {
@@ -140,6 +154,8 @@ describe("pre-deploy snapshot", () => {
     const original = fx.admin.deleteBranch;
     fx.admin.deleteBranch = async () => { throw new NeonAdminError("NEON_ADMIN_HTTP", "x"); };
     await expect(createPreDeploySnapshot(productionEnv, fx.admin, now)).rejects.toThrow("NEON_ADMIN_PRUNE_FAILED");
+    // The failed prune happens before creation, so no new snapshot is made on top of an over-full project.
+    expect(fx.requests.some((r) => r.method === "POST")).toBe(false);
     fx.admin.deleteBranch = original;
   });
 });

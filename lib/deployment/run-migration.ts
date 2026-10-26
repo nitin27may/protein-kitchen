@@ -3,7 +3,7 @@ import type { MigrationArtifacts, Queryable } from "./check-production";
 import { requireMigrationPrefix } from "../db/postgres/migration-ledger";
 import type { LedgerRow } from "../db/postgres/migration-ledger";
 
-/** One lock id for every migration runner (preview and production share the ledger discipline). */
+/** One lock id for every migration runner (every environment shares the ledger discipline). */
 export const MIGRATION_LOCK = { classId: 197548, objectId: 1 } as const;
 
 export interface MigrationSession extends Queryable {

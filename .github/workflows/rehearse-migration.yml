@@ -1,0 +1,94 @@
+name: rehearse-migration
+
+# Runs the pending migrations and the seed against a throwaway Neon branch of production (expires in 1 day) and deletes
+# it. Never touches the production branch.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to rehearse (needs a successful push CI run with acceptance)
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve the ref and require accepted CI
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REF_INPUT: ${{ inputs.ref }}
+        run: pnpm deploy:gate rehearsal
+
+  rehearse:
+    needs: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production-rehearsal
+    concurrency:
+      group: rehearsal
+      cancel-in-progress: false
+    env:
+      DATABASE_ENV: development
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+      NEON_PRODUCTION_BRANCH_ID: ${{ vars.NEON_PRODUCTION_BRANCH_ID }}
+      NEON_DATABASE_NAME: ${{ vars.NEON_DATABASE_NAME }}
+      NEON_ROLE_NAME: ${{ vars.NEON_ROLE_NAME }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create the rehearsal branch
+        run: pnpm db:rehearsal create
+      - name: Count human-owned rows before
+        run: pnpm db:rehearsal counts "$RUNNER_TEMP/before.json"
+      - name: Check before migration
+        run: pnpm db:check:production --target=rehearsal --phase=pre-migrate
+      - name: Migrate
+        run: |
+          set -euo pipefail
+          start=$SECONDS
+          pnpm db:migrate:postgres
+          echo "Migration took $((SECONDS - start)) seconds on the rehearsal branch." >> "$GITHUB_STEP_SUMMARY"
+      - name: Seed the library
+        run: pnpm seed
+      - name: Check before deploy
+        run: pnpm db:check:production --target=rehearsal --phase=pre-deploy
+      - name: Count human-owned rows after
+        run: pnpm db:rehearsal counts "$RUNNER_TEMP/after.json"
+      - name: Compare counts
+        run: pnpm db:rehearsal compare "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
+      - name: Delete the rehearsal branch
+        if: ${{ always() }}
+        run: |
+          rm -f "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
+          pnpm db:rehearsal delete

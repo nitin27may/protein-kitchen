@@ -9,6 +9,8 @@ export const SNAPSHOT_PREFIX = "pre-deploy-";
 export const SNAPSHOT_NAME_PATTERN = /^pre-deploy-\d{8}T\d{6}Z-[0-9a-f]{7}$/;
 /** Free plan: keep the newest few and prune strictly. */
 export const SNAPSHOT_KEEP = 5;
+/** Pruned to this many BEFORE the new snapshot, so the new one makes SNAPSHOT_KEEP and a branch limit is not hit. */
+export const SNAPSHOT_KEEP_BEFORE_CREATE = SNAPSHOT_KEEP - 1;
 export const DEFAULT_RETENTION_DAYS = 7;
 
 export function snapshotName(now: Date, sha: string | undefined): string {
@@ -31,14 +33,17 @@ export interface SnapshotResult { name: string; id: string }
 
 /**
  * Creates `pre-deploy-<timestamp>-<sha7>` from the production branch with no compute endpoint, waits until it is
- * ready, then prunes old snapshots. Refused outside the approved production CI job.
+ * ready. Old snapshots are pruned to the newest 4 first (so a free-plan branch limit is not hit by create-then-prune) and
+ * to 5 afterwards. Refused outside the approved production CI job.
  */
 export async function createPreDeploySnapshot(env: Environment, admin: NeonAdmin, now: Date = new Date()): Promise<SnapshotResult> {
   requireProductionCiContext(env);
   const { project, branch } = productionPins(env);
   const name = snapshotName(now, env.GITHUB_SHA);
   const expires = new Date(now.getTime() + retentionDays(env) * 86_400_000).toISOString();
+  const prune = (keep: number) => admin.prune(project, { prefix: SNAPSHOT_PREFIX, namePattern: SNAPSHOT_NAME_PATTERN, keep });
+  await prune(SNAPSHOT_KEEP_BEFORE_CREATE);
   const created = await admin.createBranch(project, { parent_id: branch, name, expires_at: expires });
-  await admin.prune(project, { prefix: SNAPSHOT_PREFIX, namePattern: SNAPSHOT_NAME_PATTERN, keep: SNAPSHOT_KEEP });
+  await prune(SNAPSHOT_KEEP);
   return { name: created.name, id: created.id };
 }
