@@ -1,13 +1,16 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { loadData } from "../lib/data/load";
 import { libraryVersion } from "../lib/db/library-version";
 import { neonHttpControlPlane } from "../lib/db/postgres/neon-control-plane";
+import { postgresMigrationTarget } from "../lib/db/postgres/migration-target";
 import { productionDirectTarget } from "../lib/db/postgres/production-target";
 import { validatePostgresTarget } from "../lib/db/postgres/target";
 import {
-  checkConfiguration, checkNeon, formatResult, loadMigrationArtifacts, parseCheckArguments, requireRemoteFlag,
+  checkConfiguration, checkNeon, checkRehearsalConfiguration, checkRehearsalNeon, checkRuntimeManifest, formatResult,
+  parseRuntimeManifest, loadMigrationArtifacts, parseCheckArguments, requireRemoteFlag,
   runDatabaseChecks, summarise,
 } from "../lib/deployment/check-production";
 import type { CheckResult } from "../lib/deployment/check-production";
@@ -21,17 +24,27 @@ async function main(): Promise<number> {
   const env = process.env;
   const emit = (results: CheckResult[]) => { for (const r of results) console.log(formatResult(r)); };
 
+  if (args.runtimeManifest !== undefined) {
+    // One local file, no network and no database. Names, types and plain values are compared; only names are printed.
+    let json: unknown;
+    try { json = JSON.parse(fs.readFileSync(args.runtimeManifest, "utf8")); } catch { json = undefined; }
+    const results = checkRuntimeManifest(parseRuntimeManifest(json), env);
+    emit(results); console.log(summarise(results, "runtime-manifest"));
+    return results.some((r) => r.severity === "fail") ? 1 : 0;
+  }
+
   const refused = requireRemoteFlag(env, args);
   if (refused) { emit([refused]); console.log(summarise([refused], args.phase)); return 1; }
 
-  const results = checkConfiguration(env);
+  const rehearsal = args.target === "rehearsal";
+  const results = rehearsal ? checkRehearsalConfiguration(env) : checkConfiguration(env);
   if (results.some((r) => r.severity === "fail")) {
     results.push({ check: "remote", severity: "fail", code: "SKIPPED_PREREQUISITE", detail: "config" });
     emit(results); console.log(summarise(results, args.phase)); return 1;
   }
 
-  const plane = neonHttpControlPlane(env.NEON_API_KEY!);
-  const neon = await checkNeon(env, plane);
+  const plane = rehearsal ? undefined : neonHttpControlPlane(env.NEON_API_KEY!);
+  const neon = plane ? await checkNeon(env, plane) : await checkRehearsalNeon(env);
   results.push(neon);
   if (neon.severity === "fail") {
     results.push({ check: "database", severity: "fail", code: "SKIPPED_PREREQUISITE", detail: "neon" });
@@ -45,7 +58,7 @@ async function main(): Promise<number> {
     emit(results); console.log(summarise(results, args.phase)); return 1;
   }
   const client = new Client({
-    connectionString: validatePostgresTarget(productionDirectTarget(env)).toString(),
+    connectionString: validatePostgresTarget(rehearsal ? postgresMigrationTarget(env) : productionDirectTarget(env)).toString(),
     connectionTimeoutMillis: 10_000, application_name: "protein-kitchen-check",
   });
   try {
@@ -56,7 +69,7 @@ async function main(): Promise<number> {
   }
   try {
     results.push(...await runDatabaseChecks({
-      client, env, phase: args.phase, plane,
+      client, env, phase: args.phase, target: args.target, ...(plane ? { plane } : {}),
       artifacts: loadMigrationArtifacts(path.join(root, "db", "postgres-migrations")),
       localLibraryVersion: libraryVersion(data),
     }));
