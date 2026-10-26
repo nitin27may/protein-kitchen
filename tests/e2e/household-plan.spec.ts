@@ -391,8 +391,15 @@ test("Excel and PDF exports return actual file payloads", async ({ request }) =>
   expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
 });
 
-test("photo rejection persists, and a failed request displays an error then allows retry", async ({ page }) => {
+test("a curator's library photo rejection persists, and a failed request displays an error then allows retry", async ({ page }) => {
   test.skip(process.env.PHOTO_REVIEW_ENABLED === "false", "Candidate review is switched off");
+  const baseline = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  let libraryBefore: Set<number>;
+  let householdBefore: number;
+  try {
+    libraryBefore = new Set((await baseline.db.select({ id: s.libraryPhotoDecisions.id }).from(s.libraryPhotoDecisions)).map((r) => r.id));
+    householdBefore = (await baseline.db.select().from(s.photoDecisions)).length;
+  } finally { await baseline.close(); }
   await page.goto("/photos/review");
   const reject = page.getByRole("button", { name: "Reject", exact: true });
   const count = await reject.count();
@@ -413,6 +420,16 @@ test("photo rejection persists, and a failed request displays an error then allo
   await expect(reject).toHaveCount(count - 2);
   await page.reload();
   await expect(reject).toHaveCount(count - 2);
+  // The decisions are library decisions (shared, no household), written by the curator's person.
+  const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  try {
+    // Only the decisions this test created (other fixtures may seed their own).
+    const rows = (await handle.db.select().from(s.libraryPhotoDecisions)).filter((r) => !libraryBefore.has(r.id));
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.decision === "rejected" && r.createdByPersonId !== null)).toBe(true);
+    // The curator's clicks added no household decision.
+    expect(await handle.db.select().from(s.photoDecisions)).toHaveLength(householdBefore);
+  } finally { await handle.close(); }
 });
 
 test("private photo upload, reload and deletion preserve actual WebP bytes and recover from request failures", async ({ page, browser }) => {

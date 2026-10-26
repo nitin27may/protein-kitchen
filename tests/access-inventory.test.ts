@@ -156,8 +156,24 @@ describe("application authorization inventory", () => {
   }
   it("all legacy actions check membership first, including read-only previews", () => {
     const actions = source("app/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
-    expect(actions).toHaveLength(35);
+    expect(actions).toHaveLength(33);
     for (const action of actions) expect(firstCall(action), action.name?.getText()).toBe("actionDenial");
+  });
+  it("library photo review actions pass the curator gate before validating or working", () => {
+    const actions = source("app/photos/review/actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));
+    expect(actions.map((node) => node.name?.getText())).toEqual(["listPendingKeys", "approveLibraryBatch", "rejectLibraryBatch", "removeLibraryPhoto", "setLibraryCover", "undoLibraryRejection"]);
+    for (const action of actions) {
+      expect(firstCall(action), action.name?.getText()).toBe("curatorDenial");
+      expect(action.body?.statements[0]?.getText()).toBe("const denied = await curatorDenial();");
+      expect(action.body?.statements[1]?.getText()).toBe("if (denied) return denied;");
+    }
+    // Only async functions may be exported from a "use server" file, and the file must say so.
+    expect(readFileSync("app/photos/review/actions.ts", "utf8").startsWith('"use server";')).toBe(true);
+    const others = source("app/photos/review/actions.ts").statements.filter((node) => ts.isVariableStatement(node) && node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword));
+    expect(others).toHaveLength(0);
+  });
+  it("the review page sets the route time limit the actions run under", () => {
+    expect(readFileSync("app/photos/review/page.tsx", "utf8")).toMatch(/export const maxDuration = 120;/);
   });
   it("private-state action checks current owner permission before reading configuration", () => {
     const actions = source("app/settings/sync-actions.ts").statements.filter((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && !!exported(node));

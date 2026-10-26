@@ -1,4 +1,5 @@
 import { requirePageMember } from "@/lib/auth/access";
+import { isCurator } from "@/lib/auth/curator";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { photoReviewEnabled } from "@/lib/photos/review-flag";
@@ -12,10 +13,14 @@ import { displayName } from "@/lib/schemas";
 
 export const metadata: Metadata = { title: "Review photos" };
 export const dynamic = "force-dynamic";
+/** Applies to the review actions too: a batch of six downloads can take up to 75 s. */
+export const maxDuration = 120;
 
 export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ kind?: string; q?: string; missing?: string }> }) {
-  await requirePageMember();
+  const member = await requirePageMember();
   if (!photoReviewEnabled()) notFound();
+  // Library approval is for curators only; everyone else sees what any unknown page shows.
+  if (!(await isCurator(member))) notFound();
   const sp = await searchParams;
   const kind: SubjectKind | "all" = sp.kind === "recipe" || sp.kind === "ingredient" ? sp.kind : "all";
   const data = getData();

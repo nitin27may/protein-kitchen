@@ -57,6 +57,9 @@ const env: NodeJS.ProcessEnv = {
   STATE_GITHUB_REPOSITORY: state.repository, STATE_GITHUB_BRANCH: state.branch, STATE_GITHUB_PRIVATE_KEY: state.privateKey,
   STATE_SYNC_TEST_GITHUB_URL: fixture.endpoint, STATE_SYNC_SCHEDULER_SECRET: controlSecret,
 };
+// The fixture directory replaces Wikimedia/Openverse only here: loopback protein_kitchen_e2e (checked by e2eTarget above),
+// development environment, not Vercel. lib/photos/remote-seam.ts checks the same conditions again and throws otherwise.
+env.PHOTO_REMOTE_TEST_DIR = path.resolve("tests/fixtures/photos");
 delete env.VERCEL_ENV;
 delete env.VERCEL;
 // The library photo manifest is kept in the Next data cache on disk for an hour; a stale copy from an earlier run names photos this database does not have.

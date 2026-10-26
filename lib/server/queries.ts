@@ -34,7 +34,7 @@ import { HouseholdAccessError } from "../auth/household";
 import type { Db } from "../db/client";
 import { libraryPhotoManifest } from "../library-photos/manifest";
 import { creditedPhotos, photoIndex, photosOfRecipe, photosOfIngredient } from "./photo-index";
-import { pendingReview, type ReviewFilter } from "./photo-review";
+import { pendingLibraryReview, type PendingFilter, type SubjectNames } from "./library-review";
 import type { CandidateFile } from "../photos/candidates";
 
 export type PersonRow = typeof s.people.$inferSelect;
@@ -64,9 +64,9 @@ export async function getCreditedPhotos() {
   return creditedPhotos(db, (await requestHousehold(db)).householdId, await libraryPhotoManifest());
 }
 
-export async function getPhotoReview(file: CandidateFile, names: Parameters<typeof pendingReview>[2], filter: ReviewFilter = {}) {
-  const db = await getDb();
-  return pendingReview(db, file, names, filter, (await requestHousehold(db)).householdId);
+/** Candidates waiting for a library decision. Library approvals are shared, so this is not household scoped. */
+export async function getPhotoReview(file: CandidateFile, names: SubjectNames, filter: PendingFilter = {}) {
+  return pendingLibraryReview(await getDb(), file, names, filter);
 }
 
 async function requestPlan(db: Db, planId: number) {

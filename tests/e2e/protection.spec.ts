@@ -1,18 +1,21 @@
 import { test, expect } from "./member-fixture";
 import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
+import { hashPassword } from "better-auth/crypto";
 import { randomUUID } from "node:crypto";
 import { openPostgres } from "../../lib/db/postgres/client";
-import { authSessions, authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews, photos, photoDecisions } from "../../lib/db/schema";
+import { authSessions, authUsers, householdMembers, households, people, personRecipeFeedback, personRoutines, recipeFeedback, recipeLinks, recipes, plans, planSetups, planSlots, savedViews, photos, photoDecisions, libraryPhotoDecisions, authAccounts } from "../../lib/db/schema";
 import { e2eTarget } from "./target";
 import { persistNewPlan } from "../../lib/server/plan-persistence";
 import { loadCandidates } from "../../lib/photos/candidates";
 
-test("photo metadata credits bytes and candidate decisions stay within the current household", async ({ page }) => {
+test("household photo metadata, credits and bytes stay private, and library review is a curator-only shared decision", async ({ page, browser }) => {
   test.skip(process.env.PHOTO_REVIEW_ENABLED === "false", "Candidate review is switched off");
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   const householdId = `foreign-photo-${randomUUID()}`;
   const uid = randomUUID();
+  let extraUser: string | undefined;
+  let extraPerson: number | undefined;
   try {
     await page.goto("/settings");
     const profileSummary = page.locator('a[href="/profiles"]').filter({ hasText: "saved." }).locator("p");
@@ -44,10 +47,11 @@ test("photo metadata credits bytes and candidate decisions stay within the curre
       expect(response.status()).toBe(404);
       expect(response.headers()["cache-control"]).toBe("private, no-store");
     }
-    const decided = new Set((await handle.db.select().from(photoDecisions)).map((r) => `${r.subjectSlug}:${r.candidateKey}`));
+    const decided = new Set((await handle.db.select().from(libraryPhotoDecisions)).map((r) => `${r.subjectSlug}:${r.candidateKey}`));
     const entry = Object.entries(loadCandidates(process.cwd()).recipes)
       .flatMap(([slug, candidates]) => candidates.map((candidate) => ({ slug, candidate })))
       .find(({ slug, candidate }) => !decided.has(`${slug}:${candidate.key}`))!;
+    // Another household's private decision on this candidate must not hide it from the library review.
     await handle.db.insert(photoDecisions).values({
       householdId, uid: randomUUID(), candidateKey: entry.candidate.key, subjectKind: "recipe", subjectSlug: entry.slug,
       decision: "rejected", createdAt: "2026-11-02", updatedAt: "2026-11-02",
@@ -59,9 +63,38 @@ test("photo metadata credits bytes and candidate decisions stay within the curre
     await expect(card).toHaveCount(0);
     await page.reload();
     await expect(card).toHaveCount(0);
-    expect((await handle.db.select().from(photoDecisions).where(eq(photoDecisions.householdId, householdId)))[0])
-      .toMatchObject({ decision: "rejected", candidateKey: entry.candidate.key });
+    const [decision] = await handle.db.select().from(libraryPhotoDecisions).where(eq(libraryPhotoDecisions.candidateKey, entry.candidate.key));
+    expect(decision).toMatchObject({ decision: "rejected", subjectSlug: entry.slug, subjectKind: "recipe" });
+    expect(decision!.createdByPersonId).not.toBeNull();
+    // The curator's decision is shared, not written as a household decision.
+    expect(await handle.db.select().from(photoDecisions).where(eq(photoDecisions.candidateKey, entry.candidate.key))).toHaveLength(1);
+
+    // A signed-in member who is not a curator gets a 404 for the review page.
+    const email = `non-curator-${randomUUID()}@example.test`;
+    const password = "Synthetic-non-curator-password-123!";
+    const [source] = await handle.db.select({ householdId: people.householdId }).from(people).where(eq(people.id, 300));
+    const userId = extraUser = randomUUID();
+    await handle.db.insert(authUsers).values({ id: userId, name: "Synthetic non-curator", email, emailVerified: true });
+    await handle.db.insert(authAccounts).values({ id: randomUUID(), userId, providerId: "credential", accountId: userId, password: await hashPassword(password) });
+    const [profile] = await handle.db.insert(people).values({ householdId: source!.householdId!, name: "Synthetic non-curator profile", sex: "other", birthDate: "2000-01-01", heightCm: 170, weightKg: 70, activityLevel: "light", dietFlags: [] }).returning({ id: people.id });
+    extraPerson = profile!.id;
+    await handle.db.insert(householdMembers).values({ householdId: source!.householdId!, userId, role: "member", personId: profile!.id });
+    const origin = `http://127.0.0.1:${process.env.E2E_PORT ?? "3112"}`;
+    const other = await browser.newContext({ baseURL: origin });
+    try {
+      const signIn = await other.request.post("/api/auth/sign-in/email", { headers: { origin, "x-forwarded-for": "127.0.0.32" }, data: { email, password } });
+      expect(signIn.status()).toBe(200);
+      const denied = await other.newPage();
+      expect((await denied.goto("/photos/review"))?.status()).toBe(404);
+    } finally { await other.close(); }
   } finally {
+    if (extraUser) {
+      await handle.db.delete(authSessions).where(eq(authSessions.userId, extraUser));
+      await handle.db.delete(householdMembers).where(eq(householdMembers.userId, extraUser));
+      await handle.db.delete(authAccounts).where(eq(authAccounts.userId, extraUser));
+      await handle.db.delete(authUsers).where(eq(authUsers.id, extraUser));
+    }
+    if (extraPerson) await handle.db.delete(people).where(eq(people.id, extraPerson));
     await handle.db.delete(photoDecisions).where(eq(photoDecisions.householdId, householdId));
     await handle.db.delete(photos).where(eq(photos.householdId, householdId));
     await handle.db.delete(people).where(eq(people.householdId, householdId));
