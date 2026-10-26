@@ -90,7 +90,14 @@ describe("configuration", () => {
     ["state sync enabled", { STATE_SYNC_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["reminders enabled", { REMINDER_SCHEDULER_ENABLED: "1" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["vault enabled", { VAULT_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
-    ["photo review enabled", { PHOTO_REVIEW_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review enabled without curators", { PHOTO_REVIEW_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review with blank curators", { PHOTO_REVIEW_ENABLED: "true", PHOTO_CURATOR_EMAILS: "  " }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review with malformed curators", { PHOTO_REVIEW_ENABLED: "true", PHOTO_CURATOR_EMAILS: "@example.test" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review with only a comma", { PHOTO_REVIEW_ENABLED: "true", PHOTO_CURATOR_EMAILS: " , " }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review TRUE with curators", { PHOTO_REVIEW_ENABLED: "TRUE ", PHOTO_CURATOR_EMAILS: "a@example.test" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review 1 with curators", { PHOTO_REVIEW_ENABLED: "1", PHOTO_CURATOR_EMAILS: "a@example.test" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["photo review yes with curators", { PHOTO_REVIEW_ENABLED: "yes", PHOTO_CURATOR_EMAILS: "a@example.test" }, "config.flags", "CONFIG_FLAG_ENABLED"],
+    ["other flag with curators", { VAULT_ENABLED: "true", PHOTO_CURATOR_EMAILS: "a@example.test" }, "config.flags", "CONFIG_FLAG_ENABLED"],
   ];
   it.each(failing)("fails on %s", (_name, change, check, code) => {
     const results = track(checkConfiguration({ ...env, ...change }));
@@ -100,6 +107,26 @@ describe("configuration", () => {
   it("accepts flags explicitly set to false", () => {
     const results = checkConfiguration({ ...env, STATE_SYNC_ENABLED: "false", REMINDER_SCHEDULER_ENABLED: "false", VAULT_ENABLED: "false", PHOTO_REVIEW_ENABLED: "false" });
     expect(results.every((r) => r.severity === "ok")).toBe(true);
+  });
+
+  it("opens the review window only with a valid curator list, and says so without a value", () => {
+    const open = track(checkConfiguration({ ...env, PHOTO_REVIEW_ENABLED: "true", PHOTO_CURATOR_EMAILS: "secret-name@example.test" }));
+    expect(open.find((r) => r.check === "config.flags")).toMatchObject({ severity: "ok", code: "CONFIG_OK" });
+    expect(open.find((r) => r.check === "config.review")).toEqual({ check: "config.review", severity: "ok", code: "CONFIG_REVIEW_WINDOW_OPEN" });
+    expect(open.every((r) => r.severity === "ok")).toBe(true);
+    expect(JSON.stringify(open)).not.toContain("secret-name");
+    const failedOpen = checkConfiguration({ ...env, PHOTO_REVIEW_ENABLED: "true", PHOTO_CURATOR_EMAILS: "secret-name@example.test,bad" });
+    expect(failedOpen.find((r) => r.check === "config.flags")).toMatchObject({ code: "CONFIG_FLAG_ENABLED", detail: "PHOTO_REVIEW_ENABLED" });
+    expect(JSON.stringify(failedOpen)).not.toContain("secret-name");
+    expect(failedOpen.some((r) => r.check === "config.review")).toBe(false);
+  });
+
+  it("does not report a window when the flag is unset or false, even with curators", () => {
+    for (const flag of [undefined, "false"]) {
+      const results = checkConfiguration({ ...env, PHOTO_REVIEW_ENABLED: flag, PHOTO_CURATOR_EMAILS: "a@example.test" });
+      expect(results.some((r) => r.check === "config.review")).toBe(false);
+      expect(results.every((r) => r.severity === "ok")).toBe(true);
+    }
   });
 });
 
@@ -602,6 +629,49 @@ describe("runtime manifest", () => {
     expect(failed(check({ VAULT_ENABLED: { type: "sensitive" }, LEGACY_IMPORT_ENABLED: { type: "plain" } })))
       .toEqual(["runtime.flags:CONFIG_FLAG_ENABLED:VAULT_ENABLED,LEGACY_IMPORT_ENABLED"]);
     expect(failed(check({ STATE_SYNC_ENABLED: { type: "plain", value: " false " } }))).toEqual([]);
+  });
+
+  describe("photo review window", () => {
+    const on = { type: "plain", value: "true" };
+    const reviewLine = (results: CheckResult[]) => results.find((r) => r.check === "runtime.review");
+    const flagFailure = ["runtime.flags:CONFIG_FLAG_ENABLED:PHOTO_REVIEW_ENABLED"];
+
+    it("allows true with a plain valid or a sensitive curator list and logs an informational line", () => {
+      for (const curators of [{ type: "plain", value: "a@example.test, B@example.test" }, { type: "sensitive" }]) {
+        const results = check({ PHOTO_REVIEW_ENABLED: on, PHOTO_CURATOR_EMAILS: curators });
+        expect(failed(results)).toEqual([]);
+        expect(reviewLine(results)).toEqual({ check: "runtime.review", severity: "ok", code: "CONFIG_REVIEW_WINDOW_OPEN" });
+      }
+    });
+
+    it("fails closed with true and no, blank or malformed curators", () => {
+      expect(failed(check({ PHOTO_REVIEW_ENABLED: on }))).toEqual(flagFailure);
+      expect(failed(check({ PHOTO_REVIEW_ENABLED: on, PHOTO_CURATOR_EMAILS: { type: "plain", value: " " } }))).toEqual(flagFailure);
+      const bad = check({ PHOTO_REVIEW_ENABLED: on, PHOTO_CURATOR_EMAILS: { type: "plain", value: "secret-name@example.test,bad" } });
+      expect(failed(bad)).toEqual([...flagFailure, "runtime.curators:CONFIG_MALFORMED:PHOTO_CURATOR_EMAILS"]);
+      expect(reviewLine(bad)).toBeUndefined();
+      expect(JSON.stringify(bad)).not.toContain("secret-name");
+    });
+
+    it("refuses any value other than the exact true, and a hidden flag, even with curators", () => {
+      const curators = { type: "plain", value: "a@example.test" };
+      for (const value of ["TRUE ", "1", "yes", "True", " true", ""]) {
+        const results = check({ PHOTO_REVIEW_ENABLED: { type: "plain", value }, PHOTO_CURATOR_EMAILS: curators });
+        expect(failed(results)).toEqual(flagFailure);
+        expect(reviewLine(results)).toBeUndefined();
+      }
+      expect(failed(check({ PHOTO_REVIEW_ENABLED: { type: "sensitive" }, PHOTO_CURATOR_EMAILS: curators }))).toEqual(flagFailure);
+    });
+
+    it("stays quiet when the flag is false, with or without curators", () => {
+      expect(reviewLine(check({ PHOTO_CURATOR_EMAILS: { type: "sensitive" } }))).toBeUndefined();
+      expect(reviewLine(check())).toBeUndefined();
+    });
+
+    it("never lets curators open any other flag", () => {
+      const results = check({ VAULT_ENABLED: on, PHOTO_REVIEW_ENABLED: on, PHOTO_CURATOR_EMAILS: { type: "sensitive" } });
+      expect(failed(results)).toEqual(["runtime.flags:CONFIG_FLAG_ENABLED:VAULT_ENABLED"]);
+    });
   });
 
   it("compares plain values with the GitHub side by name only", () => {
