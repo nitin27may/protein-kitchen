@@ -1,4 +1,5 @@
 import { feedbackClass } from "./feedback";
+import { libraryPhotoDecisionsClass, libraryPhotosClass } from "./library-photos";
 import { linksClass } from "./links";
 import { photoDecisionsClass, photosClass } from "./photos";
 import { registerExporter } from "./registry";
@@ -19,5 +20,7 @@ export function registerBuiltinClasses(): void {
   registerExporter(personRoutinesClass);
   registerExporter(photosClass);
   registerExporter(photoDecisionsClass);
+  registerExporter(libraryPhotosClass);
+  registerExporter(libraryPhotoDecisionsClass);
   done = true;
 }

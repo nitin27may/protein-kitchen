@@ -583,6 +583,61 @@ export const photoDecisions = pgTable("photo_decisions", {
   check("photo_decisions_decision_ck", sql`${t.decision} in ('approved', 'rejected')`),
 ]);
 
+/**
+ * Library-level photo approvals: stored once, no household, shown to everyone. A NULL household_id in `photos` means
+ * quarantined operator staging, so these never share rows with it. Written only by lib/human/library-photos.ts.
+ */
+export const libraryPhotos = pgTable("library_photos", {
+  id: id(),
+  uid: text("uid").notNull(),
+  recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "cascade" }),
+  ingredientSlug: text("ingredient_slug"),
+  origin: text("origin").notNull(),
+  candidateKey: text("candidate_key").notNull(),
+  sha256: text("sha256").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  isCover: bool("is_cover").notNull().default(false),
+  position: integer("position").notNull().default(0),
+  title: text("title").notNull(),
+  author: text("author").notNull(),
+  licence: text("licence").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  licenceUrl: text("licence_url"),
+  licenceCheckedAt: isoTimestamp("licence_checked_at"),
+  createdAt: isoTimestamp("created_at").notNull(),
+  updatedAt: isoTimestamp("updated_at").notNull(),
+  createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+}, (t) => [
+  uniqueIndex("library_photos_uid_uq").on(t.uid),
+  index("library_photos_recipe_idx").on(t.recipeId),
+  index("library_photos_ingredient_idx").on(t.ingredientSlug),
+  uniqueIndex("library_photos_recipe_candidate_uq").on(t.recipeId, t.candidateKey).where(sql`${t.recipeId} is not null`),
+  uniqueIndex("library_photos_ingredient_candidate_uq").on(t.ingredientSlug, t.candidateKey).where(sql`${t.ingredientSlug} is not null`),
+  uniqueIndex("library_photos_recipe_cover_uq").on(t.recipeId).where(sql`${t.isCover}`),
+  uniqueIndex("library_photos_ingredient_cover_uq").on(t.ingredientSlug).where(sql`${t.isCover} and ${t.recipeId} is null`),
+  check("library_photos_origin_ck", sql`${t.origin} in ('commons', 'openverse')`),
+  check("library_photos_subject_ck", sql`(${t.recipeId} is not null) <> (${t.ingredientSlug} is not null)`),
+]);
+
+export const libraryPhotoDecisions = pgTable("library_photo_decisions", {
+  id: id(),
+  uid: text("uid").notNull(),
+  candidateKey: text("candidate_key").notNull(),
+  subjectKind: text("subject_kind").notNull(),
+  subjectSlug: text("subject_slug").notNull(),
+  decision: text("decision").notNull(),
+  createdAt: isoTimestamp("created_at").notNull(),
+  updatedAt: isoTimestamp("updated_at").notNull(),
+  createdByPersonId: integer("created_by_person_id").references(() => people.id, { onDelete: "set null" }),
+}, (t) => [
+  uniqueIndex("library_photo_decisions_uid_uq").on(t.uid),
+  uniqueIndex("library_photo_decisions_candidate_uq").on(t.subjectKind, t.subjectSlug, t.candidateKey),
+  index("library_photo_decisions_person_idx").on(t.createdByPersonId, t.createdAt),
+  check("library_photo_decisions_kind_ck", sql`${t.subjectKind} in ('recipe', 'ingredient')`),
+  check("library_photo_decisions_decision_ck", sql`${t.decision} in ('approved', 'rejected')`),
+]);
+
 export const personRoutines = pgTable("person_routines", {
   personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
   habitId: integer("habit_id").notNull().references(() => habits.id, { onDelete: "no action" }),
