@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { z } from "zod";
+import { parseCuratorEmails } from "../auth/curator-list";
 import { postgresMigrationTarget } from "../db/postgres/migration-target";
 import type { NeonControlPlane } from "../db/postgres/neon-control-plane";
 import { directHostOf, isPoolerHost, ProductionGuardError } from "../db/postgres/production-guard";
@@ -95,6 +96,7 @@ export function requireRemoteFlag(env: Environment, args: CheckArguments): Check
 const FORBIDDEN = [
   "HOUSEHOLD_BOOTSTRAP_SECRET", "AUTH_TEST_MAILBOX", "STATE_SYNC_TEST_GITHUB_URL", "REMINDER_TEST_PUSH_URL",
   "HOUSEHOLD_OWNER_EMAIL",
+  "PHOTO_REMOTE_TEST_DIR",
   // Credentials of features that are off at launch.
   "VAPID_PRIVATE_KEY", "REMINDER_SCHEDULER_SECRET", "STATE_SYNC_SCHEDULER_SECRET",
   "STATE_GITHUB_PRIVATE_KEY", "VAULT_GITHUB_PRIVATE_KEY",
@@ -613,5 +615,12 @@ export function checkRuntimeManifest(manifest: RuntimeManifest | undefined, env:
   results.push(hidden.length ? result("runtime.values", "fail", "CONFIG_MALFORMED", hidden.join(","))
     : mismatched.length ? result("runtime.values", "fail", "CONFIG_VALUE_MISMATCH", mismatched.join(","))
     : result("runtime.values", "ok", "CONFIG_OK"));
+  // Optional, plain or sensitive. Only a plain value can be read; its format is checked and it is never printed.
+  if (manifest.has("PHOTO_CURATOR_EMAILS")) {
+    const value = plainValue("PHOTO_CURATOR_EMAILS");
+    let valid = true;
+    if (value !== undefined) { try { parseCuratorEmails(value); } catch { valid = false; } }
+    results.push(valid ? result("runtime.curators", "ok", "CONFIG_OK") : result("runtime.curators", "fail", "CONFIG_MALFORMED", "PHOTO_CURATOR_EMAILS"));
+  }
   return results;
 }

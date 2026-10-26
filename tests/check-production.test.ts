@@ -578,6 +578,23 @@ describe("runtime manifest", () => {
     ]);
   });
 
+  it("accepts PHOTO_CURATOR_EMAILS as plain or sensitive and checks the format of a plain value without printing it", () => {
+    expect(failed(check({ PHOTO_CURATOR_EMAILS: { type: "plain", value: "a@example.test, B@example.test" } }))).toEqual([]);
+    expect(failed(check({ PHOTO_CURATOR_EMAILS: { type: "sensitive" } }))).toEqual([]);
+    expect(failed(check())).toEqual([]);
+    const list = (value: string) => failed(check({ PHOTO_CURATOR_EMAILS: { type: "plain", value } }));
+    for (const bad of ["@example.test", "not-an-email", "a1@example.test,a2@example.test,a3@example.test,a4@example.test,a5@example.test,a6@example.test"]) {
+      expect(list(bad)).toEqual(["runtime.curators:CONFIG_MALFORMED:PHOTO_CURATOR_EMAILS"]);
+    }
+    expect(JSON.stringify(check({ PHOTO_CURATOR_EMAILS: { type: "plain", value: "secret-name@example.test,bad" } }))).not.toContain("secret-name");
+  });
+
+  it("forbids the photo remote test seam", () => {
+    expect(failed(check({ PHOTO_REMOTE_TEST_DIR: { type: "plain", value: "x" } }))).toEqual(["runtime.forbidden:CONFIG_FORBIDDEN_SET:PHOTO_REMOTE_TEST_DIR"]);
+    const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("PHOTO_")));
+    expect(checkConfiguration({ ...base, PHOTO_REMOTE_TEST_DIR: "/tmp/x" }).find((r) => r.check === "config.forbidden")).toMatchObject({ code: "CONFIG_FORBIDDEN_SET", detail: "PHOTO_REMOTE_TEST_DIR" });
+  });
+
   it("requires every off-feature flag to be the plain value false", () => {
     for (const flag of RUNTIME_OFF_FLAGS) {
       expect(failed(check({ [flag]: { type: "plain", value: "true" } }))).toEqual([`runtime.flags:CONFIG_FLAG_ENABLED:${flag}`]);
