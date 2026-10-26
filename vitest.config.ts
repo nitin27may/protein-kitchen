@@ -87,6 +87,8 @@ export default defineConfig({
         "lib/server/plan-access.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/subscriptions.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/auth/response.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/human/library-photos.ts": { statements: 100, branches: 95, functions: 100, lines: 100 },
+        "lib/photos/check.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/personal-feedback.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/feedback.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/server/account-export.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

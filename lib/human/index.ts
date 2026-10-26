@@ -17,3 +17,5 @@ export { approveCandidate, deletePhoto, rejectCandidate, setCoverPhoto, writeUpl
 export type { PhotoCredit, PhotoSubject } from "./photos";
 export { copyHumanBlobs } from "./blobs";
 export type { BlobCopyReport } from "./blobs";
+export { approveLibraryCandidate, rejectLibraryCandidates, removeLibraryPhoto, setLibraryCover, undoLibraryRejection, LIBRARY_PHOTO_CAP } from "./library-photos";
+export type { LibraryApproveInput, LibraryApproveResult, LibraryCandidateRef, LibrarySubjectKind } from "./library-photos";

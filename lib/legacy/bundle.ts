@@ -116,6 +116,7 @@ export const PLAN_SOURCE_TABLES = [
 export const EXCLUDED_TABLES = [
   "ingredients", "ingredient_micros", "techniques", "recipes", "recipe_items", "recipe_steps", "recipe_advance_prep", "recipe_macros",
   "recipe_anchors", "habits", "sync_state", "push_subscriptions", "reminder_log", "photos", "photo_decisions",
+  "library_photos", "library_photo_decisions",
 ] as const;
 
 export function countBundle(data: LegacyBundleData): BundleCounts {

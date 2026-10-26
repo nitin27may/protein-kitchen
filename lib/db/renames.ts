@@ -47,6 +47,7 @@ export async function applyRenames(db: Db, renames: Record<string, string>): Pro
 
       if (!newRow) {
         await tx.update(s.recipes).set({ slug: newSlug }).where(eq(s.recipes.id, oldRow.id));
+        for (const cls of registeredClasses()) await cls.renameRecipeSlug?.(tx, oldSlug, newSlug);
         moved.push(oldSlug);
         continue;
       }

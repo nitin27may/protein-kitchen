@@ -137,7 +137,8 @@ export async function resetData(db: Db, scope: ResetScope, photoStore?: BlobStor
     }
   });
   // Photo bytes are outside the transaction. The rows are gone, so any blob left is an orphan; the backup holds a copy.
-  if (scope === "all" && photoStore) for (const key of await photoStore.list()) await photoStore.delete(key);
+  // Only household `photos/` keys: shared `library/` photos belong to everyone and are never part of a reset.
+  if (scope === "all" && photoStore) for (const key of await photoStore.list()) if (key.startsWith("photos/")) await photoStore.delete(key);
 }
 
 /** Destructive application resets stay disabled until the Postgres backup/restore gate is implemented. */

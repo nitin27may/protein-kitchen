@@ -34,6 +34,8 @@ export interface HumanDataClass {
   blobs?(db: Db, scope?: ExportScope): Promise<BlobRef[]>;
   /** Optional: moves this class's rows from one recipe row to another (a slug rename). Returns true if it moved anything. */
   moveRecipe?(db: Db, fromRecipeId: number, toRecipeId: number): Promise<boolean>;
+  /** Optional: a recipe row was renamed in place (same id, new slug). Classes keyed by slug rewrite their rows here. */
+  renameRecipeSlug?(db: Db, oldSlug: string, newSlug: string): Promise<void>;
   /** Optional: true if this class still holds human data for the recipe. A rename never deletes a recipe that does. */
   hasRecipeData?(db: Db, recipeId: number): Promise<boolean>;
 }

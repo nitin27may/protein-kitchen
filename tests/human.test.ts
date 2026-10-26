@@ -178,7 +178,7 @@ describe("export and import", () => {
     await addRecipe(b, "untouched-recipe");
     const report = await importHumanData(b.db, first, { renames: {} });
     expect(report.skipped).toEqual([]);
-    expect(report.imported).toEqual({ "personal-recipe-feedback": 0, "person-routines": 0, "photo-decisions": 0, "photos": 0, "recipe-feedback": 2, "recipe-links": 0, "saved-views": 2 });
+    expect(report.imported).toEqual({ "library-photo-decisions": 0, "library-photos": 0, "personal-recipe-feedback": 0, "person-routines": 0, "photo-decisions": 0, "photos": 0, "recipe-feedback": 2, "recipe-links": 0, "saved-views": 2 });
 
     const second = await exportHumanData(b.db);
     expect(Object.keys(second.files)).toEqual(Object.keys(first.files));
