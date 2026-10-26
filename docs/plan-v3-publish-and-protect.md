@@ -1994,6 +1994,28 @@ Group 2 (PRs 14 to 22) is about 95 hours.
 
 See "Launch: single production environment" at the top of this document for the full gates. In short: the owner-supplied values are entered and the must-be-absent variables are absent; `main` is protected with the `acceptance` check; the `production` environment requires the owner and `main` only; Preview variables are deleted; Vercel protection is Standard; Neon is on the free plan (6-hour history, so snapshots are the recovery path) and the owner has turned Neon Auth off; the Protected branch and object-storage bucket checks are reported; a `pre-deploy-*` snapshot is taken before each migration and pruned strictly, failing loudly at a free-tier limit; local dev no longer points at the production endpoint; the soft-launch gates (owner only, real email, Safari/iPhone app/Android, hosted smoke, legacy import, restore drill, rollback drill) pass before friends are added; the privacy page has the owner's contact address, processor list and backup retention.
 
+## Stage WP2: release safety
+
+Scope: make a release survivable before launch, expand-only.
+
+- Library compatibility window: append-only `library_versions` (migration 0020, backfilled from `library_state`). `seedDatabase` adds the version in the same transaction. `verifyLibraryVersion` accepts the exact version, or this build's own version while it is among the last 10 seeded (one value-free warning). `db:check:production --phase=pre-deploy` still needs an exact match.
+- Migration hardening: `pnpm db:migrate:postgres` uses one dedicated client, `lock_timeout 5s`, `statement_timeout 120s`, `pg_advisory_lock`, `requireMigrationPrefix` (moved to `lib/db/postgres/migration-ledger.ts`) before writing, and the full schema check afterwards.
+- Seed parity: empty `recipe_feedback` rows only for loopback non-production targets.
+- Forbidden production configuration: `HOUSEHOLD_OWNER_EMAIL` and the credentials of features off at launch (names only). Auth throws when `VERCEL_ENV=production` and the owner email is set. `sqliteImportTarget` refuses `DATABASE_ENV=production`.
+- Policy test: `tests/migration-policy.test.ts` rejects destructive statements in migrations from 0020 onward unless the line carries `-- contract-ok: <reason>`.
+
+Dependencies: none beyond the merged production guards (PR 8). No app behaviour changes; Playwright is not rerun.
+
+Permission boundaries: tests use PGlite or in-memory fakes only; no remote database or service is contacted.
+
+Acceptance:
+
+1. An old build accepts a database seeded by a newer build while within 10 versions; an unknown version, or one older than the window, is refused.
+2. A divergent ledger is refused before any write; two runners serialise on the lock; a lock or statement timeout fails cleanly.
+3. Remote and production seeds create no feedback rows.
+4. The forbidden names fail the production check; owner email in Vercel production throws; production SQLite import is refused.
+5. The policy test fails on a synthetic destructive migration and passes on the current set.
+
 ## Shell account state and 320 px header (PR A)
 
 Scope: the app shell tells three states apart (visitor, signed in but profile unfinished, member) through `shellAccount()` in `lib/auth/public-access.ts`. `optionalPageMember` stays as is for page guards.

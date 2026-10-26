@@ -78,6 +78,12 @@ describe("configuration", () => {
     ["branch name instead of id", { NEON_PRODUCTION_BRANCH_ID: "production" }, "config.neon", "CONFIG_MALFORMED"],
     ["bootstrap secret", { HOUSEHOLD_BOOTSTRAP_SECRET: "x".repeat(40) }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
     ["fixture mailbox", { AUTH_TEST_MAILBOX: "http://127.0.0.1:1" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
+    ["owner email", { HOUSEHOLD_OWNER_EMAIL: "owner@example.test" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
+    ["push private key", { VAPID_PRIVATE_KEY: "x" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
+    ["reminder scheduler secret", { REMINDER_SCHEDULER_SECRET: "x" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
+    ["sync scheduler secret", { STATE_SYNC_SCHEDULER_SECRET: "x" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
+    ["state repo key", { STATE_GITHUB_PRIVATE_KEY: "x" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
+    ["vault repo key", { VAULT_GITHUB_PRIVATE_KEY: "x" }, "config.forbidden", "CONFIG_FORBIDDEN_SET"],
     ["state sync enabled", { STATE_SYNC_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["reminders enabled", { REMINDER_SCHEDULER_ENABLED: "1" }, "config.flags", "CONFIG_FLAG_ENABLED"],
     ["vault enabled", { VAULT_ENABLED: "true" }, "config.flags", "CONFIG_FLAG_ENABLED"],
@@ -248,6 +254,8 @@ describe("database checks on a real migrated schema", () => {
     });
     it("compares equal versions", () => {
       expect(libraryResult("a", "a", "pre-deploy").code).toBe("LIBRARY_OK");
+      // The runtime compatibility window never relaxes the deployment gate: a older-but-seeded version is stale.
+      expect(libraryResult("newer", "a", "pre-deploy")).toMatchObject({ severity: "fail", code: "LIBRARY_STALE" });
     });
   });
 

@@ -1,10 +1,9 @@
 import { runtimeTarget } from "../db/postgres/runtime-target";
 import { validatePostgresTarget } from "../db/postgres/target";
 import type { PoolClient } from "pg";
+import { requireMigrationPrefix } from "../db/postgres/migration-ledger";
 
 type Environment = Readonly<Record<string, string | undefined>>;
-type Migration = { hash: string; folderMillis: number };
-type LedgerRow = { hash: string; created_at: string | number };
 
 export function previewMigrationTarget(env: Environment) {
   if (env.DATABASE_ENV !== "preview" || env.VERCEL_ENV !== "preview" ||
@@ -23,12 +22,7 @@ export function previewMigrationTarget(env: Environment) {
   return target;
 }
 
-export function requireMigrationPrefix(rows: LedgerRow[], expected: Migration[], complete = false) {
-  if (rows.length > expected.length || (complete && rows.length !== expected.length) ||
-      rows.some((row, i) => row.hash !== expected[i]!.hash || Number(row.created_at) !== expected[i]!.folderMillis)) {
-    throw new Error("Preview migration ledger is pending or divergent.");
-  }
-}
+export { requireMigrationPrefix };
 
 export const previewLibraryTables = new Set([
   "library_state", "ingredients", "ingredient_micros", "techniques", "recipes",

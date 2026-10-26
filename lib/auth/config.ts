@@ -29,6 +29,8 @@ export function authConfiguration(env: Readonly<Record<string, string | undefine
 export function householdOwnerEmail(env: Readonly<Record<string, string | undefined>>) {
   const raw = env.HOUSEHOLD_OWNER_EMAIL?.trim();
   if (!raw) return undefined;
+  // The owner-email claim path is kept for local and e2e flows only; production must not carry it.
+  if (env.VERCEL_ENV === "production") throw new AuthConfigurationError("HOUSEHOLD_OWNER_EMAIL must not be set in production.");
   const parsed = z.string().email().max(254).safeParse(raw);
   if (!parsed.success) throw new AuthConfigurationError("HOUSEHOLD_OWNER_EMAIL must be a valid email address.");
   return parsed.data.toLowerCase();

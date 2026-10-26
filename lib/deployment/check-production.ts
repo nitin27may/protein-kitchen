@@ -76,7 +76,13 @@ export function requireRemoteFlag(env: Environment, args: CheckArguments): Check
 // (1) Configuration
 // ---------------------------------------------------------------------------------------------------------------
 
-const FORBIDDEN = ["HOUSEHOLD_BOOTSTRAP_SECRET", "AUTH_TEST_MAILBOX", "STATE_SYNC_TEST_GITHUB_URL", "REMINDER_TEST_PUSH_URL"] as const;
+const FORBIDDEN = [
+  "HOUSEHOLD_BOOTSTRAP_SECRET", "AUTH_TEST_MAILBOX", "STATE_SYNC_TEST_GITHUB_URL", "REMINDER_TEST_PUSH_URL",
+  "HOUSEHOLD_OWNER_EMAIL",
+  // Credentials of features that are off at launch.
+  "VAPID_PRIVATE_KEY", "REMINDER_SCHEDULER_SECRET", "STATE_SYNC_SCHEDULER_SECRET",
+  "STATE_GITHUB_PRIVATE_KEY", "VAULT_GITHUB_PRIVATE_KEY",
+] as const;
 const FLAGS = ["STATE_SYNC_ENABLED", "REMINDER_SCHEDULER_ENABLED", "VAULT_ENABLED"] as const;
 const present = (env: Environment, key: string) => !!env[key]?.trim();
 

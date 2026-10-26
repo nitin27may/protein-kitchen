@@ -14,6 +14,11 @@ export default defineConfig({
       include: ["lib/**/*.ts", "app/**/*.ts", "components/**/*.tsx"],
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
+        "lib/db/library-version.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/db/postgres/migration-ledger.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/db/postgres/seed-target.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/deployment/run-migration.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/db/postgres/import-target.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/hooks/use-hydrated.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/legacy-bundle.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/human/reset.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

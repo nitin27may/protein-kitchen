@@ -116,10 +116,9 @@ describe("SQLite import into production", () => {
   it("is refused from a laptop", () => {
     expect(code(() => sqliteImportTarget({ DATABASE_ENV: "production", SQLITE_IMPORT_NEON_BRANCH_ID: productionBranch }))).toBe("PRODUCTION_CONTEXT_REFUSED");
   });
-  it("requires the production branch id in CI, never the development one", () => {
-    expect(() => sqliteImportTarget(ci)).toThrow("SQLITE_IMPORT_NEON_BRANCH_ID");
-    expect(() => sqliteImportTarget({ ...ci, SQLITE_IMPORT_NEON_BRANCH_ID: "br-dev", NEON_DEVELOPMENT_BRANCH_ID: "br-dev" })).toThrow("SQLITE_IMPORT_NEON_BRANCH_ID");
-    expect(sqliteImportTarget({ ...ci, SQLITE_IMPORT_NEON_BRANCH_ID: productionBranch }).databaseEnvironment).toBe("production");
+  it("is refused even from the approved CI job with the production branch pinned", () => {
+    expect(() => sqliteImportTarget(ci)).toThrow("never targets production");
+    expect(() => sqliteImportTarget({ ...ci, SQLITE_IMPORT_NEON_BRANCH_ID: productionBranch })).toThrow("never targets production");
   });
 });
 

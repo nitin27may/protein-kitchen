@@ -132,6 +132,12 @@ export const libraryState = pgTable("library_state", {
   version: text("version").notNull(),
 });
 
+/** Append-only history of seeded library fingerprints; lets a still-serving build or a rollback keep starting. */
+export const libraryVersions = pgTable("library_versions", {
+  version: text("version").primaryKey(),
+  seededAt: timestamp("seeded_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Application schema. The frozen SQLite schema is retained for source import and parity checks.
 export const ingredients = pgTable("ingredients", {
   id: id(),

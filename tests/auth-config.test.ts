@@ -37,6 +37,13 @@ describe("server-only household owner email", () => {
     expect(authConfiguration({ ...configured, HOUSEHOLD_OWNER_EMAIL: "  Owner@Example.Test " }).ownerEmail).toBe("owner@example.test");
     expect(householdOwnerEmail({ HOUSEHOLD_OWNER_EMAIL: "" })).toBeUndefined();
   });
+  it("throws in Vercel production while the e2e and local paths keep working", () => {
+    const set = { ...configured, HOUSEHOLD_OWNER_EMAIL: "owner@example.test" };
+    expect(() => authConfiguration({ ...set, VERCEL_ENV: "production" })).toThrow("must not be set in production");
+    expect(() => householdOwnerEmail({ ...set, VERCEL_ENV: "production" })).toThrow(AuthConfigurationError);
+    expect(authConfiguration({ ...set, VERCEL_ENV: "preview" }).ownerEmail).toBe("owner@example.test");
+    expect(authConfiguration({ ...configured, VERCEL_ENV: "production" }).ownerEmail).toBeUndefined();
+  });
   it("rejects a malformed value without echoing it", () => {
     const value = "not-an-address-secret";
     try { authConfiguration({ ...configured, HOUSEHOLD_OWNER_EMAIL: value }); expect.unreachable(); }
