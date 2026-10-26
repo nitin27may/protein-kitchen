@@ -6,14 +6,13 @@ A meal planner for a lacto-vegetarian household (dairy yes, eggs no, no animal r
 
 ## Quick start
 
-Requires Node 22 or later, pnpm 10 (`corepack enable` picks the pinned version) and a disposable local Postgres database or reviewed, isolated Neon development branch.
+Requires Node 22 or later, pnpm 10 (`corepack enable` picks the pinned version) and a throwaway local Postgres database (loopback only). Local development never connects to Neon; the only hosted environment is production.
 
 ```bash
 pnpm install
 cp .env.example .env.local
-# Configure DATABASE_ENV=development and DATABASE_URL for your isolated database.
-# Supply DATABASE_ENV, DATABASE_URL_UNPOOLED and, for remote databases,
-# DATABASE_NONPRODUCTION_HOST to these explicit CLI commands:
+# Configure DATABASE_ENV=development and DATABASE_URL for your loopback database.
+# Supply DATABASE_ENV and DATABASE_URL_UNPOOLED to these explicit CLI commands:
 pnpm db:migrate:postgres
 pnpm seed
 pnpm dev                    # http://localhost:3000
@@ -77,7 +76,7 @@ The [GitHub Actions workflow](https://github.com/nitin27may/protein-kitchen/acti
 
 Coverage includes untested application files rather than reporting only imported modules. Atomic plan persistence, live branch verification, verified pool creation, application readiness and the import-target guard have 100% statement/branch/function/line gates. SQLite snapshot/restore requires at least 95% statement/branch coverage and 100% line/function coverage. These are not claims of 100% app-wide coverage. Native TCP tests run when `POSTGRES_TEST_URL` names a loopback-only database called `protein_kitchen_test`; they migrate and clear that disposable database. Never point them at household data. UI interaction and real-device checks remain separate from unit coverage.
 
-Neon and Vercel deployment are not complete. Follow [the roadmap](docs/roadmap.md) and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). Login/onboarding, household authorization, private photo adapters, state sync, encrypted recovery/vault tooling and durable reminder scheduling are implemented and verified locally. Approved live storage/state/vault/provider acceptance, protected hosting and cutover remain separate gates; do not expose the app publicly based on local success. Settings reset stays blocked until approved off-machine recovery and its pre-reset failure gate are complete.
+Hosting is one environment, production, on Vercel with one Neon project on the free plan (6-hour history, so the `pre-deploy-*` snapshot branches are the recovery path beyond 6 hours; free-tier storage and branch limits apply and the prune step fails loudly at a limit); the protected preview is retired. The launch stage, owner-supplied values checklist (names only), soft-launch gates, runbook and rollback are at the top of [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). Neon and Vercel deployment are not complete. Follow [the roadmap](docs/roadmap.md) and [the publish-and-protect plan](docs/plan-v3-publish-and-protect.md). Login/onboarding, household authorization, private photo adapters, state sync, encrypted recovery/vault tooling and durable reminder scheduling are implemented and verified locally. Approved live storage/state/vault/provider acceptance, protected hosting and cutover remain separate gates; do not expose the app publicly based on local success. Settings reset stays blocked until approved off-machine recovery and its pre-reset failure gate are complete.
 
 Selective private state sync requires an explicit server-only
 `STATE_SYNC_HOUSEHOLD_ID` alongside the App target and `STATE_SYNC_CLASSES`.
@@ -91,7 +90,9 @@ until target and content consent are approved.
 
 The application schema lives in `lib/db/postgres/`, re-exported by `lib/db/schema.ts`, with Drizzle history in `db/postgres-migrations/`; never apply the SQLite migration history to Postgres. Tests check parity of the 33 legacy tables with `lib/db/sqlite-schema.ts`, alongside additive library-readiness, identity/household, sync and reminder tables.
 
-### Read-only protected-preview preflight
+### Read-only protected-preview preflight (retired)
+
+The protected preview is retired; this command and its description are kept only until the code is removed. Do not set up a preview environment.
 
 `pnpm deploy:preflight` checks only explicitly injected environment configuration and prints stable failure codes, never configuration values. It loads no environment files and performs no network requests, database/file writes or deployment. Require Vercel preview with `NODE_ENV=production` and `DATABASE_ENV=preview`, reviewed matching pooled/direct database URLs (`DATABASE_NONPRODUCTION_HOST` and `DATABASE_DIRECT_NONPRODUCTION_HOST`), distinct Neon development/production branch pins and server-only metadata API access. Existing auth/private-photo validators check the fixed HTTPS origin, secret and branch-bound read-only cloud-photo configuration.
 
@@ -105,9 +106,9 @@ There is one hosted environment, production. Migrate, seed and import against it
 
 `pnpm db:check:production [--phase=pre-migrate|pre-deploy] [--remote-read-only]` is the read-only remote sanity check (default phase `pre-deploy`). It reads configuration from the injected environment (no env files), asks the Neon control plane about project, branch and endpoints, then reads the database inside `BEGIN READ ONLY`: server version, migration ledger (exact, pending N, divergent), schema drift against the drizzle snapshot, library fingerprint against local `/data`, and the age of the newest `pre-deploy-` snapshot branch (at most 60 minutes). Output is stable codes and counts only. Outside GitHub Actions the flag `--remote-read-only` is required and a write-capable role is refused (`ROLE_WRITE_CAPABLE`). Set `PRODUCTION_ORIGIN` to the production https origin; `BETTER_AUTH_URL` must equal it.
 
-For a **reviewed, isolated dev/test database**, supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification.
+For a **local loopback dev/test database** (or the CI rehearsal branch), supply `DATABASE_ENV=development` (or `test`), `DATABASE_URL_UNPOOLED` pointing to the direct endpoint, and `DATABASE_NONPRODUCTION_HOST` matching that exact remote host, then run `pnpm db:migrate:postgres`. The command does not read `.env.local` or `.neon`, never falls back to `DATABASE_URL`, and refuses production/preview environments and Neon pooler endpoints. Remote connections use TLS with certificate/hostname verification.
 
-Remote non-production application startup, migration and seed additionally require `NEON_PROJECT_ID`, `NEON_DEVELOPMENT_BRANCH_ID`, `NEON_PRODUCTION_BRANCH_ID` and a server-only `NEON_API_KEY` with access to the project's metadata. The API key is used only for read-only GETs to the fixed Neon control-plane origin, with timeouts, no redirects and no response-body logging. Never expose it through `NEXT_PUBLIC_` or provide it to client components; use the least-privileged key supported by your account. Existing CLI OAuth login is not read by the application.
+The remote non-production gate applies only to the CI migration rehearsal branch, not to local development. It requires `NEON_PROJECT_ID`, `NEON_DEVELOPMENT_BRANCH_ID`, `NEON_PRODUCTION_BRANCH_ID` and a server-only `NEON_API_KEY` with access to the project's metadata. The API key is used only for read-only GETs to the fixed Neon control-plane origin, with timeouts, no redirects and no response-body logging. Never expose it through `NEXT_PUBLIC_` or provide it to client components; use the least-privileged key supported by your account. Existing CLI OAuth login is not read by the application.
 
 The live check rejects the production id, default/primary/protected branches, production/main names, non-ready branches, mismatched project/branch ids and unknown/read-only endpoints. Both the exact direct host and its derived pooler host must map to one read-write endpoint of the configured branch. API errors, missing metadata and unavailable credentials fail closed before pool creation. Remote non-Neon development targets are intentionally blocked until another provider-verification mechanism exists. Local loopback targets do not require Neon credentials; production remains outside this development-only control-plane check.
 
