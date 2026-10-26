@@ -254,10 +254,6 @@ it("scopes photo galleries covers credits and candidate decisions to the verifie
     width: 10, height: 10,
   }] }, ingredients: {} };
   const names = { recipes: new Map([[recipe.slug, recipe.name]]), ingredients: new Map<string, string>() };
-  await h.db.insert(s.photoDecisions).values({
-    householdId: "b", uid: "b-decision", subjectKind: "recipe", subjectSlug: recipe.slug,
-    candidateKey: "commons:synthetic", decision: "rejected", createdAt: "2026-11-02", updatedAt: "2026-11-02",
-  });
   expect((await getRecipePhotos(stored!.id)).map((p) => p.uid)).toEqual(["a-recipe"]);
   expect((await getIngredientPhotos("tofu-extra-firm")).map((p) => p.uid)).toEqual(["a-ingredient"]);
   expect(await getPhotoIndex()).toEqual({
@@ -269,12 +265,14 @@ it("scopes photo galleries covers credits and candidate decisions to the verifie
   expect((await photosOfIngredient(h.db, "tofu-extra-firm")).map((p) => p.uid)).toEqual(["null-ingredient"]);
   expect((await photoIndex(h.db)).recipes.get(recipe.slug)).toBe("/photos/null-recipe/thumb");
   expect((await creditedPhotos(h.db)).map((p) => p.author)).toEqual(["Credit null", "Credit null"]);
-  expect(await getPhotoReview(file, names)).toMatchObject([{ slug: recipe.slug, hasPhoto: true, candidates: [{ key: "commons:synthetic" }] }]);
-  expect(await getPhotoReview(file, names, { onlyWithoutPhoto: true })).toEqual([]);
-  await h.db.delete(s.photos).where(eq(s.photos.householdId, "a"));
-  expect(await getPhotoReview(file, names, { onlyWithoutPhoto: true })).toMatchObject([{ hasPhoto: false }]);
-  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
+  // Review candidates are a library matter: household photos do not hide them, a library decision does.
+  expect(await getPhotoReview(file, names)).toMatchObject([{ slug: recipe.slug, hasPhoto: false, candidates: [{ key: "commons:synthetic" }] }]);
+  await h.db.insert(s.libraryPhotoDecisions).values({
+    uid: "lib-decision", subjectKind: "recipe", subjectSlug: recipe.slug, candidateKey: "commons:synthetic", decision: "rejected",
+    createdAt: "2026-11-02T00:00:00Z", updatedAt: "2026-11-02T00:00:00Z",
+  });
   expect(await getPhotoReview(file, names)).toEqual([]);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
   expect((await getRecipePhotos(stored!.id)).map((p) => p.uid)).toEqual(["b-recipe"]);
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
   await expect(getPhotoIndex()).rejects.toThrow("Select an available household");

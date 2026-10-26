@@ -77,7 +77,7 @@ describe("candidate list", () => {
 });
 
 describe("downloadImage", () => {
-  const body = (bytes: number[], init: ResponseInit = {}) => new Response(new Uint8Array(bytes), { status: 200, ...init });
+  const body = (bytes: number[], init: ResponseInit = {}) => new Response(new Uint8Array(bytes), { status: 200, ...init, headers: { "content-type": "image/jpeg", ...(init.headers as Record<string, string> | undefined) } });
 
   it("only downloads https from allowlisted hosts", () => {
     expect(hostAllowed("https://upload.wikimedia.org/a.jpg")).toBe(true);

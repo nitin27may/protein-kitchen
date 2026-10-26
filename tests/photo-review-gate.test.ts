@@ -5,12 +5,12 @@ import { actionDenial } from "../lib/auth/access";
 import { getData, getDb } from "../lib/server/context";
 import { PHOTO_REVIEW_DISABLED_MESSAGE, photoReviewEnabled } from "../lib/photos/review-flag";
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
   notFound: () => { throw new Error("NEXT_NOT_FOUND"); },
 }));
-vi.mock("../lib/auth/access", () => ({ actionDenial: vi.fn(), requirePageMember: vi.fn() }));
+vi.mock("../lib/auth/access", () => ({ actionDenial: vi.fn(), requirePageMember: vi.fn(), requireMember: vi.fn() }));
 vi.mock("../lib/server/context", () => ({ getDb: vi.fn(), getData: vi.fn() }));
 
 beforeEach(() => {
@@ -43,9 +43,17 @@ describe("photoReviewEnabled", () => {
 describe("with review off", () => {
   beforeEach(() => vi.stubEnv("PHOTO_REVIEW_ENABLED", "false"));
 
-  it.each(["approvePhotoCandidate", "rejectPhotoCandidate"] as const)("%s refuses and writes nothing", async (name) => {
-    const actions = await import("../app/actions");
-    expect(await actions[name]("recipe", "any-recipe", "any-key")).toEqual({ ok: false, error: PHOTO_REVIEW_DISABLED_MESSAGE });
+  const item = { kind: "recipe" as const, slug: "any-recipe", key: "commons:any" };
+  it.each([
+    ["listPendingKeys", (a: typeof import("../app/photos/review/actions")) => a.listPendingKeys({})],
+    ["approveLibraryBatch", (a: typeof import("../app/photos/review/actions")) => a.approveLibraryBatch({ items: [item] })],
+    ["rejectLibraryBatch", (a: typeof import("../app/photos/review/actions")) => a.rejectLibraryBatch({ items: [item] })],
+    ["removeLibraryPhoto", (a: typeof import("../app/photos/review/actions")) => a.removeLibraryPhoto("0d4f1b1c-7a6e-4a53-8d0b-2f6f7f5a3c11")],
+    ["setLibraryCover", (a: typeof import("../app/photos/review/actions")) => a.setLibraryCover("0d4f1b1c-7a6e-4a53-8d0b-2f6f7f5a3c11")],
+    ["undoLibraryRejection", (a: typeof import("../app/photos/review/actions")) => a.undoLibraryRejection(item)],
+  ])("%s refuses and touches nothing", async (_name, call) => {
+    const actions = await import("../app/photos/review/actions");
+    expect(await call(actions)).toEqual({ ok: false, error: PHOTO_REVIEW_DISABLED_MESSAGE });
     expect(getDb).not.toHaveBeenCalled();
     expect(getData).not.toHaveBeenCalled();
   });

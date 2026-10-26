@@ -12,6 +12,8 @@ import { displayName } from "@/lib/schemas";
 
 export const metadata: Metadata = { title: "Review photos" };
 export const dynamic = "force-dynamic";
+/** Applies to the review actions too: a batch of six downloads can take up to 75 s. */
+export const maxDuration = 120;
 
 export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ kind?: string; q?: string; missing?: string }> }) {
   await requirePageMember();

@@ -21,9 +21,8 @@ import { openDb, type DbHandle } from "./helpers/db";
 import sharp from "sharp";
 import { createMemoryStore } from "../lib/blob/memory";
 import { getBlobStore } from "../lib/blob";
-import { loadCandidates } from "../lib/photos/candidates";
 import { photoKeys } from "../lib/photos/keys";
-import { uploadRecipePhoto, removePhoto, makeCoverPhoto, rejectPhotoCandidate } from "../app/actions";
+import { uploadRecipePhoto, removePhoto, makeCoverPhoto } from "../app/actions";
 import * as resetService from "../lib/server/reset";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -272,16 +271,9 @@ it("binds actual photo upload cover delete and rejection actions to the househol
   expect(await getBlobStore().exists(photoKeys(second.uid).master)).toBe(false);
   expect(await getBlobStore().exists(photoKeys(foreign.uid).master)).toBe(true);
   expect(await h.db.select().from(s.photos).where(eq(s.photos.uid, foreign.uid))).toEqual([foreignRow]);
-  const [slug, candidates] = Object.entries(loadCandidates(process.cwd()).recipes).find(([, rows]) => rows.length)!;
-  const key = candidates[0]!.key;
-  expect(await rejectPhotoCandidate("recipe", slug, key)).toEqual({ ok: true });
-  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
-  expect(await rejectPhotoCandidate("recipe", slug, key)).toEqual({ ok: true });
-  expect((await h.db.select().from(s.photoDecisions)).map((r) => [r.householdId, r.createdByPersonId])).toEqual([["a", 1], ["b", 2]]);
   expect(await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "photos")).orderBy(s.syncState.householdId))
     .toMatchObject([{ householdId: "a", revision: 4 }, { householdId: "b", revision: 1 }]);
-  expect(await h.db.select().from(s.syncState).where(eq(s.syncState.dataClass, "photo-decisions")).orderBy(s.syncState.householdId))
-    .toMatchObject([{ householdId: "a", revision: 1 }, { householdId: "b", revision: 1 }]);
+  vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
   await h.db.update(s.authUsers).set({ emailVerified: false }).where(eq(s.authUsers.id, "b"));
   expect((await removePhoto(foreign.uid)).ok).toBe(false);
   expect((await upload()).ok).toBe(false);

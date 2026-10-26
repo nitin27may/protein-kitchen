@@ -2,11 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { approvePhotoCandidate, rejectPhotoCandidate } from "@/app/actions";
+import { approveLibraryBatch, rejectLibraryBatch } from "@/app/photos/review/actions";
 import { Banner, Button, Chip, EmptyState, SearchField } from "@/components/ui";
 import type { ReviewItem } from "@/lib/server/photo-review";
 
 type Kind = "all" | "recipe" | "ingredient";
+type Ref = { kind: "recipe" | "ingredient"; slug: string; key: string };
+
+/** Minimal adapter over the library actions; the review UI is rewritten in L5. Returns an error message or null. */
+async function approveOne(ref: Ref): Promise<string | null> {
+  const r = await approveLibraryBatch({ items: [ref] });
+  if (!r.ok) return r.error;
+  const first = r.results[0];
+  if (!first || first.status === "failed" || first.status === "not-attempted" || first.status === "subject-full") return first?.error ?? "The photo could not be approved.";
+  return null;
+}
+async function rejectOne(ref: Ref): Promise<string | null> {
+  const r = await rejectLibraryBatch({ items: [ref] });
+  return r.ok ? null : r.error;
+}
 
 /** Review queue: for each recipe or ingredient, the candidate photos with their source and licence. */
 export function ReviewClient({ items, kind, q, missingOnly, waiting }: { items: ReviewItem[]; kind: Kind; q: string; missingOnly: boolean; waiting: number }) {
@@ -34,8 +48,9 @@ export function ReviewClient({ items, kind, q, missingOnly, waiting }: { items: 
     setBusyKey(candidateId);
     start(async () => {
       try {
-        const r = action === "approve" ? await approvePhotoCandidate(item.kind, item.slug, key) : await rejectPhotoCandidate(item.kind, item.slug, key);
-        if (!r.ok) setError(r.error);
+        const ref = { kind: item.kind, slug: item.slug, key };
+        const problem = action === "approve" ? await approveOne(ref) : await rejectOne(ref);
+        if (problem) setError(problem);
         else router.refresh();
       } catch {
         setError("The photo decision could not be saved. Check your connection and try again.");
@@ -52,11 +67,18 @@ export function ReviewClient({ items, kind, q, missingOnly, waiting }: { items: 
     setError(null);
     setBulk({ total: bulkTargets.length, done: 0, failed: 0 });
     let failed = 0;
-    for (let n = 0; n < bulkTargets.length; n++) {
-      const t = bulkTargets[n]!;
-      const r = await approvePhotoCandidate(t.kind, t.slug, t.candidates[0]!.key);
-      if (!r.ok) failed++;
-      setBulk({ total: bulkTargets.length, done: n + 1, failed });
+    let done = 0;
+    for (let n = 0; n < bulkTargets.length; n += 6) {
+      const chunk = bulkTargets.slice(n, n + 6).map((t): Ref => ({ kind: t.kind, slug: t.slug, key: t.candidates[0]!.key }));
+      try {
+        const r = await approveLibraryBatch({ items: chunk });
+        if (!r.ok) { setError(r.error); failed += chunk.length; }
+        else failed += r.results.filter((x) => x.status === "failed" || x.status === "not-attempted" || x.status === "subject-full").length;
+      } catch {
+        failed += chunk.length;
+      }
+      done += chunk.length;
+      setBulk({ total: bulkTargets.length, done, failed });
     }
     router.refresh();
   }

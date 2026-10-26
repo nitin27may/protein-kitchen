@@ -59,6 +59,17 @@ describe("the agent cannot approve", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("no script imports the approval pipeline, the review actions or the download seam", () => {
+    const modules = [/library-review["']/, /photos\/review\/actions["']/, /remote-seam["']/, /lib\/library-photos\/tags["']/, /PHOTO_REMOTE_TEST_DIR/, /\b(approveBatch|approveLibraryBatch|rejectLibraryBatch|curatorDenial)\b/];
+    const offenders = scripts.filter((file) => modules.some((pattern) => pattern.test(read(file))));
+    expect(offenders).toEqual([]);
+  });
+
+  it("only the review actions call the batch approval", () => {
+    const callers = app.filter((file) => /\bapproveBatch\(/.test(read(file)) && file !== path.join("lib", "server", "library-review.ts"));
+    expect(callers).toEqual([path.join("app", "photos", "review", "actions.ts")]);
+  });
+
   it("no script writes the library tables or the 'library/' blob prefix", () => {
     const offenders = scripts.filter((file) => /library_photo|libraryPhoto|["'`]library\//.test(read(file)));
     expect(offenders).toEqual([]);

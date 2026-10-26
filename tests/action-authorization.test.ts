@@ -23,7 +23,7 @@ describe("every exported legacy server action denies before reading data or prod
     expect(revalidatePath).not.toHaveBeenCalled();
   });
   describe("preview photo mutation boundaries", () => {
-    it.each(["uploadRecipePhoto", "approvePhotoCandidate", "rejectPhotoCandidate", "removePhoto", "makeCoverPhoto"] as const)("%s refuses before data, image or blob work", async (name) => {
+    it.each(["uploadRecipePhoto", "removePhoto", "makeCoverPhoto"] as const)("%s refuses before data, image or blob work", async (name) => {
       vi.mocked(actionDenial).mockResolvedValue(null);
       vi.stubEnv("VERCEL_ENV", "preview");
       expect(await Reflect.apply(actions[name], undefined, [])).toEqual({ ok: false, error: "Photo changes are disabled in preview deployments." });

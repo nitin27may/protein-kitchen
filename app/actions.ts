@@ -7,9 +7,6 @@ import { z } from "zod";
 import * as s from "@/lib/db/schema";
 import { FeedbackInput, writePersonalRecipeFeedback } from "@/lib/human/personal-feedback";
 import type { LinkInput } from "@/lib/links/types";
-import { loadCandidates } from "@/lib/photos/candidates";
-import { PHOTO_REVIEW_DISABLED_MESSAGE, photoReviewEnabled } from "@/lib/photos/review-flag";
-import { approveCandidateChecked, rejectCandidateChecked } from "@/lib/server/photo-review";
 import { addRecipePhotoChecked, makeCoverChecked, removePhotoChecked } from "@/lib/server/photo-actions";
 import { addLinkChecked, moveLinkChecked, removeLinkChecked, updateLinkChecked } from "@/lib/server/link-actions";
 import type { PartMode } from "@/lib/parts/mode";
@@ -509,36 +506,6 @@ export async function uploadRecipePhoto(formData: FormData): Promise<Result<{ ui
   if (!result.ok) return result;
   refreshRecipe(result.recipeSlug);
   return { ok: true, uid: result.uid };
-}
-
-/** Approves a candidate photo. Only the subject and the candidate key come from the page; everything else is read on the server. */
-export async function approvePhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
-  const denied = await actionDenial();
-  if (denied) return denied;
-  if (!photoReviewEnabled()) return fail(PHOTO_REVIEW_DISABLED_MESSAGE);
-  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
-  if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
-  const r = await photoMutation<{ recipeSlug: string | null }>((db, scope) =>
-    approveCandidateChecked(db, getBlobStore(), loadCandidates(process.cwd()), { ...scope, kind, slug, key }));
-  if (!r.ok) return r;
-  revalidatePath("/photos/review");
-  revalidatePath("/credits");
-  if (r.recipeSlug) refreshRecipe(r.recipeSlug);
-  else revalidatePath("/ingredients", "layout");
-  return { ok: true };
-}
-
-export async function rejectPhotoCandidate(kind: "recipe" | "ingredient", slug: string, key: string): Promise<Result> {
-  const denied = await actionDenial();
-  if (denied) return denied;
-  if (!photoReviewEnabled()) return fail(PHOTO_REVIEW_DISABLED_MESSAGE);
-  if (!photoWritesEnabled()) return fail("Photo changes are disabled in preview deployments.");
-  if (kind !== "recipe" && kind !== "ingredient") return fail("Unknown kind");
-  const r = await photoMutation<{ recipeSlug: string | null }>((db, scope) =>
-    rejectCandidateChecked(db, loadCandidates(process.cwd()), { ...scope, kind, slug, key }));
-  if (!r.ok) return r;
-  revalidatePath("/photos/review");
-  return { ok: true };
 }
 
 export async function removePhoto(uid: string): Promise<Result> {
