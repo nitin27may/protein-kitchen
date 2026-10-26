@@ -31,6 +31,13 @@ export default async function SettingsPage() {
           </div>
           <p className="mt-1 text-sm text-muted">People, protein targets, likes and avoids, and reminders. {counts.profiles} {counts.profiles === 1 ? "person" : "people"} saved.</p>
         </Link>
+        <Link href="/foods" className="block rounded-card border border-line bg-surface p-4 transition-colors hover:border-primary">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-lg font-semibold">Your foods</h2>
+            <span className="text-sm font-semibold text-primary">{member.role === "owner" ? "Manage" : "Open"}</span>
+          </div>
+          <p className="mt-1 text-sm text-muted">Packaged foods added from their nutrition labels. {member.role === "owner" ? "Add, edit and archive them here." : "Your household owner adds them."}</p>
+        </Link>
         {reviewLink ? (
           <Link href="/photos/review" className="block rounded-card border border-line bg-surface p-4 transition-colors hover:border-primary">
             <div className="flex items-baseline justify-between gap-3">

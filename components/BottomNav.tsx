@@ -14,7 +14,7 @@ const tabs = [
 export function BottomNav() {
   const path = usePathname();
   // Cook mode and form flows have their own full-width action bar.
-  if (path.endsWith("/cook") || path === "/plan/new" || path.startsWith("/profiles/") ||
+  if (path.endsWith("/cook") || path === "/plan/new" || path.startsWith("/profiles/") || path === "/foods/new" || (path.startsWith("/foods/") && path.endsWith("/edit")) ||
       ["/onboarding", "/sign-in", "/sign-up", "/verify-email", "/reset-password"].includes(path)) return null;
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 lg:hidden border-t border-line bg-surface/95 backdrop-blur" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
