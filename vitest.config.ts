@@ -14,6 +14,9 @@ export default defineConfig({
       include: ["lib/**/*.ts", "app/**/*.ts", "components/**/*.tsx"],
       reporter: ["text-summary", "html", "json-summary"],
       thresholds: {
+        "lib/health/status.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "lib/smoke/production.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "app/api/health/route.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/db/library-version.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/db/postgres/migration-ledger.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "lib/db/postgres/seed-target.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },

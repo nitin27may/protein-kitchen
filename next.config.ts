@@ -6,6 +6,8 @@ const config: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   serverExternalPackages: ["better-sqlite3", "exceljs", "pdfmake", "sharp"],
   poweredByHeader: false,
+  // Server-only (not NEXT_PUBLIC): inlined into server code at build time for /api/health.
+  env: { APP_RELEASE_SHA: process.env.APP_RELEASE_SHA ?? "" },
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "Cache-Control", value: "private, no-store" },

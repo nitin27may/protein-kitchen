@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadData } from "../lib/data/load";
 import { openDb } from "../lib/db/client";
 import { verifyLibraryVersion } from "../lib/db/library-version";
-import { ctx, getData, getDb } from "../lib/server/context";
+import { ctx, getData, getDb, getHealthDb } from "../lib/server/context";
 import type { DataSet } from "../lib/data/load";
 import type { Db } from "../lib/db/client";
 
@@ -35,6 +35,14 @@ beforeEach(() => {
 afterEach(resetContext);
 
 describe("async application readiness", () => {
+  it("the health pool is shared with getDb and skips the version check", async () => {
+    expect(await getHealthDb()).toBe(db);
+    expect(await getHealthDb()).toBe(db);
+    expect(openDb).toHaveBeenCalledTimes(1);
+    expect(verifyLibraryVersion).not.toHaveBeenCalled();
+    expect(await getDb()).toBe(db);
+    expect(openDb).toHaveBeenCalledTimes(1);
+  });
   it("loading data or building context never opens a database", () => {
     expect(getData()).toBe(data);
     expect(ctx().data).toBe(data);

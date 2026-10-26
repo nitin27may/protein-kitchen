@@ -1,0 +1,4 @@
+{
+  "regions": ["cle1"],
+  "git": { "deploymentEnabled": false }
+}
