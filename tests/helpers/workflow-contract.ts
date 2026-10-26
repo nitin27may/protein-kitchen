@@ -3,7 +3,7 @@ import { parse } from "yaml";
 
 export interface Step { id?: string; name?: string; uses?: string; run?: string; if?: string; with?: Record<string, unknown>; env?: Record<string, string> }
 export interface Job {
-  needs?: string | string[]; environment?: string; permissions?: Record<string, string>; env?: Record<string, string>
+  if?: string; needs?: string | string[]; environment?: string; permissions?: Record<string, string>; env?: Record<string, string>
   concurrency?: { group: string; "cancel-in-progress": boolean }; "timeout-minutes"?: number; steps: Step[]; outputs?: Record<string, string>
 }
 export interface Workflow {

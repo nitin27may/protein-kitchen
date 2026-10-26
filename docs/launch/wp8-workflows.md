@@ -15,14 +15,15 @@ Stage record for CLAUDE.md. Part of "Launch: single production environment" in `
 ## Permission boundaries
 
 - Top-level `permissions: contents: read`. `gate` adds only `actions: read`, has no environment, and uses no secret or variable (`GH_TOKEN` is the job token).
-- Secrets exist only in the `release` job (`production` environment) and the `rehearse` job (`production-rehearsal`). Names only in the files.
+- There is one GitHub environment, `production`, with required-reviewer approval and a main-only branch policy. Secrets exist only in the `release` and `rehearse` jobs (both use it) and are attached per step, not per job: `pnpm install`, `vercel build` and the other Vercel steps never see `DATABASE_URL*` or `NEON_API_KEY`; database steps never see `VERCEL_TOKEN`; only the smoke steps see `PRODUCTION_PROTECTION_BYPASS`. Job-level `env` holds variables only. Names only in the files.
+- `release` and `rehearse` share the concurrency group `production` (`cancel-in-progress: false`), so a rehearsal and a release never overlap on the Neon branch limit. GitHub keeps one running and one pending run per group, so a third queued run replaces the pending one; re-dispatch if that happens.
 - Every action is pinned to the full SHA already used in `ci.yml`. The Vercel CLI is installed as `vercel@63.1.2` (published 2026-10-09, more than two weeks before 2026-10-25; the registry's `latest` is 65.2.0 and `canary` 63.1.1).
 - Checkouts use `persist-credentials: false`. No artifact is uploaded; the summary goes to `$GITHUB_STEP_SUMMARY` and holds ids and durations only. The repository is public.
 - Vercel `pull` happens after every database step and its output is never sourced; cleanup removes `.vercel/.env*`, `.vercel/output` and the temporary files in an `if: always()` step.
 
 ## production.yml
 
-Triggers: `workflow_run` of `ci` (completed, branch `main`) and `workflow_dispatch` (no inputs; releases current main HEAD).
+Triggers: `workflow_run` of `ci` (completed, branch `main`) and `workflow_dispatch` (no inputs; releases current main HEAD). `gate` has a job-level `if` (`workflow_run.conclusion == 'success'` or manual), so a red or cancelled CI run on main skips quietly instead of showing a failed gate.
 
 `gate` (5 min): chooses the SHA (`workflow_run.head_sha`, else `github.sha`); refuses unless the CI run concluded `success`, was a `push` and ran on `main` (manual runs must start from `refs/heads/main`); reports `superseded` and exits non-zero when `repos/<repo>/commits/main` is not that SHA; requires a successful push `ci.yml` run on main for that SHA whose `acceptance` job succeeded (job pages read with `gh api --paginate --slurp`); outputs `sha`.
 
@@ -49,7 +50,7 @@ Anything that fails before step 12 leaves production serving the previous deploy
 
 ## rehearse-migration.yml
 
-Trigger: `workflow_dispatch` with `ref` (default `main`). `gate` resolves the ref to a SHA and requires the same push CI plus `acceptance` (any branch). `rehearse` (`production-rehearsal`, concurrency `rehearsal`, 30 min, `DATABASE_ENV=development`): `db:rehearsal create`, `counts before`, check (pre-migrate), timed migrate, seed, check (pre-deploy), `counts after`, `compare`, and an always-run `db:rehearsal delete` plus temp-file removal.
+Trigger: `workflow_dispatch`, no inputs, started from `main`. It rehearses only the tip of main: `gate` applies the production gate (manual run on `refs/heads/main`, SHA still the tip of main, successful push CI plus `acceptance`). To rehearse a migration that is not merged yet, merge it to main first. A green main CI also starts `production.yml`; the required-reviewer approval on the `production` environment is what holds the release, and the rehearsal needs the same approval. `rehearse` (`production` environment, concurrency group `production`, 30 min, `DATABASE_ENV=development`, `NEON_API_KEY` only on the steps that call Neon): `db:rehearsal create`, `counts before`, check (pre-migrate), timed migrate, seed, check (pre-deploy), `counts after`, `compare`, and an always-run `db:rehearsal delete` plus temp-file removal.
 
 ## Acceptance cases
 
@@ -61,11 +62,11 @@ Trigger: `workflow_dispatch` with `ref` (default `main`). `gate` resolves the re
 
 ## Gotchas and known issues
 
-- **First-run blocker (see report):** `pnpm db:check:production` (non-manifest mode) still requires `BETTER_AUTH_SECRET` and `RESEND_API_KEY` in the job environment (`checkConfiguration`), but the owner checklist keeps those out of GitHub. The checker or the checklist must change before the first run.
-- Job-level env gives the `vercel build` step the same secrets as the database steps, as specified. Scope them per step later if the build should not see `NEON_API_KEY`.
-- A failed CI run on main also starts `production` and fails at the gate (a red run, no deploy). Neutral skipping would need a job-level `if`.
+- Secrets are scoped per step. `vercel build` still holds `VERCEL_TOKEN` (it is passed as `--token`) but no database or Neon credential.
+- A failed CI run on main still starts `production` but the gate job is skipped (no red run, no deploy).
 - The snapshot name uses `GITHUB_SHA`, which on `workflow_run` is the tip of the default branch; the gate guarantees it equals the released SHA at gate time, but a push between the gate and the snapshot would make them differ (harmless: still a valid snapshot name, and the next run is superseded-checked).
-- `rehearse-migration.yml` checks out and runs code from an arbitrary accepted ref with `NEON_API_KEY` in scope. Keep reviewer approval on `production-rehearsal`.
+- `rehearse-migration.yml` runs repository code with `NEON_API_KEY` in scope, so it rehearses only commits on main (no `ref` input). Keep reviewer approval and the main-only branch policy on `production`.
+- Because there is one environment, a rehearsal approval is a `production` approval. Read the run title before approving.
 
 ## UNVERIFIED API assumptions (no remote contact was allowed)
 

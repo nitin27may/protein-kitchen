@@ -14,8 +14,6 @@ export class GateError extends Error {
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
-// Branch, tag or SHA. No leading dash, no query/fragment characters, no "..", so it is one safe path segment group.
-const REF = /^(?!-)[\w][\w./-]{0,199}$/;
 
 export function ghFromCli(env: Environment): GhApi {
   return (path, paginate = false) => {
@@ -102,14 +100,11 @@ export function productionGate(env: Environment, gh: GhApi): GateResult {
   return { sha };
 }
 
-/** Rehearsal gate: resolve a ref to a SHA and require the same acceptance. */
+/**
+ * Rehearsal gate: only the tip of main, started by hand from main, with the same accepted CI as a release. Unmerged
+ * branches are never rehearsed because the job runs their code with NEON_API_KEY in scope.
+ */
 export function rehearsalGate(env: Environment, gh: GhApi): GateResult {
-  const repository = env.REPOSITORY ?? "";
-  const ref = env.REF_INPUT?.trim() || "main";
-  if (!REF.test(ref) || ref.includes("..") || ref.endsWith("/") || ref.endsWith(".lock")) throw new GateError("GATE_CONFIG", "The ref is malformed.");
-  if (!REPOSITORY.test(repository)) throw new GateError("GATE_CONFIG", "The repository is malformed.");
-  const sha = shaOf(parseJson(gh(`repos/${repository}/commits/${ref}`)));
-  if (!FULL_SHA.test(sha)) throw new GateError("GATE_API_INVALID", "The ref did not resolve to a commit.");
-  requireAcceptance(gh, { repository, sha });
-  return { sha };
+  if (env.EVENT_NAME !== "workflow_dispatch") throw new GateError("GATE_REFUSED", "A rehearsal can only be started by hand.");
+  return productionGate(env, gh);
 }

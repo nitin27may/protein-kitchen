@@ -32,6 +32,10 @@ describe("production workflow contract", () => {
     expect(gate.steps.at(-1)!.run).toBe("pnpm deploy:gate production");
   });
 
+  it("skips the gate quietly unless ci succeeded or the run is manual", () => {
+    expect(gate.if).toBe("${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}");
+  });
+
   it("releases in the production environment, one at a time, without cancelling", () => {
     expect(release.needs).toBe("gate");
     expect(release.environment).toBe("production");
@@ -44,18 +48,42 @@ describe("production workflow contract", () => {
     expect(checkout.with).toMatchObject({ ref: "${{ needs.gate.outputs.sha }}", "persist-credentials": false });
   });
 
-  it("hands the release job its secrets and variables by name only", () => {
+  it("hands the release job variables by name and each secret only to the steps that need it", () => {
     const secrets = ["VERCEL_TOKEN", "DATABASE_URL", "DATABASE_URL_UNPOOLED", "NEON_API_KEY", "PRODUCTION_PROTECTION_BYPASS"];
     const vars = [
       "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "NEON_PROJECT_ID", "NEON_PRODUCTION_BRANCH_ID", "DATABASE_PRODUCTION_HOST",
       "DATABASE_DIRECT_PRODUCTION_HOST", "PRODUCTION_ORIGIN", "AUTH_EMAIL_FROM", "SNAPSHOT_RETENTION_DAYS",
     ];
-    for (const name of secrets) expect(release.env![name]).toBe(`\${{ secrets.${name} }}`);
     for (const name of vars) expect(release.env![name]).toBe(`\${{ vars.${name} }}`);
-    expect([...text.matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]).sort()).toEqual([...secrets].sort());
+    for (const name of secrets) expect(release.env).not.toHaveProperty(name);
+    expect(JSON.stringify(release.env)).not.toContain("secrets.");
+    expect([...new Set([...text.matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]))].sort()).toEqual([...secrets].sort());
+    for (const step of release.steps) {
+      for (const [key, value] of Object.entries(step.env ?? {})) {
+        if (value.includes("secrets.")) expect(value).toBe(`\${{ secrets.${key} }}`);
+      }
+    }
     expect(text).not.toMatch(/secrets:\s*inherit/);
     expect(text).not.toMatch(/^\s*secrets:/m);
-    for (const step of release.steps) expect(JSON.stringify(step.env ?? {})).not.toContain("secrets.");
+  });
+
+  it("keeps database and Neon credentials away from install, Vercel pull, build, deploy and promote", () => {
+    const sees = (step: (typeof release.steps)[number], key: string) => Boolean(step.env?.[key]);
+    const noDb = (step: (typeof release.steps)[number]) => {
+      for (const key of ["DATABASE_URL", "DATABASE_URL_UNPOOLED", "NEON_API_KEY", "PRODUCTION_PROTECTION_BYPASS"]) expect(sees(step, key), `${step.name} ${key}`).toBe(false);
+    };
+    for (const step of release.steps.filter((s) => s.uses || s.run === "pnpm install --frozen-lockfile" || (s.run ?? "").startsWith("npm install --global"))) {
+      expect(step.env).toBeUndefined();
+    }
+    for (const needle of ["vercel pull", "vercel build", "vercel deploy", "vercel promote", "deploy:manifest", "deploy:release"]) {
+      for (const step of release.steps.filter((s) => (s.run ?? "").includes(needle))) { noDb(step); expect(sees(step, "VERCEL_TOKEN")).toBe(true); }
+    }
+    for (const needle of ["db:check:production", "db:snapshot:production", "db:migrate:postgres", "pnpm seed"]) {
+      for (const step of release.steps.filter((s) => (s.run ?? "").includes(needle))) {
+        expect(step.env).toMatchObject({ DATABASE_URL: "${{ secrets.DATABASE_URL }}", DATABASE_URL_UNPOOLED: "${{ secrets.DATABASE_URL_UNPOOLED }}", NEON_API_KEY: "${{ secrets.NEON_API_KEY }}" });
+        expect(sees(step, "VERCEL_TOKEN")).toBe(false);
+      }
+    }
   });
 
   it("runs the steps in the required order", () => {
@@ -250,27 +278,23 @@ describe("production gate", () => {
 });
 
 describe("rehearsal gate", () => {
-  const env = { REPOSITORY: "owner/repo", REF_INPUT: "feature/x-1" };
-  it("resolves the ref and requires accepted CI for that commit", () => {
-    const fx = fakeGh({ ref: JSON.stringify({ sha: other }), runs: runs(run({ head_sha: other, head_branch: "feature/x-1" })) });
-    expect(rehearsalGate(env, fx.gh)).toEqual({ sha: other });
-    expect(fx.calls[0]).toBe("repos/owner/repo/commits/feature/x-1");
-    expect(rehearsalGate({ REPOSITORY: "owner/repo", REF_INPUT: " " }, fakeGh({}).gh)).toEqual({ sha });
-    expect(rehearsalGate({ REPOSITORY: "owner/repo" }, fakeGh({}).gh)).toEqual({ sha });
+  it("rehearses only the tip of main, started by hand, with the same accepted CI as a release", () => {
+    const fx = fakeGh({});
+    expect(rehearsalGate(dispatchEnv, fx.gh)).toEqual({ sha });
+    expect(fx.calls[0]).toBe("repos/owner/repo/commits/main");
   });
 
-  it("refuses unsafe refs, an unresolved ref, and missing CI or acceptance", () => {
-    for (const ref of ["-x", "a b", "a..b", "a?x=1", "a#b", "main/", "x.lock", "a".repeat(201), "$(id)"]) {
+  it("refuses other events, other refs, a superseded commit and missing CI or acceptance", () => {
+    for (const patch of [{ EVENT_NAME: "workflow_run" }, { EVENT_NAME: "push" }, { EVENT_NAME: undefined }]) {
       const fx = fakeGh({});
-      expect(refusal(() => rehearsalGate({ ...env, REF_INPUT: ref }, fx.gh)), ref).toBe("GATE_CONFIG");
+      expect(refusal(() => rehearsalGate({ ...runEnv, ...patch }, fx.gh)), JSON.stringify(patch)).toBe("GATE_REFUSED");
       expect(fx.calls).toHaveLength(0);
     }
-    expect(refusal(() => rehearsalGate({ ...env, REPOSITORY: "x" }, fakeGh({}).gh))).toBe("GATE_CONFIG");
-    expect(refusal(() => rehearsalGate({ REF_INPUT: "main" }, fakeGh({}).gh))).toBe("GATE_CONFIG");
-    expect(refusal(() => rehearsalGate(env, fakeGh({ ref: JSON.stringify({ sha: "abc" }) }).gh))).toBe("GATE_API_INVALID");
-    expect(refusal(() => rehearsalGate(env, fakeGh({ ref: "[]" }).gh))).toBe("GATE_API_INVALID");
-    expect(refusal(() => rehearsalGate(env, fakeGh({ runs: runs() }).gh))).toBe("GATE_NO_CI");
-    expect(refusal(() => rehearsalGate(env, fakeGh({ jobs: JSON.stringify([jobsPage(job("acceptance", "failure"))]) }).gh))).toBe("GATE_NO_ACCEPTANCE");
+    expect(refusal(() => rehearsalGate({ ...dispatchEnv, GITHUB_REF: "refs/heads/feature" }, fakeGh({}).gh))).toBe("GATE_REFUSED");
+    expect(refusal(() => rehearsalGate({ ...dispatchEnv, GITHUB_SHA: other }, fakeGh({}).gh))).toBe("GATE_SUPERSEDED");
+    expect(refusal(() => rehearsalGate({ ...dispatchEnv, REPOSITORY: "x" }, fakeGh({}).gh))).toBe("GATE_CONFIG");
+    expect(refusal(() => rehearsalGate(dispatchEnv, fakeGh({ runs: runs() }).gh))).toBe("GATE_NO_CI");
+    expect(refusal(() => rehearsalGate(dispatchEnv, fakeGh({ jobs: JSON.stringify([jobsPage(job("acceptance", "failure"))]) }).gh))).toBe("GATE_NO_ACCEPTANCE");
   });
 });
 

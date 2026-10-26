@@ -93,7 +93,7 @@ The application schema lives in `lib/db/postgres/`, re-exported by `lib/db/schem
 
 ### Releases
 
-Production is released only by `.github/workflows/production.yml` (details in [docs/launch/wp8-workflows.md](docs/launch/wp8-workflows.md)). `.github/workflows/rehearse-migration.yml` rehearses pending migrations on a throwaway Neon branch. The protected preview and its preflight command are gone.
+Production is released only by `.github/workflows/production.yml` (details in [docs/launch/wp8-workflows.md](docs/launch/wp8-workflows.md)). `.github/workflows/rehearse-migration.yml` rehearses pending migrations on a throwaway Neon branch (main only, manual, same `production` environment approval; it shares a concurrency group with the release). The protected preview and its preflight command are gone.
 
 ### Production guards and `pnpm db:check:production`
 

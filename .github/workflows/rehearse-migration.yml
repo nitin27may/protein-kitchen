@@ -1,15 +1,11 @@
 name: rehearse-migration
 
 # Runs the pending migrations and the seed against a throwaway Neon branch of production (expires in 1 day) and deletes
-# it. Never touches the production branch.
+# it. Never touches the production branch. Rehearses only the current tip of main (start it from main): to rehearse a
+# migration that is not merged yet, merge it to main first. A green main CI also starts production.yml; the `production`
+# environment's required reviewer is what stops a release, and this job needs the same approval.
 on:
   workflow_dispatch:
-    inputs:
-      ref:
-        description: Branch, tag or commit to rehearse (needs a successful push CI run with acceptance)
-        required: false
-        default: main
-        type: string
 
 permissions:
   contents: read
@@ -33,25 +29,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Resolve the ref and require accepted CI
+      - name: Require accepted CI for the tip of main
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          REF_INPUT: ${{ inputs.ref }}
+          EVENT_NAME: ${{ github.event_name }}
         run: pnpm deploy:gate rehearsal
 
   rehearse:
     needs: gate
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    environment: production-rehearsal
+    environment: production
+    # Shared with the other production workflow so a rehearsal and a release never overlap (Neon branch limits).
     concurrency:
-      group: rehearsal
+      group: production
       cancel-in-progress: false
+    # Variables only. The API key is attached to the steps that call Neon, never to checkout or install.
     env:
       DATABASE_ENV: development
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
       NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
       NEON_PRODUCTION_BRANCH_ID: ${{ vars.NEON_PRODUCTION_BRANCH_ID }}
       NEON_DATABASE_NAME: ${{ vars.NEON_DATABASE_NAME }}
@@ -68,27 +65,43 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Create the rehearsal branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: pnpm db:rehearsal create
       - name: Count human-owned rows before
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: pnpm db:rehearsal counts "$RUNNER_TEMP/before.json"
       - name: Check before migration
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: pnpm db:check:production --target=rehearsal --phase=pre-migrate
       - name: Migrate
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: |
           set -euo pipefail
           start=$SECONDS
           pnpm db:migrate:postgres
           echo "Migration took $((SECONDS - start)) seconds on the rehearsal branch." >> "$GITHUB_STEP_SUMMARY"
       - name: Seed the library
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: pnpm seed
       - name: Check before deploy
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: pnpm db:check:production --target=rehearsal --phase=pre-deploy
       - name: Count human-owned rows after
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: pnpm db:rehearsal counts "$RUNNER_TEMP/after.json"
       - name: Compare counts
         run: pnpm db:rehearsal compare "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
       - name: Delete the rehearsal branch
         if: ${{ always() }}
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
         run: |
           rm -f "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/after.json"
           pnpm db:rehearsal delete
