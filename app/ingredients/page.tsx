@@ -1,5 +1,6 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
+import { libraryPhotoManifest } from "@/lib/library-photos/manifest";
 import { libraryIngredientCards } from "@/lib/library/anonymous";
 import type { Metadata } from "next";
 import { IngredientsClient } from "@/components/IngredientsClient";
@@ -20,7 +21,7 @@ export default async function IngredientsPage() {
       <>
         <PageTitle title="Ingredients" sub="Per 100 g in the state shown. Open one for full nutrition and how to get the most from it." />
         <Suspense fallback={null}>
-          <IngredientsClient items={libraryIngredientCards(getData())} savedDefault={null} mode="anonymous" />
+          <IngredientsClient items={libraryIngredientCards(getData(), await libraryPhotoManifest())} savedDefault={null} mode="anonymous" />
         </Suspense>
       </>
     );
