@@ -60,9 +60,19 @@ describe("the agent cannot approve", () => {
   });
 
   it("no script imports the approval pipeline, the review actions or the download seam", () => {
-    const modules = [/library-review["']/, /photos\/review\/actions["']/, /remote-seam["']/, /lib\/library-photos\/tags["']/, /PHOTO_REMOTE_TEST_DIR/, /\b(approveBatch|approveLibraryBatch|rejectLibraryBatch|curatorDenial)\b/];
+    const modules = [/library-review["']/, /photos\/review\/actions["']/, /remote-seam["']/, /lib\/library-photos\/tags["']/, /\b(approveBatch|approveLibraryBatch|rejectLibraryBatch|curatorDenial)\b/];
     const offenders = scripts.filter((file) => modules.some((pattern) => pattern.test(read(file))));
     expect(offenders).toEqual([]);
+  });
+
+  it("only the disposable e2e server may name PHOTO_REMOTE_TEST_DIR, as a plain env assignment next to its loopback guard note", () => {
+    const E2E_SERVER = path.join("scripts", "e2e-server.ts");
+    expect(scripts.filter((file) => /PHOTO_REMOTE_TEST_DIR/.test(read(file)))).toEqual([E2E_SERVER]);
+    const text = read(E2E_SERVER);
+    expect(text.match(/PHOTO_REMOTE_TEST_DIR/g)).toHaveLength(1);
+    expect(text).toMatch(/^env\.PHOTO_REMOTE_TEST_DIR = path\.resolve\("tests\/fixtures\/photos"\);$/m);
+    expect(text).toMatch(/loopback protein_kitchen_e2e \(checked by e2eTarget above\)[\s\S]*not Vercel/);
+    expect(text).toMatch(/const target = e2eTarget\(process\.env\.POSTGRES_E2E_URL\);/);
   });
 
   it("only the review actions call the batch approval", () => {

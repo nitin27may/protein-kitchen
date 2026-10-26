@@ -393,6 +393,13 @@ test("Excel and PDF exports return actual file payloads", async ({ request }) =>
 
 test("a curator's library photo rejection persists, and a failed request displays an error then allows retry", async ({ page }) => {
   test.skip(process.env.PHOTO_REVIEW_ENABLED === "false", "Candidate review is switched off");
+  const baseline = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
+  let libraryBefore: Set<number>;
+  let householdBefore: number;
+  try {
+    libraryBefore = new Set((await baseline.db.select({ id: s.libraryPhotoDecisions.id }).from(s.libraryPhotoDecisions)).map((r) => r.id));
+    householdBefore = (await baseline.db.select().from(s.photoDecisions)).length;
+  } finally { await baseline.close(); }
   await page.goto("/photos/review");
   const reject = page.getByRole("button", { name: "Reject", exact: true });
   const count = await reject.count();
@@ -416,11 +423,12 @@ test("a curator's library photo rejection persists, and a failed request display
   // The decisions are library decisions (shared, no household), written by the curator's person.
   const handle = openPostgres(e2eTarget(process.env.POSTGRES_E2E_URL));
   try {
-    const rows = await handle.db.select().from(s.libraryPhotoDecisions);
+    // Only the decisions this test created (other fixtures may seed their own).
+    const rows = (await handle.db.select().from(s.libraryPhotoDecisions)).filter((r) => !libraryBefore.has(r.id));
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.decision === "rejected" && r.createdByPersonId !== null)).toBe(true);
-    // The imported fixture household already had one private decision; the curator's clicks added none.
-    expect(await handle.db.select().from(s.photoDecisions)).toHaveLength(1);
+    // The curator's clicks added no household decision.
+    expect(await handle.db.select().from(s.photoDecisions)).toHaveLength(householdBefore);
   } finally { await handle.close(); }
 });
 
