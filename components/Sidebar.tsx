@@ -19,6 +19,7 @@ export const NAV_ICONS = {
   plan: icon("M3 6.5A1.5 1.5 0 014.5 5h11A1.5 1.5 0 0117 6.5v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 013 15.5v-9zM3 9h14M7 3v3M13 3v3"),
   recipes: icon("M4 5.5C4 4.7 4.7 4 5.5 4H16v11H5.5A1.5 1.5 0 004 16.5v-11zM4 16.5A1.5 1.5 0 005.5 18H16v-3"),
   ingredients: icon("M16 4C8 4 4 8 4 13c0 1 .3 2 .8 3 1 .5 2 .8 3 .8 5 0 8.200-4 8.200-12.800zM4.800 16C7 12 10 9.500 13 8"),
+  foods: icon("M6 7h8l1 2.500V16a1 1 0 01-1 1H6a1 1 0 01-1-1V9.500L6 7zM5 9.500h10M7.500 7V4.500h5V7"),
   groceries: icon("M3 7h14l-1.300 8.200a1.500 1.500 0 01-1.500 1.300H5.800a1.500 1.500 0 01-1.500-1.300L3 7zM7 7l2-3.500M13 7l-2-3.500"),
   profiles: icon("M10 10a3.500 3.500 0 100-7 3.500 3.500 0 000 7zM3.500 17c.5-3 3.200-5 6.500-5s6 2 6.500 5"),
   settings: icon("M10 12.500a2.500 2.500 0 100-5 2.500 2.500 0 000 5zM16 10l1.500-1-1-2-1.800.3-1.200-1.200.3-1.800-2-1-1 1.500h-1.600l-1-1.500-2 1 .3 1.800L5.300 6.300 3.500 6l-1 2 1.500 1v1.600l-1.500 1 1 2 1.800-.3 1.200 1.200-.3 1.800 2 1 1-1.500h1.600l1 1.500 2-1-.3-1.800 1.200-1.200 1.800.3 1-2-1.500-1V10z"),
@@ -28,6 +29,7 @@ const links = [
   { href: "/", label: "Plan", hint: "Today and your meal plans", icon: NAV_ICONS.plan, match: (p: string) => p === "/" || p.startsWith("/plan") },
   { href: "/recipes", label: "Recipes", hint: "Browse and cook", icon: NAV_ICONS.recipes, match: (p: string) => p.startsWith("/recipes") },
   { href: "/ingredients", label: "Ingredients", hint: "Nutrition and how to eat", icon: NAV_ICONS.ingredients, match: (p: string) => p.startsWith("/ingredients") },
+  { href: "/foods", label: "Your foods", hint: "Packaged foods from their labels", icon: NAV_ICONS.foods, match: (p: string) => p.startsWith("/foods") },
   { href: "/groceries", label: "Groceries", hint: "What to buy", icon: NAV_ICONS.groceries, match: (p: string) => p.startsWith("/groceries") },
   { href: "/profiles", label: "Profiles", hint: "People and targets", icon: NAV_ICONS.profiles, match: (p: string) => p.startsWith("/profiles") },
 ];
