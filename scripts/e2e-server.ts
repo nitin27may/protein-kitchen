@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import sharp from "sharp";
+import { loadCandidates } from "../lib/photos/candidates";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { e2eTarget } from "../tests/e2e/target";
 import { prepareBrowserDatabase } from "../tests/e2e/setup";
@@ -59,7 +61,19 @@ const env: NodeJS.ProcessEnv = {
 };
 // The fixture directory replaces Wikimedia/Openverse only here: loopback protein_kitchen_e2e (checked by e2eTarget above),
 // development environment, not Vercel. lib/photos/remote-seam.ts checks the same conditions again and throws otherwise.
-env.PHOTO_REMOTE_TEST_DIR = path.resolve("tests/fixtures/photos");
+// The directory is a per-run copy of tests/fixtures/photos so a browser test can edit it (remove a licence entry, add an image)
+// without touching committed files. Every candidate in the real list gets a licence entry that matches what the list says,
+// and images/default.jpg answers any image URL, so approving a real candidate works with no network. A test makes one fail
+// by deleting its licence entry from this copy.
+const photoFixtureDir = path.resolve(".next-e2e-fixture/photos");
+await rm(photoFixtureDir, { recursive: true, force: true });
+await cp(path.resolve("tests/fixtures/photos"), photoFixtureDir, { recursive: true });
+await writeFile(path.join(photoFixtureDir, "images", "default.jpg"), await sharp({ create: { width: 800, height: 600, channels: 3, background: "#4a7c59" } }).jpeg().toBuffer());
+const candidateList = loadCandidates(process.cwd());
+await writeFile(path.join(photoFixtureDir, "licences.json"), JSON.stringify(Object.fromEntries(
+  [...Object.values(candidateList.recipes), ...Object.values(candidateList.ingredients)].flat().map((c) => [c.key, c.provider === "commons" ? c.licence : "by"] as const),
+), null, 1));
+env.PHOTO_REMOTE_TEST_DIR = photoFixtureDir;
 delete env.VERCEL_ENV;
 delete env.VERCEL;
 // The library photo manifest is kept in the Next data cache on disk for an hour; a stale copy from an earlier run names photos this database does not have.

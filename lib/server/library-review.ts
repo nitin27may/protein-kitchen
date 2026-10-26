@@ -66,7 +66,11 @@ export async function pendingLibraryReview(db: Db, file: CandidateFile, names: S
   const decided = new Map(decisions.map((d) => [decisionKey(d.kind, d.slug, d.key), d.decision] as const));
   const recipeSlugs = new Map((await db.select({ id: s.recipes.id, slug: s.recipes.slug }).from(s.recipes)).map((r) => [r.id, r.slug] as const));
   const photoRows = await db.select({ recipeId: s.libraryPhotos.recipeId, ingredientSlug: s.libraryPhotos.ingredientSlug, key: s.libraryPhotos.candidateKey }).from(s.libraryPhotos);
-  const withPhoto = new Set(photoRows.map((p) => (p.recipeId !== null ? `recipe:${recipeSlugs.get(p.recipeId)}` : `ingredient:${p.ingredientSlug}`)));
+  const photoCounts = new Map<string, number>();
+  for (const p of photoRows) {
+    const subject = p.recipeId !== null ? `recipe:${recipeSlugs.get(p.recipeId)}` : `ingredient:${p.ingredientSlug}`;
+    photoCounts.set(subject, (photoCounts.get(subject) ?? 0) + 1);
+  }
   const pendingOnly = filter.pendingOnly ?? true;
   const q = (filter.q ?? "").trim().toLowerCase();
 
@@ -82,9 +86,10 @@ export async function pendingLibraryReview(db: Db, file: CandidateFile, names: S
         return pendingOnly ? decision === undefined : decision !== "approved";
       });
       if (shown.length === 0) continue;
-      const hasPhoto = withPhoto.has(`${subjectKind}:${slug}`);
+      const photoCount = photoCounts.get(`${subjectKind}:${slug}`) ?? 0;
+      const hasPhoto = photoCount > 0;
       if (filter.onlyWithoutPhoto && hasPhoto) continue;
-      items.push({ kind: subjectKind, slug, name, candidates: shown, hasPhoto });
+      items.push({ kind: subjectKind, slug, name, candidates: shown, hasPhoto, photoCount });
     }
   }
   return items.sort((a, b) => Number(a.hasPhoto) - Number(b.hasPhoto) || a.name.localeCompare(b.name));

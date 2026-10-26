@@ -10,6 +10,8 @@ export interface ReviewItem {
   candidates: Candidate[];
   /** True when the subject already has a library photo, so candidates are optional extras. */
   hasPhoto: boolean;
+  /** Library photos the subject already keeps (the cap is 3), so the page can warn before a selection overshoots. */
+  photoCount: number;
 }
 
 export interface ReviewFilter {

@@ -19,7 +19,7 @@ import {
   getSavedViews, getDefaultViewQuery,
   feedbackMap, getCandidates,
   getRecipeLinks,
-  getPhotoIndex, getRecipePhotos, getIngredientPhotos, getCreditedPhotos, getPhotoReview,
+  getPhotoIndex, getRecipePhotos, getIngredientPhotos, getCreditedPhotos, getPhotoReview, getDecidedReview,
   getResetCounts,
 } from "../lib/server/queries";
 import { loadNight, mealsOf, migrateTickKeys, tonight } from "../lib/server/prep";
@@ -272,6 +272,7 @@ it("scopes photo galleries covers credits and candidate decisions to the verifie
     createdAt: "2026-11-02T00:00:00Z", updatedAt: "2026-11-02T00:00:00Z",
   });
   expect(await getPhotoReview(file, names)).toEqual([]);
+  expect(await getDecidedReview(file, names)).toMatchObject([{ slug: recipe.slug, photos: [], rejected: [{ key: "commons:synthetic" }] }]);
   vi.mocked(requireMember).mockResolvedValue({ userId: "b", role: "owner", personId: 2 });
   expect((await getRecipePhotos(stored!.id)).map((p) => p.uid)).toEqual(["b-recipe"]);
   await h.db.delete(s.householdMembers).where(eq(s.householdMembers.userId, "b"));
