@@ -40,7 +40,7 @@ Triggers: `workflow_run` of `ci` (completed, branch `main`) and `workflow_dispat
 9. `vercel pull --yes --environment=production`, `vercel build --prod`, `vercel deploy --prebuilt --prod --skip-domain --json`
 10. `pnpm deploy:release candidate` (READY and production target, exports `url` and `id`)
 11. `pnpm deploy:smoke:production --stage=candidate`
-12. `vercel promote <url> --yes`, `pnpm deploy:release wait-alias <id>`
+12. `vercel promote <url> --yes`, `pnpm deploy:release wait-alias <id>` (succeeds when either the Aliases API or `/api/health` shows the new release; see below)
 13. `pnpm deploy:smoke:production --stage=live`
 14. summary, then the always-run cleanup
 
@@ -73,7 +73,8 @@ Trigger: `workflow_dispatch`, no inputs, started from `main`. It rehearses only 
 - Vercel `ssoProtection.deploymentType` for Standard Protection is `all_except_custom_domains` (`STANDARD_PROTECTION_TYPE` in `vercel-project.ts`).
 - `GET /v10/projects/{id}/env?decrypt=false` returns `{ envs: [{ key, type, value?, target }], pagination? }` and any `pagination.next` means more pages; `value` is present for `plain`.
 - `teamId` is sent only when `VERCEL_ORG_ID` starts with `team_`.
-- `GET /v6/deployments?projectId&target=production&state=READY&limit=1` lists `{ deployments: [{ uid }] }`; `GET /v13/deployments/{host-or-id}` returns `id`, `readyState`, `target`, `alias[]`, `aliasAssigned`. These replace `vercel inspect --json`, whose output shape is also unverified.
+- `GET /v6/deployments?projectId&target=production&state=READY&limit=1` lists `{ deployments: [{ uid }] }`; `GET /v13/deployments/{host-or-id}` returns `id`, `readyState`, `target` (its `alias[]` is not used for the alias wait, see the next item). These replace `vercel inspect --json`, whose output shape is also unverified.
+- `wait-alias` accepts either of two independent proofs, polled every 5 s for up to 180 s, then fails with `VERCEL_ALIAS_TIMEOUT`. (1) `GET https://api.vercel.com/v4/aliases/{production host}?teamId=...` returns the alias record and its `deploymentId` equals the promoted deployment id (UNVERIFIED shape, from Vercel API reference knowledge only). (2) `GET {PRODUCTION_ORIGIN}/api/health` (public; returns only `ok`, `release`, `database`, `library`) reports a `release` equal to `APP_RELEASE_SHA`. A failed or malformed answer from either source counts as "not yet". Why: in the first real production run (`dpl_8rAZM5Y67P8g4G7heyVTN4QfcWtN`, READY, `aliasAssigned` true) the deployment object's `alias[]` held only `protein-kitchen-nitin27mays-projects.vercel.app`, not the production domain `protein-kitchen-tau.vercel.app`, so the earlier check timed out while the domain served the new release.
 - `vercel deploy --json` prints `{ url }` or `{ deployment: { url } }`; `--skip-domain` and `vercel promote` exist in 63.1.2; `vercel build --prod` and `vercel pull` read `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` from the environment.
 - `gh api --paginate --slurp` returns an array of pages (needs a `gh` that supports `--slurp`, 2.48 or later; the runner image has it).
 - On `workflow_run`, `GITHUB_REF` is `refs/heads/main` (the default branch), which the production CI guard requires.

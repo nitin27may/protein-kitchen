@@ -10,7 +10,7 @@ function append(file: string | undefined, line: string): void {
 /**
  * `previous` records the id of the production deployment that is live now (job summary).
  * `candidate <deploy.json>` checks the uploaded deployment is READY for production and exports `url` and `id`.
- * `wait-alias <id>` waits until PRODUCTION_ORIGIN points at the promoted deployment.
+ * `wait-alias <id>` waits until the Aliases API or /api/health (APP_RELEASE_SHA) shows PRODUCTION_ORIGIN serving the promoted deployment.
  */
 async function main(): Promise<number> {
   try {
@@ -27,7 +27,7 @@ async function main(): Promise<number> {
       append(process.env.GITHUB_STEP_SUMMARY, `Candidate deployment: ${id} (READY, production target)`);
       console.log(`candidate ${id} READY`);
     } else if (command === "wait-alias" && argument) {
-      await waitForAlias(process.env, argument, process.env.PRODUCTION_ORIGIN ?? "");
+      await waitForAlias(process.env, argument, process.env.PRODUCTION_ORIGIN ?? "", { release: process.env.APP_RELEASE_SHA });
       console.log("alias ok");
     } else {
       throw new VercelApiError("VERCEL_CONFIG", "Usage: vercel-release previous | candidate <deploy.json> | wait-alias <id>");
