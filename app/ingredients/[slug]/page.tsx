@@ -1,6 +1,7 @@
 import { requirePageMember } from "@/lib/auth/access";
 import { optionalPageMember } from "@/lib/auth/public-access";
 import { IngredientDetailView } from "@/components/IngredientDetailView";
+import { libraryPhotoManifest } from "@/lib/library-photos/manifest";
 import { libraryIngredientDetail } from "@/lib/library/anonymous";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -21,7 +22,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ slu
   const data = getData();
   const ing = data.ingredients.get(slug);
   if (!ing) notFound();
-  if (!await optionalPageMember()) return <IngredientDetailView {...libraryIngredientDetail(data, slug)} />;
+  if (!await optionalPageMember()) return <IngredientDetailView {...libraryIngredientDetail(data, slug, await libraryPhotoManifest())} />;
   const member = await requirePageMember();
   const sex = (await listPeople()).find((person) => person.id === member.personId)!.sex;
   const photoIdx = await getPhotoIndex();

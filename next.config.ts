@@ -9,12 +9,16 @@ const config: NextConfig = {
   // Server-only (not NEXT_PUBLIC): inlined into server code at build time for /api/health.
   env: { APP_RELEASE_SHA: process.env.APP_RELEASE_SHA ?? "" },
   async headers() {
-    return [{ source: "/:path*", headers: [
-      { key: "Cache-Control", value: "private, no-store" },
+    const common = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "X-Frame-Options", value: "DENY" },
       { key: "Referrer-Policy", value: "same-origin" },
-    ] }];
+    ];
+    return [
+      // Everything is private by default. Shared library photos are public: their route sets its own cache headers.
+      { source: "/((?!library-photos/).*)", headers: [{ key: "Cache-Control", value: "private, no-store" }, ...common] },
+      { source: "/library-photos/:path*", headers: common },
+    ];
   },
   // Photos are resized on the phone to a few hundred KB; the default 1 MB limit is too tight for a large one.
   experimental: { serverActions: { bodySizeLimit: "6mb" } },

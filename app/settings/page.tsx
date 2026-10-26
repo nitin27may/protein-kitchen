@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsClient } from "@/components/SettingsClient";
 import { PageTitle } from "@/components/ui";
 import { getResetCounts } from "@/lib/server/queries";
+import { isCurator } from "@/lib/auth/curator";
 import { photoReviewEnabled } from "@/lib/photos/review-flag";
 import { StateSyncControls } from "@/components/StateSyncControls";
 import { stateSyncSettings } from "@/lib/sync/server";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const member = await requirePageMember();
   const counts = await getResetCounts();
+  const reviewLink = photoReviewEnabled() && await isCurator(member);
   const sync = member.role === "owner" ? await stateSyncSettings() : null;
   return (
     <>
@@ -29,7 +31,7 @@ export default async function SettingsPage() {
           </div>
           <p className="mt-1 text-sm text-muted">People, protein targets, likes and avoids, and reminders. {counts.profiles} {counts.profiles === 1 ? "person" : "people"} saved.</p>
         </Link>
-        {photoReviewEnabled() ? (
+        {reviewLink ? (
           <Link href="/photos/review" className="block rounded-card border border-line bg-surface p-4 transition-colors hover:border-primary">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-lg font-semibold">Photos</h2>
