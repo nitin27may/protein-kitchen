@@ -12,7 +12,7 @@ import { refreshHouseholdAccess, requireHouseholdProfile, type HouseholdAccess }
 
 export type SyncResult = { state: "success" | "busy" | "error" | "conflict"; replayed: boolean };
 const pendingSchema = z.object({
-  revisions: z.record(z.number().int().positive().safe()), files: z.record(z.string().regex(/^[0-9a-f]{40}$/)),
+  revisions: z.record(z.string(), z.number().int().positive().safe()), files: z.record(z.string(), z.string().regex(/^[0-9a-f]{40}$/)),
 }).strict();
 const clock = sql`clock_timestamp()`;
 const deadline = sql`clock_timestamp() + interval '120 seconds'`;

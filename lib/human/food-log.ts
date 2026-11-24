@@ -22,7 +22,7 @@ const PREFIX = "food-log/";
 type Queryable = Db | Tx;
 type EntryRow = typeof s.foodLog.$inferSelect;
 
-function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, input: unknown): T {
+function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const parsed = schema.safeParse(input);
   if (!parsed.success) throw new FoodDataError("invalid", parsed.error.issues[0]?.message ?? "The entry is not valid.");
   return parsed.data;

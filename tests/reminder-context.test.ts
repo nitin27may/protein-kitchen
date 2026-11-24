@@ -74,7 +74,7 @@ beforeEach(async () => {
   vi.stubEnv("VAPID_PUBLIC_KEY", "synthetic-public");
   vi.stubEnv("VAPID_PRIVATE_KEY", "synthetic-private");
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 async function plan(householdId = "a", slug = "first", personIds = [1], routinePersonId?: number) {
   return persistNewPlan(h.db, {
@@ -181,6 +181,8 @@ it("uses valid batch prep weekdays and treats invalid legacy values like the pla
 });
 
 it("dispatches each household's own task text to its devices and never repeats a frozen send", async () => {
+  // The batch expiry (31 minutes after the due time) is checked against the database clock, so pin it to the fixture time.
+  vi.useFakeTimers({ toFake: ["Date"], now });
   await plan();
   await plan("b", "second", [2]);
   await h.db.insert(s.pushSubscriptions).values([1, 2].map((personId) => ({

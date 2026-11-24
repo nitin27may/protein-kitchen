@@ -2,11 +2,13 @@
 
 A meal planner for a lacto-vegetarian household (dairy yes, eggs no, no animal rennet). It builds 7-day, 14-day or custom-range plans with per-person portions, a grocery list, a meal prep guide, step-by-step cook mode and push reminders. Runs on Next.js and Postgres. Anonymous visitors can browse the recipe/ingredient library; household features require a verified account and membership. Public deployment and independent self-service households remain pending; keep this development instance private.
 
+**Tech stack:** Next.js 16.4 (App Router), React 19.3, TypeScript 5.9, Tailwind CSS 4.3, Drizzle ORM with Postgres, Better Auth 1.7, Zod 4, Vitest 5, Playwright, ESLint 10, Node 26, pnpm 10.33.
+
 `PLAN.md` holds the product intent. `CLAUDE.md` is the rulebook for adding data.
 
 ## Quick start
 
-Requires Node 22 or later, pnpm 10 (`corepack enable` picks the pinned version) and a throwaway local Postgres database (loopback only). Local development never connects to Neon; the only hosted environment is production.
+Requires Node 26 (Active LTS), pnpm 10.33 (`corepack enable` picks the pinned version) and a throwaway local Postgres database (loopback only). Local development never connects to Neon; the only hosted environment is production.
 
 ```bash
 pnpm install

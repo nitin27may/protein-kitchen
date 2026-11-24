@@ -16,12 +16,15 @@ export interface EncryptedBackupOptions {
   dump(): DumpSource;
 }
 
+// One null-fallback site: which side of the comparator sees the null marker depends on the engine's sort.
+const sortKey = (marker: { householdId: string | null }) => marker.householdId ?? "";
+
 async function photoReceipt(db: Db) {
   return db.transaction(async (tx) => {
     const photos = await tx.select({ uid: s.photos.uid, sha256: s.photos.sha256 }).from(s.photos).orderBy(s.photos.uid);
     const markers = await tx.select({ householdId: s.syncState.householdId, revision: s.syncState.revision })
       .from(s.syncState).where(eq(s.syncState.dataClass, "photos"));
-    return { photos, revision: JSON.stringify(markers.sort((a, b) => (a.householdId ?? "").localeCompare(b.householdId ?? ""))) };
+    return { photos, revision: JSON.stringify(markers.sort((a, b) => sortKey(a).localeCompare(sortKey(b)))) };
   }, { isolationLevel: "repeatable read", accessMode: "read only" });
 }
 
