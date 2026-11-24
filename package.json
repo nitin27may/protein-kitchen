@@ -96,6 +96,10 @@
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "esbuild"
+    ],
+    "ignoredBuiltDependencies": [
+      "unrs-resolver",
+      "protobufjs"
     ]
   }
 }
