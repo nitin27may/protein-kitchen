@@ -101,7 +101,7 @@ export function neonAdmin(apiKey: string, options: NeonAdminOptions = {}): NeonA
     return id;
   };
 
-  async function call<T>(method: "GET" | "POST" | "DELETE", path: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>, body?: unknown): Promise<T> {
+  async function call<T>(method: "GET" | "POST" | "DELETE", path: string, schema: z.ZodType<T>, body?: unknown): Promise<T> {
     let response: Response;
     try {
       response = await request(`${ORIGIN}${path}`, {

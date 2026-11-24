@@ -26,7 +26,7 @@ export async function pushProvider(secret: string) {
       }
       const body: unknown = JSON.parse(Buffer.concat(parts).toString("utf8"));
       if (request.url === "/control") {
-        statuses = z.object({ statuses: z.record(z.number().int().min(200).max(599)) }).strict().parse(body).statuses;
+        statuses = z.object({ statuses: z.record(z.string(), z.number().int().min(200).max(599)) }).strict().parse(body).statuses;
         response.end(JSON.stringify({ counts })); return;
       }
       const value = z.object({

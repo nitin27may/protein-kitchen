@@ -37,7 +37,7 @@ export const HouseholdFoodInput = z.object({
   fatG: nonNeg,
   /** null means the label does not report fibre. It is never stored as 0. */
   fibreG: nonNeg.nullish().transform((v) => v ?? null),
-  per100gMicros: z.record(microKey, nonNeg).default({}),
+  per100gMicros: z.partialRecord(microKey, nonNeg).transform((v) => v as Record<string, number>).default({}),
   /** Micronutrient keys the label does not report (same keys as ingredient_micros). */
   notReported: z.array(microKey).default([]),
   servingLabel: optionalText(60),

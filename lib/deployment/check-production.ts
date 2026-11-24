@@ -362,7 +362,7 @@ export async function readLedger(q: Queryable): Promise<LedgerRow[]> {
 export type SchemaShape = Map<string, Set<string>>;
 
 const snapshotSchema = z.object({
-  tables: z.record(z.object({ name: z.string(), schema: z.string().optional(), columns: z.record(z.object({ name: z.string() })) })),
+  tables: z.record(z.string(), z.object({ name: z.string(), schema: z.string().optional(), columns: z.record(z.string(), z.object({ name: z.string() })) })),
 });
 
 export function snapshotShape(json: unknown): SchemaShape {

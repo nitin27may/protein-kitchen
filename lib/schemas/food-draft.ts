@@ -29,7 +29,7 @@ export const FoodDraftInput = z.object({
   sat_fat_g: num.optional(),
   sodium: num.optional(),
   sodiumUnit: z.enum(["mg", "g"]),
-  micros: z.record(microKey, num).optional(),
+  micros: z.partialRecord(microKey, num).transform((v) => v as Record<string, number>).optional(),
   density: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("pack"), packNetG: num, packVolumeMl: num }),
     z.object({ kind: z.literal("serving"), servingG: num, servingMl: num }),
